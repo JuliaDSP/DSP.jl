@@ -39,7 +39,7 @@
 # DAMAGE.
 
 module FilterDesign
-using Base, Polynomial
+using Polynomial
 
 export Butterworth, Lowpass, Highpass, Bandpass, Bandstop, analogfilter, digitalfilter
 import Base.convert

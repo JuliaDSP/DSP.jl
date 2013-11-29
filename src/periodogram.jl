@@ -5,7 +5,6 @@
 module Periodogram
 
 using DSP
-using Base
 
 export periodogram, welch_pgram, bartlett_pgram
 
