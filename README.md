@@ -1,43 +1,13 @@
 DSP.jl provides a number of common DSP routines in Julia.  So far, the following functions are
 implemented:
 
-digital filtering:  
-* filt
-
-correlation and convolution:  
-* conv  
-* conv2  
-* deconv 
-* xcorr 
-
-FFTs provided by FFTW interface:
-* bfft
-* bfftn
-* brfft
-* brfftn
-* fft
-* fft2
-* fft3
-* fftn
-* ifft
-* ifft2
-* ifft3
-* ifftn
-* irfft
-* irfftn
-* rfft
-* rfftn
-
-FFT utilities:
-* fftshift	
-* ifftshift
-
-periodogram estimation:
+### Periodogram estimation
+* arraysplit
 * periodogram
 * welch_pgram
 * bartlett_pgram
 
-window functions:
+### Window functions
 * rect
 * hanning
 * hamming
@@ -51,8 +21,15 @@ window functions:
 * blackman
 * kaiser
 
-common DSP mathematics:
-* sinc
+### Filter functions
+* analogfilter
+* digitalFilter
 
-auxiliary functions:
-* arraysplit	
+### Filter response types
+* Lowpass
+* Highpass
+* Bandpass
+* Bandstop
+
+### Filter design methods
+* Butterworth
