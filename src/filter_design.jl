@@ -39,8 +39,7 @@
 # DAMAGE.
 
 module FilterDesign
-include("/usr/local/julia/extras/poly.jl")
-using Base
+using Base, Polynomial
 
 export Butterworth, Lowpass, Highpass, Bandpass, Bandstop, analogfilter, digitalfilter
 import Base.convert
@@ -53,14 +52,14 @@ lfill{T}(v::Vector{T}, n::Integer) = lfill(v, n, 0)
 similarzeros{T}(v::Array{T}, args...) = zeros(T, args...)
 
 # Get coefficients of a polynomial
-coeffs{T}(p::Polynomial{T}) = p.a[1+p.nzfirst:end]
+coeffs{T}(p::Poly{T}) = p.a[1+p.nzfirst:end]
 
 # Get rid of small complex parts
 checkcomplex{T <: Complex}(v::Vector{T}) = 
 	all(x->abs(imag(x)) < 1e-14, v) ? real(v) : v
-checkcomplex{T <: Complex}(p::Polynomial{T}) = 
-	all(x->abs(imag(x)) < 1e-14, p.a) ? Polynomial(real(p.a)) : p
-checkcomplex{T <: Real}(x::Union(Vector{T}, Polynomial{T})) = x
+checkcomplex{T <: Complex}(p::Poly{T}) = 
+	all(x->abs(imag(x)) < 1e-14, p.a) ? Poly(real(p.a)) : p
+checkcomplex{T <: Real}(x::Union(Vector{T}, Poly{T})) = x
 
 abstract Filter
 
@@ -71,16 +70,16 @@ type ZPKFilter <: Filter
 end
 
 type TFFilter <: Filter
-	b::Polynomial
-	a::Polynomial
+	b::Poly
+	a::Poly
 
-	function TFFilter(b::Polynomial, a::Polynomial)
+	function TFFilter(b::Poly, a::Poly)
 		a = checkcomplex(a)
 		b = checkcomplex(b)
 		new(b/a[1], a/a[1])
 	end
 end
-TFFilter(b::Vector, a::Vector) = TFFilter(Polynomial(b), Polynomial(a))
+TFFilter(b::Vector, a::Vector) = TFFilter(Poly(b), Poly(a))
 
 function convert(::Type{ZPKFilter}, f::TFFilter)
 	k = real(f.b[1])

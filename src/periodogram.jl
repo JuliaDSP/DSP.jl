@@ -4,7 +4,7 @@
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodogram
 
-using KDSP
+using DSP
 using Base
 
 export periodogram, welch_pgram, bartlett_pgram

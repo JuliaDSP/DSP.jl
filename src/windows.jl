@@ -1,6 +1,6 @@
 module Windows
 
-using KDSP
+using DSP
 
 export rect, hanning, hamming, tukey, cosine, lanczos, 
        triang, bartlett, gaussian, bartlett_hann, blackman, 

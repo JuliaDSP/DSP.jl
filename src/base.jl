@@ -1,8 +1,3 @@
-module KDSP
-
-using Base
-using Base.FFTW
-
 export FFTW, filt, deconv, conv, conv2, xcorr, fftshift, ifftshift, sinc,
        # the rest are defined imported from FFTW:
        bfft, bfftn, brfft, brfftn, fft, fft2, fft3, fftn,
@@ -150,5 +145,3 @@ function sinc(x::Real)
         sin(x)/x
     end
 end
-
-end #module
