@@ -42,7 +42,7 @@ module FilterDesign
 using Polynomial
 
 export Butterworth, Lowpass, Highpass, Bandpass, Bandstop, analogfilter, digitalfilter
-import Base.convert
+import Base: convert, filt
 
 # Pad a vector with f on the left to a specified length
 lfill{T}(v::Vector{T}, n::Integer, f::Number) = length(v) < n ? [fill(f, n - length(v)), v] : v
