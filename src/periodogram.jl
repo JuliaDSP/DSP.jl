@@ -3,10 +3,25 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodogram
+export arraysplit, periodogram, welch_pgram, bartlett_pgram
 
-using DSP
+# Split an array into subarrays of length N, with overlapping regions
+# of length M.
+function arraysplit(s, n::Integer, m::Integer)
+    # n = m is a problem - the algorithm will not terminate.
+    if !(0 <= m < n)
+        error("m must be between zero and n.")
+    end
 
-export periodogram, welch_pgram, bartlett_pgram
+    # the length of the non-overlapping array stride
+    l = n - m
+    
+    # total number of strides is the total length of the signal divided
+    # by the unique number of elements per stride.  extra elements at the
+    # end of of the signal are dropped.
+    k = int(length(s)/l - n/l + 1)
+    [s[(a*l + 1):(a*l + n)] for a=0:(k-1)]
+end
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
