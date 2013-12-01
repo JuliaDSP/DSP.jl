@@ -21,6 +21,10 @@ implemented:
 * `blackman(n::Integer)` - "Exact" Blackman window, alpha=0.16.
 * `kaiser(n::Integer, alpha::Real)` - Kaiser window parameterized by `alpha`.
 
+### FFT-based (overlap-save) FIR filtering
+* `fftfilt(b, x)` - Perform FFT-based filtering of `x` using filter `b`.
+* `firfilt(b, x)` - Filter `x` using filter `b`, using `filt` or `fftfilt` depending on the lengths of `b` and `x`.
+
 ### Filter design functions
 * `analogfilter(responsetype, designmethod)` - Construct an analog filter.
 * `digitalfilter(responsetype, designmethod)` - Construct a digital filter.
