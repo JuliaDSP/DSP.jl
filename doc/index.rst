@@ -15,6 +15,7 @@ DSP.jl provides a number of common DSP routines in Julia. So far, the following 
 
    periodogram.rst
    windows.rst
+   fftfilt.rst
    filterdesign.rst
 
 
