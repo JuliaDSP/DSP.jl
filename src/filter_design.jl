@@ -56,9 +56,9 @@ coeffs{T}(p::Poly{T}) = p.a[1+p.nzfirst:end]
 
 # Get rid of small complex parts
 checkcomplex{T <: Complex}(v::Vector{T}) = 
-	all(x->abs(imag(x)) < 1e-14, v) ? real(v) : v
+	all(x->abs(imag(x)) < 1e-13, v) ? real(v) : v
 checkcomplex{T <: Complex}(p::Poly{T}) = 
-	all(x->abs(imag(x)) < 1e-14, p.a) ? Poly(real(p.a)) : p
+	all(x->abs(imag(x)) < 1e-13, p.a) ? Poly(real(p.a)) : p
 checkcomplex{T <: Real}(x::Union(Vector{T}, Poly{T})) = x
 
 abstract Filter
@@ -96,7 +96,7 @@ function convert(::Type{TFFilter}, f::ZPKFilter)
 end
 
 filt(f::Filter, x) = filt(convert(TFFilter, f), x)
-filt(f::TFFilter, x) = filt(f.b, f.a, x)
+filt(f::TFFilter, x) = filt(coeffs(f.b), coeffs(f.a), x)
 
 abstract FilterType
 
