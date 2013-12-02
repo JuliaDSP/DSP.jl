@@ -48,3 +48,7 @@
 .. function:: kaiser(n::Integer, alpha::Real)
 
     Kaiser window parameterized by alpha.
+
+.. function:: dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
+
+    The first ``ntapers`` discrete prolate spheroid sequences (Slepian tapers) as an ``n`` x ``ntapers`` matrix. The signs of the tapers follow the convention that the first element of the skew-symmetric (odd) tapers is positive. The time-bandwidth product is given by ``nw``.

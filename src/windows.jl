@@ -2,7 +2,7 @@ module Windows
 
 export rect, hanning, hamming, tukey, cosine, lanczos, 
        triang, bartlett, gaussian, bartlett_hann, blackman, 
-       kaiser
+       kaiser, dpss
 # 
 # Window functions
 #
@@ -100,6 +100,35 @@ end
 function kaiser(n::Integer, alpha::Real)
     pf = 1.0/besseli(0,pi*alpha)
     [pf*besseli(0, pi*alpha*(sqrt(1 - (2*k/(n-1) - 1)^2))) for k=0:(n-1)]
+end
+
+macro julia_newer_than(version, iftrue, iffalse)
+    VERSION >= eval(version) ? esc(iftrue) : esc(iffalse)
+end
+
+# Discrete prolate spheroid sequences (Slepian tapers)
+#
+# See Gruenbacher, D. M., & Hummels, D. R. (1994). A simple algorithm
+# for generating discrete prolate spheroidal sequences. IEEE
+# Transactions on Signal Processing, 42(11), 3276-3278.
+function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
+    # Construct symmetric tridiagonal matrix
+    i1 = 0:(n-1)
+    i2 = 1:(n-1)
+    mat = SymTridiagonal(cos(2pi*nw/n)*((n - 1)/2 - i1).^2, 0.5.*(i2*n - i2.^2))
+
+    # Get tapers
+    ev = eigvals(mat, n-ntapers+1, n)
+    @julia_newer_than v"0.3-prerelease" begin
+        v = fliplr(eigvecs(mat, ev))
+    end begin
+        v = fliplr(eigvecs(mat, ev)[1])
+    end
+
+    # Slepian's convention; taper starts with a positive element
+    sgn = ones(size(v, 2))
+    sgn[2:2:end] = sign(v[1, 2:2:end])
+    scale!(v, sgn)
 end
 
 end # end module definition

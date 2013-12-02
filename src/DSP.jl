@@ -11,7 +11,7 @@ export
        # Windows
        rect, hanning, hamming, tukey, cosine, lanczos, 
        triang, bartlett, gaussian, bartlett_hann, blackman, 
-       kaiser,
+       kaiser, dpss,
        # Periodogram
        arraysplit, periodogram, welch_pgram, bartlett_pgram,
        # FFTFilt
