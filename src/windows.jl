@@ -102,6 +102,10 @@ function kaiser(n::Integer, alpha::Real)
     [pf*besseli(0, pi*alpha*(sqrt(1 - (2*k/(n-1) - 1)^2))) for k=0:(n-1)]
 end
 
+macro julia_newer_than(version, iftrue, iffalse)
+    VERSION >= eval(version) ? esc(iftrue) : esc(iffalse)
+end
+
 # Discrete prolate spheroid sequences (Slepian tapers)
 #
 # See Gruenbacher, D. M., & Hummels, D. R. (1994). A simple algorithm
@@ -115,7 +119,11 @@ function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
 
     # Get tapers
     ev = eigvals(mat, n-ntapers+1, n)
-    v = fliplr(eigvecs(mat, ev))
+    @julia_newer_than v"0.3-prerelease" begin
+        v = fliplr(eigvecs(mat, ev))
+    end begin
+        v = fliplr(eigvecs(mat, ev)[1])
+    end
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(v, 2))
