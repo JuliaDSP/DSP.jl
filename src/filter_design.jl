@@ -54,13 +54,6 @@ similarzeros{T}(v::Array{T}, args...) = zeros(T, args...)
 # Get coefficients of a polynomial
 coeffs{T}(p::Poly{T}) = p.a[1+p.nzfirst:end]
 
-# Get rid of small complex parts
-checkcomplex{T <: Complex}(v::Vector{T}) = 
-    all(x->abs(imag(x)) < 1e-13, v) ? real(v) : v
-checkcomplex{T <: Complex}(p::Poly{T}) = 
-    all(x->abs(imag(x)) < 1e-13, p.a) ? Poly(real(p.a)) : p
-checkcomplex{T <: Real}(x::Union(Vector{T}, Poly{T})) = x
-
 abstract Filter
 
 type ZPKFilter <: Filter
@@ -74,8 +67,6 @@ type TFFilter <: Filter
     a::Poly
 
     function TFFilter(b::Poly, a::Poly)
-        a = checkcomplex(a)
-        b = checkcomplex(b)
         new(b/a[1], a/a[1])
     end
 end
@@ -92,7 +83,7 @@ end
 function convert(::Type{TFFilter}, f::ZPKFilter)
     b = f.k*poly(f.z)
     a = poly(f.p)
-    TFFilter(b, a)
+    TFFilter(Poly(real(b.a)), Poly(real(a.a)))
 end
 
 filt(f::Filter, x) = filt(convert(TFFilter, f), x)
@@ -134,7 +125,10 @@ type Bandstop <: FilterType
     Bandstop(Wn1::Real, Wn2::Real) = new([Wn1, Wn2])
 end
 
-Butterworth(N::Integer) = ZPKFilter(Float64[], exp(im*(2*[1:N]-1)/(2*N)*pi)*im, 1)
+function Butterworth(N::Integer)
+    x = [2*(1:N)-1]/2N
+    ZPKFilter(Float64[], complex(-sinpi(x), cospi(x)), 1)
+end
 
 # Create a lowpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Lowpass, proto::TFFilter)
