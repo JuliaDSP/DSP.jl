@@ -56,21 +56,26 @@ coeffs{T}(p::Poly{T}) = p.a[1+p.nzfirst:end]
 
 abstract Filter
 
-type ZPKFilter <: Filter
-    z::Vector
-    p::Vector
-    k::Real
+immutable ZPKFilter{Z,P,K} <: Filter
+    z::Vector{Z}
+    p::Vector{P}
+    k::K
 end
 
-type TFFilter <: Filter
-    b::Poly
-    a::Poly
+immutable TFFilter{T} <: Filter
+    b::Poly{T}
+    a::Poly{T}
 
-    function TFFilter(b::Poly, a::Poly)
+    function TFFilter(b::Poly{T}, a::Poly{T})
         new(b/a[1], a/a[1])
     end
 end
-TFFilter(b::Vector, a::Vector) = TFFilter(Poly(b), Poly(a))
+TFFilter{T}(b::Poly{T}, a::Poly{T}) = TFFilter{T}(b, a)
+TFFilter{T}(b::Vector{T}, a::Vector{T}) = TFFilter{T}(Poly(b), Poly(a))
+function TFFilter{T,S}(b::Vector{T}, a::Vector{S})
+    V = promote_type(T, S)
+    TFFilter(convert(Vector{V}, b), convert(Vector{V}, a))
+end
 
 function convert(::Type{ZPKFilter}, f::TFFilter)
     k = real(f.b[1])
@@ -91,38 +96,22 @@ filt(f::TFFilter, x) = filt(coeffs(f.b), coeffs(f.a), x)
 
 abstract FilterType
 
-type Lowpass <: FilterType
-    Wn::Real
-    Lowpass(Wn::Real) = new(Wn)
+immutable Lowpass{T} <: FilterType
+    w::T
 end
 
-type Highpass <: FilterType
-    Wn::Real
-    Highpass(Wn::Real) = new(Wn)
+immutable Highpass{T} <: FilterType
+    w::T
 end
 
-type Bandpass <: FilterType
-    Wn::Vector
-
-    function Bandpass(Wn::Vector)
-        if length(Wn) != 2
-            error("A bandpass filter must specify two cutoff frequencies")
-        end
-        new(Wn)
-    end
-    Bandpass(Wn1::Real, Wn2::Real) = new([Wn1, Wn2])
+immutable Bandpass{T} <: FilterType
+    w1::T
+    w2::T
 end
 
-type Bandstop <: FilterType
-    Wn::Vector
-
-    function Bandstop(Wn::Vector)
-        if length(Wn) != 2
-            error("A bandstop filter must specify two cutoff frequencies")
-        end
-        new(Wn)
-    end
-    Bandstop(Wn1::Real, Wn2::Real) = new([Wn1, Wn2])
+immutable Bandstop{T} <: FilterType
+    w1::T
+    w2::T
 end
 
 function Butterworth(N::Integer)
@@ -143,7 +132,7 @@ end
 function transform_prototype(ftype::Lowpass, proto::TFFilter)
     b = lfill(coeffs(proto.b), length(proto.a))
     a = lfill(coeffs(proto.a), length(proto.b))
-    c = ftype.Wn .^ [length(a)-1:-1:0]
+    c = ftype.w .^ [length(a)-1:-1:0]
     TFFilter(b ./ c, a ./ c)
 end
 
@@ -151,15 +140,15 @@ end
 function transform_prototype(ftype::Highpass, proto::TFFilter)
     b = lfill(coeffs(proto.b), length(proto.a))
     a = lfill(coeffs(proto.a), length(proto.b))
-    c = ftype.Wn .^ [0:length(a)-1]
+    c = ftype.w .^ [0:length(a)-1]
     TFFilter(flipud(b) .* c, flipud(a) .* c)
 end
 
 # Create a bandpass filter from a lowpass filter prototype
 # Thus is a direct port of Scipy's lp2bp
 function transform_prototype(ftype::Bandpass, proto::TFFilter)
-    bw = ftype.Wn[2] - ftype.Wn[1]
-    wo = sqrt(ftype.Wn[1] * ftype.Wn[2])
+    bw = ftype.w2 - ftype.w1
+    wo = sqrt(ftype.w1 * ftype.w2)
     tf = convert(TFFilter, proto)
     b = tf.b.a
     a = tf.a.a
@@ -200,8 +189,8 @@ end
 # Create a bandstop filter from a lowpass filter prototype
 # Thus is a direct port of Scipy's lp2bs
 function transform_prototype(ftype::Bandstop, proto::TFFilter)
-    bw = ftype.Wn[2] - ftype.Wn[1]
-    wo = sqrt(ftype.Wn[1] * ftype.Wn[2])
+    bw = ftype.w2 - ftype.w1
+    wo = sqrt(ftype.w1 * ftype.w2)
     tf = convert(TFFilter, proto)
     b = tf.b.a
     a = tf.a.a
@@ -248,6 +237,8 @@ bilinear(f::ZPKFilter, fs::Real) =
     (2 + f.p / fs)./(2 - f.p / fs), real(f.k * prod(2 * fs - f.z) ./ prod(2 * fs - f.p)))
 
 analogfilter(ftype::FilterType, proto::Filter) = transform_prototype(ftype, proto)
-digitalfilter(ftype::FilterType, proto::Filter) =
-    bilinear(transform_prototype((typeof(ftype))(4*tan(pi*ftype.Wn/2)), proto), 2)
+digitalfilter(ftype::Union(Lowpass, Highpass), proto::Filter) =
+    bilinear(transform_prototype((typeof(ftype))(4*tan(pi*ftype.w/2)), proto), 2)
+digitalfilter(ftype::Union(Bandpass, Bandstop), proto::Filter) =
+    bilinear(transform_prototype((typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2)), proto), 2)
 end
