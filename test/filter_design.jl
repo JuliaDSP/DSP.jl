@@ -10,23 +10,17 @@ function lt(a, b)
     end
 end
 
-function rescale_coeffs(f::TFFilter)
-    b = coeffs(f.b)
-    a = coeffs(f.a)
-    (b/b[1], a/b[1])
-end
-
 function tffilter_eq(f1, f2)
-    b1, a1 = rescale_coeffs(f1)
-    b2, a2 = rescale_coeffs(f2)
+    b1, a1 = (coeffs(f1.b), coeffs(f1.a))
+    b2, a2 = (coeffs(f2.b), coeffs(f2.a))
     @test_approx_eq float64(b1) float64(b2)
     @test_approx_eq float64(a1) float64(a2)
 end
 
 function tffilter_accuracy(f1, f2, accurate_f)
-    b1, a1 = rescale_coeffs(f1)
-    b2, a2 = rescale_coeffs(f2)
-    accurate_b, accurate_a = rescale_coeffs(accurate_f)
+    b1, a1 = (coeffs(f1.b), coeffs(f1.a))
+    b2, a2 = (coeffs(f2.b), coeffs(f2.a))
+    accurate_b, accurate_a = (coeffs(accurate_f.b), coeffs(accurate_f.a))
     @test sum(abs(b1 - accurate_b)) <= sum(abs(b2 - accurate_b))
     @test sum(abs(a1 - accurate_a)) <= sum(abs(a2 - accurate_a))
 end
