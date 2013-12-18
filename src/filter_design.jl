@@ -126,8 +126,17 @@ type Bandstop <: FilterType
 end
 
 function Butterworth(N::Integer)
-    x = [2*(1:N)-1]/2N
-    ZPKFilter(Float64[], complex(-sinpi(x), cospi(x)), 1)
+    poles = zeros(Complex128, N)
+    for i = 1:div(N, 2)
+        w = (2*i-1)/2N
+        pole = complex(-sinpi(w), cospi(w))
+        poles[i*2-1] = pole
+        poles[i*2] = conj(pole)
+    end
+    if isodd(N)
+        poles[end] = -1.0+0.0im
+    end
+    ZPKFilter(Float64[], poles, 1)
 end
 
 # Create a lowpass filter from a lowpass filter prototype
