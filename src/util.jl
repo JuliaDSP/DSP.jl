@@ -2,14 +2,16 @@ module Util
 
 export unwrap!, unwrap
 
-function unwrap!(m::Array, dim::Integer=ndims(m); range::Number=2pi)
+function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
+                                     range::Number=2pi)
+    thresh = range / 2
     if size(m, dim) < 2
         return m
     end
     for i = 2:size(m, dim)
         d = slicedim(m, dim, i) - slicedim(m, dim, i-1)
         slice_tuple = ntuple(ndims(m), n->(n==dim ? (i:i) : (1:size(m,n))))
-        offset = floor((d+pi) / (2pi)) * 2pi
+        offset = floor((d+thresh) / (range)) * range
 #        println("offset: ", offset)
 #        println("typeof(offset): ", typeof(offset))
 #        println("typeof(m[slice_tuple...]): ", typeof(m[slice_tuple...]))
@@ -20,12 +22,8 @@ function unwrap!(m::Array, dim::Integer=ndims(m); range::Number=2pi)
     return m
 end
 
-function unwrap(m::Array, args...; kwargs...)
+function unwrap{T <: FloatingPoint}(m::Array{T}, args...; kwargs...)
     unwrap!(copy(m), args...; kwargs...)
 end
-
-#function unwrap(m::Array; args...)
-#    unwrap!(copy(m); args...)
-#end
 
 end # end module definition

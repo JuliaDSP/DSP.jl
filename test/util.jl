@@ -21,3 +21,8 @@ wrapped = hcat(wrapped, wrapped)
 unwrapped = hcat(unwrapped, unwrapped)
 @test_approx_eq(unwrap(wrapped), wrapped)
 @test_approx_eq(unwrap(wrapped, 1), unwrapped)
+
+# test unwrapping with other ranges
+unwrapped = [1.0:100]
+wrapped = unwrapped % 10
+@test_approx_eq(unwrap(wrapped, range=10), unwrapped)
