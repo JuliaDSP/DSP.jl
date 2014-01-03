@@ -1,6 +1,6 @@
 using DSP, Base.Test, Polynomial
 import Base.Sort.Lexicographic
-import DSP.FilterDesign: coeffs, TFFilter, ZPKFilter, BiquadFilter, SOSFilter
+import DSP.FilterDesign: coeffs
 
 function lt(a, b)
     if abs(real(a) - real(b)) > 1e-10

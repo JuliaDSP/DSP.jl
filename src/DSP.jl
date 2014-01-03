@@ -20,6 +20,6 @@ export
        # FFTFilt
        fftfilt, firfilt,
        # FilterDesign
-       Butterworth, Lowpass, Highpass, Bandpass, Bandstop,
-       analogfilter, digitalfilter
+       ZPKFilter, TFFilter, BiquadFilter, SOSFilter, Butterworth, Lowpass,
+       Highpass, Bandpass, Bandstop, analogfilter, digitalfilter
 end
