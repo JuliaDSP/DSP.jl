@@ -1,6 +1,6 @@
 using DSP, Base.Test, Polynomial
 import Base.Sort.Lexicographic
-import DSP.FilterDesign: coeffs, TFFilter, ZPKFilter
+import DSP.FilterDesign: coeffs, TFFilter, ZPKFilter, BiquadFilter, SOSFilter
 
 function lt(a, b)
     if abs(real(a) - real(b)) > 1e-10
@@ -15,6 +15,18 @@ function tffilter_eq(f1, f2)
     b2, a2 = (coeffs(f2.b), coeffs(f2.a))
     @test_approx_eq float64(b1) float64(b2)
     @test_approx_eq float64(a1) float64(a2)
+end
+
+function zpkfilter_eq(f1, f2)
+    @test_approx_eq complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt))
+    @test_approx_eq complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt))
+    @test_approx_eq float64(f1.k) float64(f2.k)
+end
+
+function zpkfilter_eq(f1, f2, eps)
+    @test_approx_eq_eps complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt)) eps
+    @test_approx_eq_eps complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt)) eps
+    @test_approx_eq_eps float64(f1.k) float64(f2.k) eps
 end
 
 function tffilter_accuracy(f1, f2, accurate_f)
@@ -161,3 +173,59 @@ tffilter_eq(f, m_f)
 
 # Cannot test accuracy since the roots function in Polynomial ends up
 # calling BLAS and so cannot preserve accuracy for BigFloats
+
+#
+# Conversion to second-order sections
+#
+
+x = randn(100)
+
+# Test that biquad filt() works
+for ftype in (Lowpass(0.5), Highpass(0.5))
+    f = digitalfilter(ftype, Butterworth(1))
+    @test_approx_eq filt(f, x) filt(SOSFilter([convert(BiquadFilter, convert(TFFilter, f))], 1.0), x)
+    f = digitalfilter(ftype, Butterworth(2))
+    @test_approx_eq filt(f, x) filt(SOSFilter([convert(BiquadFilter, convert(TFFilter, f))], 1.0), x)
+end
+
+# Test that filters converted to SOS are equivalent to Butterworth filters
+for ftype in (Lowpass(0.5), Highpass(0.5), Bandpass(0.25, 0.75), Bandstop(0.25, 0.75))
+    for order in 1:4
+        f = digitalfilter(ftype, Butterworth(order))
+        @test_approx_eq filt(f, x) filt(convert(SOSFilter, f), x)
+    end
+end
+
+# Test designing filters as SOS
+for ftype in (Lowpass(0.5), Highpass(0.5), Bandpass(0.25, 0.75), Bandstop(0.25, 0.75))
+    for order in 1:(isa(ftype, Lowpass) || isa(ftype, Highpass) ? 4 : 2)
+        f1 = digitalfilter(ftype, Butterworth(order))
+        f2 = digitalfilter(ftype, convert(SOSFilter, Butterworth(order)))
+        @assert isa(f2, SOSFilter)
+        @test_approx_eq filt(f1, x) filt(f2, x)
+    end
+end
+
+#
+# Filter conversion tests
+#
+
+for f in (digitalfilter(Lowpass(0.5), Butterworth(1)), digitalfilter(Lowpass(0.5), Butterworth(2)),
+          digitalfilter(Bandpass(0.25, 0.75), Butterworth(1)))
+    for ftype1 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
+        f2 = convert(ftype1, f)
+        for ftype2 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
+            f3 = convert(ftype2, f)
+            zpkfilter_eq(f, convert(ZPKFilter, f3))
+        end
+    end
+end
+
+f = digitalfilter(Lowpass(0.5), Butterworth(3))
+for ftype1 in (ZPKFilter, TFFilter, SOSFilter)
+    f2 = convert(ftype1, f)
+    for ftype2 in (ZPKFilter, TFFilter, SOSFilter)
+        f3 = convert(ftype2, f2)
+        zpkfilter_eq(f, convert(ZPKFilter, f3), 1e-5)
+    end
+end
