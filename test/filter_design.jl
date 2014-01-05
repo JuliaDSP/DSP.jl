@@ -196,6 +196,11 @@ for ftype in (Lowpass(0.5), Highpass(0.5), Bandpass(0.25, 0.75), Bandstop(0.25, 
     end
 end
 
+# Test that a numerically challenging filter (high order, clustered roots) has acceptable errors in its coefficients after conversion to SOS
+f = ZPKFilter(ones(100), 0.99*ones(100), 1)
+g = convert(SOSFilter, f)
+tffilter_eq(convert(TFFilter, f), convert(TFFilter, g))
+
 # Test designing filters as SOS
 for ftype in (Lowpass(0.5), Highpass(0.5), Bandpass(0.25, 0.75), Bandstop(0.25, 0.75))
     for order in 1:(isa(ftype, Lowpass) || isa(ftype, Highpass) ? 4 : 2)
