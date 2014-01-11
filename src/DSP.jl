@@ -10,7 +10,7 @@ using DSP.Windows, DSP.Periodogram, DSP.FFTFilt, DSP.FilterDesign, DSP.Util
 
 export
        # Util
-       unwrap!, unwrap,
+       unwrap!, unwrap, hilbert,
        # Windows
        rect, hanning, hamming, tukey, cosine, lanczos,
        triang, bartlett, gaussian, bartlett_hann, blackman,
