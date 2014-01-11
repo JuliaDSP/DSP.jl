@@ -1,6 +1,6 @@
 module Util
 
-export unwrap!, unwrap
+export unwrap!, unwrap, hilbert
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -24,6 +24,22 @@ end
 
 function unwrap{T <: FloatingPoint}(m::Array{T}, args...; kwargs...)
     unwrap!(copy(m), args...; kwargs...)
+end
+
+function hilbert{T <: Real}(x::Array{T})
+# Return the Hilbert transform of x (a real signal).
+# Code inspired by Scipy's implementation, which is under BSD license.
+    X = vcat(rfft(x), zeros(int(floor(length(x)/2))-1))
+    N = length(X)
+    h = zeros(N)
+    if N % 2 == 0
+        h[1] = h[N/2+1] = 1
+        h[2:N/2] = 2
+    else
+        h[1] = 1
+        h[2:(N+1)/2+1] = 2
+    end
+    return ifft(X.*h)
 end
 
 end # end module definition
