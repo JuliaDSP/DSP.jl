@@ -1,6 +1,6 @@
 module Util
 
-export unwrap!, unwrap
+export unwrap!, unwrap, hilbert
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -25,5 +25,19 @@ end
 function unwrap{T <: FloatingPoint}(m::Array{T}, args...; kwargs...)
     unwrap!(copy(m), args...; kwargs...)
 end
+
+function hilbert{T <: FFTW.fftwReal}(x::Array{T})
+# Return the Hilbert transform of x (a real signal).
+# Code inspired by Scipy's implementation, which is under BSD license.
+    N = length(x)
+    X = zeros(Complex{T}, N)
+    p = FFTW.Plan(x, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    FFTW.execute(T, p.plan)
+    for i = 2:div(N, 2)+isodd(N)
+        @inbounds X[i] *= 2.0
+    end
+    return ifft!(X)
+end
+hilbert{T <: Real}(x::Array{T}) = hilbert(float(x))
 
 end # end module definition
