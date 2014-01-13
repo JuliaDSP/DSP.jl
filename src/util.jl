@@ -26,20 +26,18 @@ function unwrap{T <: FloatingPoint}(m::Array{T}, args...; kwargs...)
     unwrap!(copy(m), args...; kwargs...)
 end
 
-function hilbert{T <: Real}(x::Array{T})
+function hilbert{T <: FFTW.fftwReal}(x::Array{T})
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
-    X = vcat(rfft(x), zeros(int(floor(length(x)/2))-1))
-    N = length(X)
-    h = zeros(N)
-    if N % 2 == 0
-        h[1] = h[N/2+1] = 1
-        h[2:N/2] = 2
-    else
-        h[1] = 1
-        h[2:(N+1)/2+1] = 2
+    N = length(x)
+    X = zeros(Complex{T}, N)
+    p = FFTW.Plan(x, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    FFTW.execute(T, p.plan)
+    for i = 2:div(N, 2)+isodd(N)
+        @inbounds X[i] *= 2.0
     end
-    return ifft(X.*h)
+    return ifft!(X)
 end
+hilbert{T <: Real}(x::Array{T}) = hilbert(float(x))
 
 end # end module definition
