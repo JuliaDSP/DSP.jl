@@ -17,3 +17,8 @@
                                           range::Number=2pi)
 
     In-place version of unwrap(m, dim, range)
+
+.. function:: hilbert{T <: Real}(x::Array{T})
+
+    Computes the analytic representation of x, :math:`x_a = x + j
+    \hat{x}`, where :math:`\hat{x}` is the Hilbert transform of x.
