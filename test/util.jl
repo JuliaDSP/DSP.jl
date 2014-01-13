@@ -54,15 +54,21 @@ h_real = real(h)
 
 #For the 'slow' cosine - the phase should go from 0 to pi in the
 #same interval:
-@test_approx_eq h_angle[1:256,2] [0:pi/256:pi-pi/256]xs
+@test_approx_eq h_angle[1:256,2] [0:pi/256:pi-pi/256]
 
 #The 'fast' sine should make this phase transition in half the time:
 @test_approx_eq h_angle[1:128,3] [-pi/2:pi/128:pi/2-pi/128]
                     
-
 #Ditto for the 'fast' cosine:
 @test_approx_eq h_angle[1:128,4] [0:pi/128:pi-pi/128]
 
 #The imaginary part of hilbert(cos(t)) = sin(t) Wikipedia
-@test_approx_eq imag(h[2,:]) a0
+@test_approx_eq imag(h[:,2]) a0
 
+#Sanity check with odd number of samples
+h2 = hilbert([ones(10), zeros(9)]) 
+@test_approx_eq real(h2) [ones(10), zeros(9)]
+
+#Sanity check with integer arguments
+r = int(rand(128)*20)
+@test hilbert(r) == hilbert(float64(r))
