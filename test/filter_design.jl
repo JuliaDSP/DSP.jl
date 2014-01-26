@@ -23,10 +23,10 @@ function zpkfilter_eq(f1, f2)
     @test_approx_eq float64(f1.k) float64(f2.k)
 end
 
-function zpkfilter_eq(f1, f2, eps)
-    @test_approx_eq_eps complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt)) eps
-    @test_approx_eq_eps complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt)) eps
-    @test_approx_eq_eps float64(f1.k) float64(f2.k) eps
+function zpkfilter_eq(f1, f2, myeps)
+    @test_approx_eq_eps complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt)) myeps
+    @test_approx_eq_eps complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt)) myeps
+    @test_approx_eq_eps float64(f1.k) float64(f2.k) myeps
 end
 
 function tffilter_accuracy(f1, f2, accurate_f)
