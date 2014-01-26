@@ -28,8 +28,6 @@ wrapped = unwrapped % 10
 @test_approx_eq(unwrap(wrapped, range=10), unwrapped)
 
 # Testing hilbert transform
-eps = 1e-14
-
 t = [0:pi/256:2*pi-pi/256]
 a0 = sin(t)
 a1 = cos(t)
