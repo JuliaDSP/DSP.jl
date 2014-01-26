@@ -200,9 +200,9 @@ convert(to::Union(Type{TFFilter}, Type{BiquadFilter}), f::SOSFilter) =
 # This is only necessary in Julia 0.2
 function lexlt(a::Complex, b::Complex)
     if real(a) == real(b)
-        isless(real(a), real(b))
-    else
         isless(imag(a), imag(b))
+    else
+        isless(real(a), real(b))
     end
 end
 lexlt(a::Real, b::Real) = isless(a, b)
