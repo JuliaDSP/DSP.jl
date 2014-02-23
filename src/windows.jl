@@ -113,8 +113,8 @@ end
 # Transactions on Signal Processing, 42(11), 3276-3278.
 function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
     # Construct symmetric tridiagonal matrix
-    i1 = 0:(n-1)
-    i2 = 1:(n-1)
+    i1 = [0:(n-1)]
+    i2 = [1:(n-1)]
     mat = SymTridiagonal(cos(2pi*nw/n)*((n - 1)/2 - i1).^2, 0.5.*(i2*n - i2.^2))
 
     # Get tapers
