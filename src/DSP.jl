@@ -16,7 +16,7 @@ export
        triang, bartlett, gaussian, bartlett_hann, blackman,
        kaiser, dpss,
        # Periodogram
-       arraysplit, periodogram, welch_pgram, bartlett_pgram,
+       arraysplit, periodogram, welch_pgram, bartlett_pgram, spectrogram
        # FFTFilt
        fftfilt, firfilt,
        # FilterDesign

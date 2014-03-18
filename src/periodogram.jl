@@ -3,7 +3,7 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodogram
-export arraysplit, periodogram, welch_pgram, bartlett_pgram
+export arraysplit, periodogram, welch_pgram, bartlett_pgram, spectrogram
 
 # Split an array into subarrays of length N, with overlapping regions
 # of length M.
@@ -48,6 +48,14 @@ end
 # it is a special case of the Welch estimate of the periodogram.
 function bartlett_pgram(s, n)
     welch_pgram(s, n, 0)
+end
+
+function spectrogram(x; nfft=int(length(x)/8), fs=1, noverlap=int(nfft/2))
+  p=[periodogram(x) for x in arraysplit(x, nfft, noverlap)]
+  p=hcat(p...)
+  t=[1:size(p,2)]*(nfft-noverlap)/fs
+  f=[1:size(p,1)]/size(p,1)*(fs/2)
+  p, t, f
 end
 
 end # end module definition
