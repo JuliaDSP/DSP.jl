@@ -19,7 +19,7 @@ function arraysplit(s, n::Integer, m::Integer)
     # total number of strides is the total length of the signal divided
     # by the unique number of elements per stride.  extra elements at the
     # end of of the signal are dropped.
-    k = int(length(s)/l - n/l + 1)
+    k = ifloor(length(s)/l - n/l + 1)
     [s[(a*l + 1):(a*l + n)] for a=0:(k-1)]
 end
 
