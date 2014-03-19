@@ -50,11 +50,11 @@ function bartlett_pgram(s, n)
     welch_pgram(s, n, 0)
 end
 
-function spectrogram(x; nfft=int(length(x)/8), fs=1, noverlap=int(nfft/2))
-  p=[periodogram(x) for x in arraysplit(x, nfft, noverlap)]
+function spectrogram(s; n=int(length(s)/8), m=int(n/2), fs=1)
+  p=[periodogram(s) for s in arraysplit(s, n, m)]
   p=hcat(p...)
-  t=[1:size(p,2)]*(nfft-noverlap)/fs
-  f=[1:size(p,1)]/size(p,1)*(fs/2)
+  t=(0:size(p,2)-1)*(n-m)/fs + n/2
+  f=(0:size(p,1)-1)/size(p,1)*fs
   p, t, f
 end
 
