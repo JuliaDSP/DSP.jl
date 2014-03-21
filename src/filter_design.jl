@@ -421,8 +421,8 @@ analogfilter(ftype::FilterType, proto::Filter) = transform_prototype(ftype, prot
 # Do bilinear transform
 bilinear(f::Filter, fs::Real) = bilinear(convert(ZPKFilter, f), fs)
 bilinear(f::ZPKFilter, fs::Real) =
-    ZPKFilter(lfill((2 + f.z / fs)./(2 - f.z / fs), length(f.p), -1),
-    (2 + f.p / fs)./(2 - f.p / fs), real(f.k * prod(2 * fs - f.z) ./ prod(2 * fs - f.p)))
+    ZPKFilter(lfill((2 .+ f.z / fs)./(2 .- f.z / fs), length(f.p), -1),
+    (2 .+ f.p / fs)./(2 .- f.p / fs), real(f.k * prod(2 * fs .- f.z) ./ prod(2 * fs .- f.p)))
 
 # Pre-warp filter frequencies for digital filtering
 prewarp(ftype::Union(Lowpass, Highpass)) = (typeof(ftype))(4*tan(pi*ftype.w/2))

@@ -16,11 +16,11 @@
 
 using DSP, Base.Test
 
-x0 = readdlm("spectrogram_x.txt",'\t')
-f0 = readdlm("spectrogram_f.txt",'\t')
-t0 = readdlm("spectrogram_t.txt",'\t')
-p0 = readdlm("spectrogram_p.txt",'\t')
-p, t, f = spectrogram(x0, nfft=256, fs=1, noverlap=128)
+x0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
+f0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t')
+t0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_t.txt"),'\t')
+p0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_p.txt"),'\t')
+p, t, f = spectrogram(x0, n=256, r=1, m=128)
 
 # with real input matlab outputs a 1-sided PSD
 @test_approx_eq p0[[1,129],:] p[[1,129],:]

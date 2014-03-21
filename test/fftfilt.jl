@@ -1,6 +1,6 @@
 using DSP, Base.Test
 
-for xlen in 2.^(7:18)-1, blen in 2.^(1:6)-1
+for xlen in 2.^(7:18).-1, blen in 2.^(1:6).-1
 	b = randn(blen)
 	x = rand(xlen)
 	filtres = filt(b, [1.0], x)
