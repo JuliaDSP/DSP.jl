@@ -28,11 +28,11 @@ wrapped = unwrapped % 10
 @test_approx_eq(unwrap(wrapped, range=10), unwrapped)
 
 # Testing hilbert transform
-t = [0:pi/256:2*pi-pi/256]
-a0 = sin(t)
-a1 = cos(t)
-a2 = sin(2*t)
-a3 = cos(2*t)
+t = (0:1/256:2-1/256)
+a0 = sinpi(t)
+a1 = cospi(t)
+a2 = sinpi(2*t)
+a3 = cospi(2*t)
 a = hcat(a0, a1, a2, a3)
 
 h = hcat(hilbert(a0), hilbert(a1), hilbert(a2), hilbert(a3))
