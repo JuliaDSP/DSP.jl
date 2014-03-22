@@ -221,7 +221,7 @@ for f in (digitalfilter(Lowpass(0.5), Butterworth(1)), digitalfilter(Lowpass(0.5
         f2 = convert(ftype1, f)
         for ftype2 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
             f3 = convert(ftype2, f)
-            zpkfilter_eq(f, convert(ZPKFilter, f3))
+            zpkfilter_eq(f, convert(ZPKFilter, f3), eps())
         end
     end
 end
