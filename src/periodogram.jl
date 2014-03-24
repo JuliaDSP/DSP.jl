@@ -54,7 +54,8 @@ function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n,1))
   w=w(n)
   p=[periodogram(s.*w) for s in arraysplit(s, n, m)]
   p=hcat(p...)
-  t=(0:size(p,2)-1)*(n-m)/r + n/2
+  p/=r
+  t=( (0:size(p,2)-1)*(n-m) + n/2) / r
   f=(0:size(p,1)-1)/size(p,1)*r
   p, t, f
 end
