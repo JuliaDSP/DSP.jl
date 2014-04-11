@@ -11,7 +11,7 @@ function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
     for i = 2:size(m, dim)
         d = slicedim(m, dim, i) - slicedim(m, dim, i-1)
         slice_tuple = ntuple(ndims(m), n->(n==dim ? (i:i) : (1:size(m,n))))
-        offset = floor((d+thresh) / (range)) * range
+        offset = floor((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
 #        println("typeof(offset): ", typeof(offset))
 #        println("typeof(m[slice_tuple...]): ", typeof(m[slice_tuple...]))
