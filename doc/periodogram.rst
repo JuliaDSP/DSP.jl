@@ -16,3 +16,7 @@
 .. function:: bartlett_pgram(s, n)
 
     Compute Bartlett periodogram. This is equivalent to welch_pgram(s, n, 0).
+
+.. function:: spectrogram(s; n=length(s)/8, m=n/2, r=1, w=(n)->ones(n,1))
+
+    Compute Spectrogram based on n segments with overlap m, sampling rate r, and window w.
