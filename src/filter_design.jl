@@ -124,7 +124,7 @@ immutable BiquadFilter{T} <: Filter
     a2::T
 end
 BiquadFilter{T}(b0::T, b1::T, b2::T, a0::T, a1::T, a2::T, g::Real=1) =
-    BiquadFilter(b0/a0, b1/a0, b2/a0, a1/a0, a2/a0, g)
+    BiquadFilter(g*b0/a0, g*b1/a0, g*b2/a0, a1/a0, a2/a0)
 
 convert(::Type{ZPKFilter}, f::BiquadFilter) = convert(ZPKFilter, convert(TFFilter, f))
 
