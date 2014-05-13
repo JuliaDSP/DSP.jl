@@ -118,10 +118,10 @@ function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
     mat = SymTridiagonal(cos(2pi*nw/n)*((n - 1)/2 - i1).^2, 0.5.*(i2*n - i2.^2))
 
     # Get tapers
-    ev = eigvals(mat, n-ntapers+1, n)
     @julia_newer_than v"0.3-prerelease" begin
-        v = fliplr(eigvecs(mat, ev))
+        v = fliplr(eigfact!(mat, n-ntapers+1:n)[:vectors]::Matrix{Float64})
     end begin
+        ev = eigvals(mat, n-ntapers+1, n)
         v = fliplr(eigvecs(mat, ev)[1])
     end
 
