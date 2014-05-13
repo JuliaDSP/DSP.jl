@@ -113,9 +113,8 @@ end
 # Transactions on Signal Processing, 42(11), 3276-3278.
 function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
     # Construct symmetric tridiagonal matrix
-    i1 = 0:(n-1)
-    i2 = 1:(n-1)
-    mat = SymTridiagonal(cos(2pi*nw/n)*((n - 1)/2 - i1).^2, 0.5.*(i2*n - i2.^2))
+    mat = SymTridiagonal([cospi(2*nw/n)*abs2((n - 1)/2 - i) for i=0:(n-1)],
+                         [0.5.*(i*n - abs2(i)) for i=1:(n-1)])
 
     # Get tapers
     @julia_newer_than v"0.3-prerelease" begin
@@ -127,7 +126,9 @@ function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(v, 2))
-    sgn[2:2:end] = sign(v[1, 2:2:end])
+    for i = 2:2:size(v, 2)
+        sgn[i] = sign(v[1, i])
+    end
     scale!(v, sgn)
 end
 
