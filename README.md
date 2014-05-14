@@ -1,7 +1,7 @@
 DSP.jl
 ======
 
-[![Build Status](https://travis-ci.org/JuliaStats/DSP.jl.svg?branch=master)](https://travis-ci.org/JuliaStats/DSP.jl)
+[![Build Status](https://travis-ci.org/JuliaDSP/DSP.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/DSP.jl)
 
 DSP.jl provides a number of common DSP routines in Julia.  So far, the following are implemented:
 
