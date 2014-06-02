@@ -6,10 +6,7 @@ module FilterResponse
 export response
 
 using Polynomial
-
-include("filter_design.jl")
-using Reexport
-@reexport using .FilterDesign
+using ..FilterDesign
 
 
 # Filter frequency response for normalised frequency in radians per sample
