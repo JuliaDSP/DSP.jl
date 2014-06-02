@@ -26,4 +26,4 @@ p, t, f = spectrogram(x0, n=256, r=10, m=128)
 @test_approx_eq p0[[1,129],:] p[[1,129],:]
 @test_approx_eq p0[2:128,:]./2 p[2:128,:]
 @test_approx_eq f0 f[1:129]
-@test_approx_eq t0 t
+@test_approx_eq vec(t0) t
