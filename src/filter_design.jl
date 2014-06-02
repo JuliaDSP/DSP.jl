@@ -42,7 +42,7 @@ module FilterDesign
 using Polynomial
 
 export ZPKFilter, TFFilter, BiquadFilter, SOSFilter, Butterworth, Lowpass, Highpass, Bandpass,
-       Bandstop, analogfilter, digitalfilter
+       Bandstop, analogfilter, digitalfilter, Filter
 import Base: convert, filt
 
 #
