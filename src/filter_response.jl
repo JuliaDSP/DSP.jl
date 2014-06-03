@@ -3,62 +3,107 @@
 
 module FilterResponse
 
-export response
+export freqz, freqs
 
 using Polynomial
 using ..FilterDesign
 
 
-# Filter frequency response for normalised frequency in radians per sample
-function response(filter::Filter, is_digital::Bool, w::Number)
+#######################################
+#
+# Frequency response of a digital filter
+#
+#######################################
+
+
+function freqz(filter::Filter, w::Number)
 
     filter = convert(TFFilter, filter)
 
-    if is_digital
-        zml = exp(-im * w)
-        h = polyval(filter.b, zml) / polyval(filter.a, zml)
-    else
-        s = im * w
-        h = polyval(filter.b, s) / polyval(filter.a, s)
-    end
+    zml = exp(-im * w)
+    h = polyval(filter.b, zml) / polyval(filter.a, zml)
 
     return h
 end
 
 
-# Filter frequency response for frequencies in radians per sample
-function response(filter::Filter, is_digital::Bool, w::AbstractVector)
+function freqz(filter::Filter, w::AbstractVector)
 
     filter = convert(TFFilter, filter)
 
-    h = [response(filter, is_digital, i) for i = w]
+    h = [freqz(filter, i) for i = w]
 
     return h
 end
 
 
-# Filter frequency response for frequency in Hz
-function response(filter::Filter, is_digital::Bool, hz::Number, fs::Integer)
+function freqz(filter::Filter, hz::Number, fs::Integer)
 
     filter = convert(TFFilter, filter)
 
     w = hz_to_radians_per_second(hz, fs)
-    h = response(filter, is_digital, )
+    h = freqz(filter, w)
 
     return h
 end
 
 
-# Filter frequency response for frequencies in Hz
-function response(filter::Filter, is_digital::Bool, hz::AbstractVector, fs::Integer)
+function freqz(filter::Filter, hz::AbstractVector, fs::Integer)
 
     filter = convert(TFFilter, filter)
 
-    h = [response(filter, is_digital, i, fs) for i = hz]
+    h = [freqz(filter, i, fs) for i = hz]
 
     return h
 end
 
+
+#######################################
+#
+# Frequency response of an analog filter
+#
+#######################################
+
+function freqs(filter::Filter, w::Number)
+
+    filter = convert(TFFilter, filter)
+
+    s = im * w
+    h = polyval(filter.b, s) / polyval(filter.a, s)
+
+    return h
+end
+
+
+function freqs(filter::Filter, w::AbstractVector)
+
+    filter = convert(TFFilter, filter)
+
+    h = [freqs(filter, i) for i = w]
+
+    return h
+end
+
+
+function freqs(filter::Filter, hz::Number, fs::Integer)
+
+    filter = convert(TFFilter, filter)
+
+    w = hz_to_radians_per_second(hz, fs)
+    h = freqs(filter, w)
+
+    return h
+end
+
+
+function freqs(filter::Filter, hz::AbstractVector, fs::Integer)
+
+    filter = convert(TFFilter, filter)
+
+    h = [freqs(filter, i, fs) for i = hz]
+
+    return h
+end
 
 
 #######################################
