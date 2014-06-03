@@ -63,12 +63,12 @@ hz    = linspace(0, fs, 200)
 h     = freqz(TFFilter(b, a), hz, fs)
 h_abs = convert(Array{Float64}, abs(h))
 
-using Winston
-figure = plot(hz, 20*log10(h_abs))
-ylim(-100, 20)
-ylabel("Magnitude (dB)")
-xlabel("Frequency (Hz)")
-file(figure, "MATLAB-freqz-hz.png", width=1200, height=800)
+#=using Winston=#
+#=figure = plot(hz, 20*log10(h_abs))=#
+#=ylim(-100, 20)=#
+#=ylabel("Magnitude (dB)")=#
+#=xlabel("Frequency (Hz)")=#
+#=file(figure, "MATLAB-freqz-hz.png", width=1200, height=800)=#
 
 
 #######################################

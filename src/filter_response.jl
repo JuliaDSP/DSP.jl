@@ -37,22 +37,13 @@ function freqz(filter::Filter, w::AbstractVector)
 end
 
 
-function freqz(filter::Filter, hz::Number, fs::Integer)
+function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
 
     filter = convert(TFFilter, filter)
 
     w = hz_to_radians_per_second(hz, fs)
+
     h = freqz(filter, w)
-
-    return h
-end
-
-
-function freqz(filter::Filter, hz::AbstractVector, fs::Integer)
-
-    filter = convert(TFFilter, filter)
-
-    h = [freqz(filter, i, fs) for i = hz]
 
     return h
 end
@@ -85,22 +76,13 @@ function freqs(filter::Filter, w::AbstractVector)
 end
 
 
-function freqs(filter::Filter, hz::Number, fs::Integer)
+function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
 
     filter = convert(TFFilter, filter)
 
     w = hz_to_radians_per_second(hz, fs)
+
     h = freqs(filter, w)
-
-    return h
-end
-
-
-function freqs(filter::Filter, hz::AbstractVector, fs::Integer)
-
-    filter = convert(TFFilter, filter)
-
-    h = [freqs(filter, i, fs) for i = hz]
 
     return h
 end
