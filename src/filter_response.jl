@@ -10,77 +10,53 @@ using ..FilterDesign
 
 
 # Filter frequency response for normalised frequency in radians per sample
-function response(tff::TFFilter, is_digital::Bool, w::Number)
+function response(filter::Filter, is_digital::Bool, w::Number)
 
-        if is_digital
-            zml = exp(-im * w)
-            h = polyval(tff.b, zml) / polyval(tff.a, zml)
-        else
-            s = im * w 
-            h = polyval(tff.b, s) / polyval(tff.a, s)
-        end
+    filter = convert(TFFilter, filter)
 
-    return h, w
+    if is_digital
+        zml = exp(-im * w)
+        h = polyval(filter.b, zml) / polyval(filter.a, zml)
+    else
+        s = im * w
+        h = polyval(filter.b, s) / polyval(filter.a, s)
+    end
+
+    return h
 end
 
 
 # Filter frequency response for frequencies in radians per sample
-function response(tff::TFFilter, is_digital::Bool, w::Array)
+function response(filter::Filter, is_digital::Bool, w::AbstractVector)
 
-    h = Array(Complex, size(w))
-    for i = 1:length(w)
-        h[i], w[i] = response(tff, is_digital, w[i])
-    end
+    filter = convert(TFFilter, filter)
 
-    return h, w
+    h = [response(filter, is_digital, i) for i = w]
+
+    return h
 end
 
 
 # Filter frequency response for frequency in Hz
-function response(tff::TFFilter, is_digital::Bool, hz::Number, fs::Integer)
-    
+function response(filter::Filter, is_digital::Bool, hz::Number, fs::Integer)
+
+    filter = convert(TFFilter, filter)
+
     w = hz_to_radians_per_second(hz, fs)
+    h = response(filter, is_digital, )
 
-    h, w = response(tff, is_digital, w)
-
-    hz = radians_per_second_to_hz(w, fs)
-
-    return h, hz
+    return h
 end
 
 
 # Filter frequency response for frequencies in Hz
-function response(tff::TFFilter, is_digital::Bool, hz::Array, fs::Integer)
+function response(filter::Filter, is_digital::Bool, hz::AbstractVector, fs::Integer)
 
-    h = Array(Complex, size(hz))
-    hz_return = Array(Float64, size(hz))
+    filter = convert(TFFilter, filter)
 
-    for i = 1:length(hz)
-        h[i], hz_return[i] = response(tff, is_digital, hz[i], fs)
-    end
+    h = [response(filter, is_digital, i, fs) for i = hz]
 
-    return h, hz_return
-end
-
-
-# Filter response for an array of frequencies in Hz
-function response(filter_type::Filter, is_digital::Bool, hz::Array, fs::Integer)
-
-    return response(convert(TFFilter, filter_type), is_digital, convert(Array, hz), fs)
-end
-
-
-# Filter response for a range of frequencies in radians per sample
-function response(filter_type::Filter, is_digital::Bool, w::Range)
-
-    return response(filter_type, is_digital, convert(Array, w))
-end
-
-
-# Filter response for a range of frequencies in Hz
-function response(filter_type::Filter, is_digital::Bool, hz::Range, fs::Integer)
-
-    return response(filter_type, is_digital, convert(Array, hz), fs)
+    return h
 end
 
 
@@ -93,11 +69,6 @@ end
 
 function hz_to_radians_per_second(hz, fs)
     return hz * ((2*pi)/fs)
-end
-
-
-function radians_per_second_to_hz(w, fs)
-    return w * (fs/(2*pi))
 end
 
 

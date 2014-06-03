@@ -1,5 +1,7 @@
 using DSP, Base.Test
 
+# Test 
+
 #######################################
 #
 #  http://www.mathworks.com.au/help/signal/ref/freqz.html
@@ -24,15 +26,14 @@ b = b0*conv(vec(b1),vec(b2))
 a = conv(vec(a1),vec(a2))
 
 #=w     = linspace(0, 2*pi, 200)=#                 # Does not produce same values as matlab
-h, w  = response(TFFilter(b, a), true, matlab_w)   # So use frequencies from matlab
+h     = response(TFFilter(b, a), true, matlab_w)   # So use frequencies from matlab
 h_abs = convert(Array{Float64}, abs(h))
 
 # Test
-@test_approx_eq w matlab_w
 @test_approx_eq h_abs matlab_abs
 
 #=using Winston=#
-#=figure = plot(w/pi, 20*log10(h_abs))=#
+#=figure = plot(matlab_w/pi, 20*log10(h_abs))=#
 #=figure = oplot(matlab_w/pi, 20*log10(matlab_abs), "r--")=#
 #=ylim(-100, 20)=#
 #=ylabel("Magnitude (dB)")=#
@@ -52,8 +53,9 @@ h_abs = convert(Array{Float64}, abs(h))
 # Julia
 a = vec([1.0, 0.4, 1.0])
 b = vec([0.2, 0.3, 1.0])
+w = logspace(-1,1,50)
 
-h, w     = response(TFFilter(b, a), false, logspace(-1,1,50))
+h        = response(TFFilter(b, a), false, w)
 mag      = convert(Array{Float64}, abs(h))
 phasedeg = (180/pi)*convert(Array{Float64}, angle(h))
 
