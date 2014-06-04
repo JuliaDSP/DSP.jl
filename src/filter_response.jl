@@ -21,9 +21,7 @@ function freqz(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
 
     zml = exp(-im * w)
-    h = polyval(filter.b, zml) / polyval(filter.a, zml)
-
-    return h
+    polyval(filter.b, zml) / polyval(filter.a, zml)
 end
 
 
@@ -31,9 +29,7 @@ function freqz(filter::Filter, w::AbstractVector)
 
     filter = convert(TFFilter, filter)
 
-    h = [freqz(filter, i) for i = w]
-
-    return h
+    [freqz(filter, i) for i = w]
 end
 
 
@@ -41,11 +37,7 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
 
     filter = convert(TFFilter, filter)
 
-    w = hz_to_radians_per_second(hz, fs)
-
-    h = freqz(filter, w)
-
-    return h
+    freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
 
@@ -60,9 +52,7 @@ function freqs(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
 
     s = im * w
-    h = polyval(filter.b, s) / polyval(filter.a, s)
-
-    return h
+    polyval(filter.b, s) / polyval(filter.a, s)
 end
 
 
@@ -70,9 +60,7 @@ function freqs(filter::Filter, w::AbstractVector)
 
     filter = convert(TFFilter, filter)
 
-    h = [freqs(filter, i) for i = w]
-
-    return h
+    [freqs(filter, i) for i = w]
 end
 
 
@@ -80,11 +68,7 @@ function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
 
     filter = convert(TFFilter, filter)
 
-    w = hz_to_radians_per_second(hz, fs)
-
-    h = freqs(filter, w)
-
-    return h
+    freqs(filter, hz_to_radians_per_second(hz, fs))
 end
 
 
@@ -95,7 +79,7 @@ end
 #######################################
 
 function hz_to_radians_per_second(hz, fs)
-    return hz * ((2*pi)/fs)
+    hz * ((2 * pi) / fs)
 end
 
 
