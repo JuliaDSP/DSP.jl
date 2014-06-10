@@ -7,7 +7,7 @@ export arraysplit, periodogram, welch_pgram, bartlett_pgram, spectrogram
 
 # Split an array into subarrays of length N, with overlapping regions
 # of length M.
-function arraysplit(s, n::Integer, m::Integer; pad=false)
+function arraysplit(s, n::Integer, m::Integer; pad=false, delay=false)
     # n = m is a problem - the algorithm will not terminate.
     if !(0 <= m < n)
         error("m must be between zero and n.")
@@ -19,9 +19,12 @@ function arraysplit(s, n::Integer, m::Integer; pad=false)
     # total number of strides is the total length of the signal divided
     # by the unique number of elements per stride.  extra elements at the
     # end of of the signal are dropped.
+	if delay
+		s = vcat(zeros(eltype(s), m), s)
+	end
 	if pad
 		k = iceil(length(s)/l - n/l + 1)
-		s = vcat(s, zeros((k-1)*l + n - length(s)))
+		s = vcat(s, zeros(eltype(s), (k-1)*l + n - length(s)))
 	else
         k = ifloor(length(s)/l - n/l + 1)
 	end
