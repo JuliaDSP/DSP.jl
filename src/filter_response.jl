@@ -20,8 +20,8 @@ function freqz(filter::Filter, w::Number)
 
     filter = convert(TFFilter, filter)
 
-    zml = exp(-im * w)
-    polyval(filter.b, zml) / polyval(filter.a, zml)
+    ejw = exp(-im * w)
+    polyval(filter.b, ejw) / polyval(filter.a, ejw)
 end
 
 
