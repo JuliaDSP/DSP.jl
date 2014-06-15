@@ -58,7 +58,7 @@ end
 bartlett_pgram(s, n) = welch_pgram(s, n, 0)
 
 function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, window::Function=n->one(eltype(s)))
-  w=w(n)
+  w=window(n)
   p=[periodogram(s.*w) for s in arraysplit(s, n, m)]
   p=hcat(p...)
   p/=r
