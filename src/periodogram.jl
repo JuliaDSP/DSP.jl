@@ -44,7 +44,7 @@ function welch_pgram(s, n, m, window::Function)
     1/length(sig_split)*sum([periodogram(x.*w) for x in sig_split])
 end
 
-welch_pgram(s, n, m) = welch_pgram(s, n, m, x -> ones(eltype(s), n))
+welch_pgram(s, n, m) = welch_pgram(s, n, m, n -> one(eltype(s))
 
 # Compute an estimate of the periodogram of a signal s via Bartlett's method.  
 # The resulting periodogram has length N.  The method appears in "Smoothing 
@@ -57,7 +57,7 @@ end
 
 bartlett_pgram(s, n) = welch_pgram(s, n, 0)
 
-function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n,1))
+function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, window::Function=n->one(eltype(s))
   w=w(n)
   p=[periodogram(s.*w) for s in arraysplit(s, n, m)]
   p=hcat(p...)
