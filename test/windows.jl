@@ -7,13 +7,13 @@ d2 = readdlm(joinpath(dirname(@__FILE__), "data", "dpss128,4.txt"), '\t')
 
 
 # make sure return types are correct
-n=12
-ft=typeof(1.0)
+n = 12
+ft = typeof(1.0)
 for W in(:rect, :hanning, :hamming, :cosine, :lanczos, :triang, :bartlett, :bartlett_hann, :blackman)
-    @eval @test Array{ft,1}==typeof($W(n)) && length($W(n))==n
+    @eval @test Array{ft,1} == typeof($W(n)) && length($W(n)) == n
 end
-#for W in(:gaussian, :kaiser, :dpss)
-@test Array{ft,1}==typeof(gaussian(n,0.4)) && length(gaussian(n,0.4))==n
-@test Array{ft,1}==typeof(kaiser(n,0.4)) && length(kaiser(n,0.4))==n
-@test Array{ft,2}==typeof(dpss(n,1.5)) && size(dpss(n,1.5),1)==n  # size(,2) depends on the parameters
+
+@test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
+@test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
+@test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
 

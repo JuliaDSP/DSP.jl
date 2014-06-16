@@ -85,14 +85,14 @@ end
 # bartlett-hann window of length n
 function bartlett_hann(n::Integer)
     a0, a1, a2 = 0.62, 0.48, 0.38
-    t=2*pi/(n-1)
+    t = 2*pi/(n-1)
     [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(t*k) for k=0:(n-1)]
 end
 
 # "exact" blackman window, alpha=0.16
 function blackman(n::Integer)
     a0, a1, a2 = 7938/18608, 9240/18608, 1430/18608
-    t=2*pi/(n-1)
+    t = 2*pi/(n-1)
     [a0 - a1*cos(t*k) + a2*cos(t*k*2) for k=0:(n-1)]
 end
 
