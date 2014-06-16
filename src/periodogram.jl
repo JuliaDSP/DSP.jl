@@ -25,12 +25,13 @@ end
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
-function periodogram(s)
+function periodogram(s, window::Function)
     s_fft = fft(s)
-    1/length(s_fft)*real((conj(s_fft) .* s_fft))
+    w = window(length(s[1]))
+    real((conj(s_fft) .* s_fft))/(length(s)*mean(w.^2))
 end
 
-periodogram(s, window::Function) = periodogram(s.*window(length(s)))
+periodogram(s) = periodogram(s, n->one(eltype(s)))
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
