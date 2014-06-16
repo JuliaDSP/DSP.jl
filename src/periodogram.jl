@@ -41,7 +41,7 @@ periodogram(s, window::Function) = periodogram(s.*window(length(s)))
 function welch_pgram(s, n, m, window::Function)
     sig_split = arraysplit(s, n, m)
     w = window(length(sig_split[1]))
-    1/length(sig_split)*sum([periodogram(x.*w) for x in sig_split])
+    sum([periodogram(x.*w) for x in sig_split])/(length(sig_split)*mean(w.^2))
 end
 
 welch_pgram(s, n, m) = welch_pgram(s, n, m, n->one(eltype(s)))
@@ -61,7 +61,7 @@ function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, window::Function=n-
   w=window(n)
   p=[periodogram(s.*w) for s in arraysplit(s, n, m)]
   p=hcat(p...)
-  p/=r
+  p/=r*mean(w.^2)
   t=( (0:size(p,2)-1)*(n-m) + n/2) / r
   f=(0:size(p,1)-1)/size(p,1)*r
   p, t, f
