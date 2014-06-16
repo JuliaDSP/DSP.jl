@@ -24,11 +24,17 @@ function arraysplit(s, n::Integer, m::Integer)
 end
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
-# DTFT of the signal S.
+# DTFT of the signal S. 
 function periodogram(s)
     s_fft = fft(s)
-    1/length(s_fft)*real((conj(s_fft) .* s_fft))
+    abs2(s_fft)/length(s)
 end
+
+function periodogram(s, window::Function) 
+  w = window(length(s))::Vector{Float64}
+  periodogram(s.*w)/mean(w.^2)
+end
+
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
@@ -38,23 +44,33 @@ end
 # vol AU-15, pp 70-73, 1967.
 function welch_pgram(s, n, m)
     sig_split = arraysplit(s, n, m)
-    1/length(sig_split)*sum([periodogram(x) for x in sig_split])
+    mean([periodogram(x) for x in sig_split])
 end
+
+function welch_pgram(s, n, m, window::Function)
+    sig_split = arraysplit(s, n, m)
+    w = window(length(sig_split[1]))::Vector{Float64}
+    mean([periodogram(x.*w) for x in sig_split])/mean(w.^2)
+end
+
 
 # Compute an estimate of the periodogram of a signal s via Bartlett's method.  
 # The resulting periodogram has length N.  The method appears in "Smoothing 
 # Periodograms from Time Series with Continuous Spectra", M.S. Bartlett, Nature 
 # #4096, May 1, 1948.The estimate is equivalent to welch_pgram(s, n, 0), as 
 # it is a special case of the Welch estimate of the periodogram.
-function bartlett_pgram(s, n)
-    welch_pgram(s, n, 0)
+bartlett_pgram(s, n) = welch_pgram(s, n, 0)
+
+function bartlett_pgram(s, n, window::Function)
+    welch_pgram(s, n, 0, window)
 end
 
-function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n,1))
-  w=w(n)
+
+function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, window::Function=n->one(eltype(s)))
+  w=window(n)
   p=[periodogram(s.*w) for s in arraysplit(s, n, m)]
   p=hcat(p...)
-  p/=r
+  p/=r*mean(w.^2)
   t=( (0:size(p,2)-1)*(n-m) + n/2) / r
   f=(0:size(p,1)-1)/size(p,1)*r
   p, t, f
