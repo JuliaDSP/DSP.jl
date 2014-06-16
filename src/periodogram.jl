@@ -24,14 +24,17 @@ function arraysplit(s, n::Integer, m::Integer)
 end
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
-# DTFT of the signal S.
-function periodogram(s, window::Function)
+# DTFT of the signal S. 
+function periodogram(s)
     s_fft = fft(s)
-    w = window(length(s[1]))
-    real((conj(s_fft) .* s_fft))/(length(s)*mean(w.^2))
+    abs2(s_fft)/length(s)
 end
 
-periodogram(s) = periodogram(s, n->one(eltype(s)))
+function periodogram(s, window::Function) 
+  w = window(length(s))::Vector{Float64}
+  periodogram(s.*w)/mean(w.^2)
+end
+
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
@@ -39,24 +42,29 @@ periodogram(s) = periodogram(s, n->one(eltype(s)))
 # for the Estimation of Power Spectra: A Method based on Time Averaging over Short,
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
-function welch_pgram(s, n, m, window::Function)
+function welch_pgram(s, n, m)
     sig_split = arraysplit(s, n, m)
-    w = window(length(sig_split[1]))
-    sum([periodogram(x.*w) for x in sig_split])/(length(sig_split)*mean(w.^2))
+    mean([periodogram(x) for x in sig_split])
 end
 
-welch_pgram(s, n, m) = welch_pgram(s, n, m, n->one(eltype(s)))
+function welch_pgram(s, n, m, window::Function)
+    sig_split = arraysplit(s, n, m)
+    w = window(length(sig_split[1]))::Vector{Float64}
+    mean([periodogram(x.*w) for x in sig_split])/mean(w.^2)
+end
+
 
 # Compute an estimate of the periodogram of a signal s via Bartlett's method.  
 # The resulting periodogram has length N.  The method appears in "Smoothing 
 # Periodograms from Time Series with Continuous Spectra", M.S. Bartlett, Nature 
 # #4096, May 1, 1948.The estimate is equivalent to welch_pgram(s, n, 0), as 
 # it is a special case of the Welch estimate of the periodogram.
+bartlett_pgram(s, n) = welch_pgram(s, n, 0)
+
 function bartlett_pgram(s, n, window::Function)
     welch_pgram(s, n, 0, window)
 end
 
-bartlett_pgram(s, n) = welch_pgram(s, n, 0)
 
 function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, window::Function=n->one(eltype(s)))
   w=window(n)
