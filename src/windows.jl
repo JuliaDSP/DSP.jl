@@ -9,7 +9,7 @@ export rect, hanning, hamming, tukey, cosine, lanczos,
 
 # Rectangular window function of length N.
 function rect(n::Integer)
-    ones(n,1)
+    ones(n)
 end
 
 # Hanning window of length N.
@@ -85,15 +85,15 @@ end
 # bartlett-hann window of length n
 function bartlett_hann(n::Integer)
     a0, a1, a2 = 0.62, 0.48, 0.38
-    _arg = (k,l) -> 2*pi*l*k/(n-1)
-    [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(_arg(k,1)) for k=0:(n-1)]
+    t=2*pi/(n-1)
+    [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(t*k) for k=0:(n-1)]
 end
 
 # "exact" blackman window, alpha=0.16
 function blackman(n::Integer)
     a0, a1, a2 = 7938/18608, 9240/18608, 1430/18608
-    _arg = (k,l) -> 2*pi*l*k/(n-1)
-    [a0 - a1*cos(_arg(k,1)) + a2*cos(_arg(k,2)) for k=0:(n-1)]
+    t=2*pi/(n-1)
+    [a0 - a1*cos(t*k) + a2*cos(t*k*2) for k=0:(n-1)]
 end
 
 # kaiser window parameterized by alpha
