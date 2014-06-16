@@ -3,11 +3,11 @@
 
 .. function:: periodogram(s, [window::Function])
 
-    Compute periodogram of signal ``s`` by using the Fast Fourier Transform. The optional ``window`` argument defines a window function that accept an integer input argument ``n`` and returns an array of length ``n`` or a single scalar value that will multiplied the signal ``s``. This argument defaults to a scalar value of 1, which means no windowing is performed by default. 
+    Compute periodogram of signal ``s`` by using the Fast Fourier Transform. The optional ``window`` argument defines a window function that accept an integer input argument ``n`` and returns an array of length ``n`` or a single scalar value that will multiplied the signal ``s``. This argument defaults to a scalar value of 1, which means no windowing is performed by default. The power spectral density of the signal will be normalised to take into account the window gain.
 
 .. function:: welch_pgram(s, n, m, [window::Function])
 
-    Compute Welch periodogram of signal ``s`` based on ``n`` segments with overlap ``m``. The periodograms computed on the data segments are averaged to improve the periodogram estimation accuracy.  The optional ``window`` argument defines a window function as for the ``periodogram`` function, that is applied on each data segment before the transform in Fourier domain is taken.
+    Compute Welch periodogram of signal ``s`` by averaging the power spectral density on ``n`` segments with overlap ``m``. The optional ``window`` argument defines a window function as for the ``periodogram`` function, that is applied on each data segment before the transform in Fourier domain is taken.
 
 .. function:: bartlett_pgram(s, n, [window::Function])
 
