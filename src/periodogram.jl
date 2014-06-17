@@ -60,4 +60,33 @@ function spectrogram(s; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n,1))
   p, t, f
 end
 
+# compute wavenumber from location in a fft vector
+function fft2k{T<:Integer}(N::T, i::T)
+    if 0 < i <= div(N,2)+1
+        return i-1         # positive
+    elseif i <= N
+        return -N+i-1      # negative
+    else
+        error("index out of range")
+    end
+end
+
+# frequency vector from window length n and sampling rate r, sided is either 1 (default) or 2
+# r = n gives a vector of wavenumbers
+function periodogramfreq{T<:Integer}(n::T; r::Real = 1, sided::T = 1)
+    if sided == 1
+        nf = div(n,2)+1  # the highest frequency + 1
+    elseif sided == 2
+        nf = n
+    else
+        error("sided = ", sided, " not supported")
+    end
+    f = Array(typeof(1.0),nf)
+    rn=r/n
+    for i = 1:length(f)
+        @inbounds f[i] = fft2k(n,i)*rn
+    end
+    return f
+end
+
 end # end module definition
