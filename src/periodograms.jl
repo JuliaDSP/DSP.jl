@@ -57,6 +57,9 @@ end
 function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}, n, window)
     welch_pgram(s, n, 0, window)
 end
+function spectrogram{T<:DSPNumber}(s::Array{T,1}; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n))
+    Periodogramt(s,n=n,m=m,r=r,window=w,sided=2)
+end
 
 # ======= methods to apply to type object =======
 
@@ -85,7 +88,7 @@ function spectrogram{T<:DSPNumber}(P::Periodogramt{T})
     eltype(P.s)<:DSPComplex && (sided = 2)
     return sp_gram(P.s,P.n,P.m,P.r,P.window,sided)
 end
-# time vector (spectrogram)
+# time vector (for spectrogram)
 function time{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
     index = arrayspliti(P.s, P.n, P.m)
