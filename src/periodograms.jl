@@ -8,31 +8,32 @@ typealias DSPReal FFTW.fftwReal
 typealias DSPComplex FFTW.fftwComplex
 
 type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is a conflict
-    s::Array{T,1}
+    x::Array{T,1}
     n::Integer                      # 0 < n <= length(s)
-    m::Integer                      # 0 <= m < n
-    r::Real                         # positive
+    noverlap::Integer               # 0 <= noverlap < n
+    fs::Real                        # positive
     window::Union(Function,Bool)    # false || Function
-    sided::Integer                  # 1 || 2
+    twosided::Bool                  # false for 1-sided
 end
-function Periodogramt{T<:DSPNumber}(s::Array{T,1}; n = length(s), m = 0, r = 1, window = false, sided = 1)
-    po = Periodogramt(s,n,m,r,window,sided)
+function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = length(s), noverlap = 0, fs = 1, window = false, twosided = false)
+    eltype(x)<:DSPComplex && (twosided=true)  # make it 2-sided for complex data
+    po = Periodogramt(x,n,noverlap,fs,window,twosided)
     errorcheck(po)
     return po
 end
-function Periodogramt{T<:DSPNumber}(s::Array{T,2}; args...)
-    if size(s,1)==1 || size(s,2)==1
-        return Periodogramt(vec(s);args...)  # convert to a vector
+function Periodogramt{T<:DSPNumber}(x::Array{T,2}; args...)
+    if size(x,1)==1 || size(x,2)==1
+        return Periodogramt(vec(x);args...)  # convert to a vector
     else
         error("not supported for 2D arrays")
     end
 end
 function errorcheck{T<:DSPNumber}(P::Periodogramt{T})
-    !(0 < P.n <= length(P.s)) && error("use 0 < n <= length(s)")
-    !(0 <= P.m < P.n) && error("use 0 <= m < n")
-    P.r <= 0 && error("r is not positive")
+    !(0 < P.n <= length(P.x)) && error("use 0 < n <= length(x)")
+    !(0 <= P.noverlap < P.n) && error("use 0 <= noverlap < n")
+    P.fs <= 0 && error("fs is not positive")
     P.window == true && error("window = true not supported")
-    P.sided != 1 && P.sided != 2 && error("sided = ",P.sided," not supported")
+    eltype(P.x)<:DSPComplex && P.twosided==false && error("twosided=true for complex signal not supported")
 end
 
 # ======= the old DSP functions =======
@@ -40,16 +41,16 @@ end
 # sided=2 default for now since that is the current implementation in DSP
 # could be changed to call directly power(Periodogramt...)
 function periodogram{T<:DSPNumber}(s::Array{T,1})
-    Periodogramt(s,sided=2)
+    Periodogramt(s,twosided=true)
 end
 function periodogram{T<:DSPNumber}(s::Array{T,1}, window)
-    Periodogramt(s,sided=2,window=window)
+    Periodogramt(s,twosided=true,window=window)
 end
 function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m )
-    Periodogramt(s,n=n,m=m,sided=2)
+    Periodogramt(s,n=n,noverlap=m,twosided=true)
 end
 function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m, window )
-    Periodogramt(s,n=n,m=m,window=window,sided=2)
+    Periodogramt(s,n=n,noverlap=m,window=window,twosided=true)
 end
 function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}, n)
     welch_pgram(s, n, 0)
@@ -58,7 +59,7 @@ function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}, n, window)
     welch_pgram(s, n, 0, window)
 end
 function spectrogram{T<:DSPNumber}(s::Array{T,1}; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n))
-    Periodogramt(s,n=n,m=m,r=r,window=w,sided=2)
+    Periodogramt(s,n=n,noverlap=m,fs=r,window=w,twosided=true)
 end
 
 # ======= methods to apply to type object =======
@@ -66,32 +67,28 @@ end
 # spectrum vector
 function power{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
-    sided = P.sided
-    eltype(P.s)<:DSPComplex && (sided = 2)
-    if length(P.s) == P.n
-        return power_p(P.s,P.r,P.window,sided)
+    if length(P.x) == P.n
+        return power_p(P.x,P.fs,P.window,P.twosided)
     else
-        return power_w(P.s,P.n,P.m,P.r,P.window,sided)
+        return power_w(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
     end
 end
 # frequency vector
 function freq{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
-    sided = P.sided
-    eltype(P.s)<:DSPComplex && (sided = 2)
-    n ,r = P.n, P.r
-    if sided == 1
+    n ,fs = P.n, P.fs
+    if !P.twosided
         nf = div(n,2)+1 # the highest frequency + 1
     else
         nf = n
     end
     f = Array(typeof(1.0),nf)
-    rn = r/n
+    fsn = fs/n
     for i = 1:length(f)
         if i <= div(n,2)+1
-            @inbounds f[i] = (i-1)*rn
+            @inbounds f[i] = (i-1)*fsn
         else
-            @inbounds f[i] = (-N+i-1)*rn
+            @inbounds f[i] = (-N+i-1)*fsn
         end
     end
     return f
@@ -99,15 +96,13 @@ end
 # spectrogram matrix
 function spectrogram{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
-    sided = P.sided
-    eltype(P.s)<:DSPComplex && (sided = 2)
-    return sp_gram(P.s,P.n,P.m,P.r,P.window,sided)
+    return sp_gram(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
 end
 # time vector (for spectrogram)
 function time{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
-    index = arrayspliti(P.s, P.n, P.m)
-    return ( (0:length(index)-1)*(P.n-P.m) + P.n/2) / P.r
+    index = arrayspliti(P.x, P.n, P.noverlap)
+    return ( (0:length(index)-1)*(P.n-P.noverlap) + P.n/2) / P.fs
 end
 # p, f = pf(P) for power and frequency in one command
 function pf{T<:DSPNumber}(P::Periodogramt{T})
@@ -123,14 +118,14 @@ end
 
 # does not call power_p in the loop to avoid tmp array allocation
 # welch type spectrum
-function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), sided::Integer)
+function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), twosided::Bool)
     tsReal = typeof(real(s[1]))
     tsComplex = typeof(complex(s[1]))
     if isa(window,Function)
         w = window(n)
     end
     index = arrayspliti(s, n, m)
-    if sided == 2
+    if twosided
         p = zeros(tsReal,n)
         split = Array(tsComplex,n)
         for i in index
@@ -143,7 +138,7 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
             periodogramtl!(split)
             p += real(split)
         end
-    else #sided == 1
+    else # 1-sided
         np = div(n,2)+1
         p = zeros(tsReal,np)
         split = Array(tsReal,n)
@@ -168,14 +163,14 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
 end
 
 # periodogram spectrum
-function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bool), sided::Integer)
+function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bool), twosided::Bool)
     tsReal = typeof(real(s[1]))
     tsComplex = typeof(complex(s[1]))
     n=length(s)
     if isa(window,Function)
         w = window(n)
     end
-    if sided == 2
+    if twosided
         pc = Array(tsComplex, n)
         p = Array(tsReal, n)
         if isa(window,Function)
@@ -185,9 +180,8 @@ function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bo
             copy!(pc,s)
         end
         periodogramtl!(pc)
-    else #sided == 1
+    else # 1-sided
         np = div(n,2)+1
-        #p = Array(typeof(s[1]*im), np)
         pc = Array(tsComplex, np)
         p = Array(tsReal, np)
         if isa(window,Function)
@@ -226,14 +220,14 @@ function arrayspliti{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer)
 end
 
 # spectrogram
-function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), sided::Integer)
+function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), twosided::Bool)
     tsReal = typeof(real(s[1]))
     tsComplex = typeof(complex(s[1]))
     if isa(window,Function)
         w = window(n)
     end
     index = arrayspliti(s, n, m)
-    if sided == 2
+    if twosided
         p = Array(tsReal,n,length(index))
         split = Array(tsComplex,n)
         j = 1
@@ -248,7 +242,7 @@ function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
             p[:,j] = real(split)
             j += 1
         end
-    else #sided == 1
+    else # 1-sided
         np = div(n,2)+1
         p = zeros(tsReal,np,length(index))
         split = Array(tsReal,n)
@@ -290,11 +284,11 @@ x0=rand(N)
 nn=div(N,8)
 mm=div(N,16)
 # initialize variables before timing
-P=Periodogramt(x0,n=nn,m=mm,sided=2,window=n->ones(n))
+P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Pp = power(P)
-P.sided=1
+P.twosided=false
 Pp1 = power(P)
-P.sided=2
+P.twosided=true
 wp = Periodogram.welch_pgram(x0,nn,mm)
 
 tn=10
@@ -314,7 +308,7 @@ end
 println(typeof(wp)," ",length(wp))
 
 println("  P 1 sided")
-P.sided=1
+P.twosided=false
 @time begin for i=1:tn
 Pp1 = power(P)
 end
@@ -326,11 +320,11 @@ println(typeof(Pp1)," ",length(Pp1))
 println("\n periodograms : \n")
 nn=N
 mm=0
-P=Periodogramt(x0,n=nn,m=mm,sided=2)
+P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true)
 Pp = power(P)
-P.sided=1
+P.twosided=false
 Pp1 = power(P)
-P.sided=2
+P.twosided=true
 wp = Periodogram.periodogram(x0)
 
 println("  P 2 sided")
@@ -348,7 +342,7 @@ end
 println(typeof(wp)," ",length(wp))
 
 println("  P 1 sided")
-P.sided=1
+P.twosided=false
 @time begin for i=1:tn
 Pp1 = power(P)
 end
@@ -364,7 +358,7 @@ Ps = spectrogram(P)
 sp,t,f = Periodogram.spectrogram(x0,n=nn,m=mm)
 
 println("  P spectrogram")
-P.sided=2
+P.twosided=true
 @time begin for i=1:tn
 Ps = spectrogram(P)
 end
@@ -381,7 +375,7 @@ println(typeof(sp)," ",length(sp))
 @test_approx_eq Ps sp
 
 println("  P spectrogram 1 sided")
-P.sided=1
+P.twosided=false
 @time begin for i=1:tn
 Ps = spectrogram(P)
 end
@@ -403,7 +397,7 @@ t0 = readdlm(joinpath("../test/data", "spectrogram_t.txt"),'\t')
 p0 = readdlm(joinpath("../test/data", "spectrogram_p.txt"),'\t')
 # p, t, f = spectrogram(x0, n=256, r=10, m=128)
 pm = mean(p0,2)
-P = Periodogramt(x0,n=256,m=128,r=10,sided=1)
+P = Periodogramt(x0,n=256,noverlap=128,fs=10,twosided=false)
 Pp = power(P)
 Ps, Pt, Pf = stf(P)
 
