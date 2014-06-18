@@ -71,11 +71,7 @@ end
 # spectrum vector
 function power{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
-    if length(P.x) == P.n
-        return power_p(P.x,P.fs,P.window,P.twosided)
-    else
-        return power_w(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
-    end
+    return power_w(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
 end
 # frequency vector
 function freq{T<:DSPNumber}(P::Periodogramt{T})
@@ -120,8 +116,7 @@ end
 # ======= implementation of power and freq methods =======
 # ======= not to be exported?
 
-# does not call power_p in the loop to avoid tmp array allocation
-# welch type spectrum
+# welch type spectrum (or periodogram type depending on parameters)
 function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), twosided::Bool)
     tsReal = typeof(real(s[1]))
     tsComplex = typeof(complex(s[1]))
@@ -129,8 +124,12 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
         w = window(n)
     end
     index = arrayspliti(s, n, m)
+    welch = false
+    length(index)>1 && (welch = true)
     if twosided
-        p = zeros(tsReal,n)
+        if welch
+            p = zeros(tsReal,n)
+        end
         split = Array(tsComplex,n)
         for i in index
             if isa(window,Function)
@@ -140,11 +139,17 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
                 copy!(split,1,s,i,n)
             end
             periodogramtl!(split)
-            p += real(split)
+            if welch
+                p += real(split)
+            else
+                p = real(split)
+            end
         end
     else # 1-sided
         np = div(n,2)+1
-        p = zeros(tsReal,np)
+        if welch
+            p = zeros(tsReal,np)
+        end
         split = Array(tsReal,n)
         splitrf = Array(tsComplex, np)
         for i in index
@@ -155,49 +160,17 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
                 copy!(split,1,s,i,n)
             end
             periodogramtl1s!(splitrf, split)
-            p += real(splitrf)
+            if welch
+                p += real(splitrf)
+            else
+                p = real(splitrf)
+            end
         end
     end
     if isa(window,Function)
         p /= (r*length(index)*sum(w.^2))
     else
         p /= (r*length(index)*n)
-    end
-    return p
-end
-
-# periodogram spectrum
-function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bool), twosided::Bool)
-    tsReal = typeof(real(s[1]))
-    tsComplex = typeof(complex(s[1]))
-    n=length(s)
-    if isa(window,Function)
-        w = window(n)
-    end
-    if twosided
-        pc = Array(tsComplex, n)
-        p = Array(tsReal, n)
-        if isa(window,Function)
-            copy!(pc,s)
-            broadcast!(*, pc, pc, w)
-        else
-            copy!(pc,s)
-        end
-        periodogramtl!(pc)
-    else # 1-sided
-        np = div(n,2)+1
-        pc = Array(tsComplex, np)
-        p = Array(tsReal, np)
-        if isa(window,Function)
-            periodogramtl1s!(pc, s.*w)
-        else
-            periodogramtl1s!(pc, s)
-        end
-    end
-    if isa(window,Function)
-        p[:] = pc/(r*sum(w.^2))
-    else
-        p[:] = pc/(r*n)
     end
     return p
 end
