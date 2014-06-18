@@ -91,6 +91,14 @@ function time{T<:DSPNumber}(P::Periodogramt{T})
     index = arrayspliti(P.s, P.n, P.m)
     return ( (0:length(index)-1)*(P.n-P.m) + P.n/2) / P.r
 end
+# p, f = pf(P) for power and frequency in one command
+function pf{T<:DSPNumber}(P::Periodogramt{T})
+    return power(P), freq(P)
+end
+# s, t, f = stf(P) for spectrogram, time and frequency in one command
+function stf{T<:DSPNumber}(P::Periodogramt{T})
+    return spectrogram(P), time(P), freq(P)
+end
 
 # ======= implementation of power and freq methods =======
 # ======= not to be exported?
@@ -98,8 +106,8 @@ end
 # does not call power_p in the loop to avoid tmp array allocation
 # welch type spectrum
 function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), sided::Integer)
-	tsReal = typeof(real(s[1]))
-	tsComplex = typeof(complex(s[1]))
+    tsReal = typeof(real(s[1]))
+    tsComplex = typeof(complex(s[1]))
     if isa(window,Function)
         w = window(n)
     end
@@ -141,8 +149,8 @@ end
 
 # periodogram spectrum
 function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bool), sided::Integer)
-	tsReal = typeof(real(s[1]))
-	tsComplex = typeof(complex(s[1]))
+    tsReal = typeof(real(s[1]))
+    tsComplex = typeof(complex(s[1]))
     n=length(s)
     if isa(window,Function)
         w = window(n)
@@ -198,8 +206,8 @@ end
 
 # spectrogram
 function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, window::Union(Function,Bool), sided::Integer)
-	tsReal = typeof(real(s[1]))
-	tsComplex = typeof(complex(s[1]))
+    tsReal = typeof(real(s[1]))
+    tsComplex = typeof(complex(s[1]))
     if isa(window,Function)
         w = window(n)
     end
@@ -394,9 +402,7 @@ p0 = readdlm(joinpath("../test/data", "spectrogram_p.txt"),'\t')
 pm = mean(p0,2)
 P = Periodogramt(x0,n=256,m=128,r=10,sided=1)
 Pp = power(P)
-Pf = freq(P)
-Pt = time(P)
-Ps = spectrogram(P)
+Ps, Pt, Pf = stf(P)
 
 @test_approx_eq Pp pm
 @test_approx_eq f0 Pf
