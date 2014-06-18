@@ -1,7 +1,7 @@
 
 module Periodograms
 
-export Periodogramt, power, freq, spectrogram, time, periodogram, welch_pgram, bartlett_pgram
+export Periodogramt, power, freq, spectrogram, time, pf, stf, periodogram, welch_pgram, bartlett_pgram
 
 typealias DSPNumber FFTW.fftwNumber
 typealias DSPReal FFTW.fftwReal
