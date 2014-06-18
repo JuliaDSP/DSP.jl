@@ -14,8 +14,10 @@ type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is 
     fs::Real                        # positive
     window::Union(Function,Bool)    # false || Function
     twosided::Bool                  # false for 1-sided
+    #taper::Real                    # 0 <= taper <=0.5, taper edges for periodograms or when using pad
+    #pad::Integer                   # 0 <= pad < Inf, zero padding of windows
 end
-function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = length(s), noverlap = 0, fs = 1, window = false, twosided = false)
+function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false)
     eltype(x)<:DSPComplex && (twosided=true)  # make it 2-sided for complex data
     po = Periodogramt(x,n,noverlap,fs,window,twosided)
     errorcheck(po)
@@ -41,13 +43,13 @@ end
 # sided=2 default for now since that is the current implementation in DSP
 # could be changed to call directly power(Periodogramt...)
 function periodogram{T<:DSPNumber}(s::Array{T,1})
-    Periodogramt(s,twosided=true)
+    Periodogramt(s,n=length(s),noverlap=0,twosided=true,window=false)
 end
 function periodogram{T<:DSPNumber}(s::Array{T,1}, window)
-    Periodogramt(s,twosided=true,window=window)
+    Periodogramt(s,n=length(s),noverlap=0,twosided=true,window=window)
 end
 function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m )
-    Periodogramt(s,n=n,noverlap=m,twosided=true)
+    Periodogramt(s,n=n,noverlap=m,twosided=true,window=false)
 end
 function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m, window )
     Periodogramt(s,n=n,noverlap=m,window=window,twosided=true)
@@ -283,6 +285,8 @@ N=1024*32
 x0=rand(N)
 nn=div(N,8)
 mm=div(N,16)
+P=Periodogramt(x0)  #default everything
+Pp = power(P)
 # initialize variables before timing
 P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Pp = power(P)
@@ -320,7 +324,7 @@ println(typeof(Pp1)," ",length(Pp1))
 println("\n periodograms : \n")
 nn=N
 mm=0
-P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true)
+P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=false)
 Pp = power(P)
 P.twosided=false
 Pp1 = power(P)
@@ -354,8 +358,14 @@ println(typeof(Pp1)," ",length(Pp1))
 
 println("\n spectrograms : \n")
 
+nn=div(N,8)
+mm=div(N,16)
+# initialize variables before timing
+P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Ps = spectrogram(P)
 sp,t,f = Periodogram.spectrogram(x0,n=nn,m=mm)
+P.twosided=false
+Ps1 = spectrogram(P)
 
 println("  P spectrogram")
 P.twosided=true
@@ -372,17 +382,15 @@ end
 end
 println(typeof(sp)," ",length(sp))
 
-@test_approx_eq Ps sp
-
 println("  P spectrogram 1 sided")
 P.twosided=false
 @time begin for i=1:tn
-Ps = spectrogram(P)
+Ps1 = spectrogram(P)
 end
 end
-println(typeof(Ps)," ",length(Ps))
+println(typeof(Ps1)," ",length(Ps1))
 
-
+@test_approx_eq Ps sp
 
 
 # =======================================================
@@ -397,7 +405,7 @@ t0 = readdlm(joinpath("../test/data", "spectrogram_t.txt"),'\t')
 p0 = readdlm(joinpath("../test/data", "spectrogram_p.txt"),'\t')
 # p, t, f = spectrogram(x0, n=256, r=10, m=128)
 pm = mean(p0,2)
-P = Periodogramt(x0,n=256,noverlap=128,fs=10,twosided=false)
+P = Periodogramt(x0,n=256,noverlap=128,fs=10,twosided=false,window=false)
 Pp = power(P)
 Ps, Pt, Pf = stf(P)
 
