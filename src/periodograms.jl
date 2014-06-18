@@ -79,7 +79,22 @@ function freq{T<:DSPNumber}(P::Periodogramt{T})
     errorcheck(P)
     sided = P.sided
     eltype(P.s)<:DSPComplex && (sided = 2)
-    return periodogramfreq(P.n, r=P.r, sided = sided)
+    n ,r = P.n, P.r
+    if sided == 1
+        nf = div(n,2)+1 # the highest frequency + 1
+    else
+        nf = n
+    end
+    f = Array(typeof(1.0),nf)
+    rn = r/n
+    for i = 1:length(f)
+        if i <= div(n,2)+1
+            @inbounds f[i] = (i-1)*rn
+        else
+            @inbounds f[i] = (-N+i-1)*rn
+        end
+    end
+    return f
 end
 # spectrogram matrix
 function spectrogram{T<:DSPNumber}(P::Periodogramt{T})
@@ -120,9 +135,10 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
         split = Array(tsComplex,n)
         for i in index
             if isa(window,Function)
-                split[:] = s[i:i+n-1].*w
+                copy!(split,1,s,i,n)
+                broadcast!(*, split, split, w)
             else
-                split[:] = s[i:i+n-1]
+                copy!(split,1,s,i,n)
             end
             periodogramtl!(split)
             p += real(split)
@@ -134,9 +150,10 @@ function power_w{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
         splitrf = Array(tsComplex, np)
         for i in index
             if isa(window,Function)
-                split[:] = s[i:i+n-1].*w
+                copy!(split,1,s,i,n)
+                broadcast!(*, split, split, w)
             else
-                split[:] = s[i:i+n-1]
+                copy!(split,1,s,i,n)
             end
             periodogramtl1s!(splitrf, split)
             p += real(splitrf)
@@ -162,9 +179,10 @@ function power_p{T<:DSPNumber}(s::Array{T,1}, r::Real, window::Union(Function,Bo
         pc = Array(tsComplex, n)
         p = Array(tsReal, n)
         if isa(window,Function)
-            pc[:] = s.*w
+            copy!(pc,s)
+            broadcast!(*, pc, pc, w)
         else
-            pc[:] = s
+            copy!(pc,s)
         end
         periodogramtl!(pc)
     else #sided == 1
@@ -221,9 +239,10 @@ function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
         j = 1
         for i in index
             if isa(window,Function)
-                split[:] = s[i:i+n-1].*w
+                copy!(split,1,s,i,n)
+                broadcast!(*, split, split, w)
             else
-                split[:] = s[i:i+n-1]
+                copy!(split,1,s,i,n)
             end
             periodogramtl!(split)
             p[:,j] = real(split)
@@ -237,9 +256,10 @@ function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
         j = 1
         for i in index
             if isa(window,Function)
-                split[:] = s[i:i+n-1].*w
+                copy!(split,1,s,i,n)
+                broadcast!(*, split, split, w)
             else
-                split[:] = s[i:i+n-1]
+                copy!(split,1,s,i,n)
             end
             periodogramtl1s!(splitrf, split)
             p[:,j] = real(splitrf)
@@ -254,27 +274,7 @@ function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
     return p
 end
 
-# frequency vector from window length n and sampling rate r, sided is either 1 (default) or 2
-# r = n gives a vector of wavenumbers
-function periodogramfreq{T<:Integer}(n::T; r::Real = 1, sided::T = 1)
-    if sided == 1
-        nf = div(n,2)+1  # the highest frequency + 1
-    elseif sided == 2
-        nf = n
-    else
-        error("sided = ", sided, " not supported")
-    end
-    f = Array(typeof(1.0),nf)
-    rn=r/n
-    for i = 1:length(f)
-        if i <= div(n,2)+1
-            @inbounds f[i] = (i-1)*rn
-        else
-            @inbounds f[i] = (-N+i-1)*rn
-        end
-    end
-    return f
-end
+
 
 # =======================================================
 
