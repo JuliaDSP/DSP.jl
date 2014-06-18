@@ -15,7 +15,9 @@ type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is 
     window::Union(Function,Bool)    # false || Function
     twosided::Bool                  # false for 1-sided
     #taper::Real                    # 0 <= taper <=0.5, taper edges for periodograms or when using pad
-    #pad::Integer                   # 0 <= pad < Inf, zero padding of windows
+    #pad::Integer                   # 0 <= pad < n, zero padding of windows
+                                    # takes a section from x of length n-pad, 
+                                    # and pads with zero to give padded section of length n
 end
 function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false)
     eltype(x)<:DSPComplex && (twosided=true)  # make it 2-sided for complex data
