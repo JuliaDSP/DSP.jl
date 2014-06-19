@@ -29,7 +29,7 @@ p, f, t = power(spec), freq(spec), time(spec)
 @test_approx_eq t0 t
 
 #Matlab: p = pwelch(0:7, [1, 1, 1, 1, 1, 1, 1, 1], 0, 8, 1, 'twosided')
-data = Float64[0:7]
+data = 0:7
 data0 = Float64[98.0,
                 13.656854249492380,
                  4.0,
@@ -83,3 +83,51 @@ for (window1, expected) in cases
     @test_approx_eq power(periodogram(data; window=window1, onesided=false)) expected
     @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1, onesided=false)) expected
 end
+
+# Padded periodogram
+# MATLAB: a = periodogram(0:7, [], 32);
+expected = [
+                  98
+    174.463067389405
+    121.968086934209
+    65.4971744936088
+    27.3137084989848
+    12.1737815028909
+    10.3755170959439
+    10.4034038628775
+                   8
+    5.25810953219633
+    4.47015397150535
+    4.89522578856669
+    4.68629150101524
+    3.69370284475603
+     3.1862419983415
+    3.61553458569862
+                   2
+]
+@test_approx_eq power(periodogram(data; nfft=32)) expected
+@test_approx_eq power(welch_pgram(data, length(data), 0; nfft=32)) expected
+
+# Padded periodogram with window
+# MATLAB: a = periodogram(0:7, hamming(8), 32, 1)
+expected = [
+      65.4616239868015
+      122.101693164395
+      98.8444689598445
+       69.020252632913
+      41.1135835910315
+      20.5496474310966
+      8.43291449161938
+      2.78001620362588
+     0.738626287301088
+     0.174995741770789
+    0.0501563022944516
+    0.0327357460012861
+    0.0443348932217643
+    0.0553999745503552
+    0.0561319901616643
+    0.0526025934871384
+    0.0255029855641069
+]
+@test_approx_eq power(periodogram(data; window=hamming, nfft=32)) expected
+@test_approx_eq power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) expected

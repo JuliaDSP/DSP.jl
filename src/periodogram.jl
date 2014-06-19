@@ -182,7 +182,7 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
     if nfft == length(s) && win == nothing && isa(s, StridedArray)
         input = s # no need to pad
     else
-        input = zeros(T, nfft)
+        input = zeros(fftintype(T), nfft)
         if win != nothing
             for i = 1:length(s)
                 @inbounds input[i] = s[i]*win[i]
