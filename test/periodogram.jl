@@ -40,19 +40,28 @@ data0 = Float64[98.0,
                 13.656854249492380]
 @test_approx_eq power(periodogram(data, onesided=false)) data0
 @test_approx_eq power(welch_pgram(data, length(data), 0, onesided=false)) data0
+@test_approx_eq power(spectrogram(data, length(data), 0, onesided=false)) data0
 
 # # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
 # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 2, 0; onesided=false)) Float64[34.5, 0.5]
+expected = Float64[34.5, 0.5]
+@test_approx_eq power(welch_pgram(data, 2, 0; onesided=false)) expected
+@test_approx_eq mean(power(spectrogram(data, 2, 0; onesided=false)), 2) expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 0, 3, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 3, 0; onesided=false)) Float64[25.5, 1.0, 1.0]
+expected = Float64[25.5, 1.0, 1.0]
+@test_approx_eq power(welch_pgram(data, 3, 0; onesided=false)) expected
+@test_approx_eq mean(power(spectrogram(data, 3, 0; onesided=false)), 2) expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 1, 3, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 3, 1; onesided=false)) Float64[35.0, 1.0, 1.0]
+expected = Float64[35.0, 1.0, 1.0]
+@test_approx_eq power(welch_pgram(data, 3, 1; onesided=false)) expected
+@test_approx_eq mean(power(spectrogram(data, 3, 1; onesided=false)), 2) expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1, 1], 1, 4, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 4, 1; onesided=false)) Float64[45, 2, 1, 2]
+expected = Float64[45, 2, 1, 2]
+@test_approx_eq power(welch_pgram(data, 4, 1; onesided=false)) expected
+@test_approx_eq mean(power(spectrogram(data, 4, 1; onesided=false)), 2) expected
 
 # ~~~~~~~~~~~ This one tests periodogram ~~~~~~~~~~~~
 # ~ If functionality of the other arguments has been
@@ -82,6 +91,7 @@ cases = [
 for (window1, expected) in cases
     @test_approx_eq power(periodogram(data; window=window1, onesided=false)) expected
     @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1, onesided=false)) expected
+    @test_approx_eq power(spectrogram(data, length(data), 0; window=window1, onesided=false)) expected
 end
 
 # Padded periodogram
@@ -107,6 +117,7 @@ expected = [
 ]
 @test_approx_eq power(periodogram(data; nfft=32)) expected
 @test_approx_eq power(welch_pgram(data, length(data), 0; nfft=32)) expected
+@test_approx_eq power(spectrogram(data, length(data), 0; nfft=32)) expected
 
 # Padded periodogram with window
 # MATLAB: a = periodogram(0:7, hamming(8), 32, 1)
@@ -131,3 +142,4 @@ expected = [
 ]
 @test_approx_eq power(periodogram(data; window=hamming, nfft=32)) expected
 @test_approx_eq power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) expected
+@test_approx_eq power(spectrogram(data, length(data), 0; window=hamming, nfft=32)) expected
