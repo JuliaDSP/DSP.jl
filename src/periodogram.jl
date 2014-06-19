@@ -29,6 +29,7 @@ Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
 # Remove once we no longer support Julia 0.2
 for (T1, T2) in ((:Frequencies, :Frequencies),
                  (:Frequencies, :AbstractVector),
+                 (:(BitArray{1}), :Frequencies),
                  (:AbstractVector, :Frequencies)),
           op in (:(Base.(:(-))), :(Base.(:(+))))
     @eval begin
@@ -112,9 +113,12 @@ function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Rea
             @inbounds for i = 2:length(s_fft)-1
                 v = abs2(s_fft[i])*m1
                 out[offset+i] += v
-                out[offset+i+n-1] += v
+                out[offset+nfft-i+2] += v
             end
             out[offset+n] += abs2(s_fft[n])*m1
+            if isodd(nfft)
+                out[offset+nfft] += abs2(s_fft[n])*m1
+            end
         end
     end
     out
@@ -128,7 +132,7 @@ else
     function sumabs2(s)
         x = zero(eltype(s))
         for i = 1:length(s)
-            @inbounds x += s[i]
+            @inbounds x += abs2(s[i])
         end
         x
     end
@@ -175,7 +179,7 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, length(s))
-    if nfft == length(s) && win == nothing && isa(s, DenseArray)
+    if nfft == length(s) && win == nothing && isa(s, StridedArray)
         input = s # no need to pad
     else
         input = zeros(T, nfft)
