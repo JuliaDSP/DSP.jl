@@ -1,13 +1,13 @@
 
 module Periodograms
 
-export Periodogramt, power, freq, spectrogram, time, pf, stf, periodogram, welch_pgram, bartlett_pgram
+export Periodogram, power, freq, spectrogram, time, pf, stf, periodogram, welch_pgram, bartlett_pgram
 
 typealias DSPNumber FFTW.fftwNumber
 typealias DSPReal FFTW.fftwReal
 typealias DSPComplex FFTW.fftwComplex
 
-type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is a conflict
+type Periodogram{T<:DSPNumber}   # Periodogram is the module name, so there is a conflict
     x::Array{T,1}
     n::Integer                      # 0 < n <= length(s)
     noverlap::Integer               # 0 <= noverlap < n
@@ -19,20 +19,21 @@ type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is 
                                     # takes a section from x of length n-pad, 
                                     # and pads with zero to give padded section of length n
 end
-function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
+# default values are resonable for welch periodogram
+function Periodogram{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
     eltype(x)<:DSPComplex && (twosided=true)  # make it 2-sided for complex data
-    po = Periodogramt(x,n,noverlap,fs,window,twosided,taper)
+    po = Periodogram(x,n,noverlap,fs,window,twosided,taper)
     errorcheck(po)
     return po
 end
-function Periodogramt{T<:DSPNumber}(x::Array{T,2}; args...)
+function Periodogram{T<:DSPNumber}(x::Array{T,2}; args...)
     if size(x,1)==1 || size(x,2)==1
-        return Periodogramt(vec(x);args...)  # convert to a vector
+        return Periodogram(vec(x);args...)  # convert to a vector
     else
         error("not supported for 2D arrays")
     end
 end
-function errorcheck{T<:DSPNumber}(P::Periodogramt{T})
+function errorcheck{T<:DSPNumber}(P::Periodogram{T})
     !(0 < P.n <= length(P.x)) && error("use 0 < n <= length(x)")
     !(0 <= P.noverlap < P.n) && error("use 0 <= noverlap < n")
     P.fs <= 0 && error("fs is not positive")
@@ -40,41 +41,33 @@ function errorcheck{T<:DSPNumber}(P::Periodogramt{T})
     eltype(P.x)<:DSPComplex && P.twosided==false && error("twosided=true for complex signal not supported")
 end
 
-# ======= the old DSP functions =======
+# ======= new DSP functions =======
 
-# sided=2 default for now since that is the current implementation in DSP
-# could be changed to call directly power(Periodogramt...)
-function periodogram{T<:DSPNumber}(s::Array{T,1})
-    Periodogramt(s,n=length(s),noverlap=0,twosided=true,window=false)
+# assumes periodicity of data
+function periodogram{T<:DSPNumber}(s::Array{T,1}; fs = 1, window = false, twosided = false, taper = 0)
+    Periodogram(s,n=length(s),noverlap=0,fs=fs,window=window,twosided=twosided,taper=taper)
 end
-function periodogram{T<:DSPNumber}(s::Array{T,1}, window)
-    Periodogramt(s,n=length(s),noverlap=0,twosided=true,window=window)
+function welch_pgram{T<:DSPNumber}(s::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
+    Periodogram(s,n=n,noverlap=noverlap,fs=fs,window=window,twosided=twosided,taper=taper)
 end
-function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m )
-    Periodogramt(s,n=n,noverlap=m,twosided=true,window=false)
+# the same as welch_pgram, but 0 overlap
+function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}; n = int(length(s)/8), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
+    Periodogram(s,n=n,noverlap=0,fs=fs,window=window,twosided=twosided,taper=taper)
 end
-function welch_pgram{T<:DSPNumber}(s::Array{T,1}, n, m, window )
-    Periodogramt(s,n=n,noverlap=m,window=window,twosided=true)
-end
-function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}, n)
-    welch_pgram(s, n, 0)
-end
-function bartlett_pgram{T<:DSPNumber}(s::Array{T,1}, n, window)
-    welch_pgram(s, n, 0, window)
-end
-function spectrogram{T<:DSPNumber}(s::Array{T,1}; n=int(length(s)/8), m=int(n/2), r=1, w=(n)->ones(n))
-    Periodogramt(s,n=n,noverlap=m,fs=r,window=w,twosided=true)
+# the same as welch_pgram
+function spectrogram{T<:DSPNumber}(s::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
+    welch_pgram(s,n=n,noverlap=noverlap,fs=fs,window=window,twosided=twosided,taper=taper)
 end
 
 # ======= methods to apply to type object =======
 
 # spectrum vector
-function power{T<:DSPNumber}(P::Periodogramt{T})
+function power{T<:DSPNumber}(P::Periodogram{T})
     errorcheck(P)
     return power_w(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
 end
 # frequency vector
-function freq{T<:DSPNumber}(P::Periodogramt{T})
+function freq{T<:DSPNumber}(P::Periodogram{T})
     errorcheck(P)
     n ,fs = P.n, P.fs
     if !P.twosided
@@ -94,22 +87,22 @@ function freq{T<:DSPNumber}(P::Periodogramt{T})
     return f
 end
 # spectrogram matrix
-function spectrogram{T<:DSPNumber}(P::Periodogramt{T})
+function spectrogram{T<:DSPNumber}(P::Periodogram{T})
     errorcheck(P)
     return sp_gram(P.x,P.n,P.noverlap,P.fs,P.window,P.twosided)
 end
 # time vector (for spectrogram)
-function time{T<:DSPNumber}(P::Periodogramt{T})
+function time{T<:DSPNumber}(P::Periodogram{T})
     errorcheck(P)
     index = arrayspliti(P.x, P.n, P.noverlap)
     return ( (0:length(index)-1)*(P.n-P.noverlap) + P.n/2) / P.fs
 end
 # p, f = pf(P) for power and frequency in one command
-function pf{T<:DSPNumber}(P::Periodogramt{T})
+function pf{T<:DSPNumber}(P::Periodogram{T})
     return power(P), freq(P)
 end
 # s, t, f = stf(P) for spectrogram, time and frequency in one command
-function stf{T<:DSPNumber}(P::Periodogramt{T})
+function stf{T<:DSPNumber}(P::Periodogram{T})
     return spectrogram(P), time(P), freq(P)
 end
 
@@ -274,10 +267,10 @@ N=1024*32
 x0=rand(N)
 nn=div(N,8)
 mm=div(N,16)
-P=Periodogramt(x0)  #default everything
+P=Periodogram(x0)  #default everything
 Pp = power(P)
 # initialize variables before timing
-P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
+P=Periodogram(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Pp = power(P)
 P.twosided=false
 Pp1 = power(P)
@@ -313,7 +306,7 @@ println(typeof(Pp1)," ",length(Pp1))
 println("\n periodograms : \n")
 nn=N
 mm=0
-P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=false)
+P=Periodogram(x0,n=nn,noverlap=mm,twosided=true,window=false)
 Pp = power(P)
 P.twosided=false
 Pp1 = power(P)
@@ -350,7 +343,7 @@ println("\n spectrograms : \n")
 nn=div(N,8)
 mm=div(N,16)
 # initialize variables before timing
-P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
+P=Periodogram(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Ps = spectrogram(P)
 sp,t,f = DSP.Periodogram.spectrogram(x0,n=nn,m=mm)
 P.twosided=false
@@ -394,7 +387,7 @@ t0 = readdlm(joinpath("../test/data", "spectrogram_t.txt"),'\t')
 p0 = readdlm(joinpath("../test/data", "spectrogram_p.txt"),'\t')
 # p, t, f = spectrogram(x0, n=256, r=10, m=128)
 pm = mean(p0,2)
-P = Periodogramt(x0,n=256,noverlap=128,fs=10,twosided=false,window=false)
+P = Periodogram(x0,n=256,noverlap=128,fs=10,twosided=false,window=false)
 Pp = power(P)
 Ps, Pt, Pf = stf(P)
 
@@ -408,7 +401,7 @@ data = Float64[0:7]
 
 # ~~~~~~~~~~~ This one tests periodogram ~~~~~~~~~~
 #Matlab: p = pwelch(0:7, [1, 1, 1, 1, 1, 1, 1, 1], 0, 8, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, length(data), 0)) Float64[ 98.0,
+@test_approx_eq power(welch_pgram(data, n=length(data), noverlap=0, window=false,twosided=true)) Float64[ 98.0,
                                                              13.656854249492380,
                                                               4.0,
                                                               2.343145750507620,
@@ -419,16 +412,16 @@ data = Float64[0:7]
 
 # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
 # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 2, 0)) Float64[34.5, 0.5]
+@test_approx_eq power(welch_pgram(data, n=2, noverlap=0, window=false,twosided=true)) Float64[34.5, 0.5]
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 0, 3, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 3, 0)) Float64[25.5, 1.0, 1.0]
+@test_approx_eq power(welch_pgram(data, n=3, noverlap=0, window=false,twosided=true)) Float64[25.5, 1.0, 1.0]
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 1, 3, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 3, 1)) Float64[35.0, 1.0, 1.0]
+@test_approx_eq power(welch_pgram(data, n=3, noverlap=1, window=false,twosided=true)) Float64[35.0, 1.0, 1.0]
 
 # Matlab: p = pwelch(0:7, [1, 1, 1, 1], 1, 4, 1, 'twosided')
-@test_approx_eq power(welch_pgram(data, 4, 1)) Float64[45, 2, 1, 2]
+@test_approx_eq power(welch_pgram(data, n=4, noverlap=1, window=false,twosided=true)) Float64[45, 2, 1, 2]
 
 # ~~~~~~~~~ Tests with window ~~~~~~~~~~~~~~~
 data = Float64[0:7]
@@ -456,8 +449,8 @@ bartlett => Float64[62.999999999999993,
                              0.285714285714286,
                             21.981076052592442]	}
 
-for (window, expected) in cases
-    @test_approx_eq power(welch_pgram(data, length(data), 0, window)) expected
+for (window1, expected) in cases
+    @test_approx_eq power(welch_pgram(data, n=length(data), noverlap=0, window=window1, twosided=true)) expected
 end
 
 end
