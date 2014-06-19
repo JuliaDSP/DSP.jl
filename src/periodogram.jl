@@ -204,7 +204,7 @@ end
 # for the Estimation of Power Spectra: A Method based on Time Averaging over Short,
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
-function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int, m::Int=0;
+function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, m::Int=n>>1;
                                 onesided::Bool=eltype(s)<:Real,
                                 nfft::Int=nextfastfft(n), fs::Real=1,
                                 window::Union(Function,Nothing)=nothing)
