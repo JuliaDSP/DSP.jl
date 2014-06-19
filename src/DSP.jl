@@ -8,5 +8,5 @@ include("filter_design.jl")
 include("filter_response.jl")
 
 using Reexport
-@reexport using .Windows, .Periodogram, .FFTFilt, .FilterDesign, .Util, .FilterResponse
+@reexport using .Windows, .Periodograms, .FFTFilt, .FilterDesign, .Util, .FilterResponse
 end
