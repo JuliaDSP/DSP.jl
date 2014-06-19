@@ -14,14 +14,14 @@ type Periodogramt{T<:DSPNumber}   # Periodogram is the module name, so there is 
     fs::Real                        # positive
     window::Union(Function,Bool)    # false || Function
     twosided::Bool                  # false for 1-sided
-    #taper::Real                    # 0 <= taper <=0.5, taper edges for periodograms or when using pad
+    taper::Real                     # 0 <= taper <=0.5, taper edges for periodograms or when using pad, int(n*taper) elements are tapered on each side using split cosine bell
     #pad::Integer                   # 0 <= pad < n, zero padding of windows
                                     # takes a section from x of length n-pad, 
                                     # and pads with zero to give padded section of length n
 end
-function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false)
+function Periodogramt{T<:DSPNumber}(x::Array{T,1}; n = int(length(x)/8), noverlap = int(length(x)/16), fs = 1, window = DSP.Windows.hamming, twosided = false, taper = 0)
     eltype(x)<:DSPComplex && (twosided=true)  # make it 2-sided for complex data
-    po = Periodogramt(x,n,noverlap,fs,window,twosided)
+    po = Periodogramt(x,n,noverlap,fs,window,twosided,taper)
     errorcheck(po)
     return po
 end
@@ -245,6 +245,20 @@ function sp_gram{T<:DSPNumber}(s::Array{T,1}, n::Integer, m::Integer, r::Real, w
     return p
 end
 
+# split cosine bell taper window
+function splitcosinebell(m::Integer)
+    return [0.5*(1-cos(pi*(t+0.5)/m)) for t in 0:m-1]
+end
+# apply taper of length mt on both sides of s[1:nt], s[nt+1:end] is unchanged
+function applytaper!{T<:DSPNumber}(s::Array{T,1}, nt::Integer, mt::Integer)
+    int(mt*2)>nt && error("mt too big")
+    length(s)<nt && error("nt too big")
+    scb = splitcosinebell(mt)
+    for i = 1:mt
+        @inbounds s[i] *= scb[i]
+        @inbounds s[nt-i+1] *= scb[i]
+    end
+end
 
 
 # =======================================================
@@ -268,7 +282,7 @@ Pp = power(P)
 P.twosided=false
 Pp1 = power(P)
 P.twosided=true
-wp = Periodogram.welch_pgram(x0,nn,mm)
+wp = DSP.Periodogram.welch_pgram(x0,nn,mm)
 
 tn=10
 
@@ -281,7 +295,7 @@ println(typeof(Pp)," ",length(Pp))
 
 println("  old welch")
 @time begin for i=1:tn
-wp = Periodogram.welch_pgram(x0,nn,mm)
+wp = DSP.Periodogram.welch_pgram(x0,nn,mm)
 end
 end
 println(typeof(wp)," ",length(wp))
@@ -304,7 +318,7 @@ Pp = power(P)
 P.twosided=false
 Pp1 = power(P)
 P.twosided=true
-wp = Periodogram.periodogram(x0)
+wp = DSP.Periodogram.periodogram(x0)
 
 println("  P 2 sided")
 @time begin for i=1:tn
@@ -315,7 +329,7 @@ println(typeof(Pp)," ",length(Pp))
 
 println("  old periodogram")
 @time begin for i=1:tn
-wp = Periodogram.periodogram(x0)
+wp = DSP.Periodogram.periodogram(x0)
 end
 end
 println(typeof(wp)," ",length(wp))
@@ -338,7 +352,7 @@ mm=div(N,16)
 # initialize variables before timing
 P=Periodogramt(x0,n=nn,noverlap=mm,twosided=true,window=n->ones(n))
 Ps = spectrogram(P)
-sp,t,f = Periodogram.spectrogram(x0,n=nn,m=mm)
+sp,t,f = DSP.Periodogram.spectrogram(x0,n=nn,m=mm)
 P.twosided=false
 Ps1 = spectrogram(P)
 
@@ -352,7 +366,7 @@ println(typeof(Ps)," ",length(Ps))
 
 println("  old spectrogram")
 @time begin for i=1:tn
-sp,t,f = Periodogram.spectrogram(x0,n=nn,m=mm)
+sp,t,f = DSP.Periodogram.spectrogram(x0,n=nn,m=mm)
 end
 end
 println(typeof(sp)," ",length(sp))
