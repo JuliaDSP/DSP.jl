@@ -27,30 +27,28 @@ end
 # For alpha = 1, the window is a hann window.
 function tukey(n::Integer, alpha::Real)
     # check that alpha is reasonable
-    if abs(alpha) > 1
-        error("tukey window alpha parameter must be 0 <= alpha <= 1.");
-    end
+    !(0 <= alpha <= 1) && error("tukey window alpha parameter must be 0 <= alpha <= 1.")
 
     # if alpha is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
     # here, it will blow up below.
-    t = zeros(n,1)
+    t = zeros(n)
     if abs(alpha) <= eps()
         t = rect(n)
     else
+        m = alpha*(n-1)/2
         for k=0:(n-1)
-            if k <= alpha/2*(n-1)
-                t[k+1] = 0.5*(1 + cos(pi*(2*k/(alpha*(n-1)) - 1))) 
-            elseif k <= (n-1)*(1 - alpha/2)
+            if k <= m
+                t[k+1] = 0.5*(1 + cos(pi*(k/m - 1)))
+            elseif k <= n-1-m
                 t[k+1] = 1
             else 
-                t[k+1] = 0.5*(1 + cos(pi*(2*k/(alpha*(n-1)) - 2/alpha + 1)))
+                t[k+1] = 0.5*(1 + cos(pi*(k/m - 2/alpha + 1)))
             end
         end
     end
 
-    # return filter vector
-    t
+    return t
 end
 
 # Cosine window of length N.  Also called the sine window for obvious reasons.

@@ -13,6 +13,7 @@ for W in(:rect, :hanning, :hamming, :cosine, :lanczos, :triang, :bartlett, :bart
     @eval @test Array{ft,1} == typeof($W(n)) && length($W(n)) == n
 end
 
+@test Array{ft,1} == typeof(tukey(n, 0.4)) && length(tukey(n, 0.4)) == n
 @test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
 @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
 @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
