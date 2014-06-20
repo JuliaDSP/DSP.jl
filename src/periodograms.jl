@@ -13,26 +13,27 @@ immutable ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     s::T
     buf::Vector{S}
     n::Int
-    m::Int
+    noverlap::Int
     window::W
     k::Int
 
-    function ArraySplit(s, n, m, nfft, window)
-        # n = m is a problem - the algorithm will not terminate.
-        (0 <= m < n) || error("m must be between zero and n.")
-        new(s, zeros(S, nfft), n, m, window, div((length(s) - n), n - m)+1)
+    function ArraySplit(s, n, noverlap, nfft, window)
+        # n = noverlap is a problem - the algorithm will not terminate.
+        (0 <= noverlap < n) || error("noverlap must be between zero and n")
+        nfft >= n || error("nfft must be >= n")
+        new(s, zeros(S, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
     end
 end
-ArraySplit(s::AbstractVector, n, m, nfft, window) =
-    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, m, nfft, window)
+ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
+    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
 
 function Base.getindex{T,S}(x::ArraySplit{T,S,Nothing}, i::Int)
     (i >= 1 && i <= x.k) || throw(BoundsError())
-    copy!(x.buf, 1, x.s, (i-1)*(x.n-x.m) + 1, x.n)
+    copy!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
 end
 function Base.getindex{T,S,W}(x::ArraySplit{T,S,W}, i::Int)
     (i >= 1 && i <= x.k) || throw(BoundsError())
-    offset = (i-1)*(x.n-x.m)
+    offset = (i-1)*(x.n-x.noverlap)
     window = x.window
     for i = 1:x.n
         @inbounds x.buf[i] = x.s[offset+i]*window[i]
@@ -46,9 +47,10 @@ Base.size(x::ArraySplit) = (x.k,)
 Base.similar(x::ArraySplit, T::Type, args...) = Array(T, args...)
 
 # Split an array into subarrays of length N, with overlapping regions
-# of length M. To avoid allocation, the returned AbstractVector always
-# returns the same vector (with different contents) at all indices.
-arraysplit(s, n, m, nfft=n, window=nothing) = ArraySplit(s, n, m, nfft, window)
+# of length noverlap. To avoid allocation, the returned AbstractVector
+# always returns the same vector (with different contents) at all
+# indices.
+arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
 
 ## UTILITY FUNCTIONS
 
@@ -141,6 +143,7 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
                                 nfft::Int=nextfastfft(length(s)), fs::Real=1,
                                 window::Union(Function,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    nfft >= length(s) || error("nfft must be >= n")
 
     win, norm2 = compute_window(window, length(s))
     if nfft == length(s) && win == nothing && isa(s, StridedArray)
@@ -168,14 +171,14 @@ end
 # for the Estimation of Power Spectra: A Method based on Time Averaging over Short,
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
-function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, m::Int=n>>1;
+function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                                 onesided::Bool=eltype(s)<:Real,
                                 nfft::Int=nextfastfft(n), fs::Real=1,
                                 window::Union(Function,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
-    sig_split = arraysplit(s, n, m, nfft, win)
+    sig_split = arraysplit(s, n, noverlap, nfft, win)
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
@@ -201,14 +204,14 @@ immutable Spectrogram{T} <: TFR{T}
 end
 time(p::Spectrogram) = p.time
 
-function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, m::Int=n>>1; 
+function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
                         window::Union(Function,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
-    sig_split = arraysplit(s, n, m, nfft, win)
+    sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(fftabs2type(T), nout, length(sig_split))
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
@@ -223,7 +226,7 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, m::Int=n>>1;
     end
 
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
-                ((0:length(sig_split)-1)*(n-m)+n/2)/fs)
+                ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
 end
 
 end # end module definition
