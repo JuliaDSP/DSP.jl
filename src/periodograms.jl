@@ -3,45 +3,9 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
+using ..Util: Frequencies, fftfreq, rfftfreq
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
        freq, time
-
-## FREQUENCY VECTOR
-
-immutable Frequencies <: AbstractVector{Float64}
-    nreal::Int
-    n::Int
-    multiplier::Float64
-end
-
-unsafe_getindex(x::Frequencies, i::Int) =
-    (i-1+ifelse(i <= x.nreal, 0, -x.n))*x.multiplier
-function Base.getindex(x::Frequencies, i::Int)
-    (i >= 1 && i <= x.n) || throw(BoundsError())
-    unsafe_getindex(x, i)
-end
-Base.start(x::Frequencies) = 1
-Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
-Base.done(x::Frequencies, i::Int) = i > x.n
-Base.size(x::Frequencies) = (x.n,)
-Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
-
-# Remove once we no longer support Julia 0.2
-for (T1, T2) in ((:Frequencies, :Frequencies),
-                 (:Frequencies, :AbstractVector),
-                 (:(BitArray{1}), :Frequencies),
-                 (:AbstractVector, :Frequencies)),
-          op in (:(Base.(:(-))), :(Base.(:(+))))
-    @eval begin
-        function $op(x::$T1, y::$T2)
-            length(x) == length(y) || error("dimensions must match")
-            [$op(x[i], y[i]) for i = 1:length(x)]
-        end
-    end
-end
-
-fftfreq(n, fs) = Frequencies(((n-1) >> 1)+1, n, fs/n)
-rfftfreq(n, fs) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
 
 ## ARRAY SPLITTER
 

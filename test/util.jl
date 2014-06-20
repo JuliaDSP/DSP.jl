@@ -70,3 +70,21 @@ h2 = hilbert([ones(10), zeros(9)])
 #Sanity check with integer arguments
 r = int(rand(128)*20)
 @test hilbert(r) == hilbert(float64(r))
+
+## FFTFREQ
+
+@test_approx_eq fftfreq(1) [0.]
+@test_approx_eq fftfreq(2) [0., -1/2]
+@test_approx_eq fftfreq(2, 1/2) [0., -1/4]
+@test_approx_eq fftfreq(3) [0., 1/3, -1/3]
+@test_approx_eq fftfreq(3, 1/2) [0., 1/6, -1/6]
+@test_approx_eq fftfreq(6) [0., 1/6, 1/3, -1/2, -1/3, -1/6]
+@test_approx_eq fftfreq(7) [0., 1/7, 2/7, 3/7, -3/7, -2/7, -1/7]
+
+@test_approx_eq rfftfreq(1) [0.]
+@test_approx_eq rfftfreq(2) [0., 1/2]
+@test_approx_eq rfftfreq(2, 1/2) [0., 1/4]
+@test_approx_eq rfftfreq(3) [0., 1/3]
+@test_approx_eq rfftfreq(3, 1/2) [0., 1/6]
+@test_approx_eq rfftfreq(6) [0., 1/6, 1/3, 1/2]
+@test_approx_eq rfftfreq(7) [0., 1/7, 2/7, 3/7]
