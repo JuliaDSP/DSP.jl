@@ -1,6 +1,6 @@
 module Util
 
-export unwrap!, unwrap, hilbert, Frequencies, fftfreq, rfftfreq
+export unwrap!, unwrap, hilbert, Frequencies, fftfreq, rfftfreq, nextfastfft
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -76,5 +76,9 @@ end
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
+
+# Get next fast FFT size for a given signal length
+const FAST_FFT_SIZES = [2, 3, 5, 7]
+nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
 
 end # end module definition

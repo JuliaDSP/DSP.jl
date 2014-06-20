@@ -3,7 +3,7 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..Util: Frequencies, fftfreq, rfftfreq
+using ..Util
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
        freq, time
 
@@ -53,9 +53,6 @@ Base.similar(x::ArraySplit, T::Type, args...) = Array(T, args...)
 arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
 
 ## UTILITY FUNCTIONS
-
-# Get next fast FFT size for a given signal length
-nextfastfft(n) = nextprod([2, 3, 5, 7], n)
 
 # Convert the output of an FFT to a PSD and add it to out
 function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Real, onesided::Bool, offset::Int=0)
@@ -112,6 +109,10 @@ function compute_window(window::Function, n::Int)
     norm2 = sumabs2(win)
     (win, norm2)
 end
+function compute_window(window::AbstractVector, n::Int)
+    length(window) == n || error("length of window must match input")
+    (window, sumabs2(window))
+end
 
 # Get the input element type of FFT for a given type
 fftintype{T<:Base.FFTW.fftwNumber}(::Type{T}) = T
@@ -141,7 +142,7 @@ freq(p::TFR) = p.freq
 # DTFT of the signal S.
 function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                                 nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                                window::Union(Function,Nothing)=nothing)
+                                window::Union(Function,AbstractVector,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
@@ -174,7 +175,7 @@ end
 function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                                 onesided::Bool=eltype(s)<:Real,
                                 nfft::Int=nextfastfft(n), fs::Real=1,
-                                window::Union(Function,Nothing)=nothing)
+                                window::Union(Function,AbstractVector,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
@@ -207,7 +208,7 @@ time(p::Spectrogram) = p.time
 function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
-                        window::Union(Function,Nothing)=nothing)
+                        window::Union(Function,AbstractVector,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)

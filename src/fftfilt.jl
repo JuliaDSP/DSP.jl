@@ -1,4 +1,5 @@
 module FFTFilt
+using ..Util
 export fftfilt, firfilt
 
 const FFT_LENGTHS = 2.^(1:28)
@@ -9,13 +10,12 @@ const FFT_TIMES = [6.36383e-7, 6.3779e-7 , 6.52212e-7, 6.65282e-7, 7.12794e-7, 7
                    2.32142e-5, 4.95576e-5, 0.000124927, 0.000247771, 0.000608867, 0.00153119,
                    0.00359037, 0.0110568, 0.0310893, 0.065813, 0.143516, 0.465745, 0.978072,
                    2.04371, 4.06017, 8.77769]
-const FAST_FFT_FACTORS = [2, 3, 5, 7]
 
 # Determine optimal length of the FFT for fftfilt
 function optimalfftfiltlength(nb, nx)
     nfft = 0
     if nb > FFT_LENGTHS[end] || nb >= nx
-        nfft = nextprod(FAST_FFT_FACTORS, nx+nb-1)
+        nfft = nextfastfft(nx+nb-1)
     else
         fastestestimate = Inf
         firsti = max(1, searchsortedfirst(FFT_LENGTHS, nb))
@@ -33,7 +33,7 @@ function optimalfftfiltlength(nb, nx)
 
         if L > nx
             # If L > nx, better to find next fast power
-            nfft = nextprod(FAST_FFT_FACTORS, nx+nb-1)
+            nfft = nextfastfft(nx+nb-1)
         end
     end
     nfft

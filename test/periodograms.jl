@@ -92,6 +92,9 @@ for (window1, expected) in cases
     @test_approx_eq power(periodogram(data; window=window1, onesided=false)) expected
     @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1, onesided=false)) expected
     @test_approx_eq power(spectrogram(data, length(data), 0; window=window1, onesided=false)) expected
+    @test_approx_eq power(periodogram(data; window=window1(length(data)), onesided=false)) expected
+    @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1(length(data)), onesided=false)) expected
+    @test_approx_eq power(spectrogram(data, length(data), 0; window=window1(length(data)), onesided=false)) expected
 end
 
 # Padded periodogram
