@@ -1,6 +1,6 @@
 module Util
 
-export unwrap!, unwrap, hilbert
+export unwrap!, unwrap, hilbert, Frequencies, fftfreq, rfftfreq, nextfastfft
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -39,5 +39,46 @@ function hilbert{T <: FFTW.fftwReal}(x::Array{T})
     return ifft!(X)
 end
 hilbert{T <: Real}(x::Array{T}) = hilbert(float(x))
+
+## FREQUENCY VECTOR
+
+immutable Frequencies <: AbstractVector{Float64}
+    nreal::Int
+    n::Int
+    multiplier::Float64
+end
+
+unsafe_getindex(x::Frequencies, i::Int) =
+    (i-1+ifelse(i <= x.nreal, 0, -x.n))*x.multiplier
+function Base.getindex(x::Frequencies, i::Int)
+    (i >= 1 && i <= x.n) || throw(BoundsError())
+    unsafe_getindex(x, i)
+end
+Base.start(x::Frequencies) = 1
+Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
+Base.done(x::Frequencies, i::Int) = i > x.n
+Base.size(x::Frequencies) = (x.n,)
+Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
+
+# Remove once we no longer support Julia 0.2
+for (T1, T2) in ((:Frequencies, :Frequencies),
+                 (:Frequencies, :AbstractVector),
+                 (:(BitArray{1}), :Frequencies),
+                 (:AbstractVector, :Frequencies)),
+          op in (:(Base.(:(-))), :(Base.(:(+))))
+    @eval begin
+        function $op(x::$T1, y::$T2)
+            length(x) == length(y) || error("dimensions must match")
+            [$op(x[i], y[i]) for i = 1:length(x)]
+        end
+    end
+end
+
+fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
+rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
+
+# Get next fast FFT size for a given signal length
+const FAST_FFT_SIZES = [2, 3, 5, 7]
+nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
 
 end # end module definition
