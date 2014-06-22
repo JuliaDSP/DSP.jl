@@ -1,4 +1,3 @@
-<<<<<<< Local Changes
 DSP.jl
 ======
 
@@ -16,4 +15,3 @@ DSP.jl provides a number of common DSP routines in Julia.  So far, the following
 - [Filter response](http://dspjl.readthedocs.org/en/latest/filterresponse.html)
 - [Utility functions](http://dspjl.readthedocs.org/en/latest/util.html)
 =======
->>>>>>> External Changes
