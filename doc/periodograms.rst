@@ -1,12 +1,11 @@
-:mod:`Periodogram` - periodogram estimation
+:mod:`Periodograms` - periodogram estimation
 ===========================================
 
 .. function:: arraysplit(s, n::Integer, m::Integer)
 
     Split an array into arrays of length n with overlapping regions of length m.
 
-.. function:: periodogram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n),
-                          fs=1, window=nothing)
+.. function:: periodogram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
     Computes periodogram of a signal by FFT and returns a
     Periodogram object.
@@ -26,22 +25,18 @@
     periodogram is normalized so that the area under the periodogram is
     equal to the uncentered variance of the original signal.
 
-.. function:: welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2);
-                          onesided=eltype(s)<:Real, nfft=nextfastfft(n),
-                          fs=1, window=nothing)
+.. function:: welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
     Computes the Welch periodogram of a signal ``s`` based on ``n``
     segments with overlap ``noverlap`` and returns a Periodogram
     object. For a Bartlett periodogram, set ``noverlap=0``. See
-    ``periodogram`` for description of optional keyword arguments.
+    :func:`periodogram` for description of optional keyword arguments.
 
-.. function:: spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2);
-                          onesided=eltype(s)<:Real, nfft=nextfastfft(n),
-                          fs=1, window=nothing)
+.. function:: spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
     Computes the spectrogram of a signal ``s`` based on ``n`` segments
     with overlap ``noverlap`` and returns a Spectrogram object. See
-    ``periodogram`` for description of optional keyword arguments.
+    :func:`periodogram` for description of optional keyword arguments.
 
 .. function:: freq(p)
 
