@@ -14,4 +14,4 @@ DSP.jl provides a number of common DSP routines in Julia.  So far, the following
 - [Filter design](http://dspjl.readthedocs.org/en/latest/filterdesign.html)
 - [Filter response](http://dspjl.readthedocs.org/en/latest/filterresponse.html)
 - [Utility functions](http://dspjl.readthedocs.org/en/latest/util.html)
-=======
+
