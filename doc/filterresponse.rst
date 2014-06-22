@@ -4,29 +4,29 @@
 Digital filter response
 -----------------------
 
-.. function:: freqz(filter::Filter, w::Number)
+.. function:: freqz(filter, w)
 
     Frequency response of a digital ``filter`` at normalised frequency ``w`` in radians/sample.
 
-.. function:: freqz(filter::Filter, w::AbstractVector)
+.. function:: freqz(filter, w)
 
     Frequency response of a digital ``filter`` at normalised frequencies ``w`` in radians/sample.
 
-.. function:: freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
+.. function:: freqz(filter, hz, fs)
 
     Frequency response of a digital ``filter`` at frequencies ``hz`` with sampling rate ``fs``.
 
 Analog filter response
 -----------------------
 
-.. function:: freqs(filter::Filter, w::Number)
+.. function:: freqs(filter, w)
 
     Frequency response of an analog ``filter`` at normalised frequency ``w`` in radians/sample.
 
-.. function:: freqs(filter::Filter, w::AbstractVector)
+.. function:: freqs(filter, w)
 
     Frequency response of an analog ``filter`` at normalised frequencies ``w`` in radians/sample.
 
-.. function:: freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Integer)
+.. function:: freqs(filter, hz, fs)
 
     Frequency response of an analog ``filter`` at frequencies ``hz`` with sampling rate ``fs``.

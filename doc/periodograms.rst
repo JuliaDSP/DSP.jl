@@ -1,9 +1,11 @@
 :mod:`Periodograms` - periodogram estimation
 ===========================================
 
-.. function:: arraysplit(s, n::Integer, m::Integer)
+.. function:: arraysplit(s, n, m)
 
-    Split an array into arrays of length n with overlapping regions of length m.
+    Split an array into arrays of length ``n`` with overlapping regions
+    of length ``m``. Iterating or indexing the returned AbstractVector
+    always yields the same Vector with different contents.
 
 .. function:: periodogram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 

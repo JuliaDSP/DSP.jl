@@ -1,8 +1,7 @@
 :mod:`Util` - utility functions
 =================================
 
-.. function:: unwrap{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
-                                         range::Number=2pi)
+.. function:: unwrap(m, dim=ndims(m); range=2pi)
 
     Assumes m (along dimension dim) to be a sequences of values that
     have been wrapped to be inside the given range (centered around
@@ -13,12 +12,11 @@
     comparing successive frames of a short-time-fourier-transform, as
     each frame is wrapped to stay within (-pi, pi].
 
-.. function:: unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
-                                          range::Number=2pi)
+.. function:: unwrap!(m, dim=ndims(m); range=2pi)
 
     In-place version of unwrap(m, dim, range)
 
-.. function:: hilbert{T <: Real}(x::Array{T})
+.. function:: hilbert(x)
 
     Computes the analytic representation of x, :math:`x_a = x + j
     \hat{x}`, where :math:`\hat{x}` is the Hilbert transform of x.
