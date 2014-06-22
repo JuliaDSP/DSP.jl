@@ -13,7 +13,7 @@ DSP.jl provides a number of common DSP routines in Julia. So far, the following 
 .. toctree::
    :maxdepth: 2
 
-   periodogram.rst
+   periodograms.rst
    windows.rst
    fftfilt.rst
    filterdesign.rst
