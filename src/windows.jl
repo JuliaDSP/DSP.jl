@@ -9,7 +9,7 @@ export rect, hanning, hamming, tukey, cosine, lanczos,
 
 # Rectangular window function of length N.
 function rect(n::Integer)
-    ones(n,1)
+    ones(n)
 end
 
 # Hanning window of length N.
@@ -27,30 +27,28 @@ end
 # For alpha = 1, the window is a hann window.
 function tukey(n::Integer, alpha::Real)
     # check that alpha is reasonable
-    if abs(alpha) > 1
-        error("tukey window alpha parameter must be 0 <= alpha <= 1.");
-    end
+    !(0 <= alpha <= 1) && error("tukey window alpha parameter must be 0 <= alpha <= 1.")
 
     # if alpha is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
     # here, it will blow up below.
-    t = zeros(n,1)
+    t = zeros(n)
     if abs(alpha) <= eps()
         t = rect(n)
     else
+        m = alpha*(n-1)/2
         for k=0:(n-1)
-            if k <= alpha/2*(n-1)
-                t[k+1] = 0.5*(1 + cos(pi*(2*k/(alpha*(n-1)) - 1))) 
-            elseif k <= (n-1)*(1 - alpha/2)
+            if k <= m
+                t[k+1] = 0.5*(1 + cos(pi*(k/m - 1)))
+            elseif k <= n-1-m
                 t[k+1] = 1
             else 
-                t[k+1] = 0.5*(1 + cos(pi*(2*k/(alpha*(n-1)) - 2/alpha + 1)))
+                t[k+1] = 0.5*(1 + cos(pi*(k/m - 2/alpha + 1)))
             end
         end
     end
 
-    # return filter vector
-    t
+    return t
 end
 
 # Cosine window of length N.  Also called the sine window for obvious reasons.
@@ -85,15 +83,15 @@ end
 # bartlett-hann window of length n
 function bartlett_hann(n::Integer)
     a0, a1, a2 = 0.62, 0.48, 0.38
-    _arg = (k,l) -> 2*pi*l*k/(n-1)
-    [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(_arg(k,1)) for k=0:(n-1)]
+    t = 2*pi/(n-1)
+    [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(t*k) for k=0:(n-1)]
 end
 
 # "exact" blackman window, alpha=0.16
 function blackman(n::Integer)
     a0, a1, a2 = 7938/18608, 9240/18608, 1430/18608
-    _arg = (k,l) -> 2*pi*l*k/(n-1)
-    [a0 - a1*cos(_arg(k,1)) + a2*cos(_arg(k,2)) for k=0:(n-1)]
+    t = 2*pi/(n-1)
+    [a0 - a1*cos(t*k) + a2*cos(t*k*2) for k=0:(n-1)]
 end
 
 # kaiser window parameterized by alpha
