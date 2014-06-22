@@ -17,6 +17,7 @@ DSP.jl provides a number of common DSP routines in Julia. So far, the following 
    windows.rst
    fftfilt.rst
    filterdesign.rst
+   filterresponse.rst
    util.rst
 
 
