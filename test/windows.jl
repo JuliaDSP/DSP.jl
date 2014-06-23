@@ -5,6 +5,30 @@ d1 = dpss(128, 4)
 d2 = readdlm(joinpath(dirname(@__FILE__), "data", "dpss128,4.txt"), '\t')
 @test_approx_eq d1 d2
 
+# Checking Hanning, Hamming, Triangular, Bartlett, Bartlett-Hann, and Blackman windows against values computed with MATLAB. Lanczos and cosine are not checked since there's no standard MATLAB implementation.
+hanning_jl = hanning(128)
+hanning_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hanning128.txt"), '\t')
+@test_approx_eq hanning_jl hanning_ml
+
+hamming_jl = hamming(128)
+hamming_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hamming128.txt"), '\t')
+@test_approx_eq hamming_jl hamming_ml
+
+triang_jl = triang(128)
+triang_ml = readdlm(joinpath(dirname(@__FILE__), "data", "triang128.txt"), '\t')
+@test_approx_eq triang_jl triang_ml
+
+bartlett_jl = bartlett(128)
+bartlett_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett128.txt"), '\t')
+@test_approx_eq bartlett_jl bartlett_ml
+
+barthann_jl = bartlett_hann(128)
+barthann_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett_hann128.txt"), '\t')
+@test_approx_eq bartlett_jl bartlett_ml
+
+blackman_jl = blackman(128)
+blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
+@test_approx_eq blackman_jl blackman_ml
 
 # make sure return types are correct
 n = 12

@@ -63,7 +63,7 @@ end
 
 # triangular window of length N.
 function triang(n::Integer)
-    [2/(n+1)*((n+1)/2 - abs(k - (n-1)/2)) for k=0:(n-1)]
+    [1 - abs((k - (n-1)/2))/(n/2) for k=0:(n-1)]
 end
 
 # bartlett window of length N.
@@ -89,7 +89,7 @@ end
 
 # "exact" blackman window, alpha=0.16
 function blackman(n::Integer)
-    a0, a1, a2 = 7938/18608, 9240/18608, 1430/18608
+    a0, a1, a2 = 0.42, 0.5, 0.08
     t = 2*pi/(n-1)
     [a0 - a1*cos(t*k) + a2*cos(t*k*2) for k=0:(n-1)]
 end
