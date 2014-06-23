@@ -39,7 +39,7 @@
 # DAMAGE.
 
 module FilterDesign
-using Polynomial
+using Polynomials
 
 export ZPKFilter, TFFilter, BiquadFilter, SOSFilter, Butterworth, Lowpass, Highpass, Bandpass,
        Bandstop, analogfilter, digitalfilter, Filter
@@ -66,7 +66,7 @@ end
 similarzeros{T}(v::Array{T}, args...) = zeros(T, args...)
 
 # Get coefficients of a polynomial
-coeffs{T}(p::Poly{T}) = p.a[1+p.nzfirst:end]
+coeffs{T}(p::Poly{T}) = reverse(p.a)
 
 #
 # Filter types
@@ -87,11 +87,16 @@ immutable TFFilter{T} <: Filter
     a::Poly{T}
 
     function TFFilter(b::Poly{T}, a::Poly{T})
-        new(b/a[1], a/a[1])
+        new(b/a[end], a/a[end])
     end
 end
 TFFilter{T}(b::Poly{T}, a::Poly{T}) = TFFilter{T}(b, a)
-TFFilter{T}(b::Vector{T}, a::Vector{T}) = TFFilter{T}(Poly(b), Poly(a))
+
+# The DSP convention is lowest power first. The Polynomials.jl
+# convention is highest power first.
+TFFilter{T}(b::Vector{T}, a::Vector{T}) =
+    TFFilter{T}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
+
 function TFFilter{T,S}(b::Vector{T}, a::Vector{S})
     V = promote_type(T, S)
     TFFilter(convert(Vector{V}, b), convert(Vector{V}, a))
@@ -104,7 +109,7 @@ function convert(::Type{TFFilter}, f::ZPKFilter)
 end
 
 function convert{T}(::Type{ZPKFilter}, f::TFFilter{T})
-    k = real(f.b[1])
+    k = real(f.b[end])
     b = f.b / k
     z = convert(Vector{Complex{T}}, roots(b))
     p = convert(Vector{Complex{T}}, roots(f.a))
@@ -336,8 +341,8 @@ function transform_prototype(ftype::Bandpass, proto::TFFilter)
     bw = ftype.w2 - ftype.w1
     wo = sqrt(ftype.w1 * ftype.w2)
     tf = convert(TFFilter, proto)
-    b = tf.b.a
-    a = tf.a.a
+    b = coeffs(tf.b)
+    a = coeffs(tf.a)
     D = length(a) - 1
     N = length(b) - 1
     M = max(N, D)
@@ -378,8 +383,8 @@ function transform_prototype(ftype::Bandstop, proto::TFFilter)
     bw = ftype.w2 - ftype.w1
     wo = sqrt(ftype.w1 * ftype.w2)
     tf = convert(TFFilter, proto)
-    b = tf.b.a
-    a = tf.a.a
+    b = coeffs(tf.b)
+    a = coeffs(tf.a)
     D = length(a) - 1
     N = length(b) - 1
     M = max(N, D)

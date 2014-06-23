@@ -1,4 +1,4 @@
-using DSP, Base.Test, Polynomial
+using DSP, Base.Test, Polynomials
 import Base.Sort.Lexicographic
 import DSP.FilterDesign: coeffs
 
@@ -81,7 +81,7 @@ accurate_a = coeffs(convert(TFFilter, accurate_f).a)
 
 f = convert(ZPKFilter, convert(TFFilter, Butterworth(20)))
 @test isempty(f.z)
-@test_approx_eq_eps sort(f.p, lt=lt) prototype 1e-7
+@test_approx_eq_eps sort(f.p, lt=lt) prototype 1e-6
 
 # Test that our answers are more accurate than MATLAB's
 # Output of [z, p, k] = buttap(20); [b, a] = zp2tf(z, p, k); tf2zpk(b, a)
@@ -221,7 +221,12 @@ for f in (digitalfilter(Lowpass(0.5), Butterworth(1)), digitalfilter(Lowpass(0.5
         f2 = convert(ftype1, f)
         for ftype2 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
             f3 = convert(ftype2, f)
-            zpkfilter_eq(f, convert(ZPKFilter, f3), eps())
+            try
+                zpkfilter_eq(f, convert(ZPKFilter, f3), sqrt(eps()))
+            catch e
+                println("Conversion from $ftype1 to $ftype2 failed:")
+                rethrow(e)
+            end
         end
     end
 end
