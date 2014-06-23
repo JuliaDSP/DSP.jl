@@ -5,7 +5,7 @@ module FilterResponse
 
 export freqz, freqs
 
-using Polynomial
+using Polynomials
 using ..FilterDesign
 
 
