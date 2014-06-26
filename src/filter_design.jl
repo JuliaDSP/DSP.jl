@@ -49,22 +49,6 @@ import Base: convert, filt
 # Utility functions
 #
 
-# Pad a vector with f on the left to a specified length
-function lfill{T}(v::Vector{T}, n::Integer, f::Number=zero(T))
-    d = n-length(v)
-    if d > 0
-        nv = similar(v, n)
-        nv[1:d] = f
-        nv[d+1:end] = v
-        nv
-    else
-        v
-    end
-end
-
-# Make a new array of zeros of the same type as another vector
-similarzeros{T}(v::Array{T}, args...) = zeros(T, args...)
-
 # Get coefficients of a polynomial
 coeffs{T}(p::Poly{T}) = reverse(p.a)
 
@@ -153,16 +137,15 @@ end
 convert(::Type{BiquadFilter}, f::ZPKFilter) = convert(BiquadFilter, convert(TFFilter, f))
 
 function convert{T}(::Type{BiquadFilter}, f::TFFilter{T})
-    xs = max(length(f.b), length(f.a))
-    b = lfill(coeffs(f.b), xs)
-    a = lfill(coeffs(f.a), xs)
+    a, b = f.a, f.b
+    xs = max(length(b), length(a))
 
     if xs == 3
-        BiquadFilter(b[1], b[2], b[3], a[2], a[3])
+        BiquadFilter(b[2], b[1], b[0], a[1], a[0])
     elseif xs == 2
-        BiquadFilter(b[1], b[2], zero(T), a[2], zero(T))
+        BiquadFilter(b[1], b[0], zero(T), a[0], zero(T))
     elseif xs == 1
-        BiquadFilter(b[1], zero(T), zero(T), zero(T), zero(T))
+        BiquadFilter(b[0], zero(T), zero(T), zero(T), zero(T))
     elseif xs == 0
         error("cannot convert an empty TFFilter to BiquadFilter")
     else
@@ -321,18 +304,15 @@ end
 
 # Create a lowpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Lowpass, proto::TFFilter)
-    b = lfill(coeffs(proto.b), length(proto.a))
-    a = lfill(coeffs(proto.a), length(proto.b))
-    c = ftype.w .^ [length(a)-1:-1:0]
-    TFFilter(b ./ c, a ./ c)
+    TFFilter(Poly([proto.b[i]/ftype.w^(i) for i = 0:length(proto.b)-1]),
+             Poly([proto.a[i]/ftype.w^(i) for i = 0:length(proto.a)-1]))
 end
 
 # Create a highpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Highpass, proto::TFFilter)
-    b = lfill(coeffs(proto.b), length(proto.a))
-    a = lfill(coeffs(proto.a), length(proto.b))
-    c = ftype.w .^ [0:length(a)-1]
-    TFFilter(flipud(b) .* c, flipud(a) .* c)
+    n = max(length(proto.b), length(proto.a))
+    TFFilter(Poly([proto.b[n-i-1]/ftype.w^(i) for i = 0:n-1]),
+             Poly([proto.a[n-i-1]/ftype.w^(i) for i = 0:n-1]))
 end
 
 # Create a bandpass filter from a lowpass filter prototype
@@ -340,41 +320,40 @@ end
 function transform_prototype(ftype::Bandpass, proto::TFFilter)
     bw = ftype.w2 - ftype.w1
     wo = sqrt(ftype.w1 * ftype.w2)
-    tf = convert(TFFilter, proto)
-    b = coeffs(tf.b)
-    a = coeffs(tf.a)
+    b = proto.b
+    a = proto.a
     D = length(a) - 1
     N = length(b) - 1
     M = max(N, D)
     Np = N + M
     Dp = D + M
-    bprime = similarzeros(b, Np+1)
-    aprime = similarzeros(a, Dp+1)
+    bprime = zeros(eltype(b), Np+1)
+    aprime = zeros(eltype(a), Dp+1)
     wosq = wo^2
     for j = 0:Np
         val = 0.0
         for i = 0:N
             for k = 0:i
                 if M - i + 2 * k == j
-                    val += binomial(i, k) * b[N - i + 1] * wosq^(i - k) / bw^i
+                    val += binomial(i, k) * b[i] * wosq^(i - k) / bw^i
                 end
             end
         end
 
-        bprime[Np - j + 1] = val
+        bprime[j+1] = val
     end
     for j = 0:Dp
         val = 0.0
         for i = 0:D
             for k in 0:i+1
                 if M - i + 2 * k == j
-                    val += binomial(i, k) * a[D - i + 1] * wosq ^(i - k) / bw^i
+                    val += binomial(i, k) * a[i] * wosq ^(i - k) / bw^i
                 end
             end
         end
-        aprime[Dp - j + 1] = val
+        aprime[j+1] = val
     end
-    TFFilter(bprime, aprime)
+    TFFilter(Poly(bprime), Poly(aprime))
 end
 
 # Create a bandstop filter from a lowpass filter prototype
@@ -382,40 +361,39 @@ end
 function transform_prototype(ftype::Bandstop, proto::TFFilter)
     bw = ftype.w2 - ftype.w1
     wo = sqrt(ftype.w1 * ftype.w2)
-    tf = convert(TFFilter, proto)
-    b = coeffs(tf.b)
-    a = coeffs(tf.a)
+    b = proto.b
+    a = proto.a
     D = length(a) - 1
     N = length(b) - 1
     M = max(N, D)
     Np = 2 * M
     Dp = 2 * M
-    bprime = similarzeros(b, Np+1)
-    aprime = similarzeros(a, Dp+1)
+    bprime = zeros(eltype(b), Np+1)
+    aprime = zeros(eltype(a), Dp+1)
     wosq = wo^2
     for j = 0:Np
         val = 0.0
         for i = 0:N
             for k = 0:M-i
                 if i + 2 * k == j
-                    val += binomial(M - i, k) * b[N - i + 1] * wosq^(M - i - k) * bw^i
+                    val += binomial(M - i, k) * b[i] * wosq^(M - i - k) * bw^i
                 end
             end
         end
-        bprime[Np - j + 1] = val
+        bprime[j+1] = val
     end
     for j = 0:Dp
         val = 0.0
         for i = 0:D
             for k in 0:M-i
                 if i + 2 * k == j
-                    val += binomial(M - i, k) * a[D - i + 1] * wosq^(M - i - k) * bw^i
+                    val += binomial(M - i, k) * a[i] * wosq^(M - i - k) * bw^i
                 end
             end
         end
-        aprime[Dp - j + 1] = val
+        aprime[j+1] = val
     end
-    TFFilter(bprime, aprime)
+    TFFilter(Poly(bprime), Poly(aprime))
 end
 
 transform_prototype(ftype::FilterType, proto::Filter) =
@@ -425,9 +403,27 @@ analogfilter(ftype::FilterType, proto::Filter) = transform_prototype(ftype, prot
 
 # Do bilinear transform
 bilinear(f::Filter, fs::Real) = bilinear(convert(ZPKFilter, f), fs)
-bilinear(f::ZPKFilter, fs::Real) =
-    ZPKFilter(lfill((2 .+ f.z / fs)./(2 .- f.z / fs), length(f.p), -1),
-    (2 .+ f.p / fs)./(2 .- f.p / fs), real(f.k * prod(2 * fs .- f.z) ./ prod(2 * fs .- f.p)))
+function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
+    ztype = typeof(0 + zero(Z)/fs)
+    z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
+
+    ptype = typeof(0 + zero(P)/fs)
+    p = Array(typeof(zero(P)/fs), length(f.p))
+
+    num = one(one(fs) - one(Z))
+    for i = 1:length(f.z)
+        z[i] = (2 + f.z[i] / fs)/(2 - f.z[i] / fs)
+        num *= (2 * fs - f.z[i])
+    end
+
+    den = one(one(fs) - one(P))
+    for i = 1:length(f.p)
+        p[i] = (2 + f.p[i] / fs)/(2 - f.p[i]/fs)
+        den *= (2 * fs - f.p[i])
+    end
+
+    ZPKFilter(z, p, f.k * real(num)/real(den))
+end
 
 # Pre-warp filter frequencies for digital filtering
 prewarp(ftype::Union(Lowpass, Highpass)) = (typeof(ftype))(4*tan(pi*ftype.w/2))
