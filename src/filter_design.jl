@@ -304,15 +304,15 @@ end
 
 # Create a lowpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Lowpass, proto::TFFilter)
-    TFFilter(Poly([proto.b[i]*ftype.w^(-i) for i = 0:length(proto.b)-1]),
-             Poly([proto.a[i]*ftype.w^(-i) for i = 0:length(proto.a)-1]))
+    TFFilter(Poly([proto.b[i]/ftype.w^(i) for i = 0:length(proto.b)-1]),
+             Poly([proto.a[i]/ftype.w^(i) for i = 0:length(proto.a)-1]))
 end
 
 # Create a highpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Highpass, proto::TFFilter)
     n = max(length(proto.b), length(proto.a))
-    TFFilter(Poly([proto.b[n-i-1]*ftype.w^(-i) for i = 0:n-1]),
-             Poly([proto.a[n-i-1]*ftype.w^(-i) for i = 0:n-1]))
+    TFFilter(Poly([proto.b[n-i-1]/ftype.w^(i) for i = 0:n-1]),
+             Poly([proto.a[n-i-1]/ftype.w^(i) for i = 0:n-1]))
 end
 
 # Create a bandpass filter from a lowpass filter prototype
@@ -422,7 +422,7 @@ function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
         den *= (2 * fs - f.p[i])
     end
 
-    ZPKFilter(z, p, real(f.k * num/den))
+    ZPKFilter(z, p, f.k * real(num)/real(den))
 end
 
 # Pre-warp filter frequencies for digital filtering
