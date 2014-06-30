@@ -5,7 +5,7 @@
 module Periodograms
 using ..Util
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
-       freq, time
+       freq, time, stft
 
 ## ARRAY SPLITTER
 
@@ -229,5 +229,27 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
                 ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
 end
+
+function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
+                        onesided::Bool=eltype(s)<:Real,
+                        nfft::Int=nextfastfft(n), fs::Real=1,
+                        window::Union(Function,AbstractVector,Nothing)=nothing)
+    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+
+    win, norm2 = compute_window(window, n)
+    sig_split = arraysplit(s, n, noverlap, nfft, win)
+    nout = onesided ? (nfft >> 1)+1 : nfft
+    out = zeros(fftouttype(T), nout, length(sig_split))
+    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+
+    plan = FFTW.Plan(sig_split.buf, tmp, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    offset = 0
+    for k = 1:length(sig_split)
+        FFTW.execute(plan, sig_split[k], tmp)
+		out[:,k] = tmp
+    end
+	out
+end
+
 
 end # end module definition
