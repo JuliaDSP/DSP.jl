@@ -246,9 +246,9 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
     offset = 0
     for k = 1:length(sig_split)
         FFTW.execute(plan, sig_split[k], tmp)
-		out[:,k] = tmp
+        out[:,k] = tmp
     end
-	out
+    out
 end
 
 
