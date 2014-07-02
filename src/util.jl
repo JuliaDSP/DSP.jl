@@ -61,15 +61,17 @@ Base.size(x::Frequencies) = (x.n,)
 Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
 
 # Remove once we no longer support Julia 0.2
-for (T1, T2) in ((:Frequencies, :Frequencies),
-                 (:Frequencies, :AbstractVector),
-                 (:(BitArray{1}), :Frequencies),
-                 (:AbstractVector, :Frequencies)),
-          op in (:(Base.(:(-))), :(Base.(:(+))))
-    @eval begin
-        function $op(x::$T1, y::$T2)
-            length(x) == length(y) || error("dimensions must match")
-            [$op(x[i], y[i]) for i = 1:length(x)]
+if VERSION < v"0.3.0-"
+    for (T1, T2) in ((:Frequencies, :Frequencies),
+                     (:Frequencies, :AbstractVector),
+                     (:(BitArray{1}), :Frequencies),
+                     (:AbstractVector, :Frequencies)),
+              op in (:(Base.(:(-))), :(Base.(:(+))))
+        @eval begin
+            function $op(x::$T1, y::$T2)
+                length(x) == length(y) || error("dimensions must match")
+                [$op(x[i], y[i]) for i = 1:length(x)]
+            end
         end
     end
 end
