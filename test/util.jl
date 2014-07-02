@@ -88,3 +88,7 @@ r = int(rand(128)*20)
 @test_approx_eq rfftfreq(3, 1/2) [0., 1/6]
 @test_approx_eq rfftfreq(6) [0., 1/6, 1/3, 1/2]
 @test_approx_eq rfftfreq(7) [0., 1/7, 2/7, 3/7]
+
+for n = 1:7
+	@test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
+end
