@@ -165,3 +165,81 @@ p = spectrogram(data)
 p = spectrogram(data; onesided=false)
 @test fftshift(power(p), 1) == power(fftshift(p))
 @test fftshift(freq(p)) == freq(fftshift(p))
+
+
+data2d = readdlm(joinpath(dirname(@__FILE__), "data", "per2dx.txt"),'\t')
+expectedsum = vec(readdlm(joinpath(dirname(@__FILE__), "data", "per2dsum.txt"),'\t'))
+expectedmean = vec(readdlm(joinpath(dirname(@__FILE__), "data", "per2dmean.txt"),'\t'))
+# 2-d periodgram (radialsum)
+# computed in octave with raPsd2d ((C) E. Ruzanski) replacing nanmean with nansum
+# P = raPsd2d(x,1)'*n^2
+@test_approx_eq power(periodogram(data2d,fs=1, radialsum=true)) expectedsum
+
+# 2-d periodgram (radialavg)
+# computed in octave with raPsd2d ((C) E. Ruzanski)
+# P = raPsd2d(x,1)'*n^2
+@test_approx_eq power(periodogram(data2d, fs=1, radialavg=true)) expectedmean
+
+# 2-d periodgram 2-d PSD
+@test_approx_eq power(periodogram(data2d, fs=1)) abs2(fft(data2d))*1/prod(size(data2d))
+# 2-d periodgram 2-d PSD with padding
+pads = (size(data2d,1)+4,size(data2d,1)+7)
+data2dpad = zeros(Float64,pads...)
+data2dpad[1:size(data2d,1),1:size(data2d,2)] = data2d
+@test_approx_eq power(periodogram(data2d, fs=1, nfft=pads)) abs2(fft(data2dpad))*1/prod(size(data2d))
+# 2-d periodgram radial freq
+@test_approx_eq freq(periodogram(data2d, fs=3.3, radialsum=true)) freq(periodogram(vec(data2d[1,:]), fs=3.3))
+# 2-d periodgram 2-d freq
+freq2 = freq(periodogram(data2d, fs=3.3))
+freq1 = freq(periodogram(vec(data2d[1,:]), fs=3.3, onesided=false))
+@assert size(data2d,1)==size(data2d,2)
+for j=1:size(data2d,2)
+    for i=1:size(data2d,1)
+        @test_approx_eq [freq2[i,j]...] [freq1[i],freq1[j]]
+    end
+end
+# 2-d periodgram radial test for a non-square signal sparse in fft space
+n1 = 52
+n2 = 46  # assuming n1>n2
+nf = (22,7) # the non-zero location
+F = fftfreq2(n1,n2,1)
+ffun = function(x,a)
+        out=Array(Bool,size(x))
+        for i=1:length(x)
+            out[i] = [x[i]...]==[a...] || [x[i]...]==-[a...]
+        end
+        return out
+    end
+
+ind = find(ffun(F,F[nf...]))
+x = zeros(n1,n2)*0im;
+x[ind] = [1+2im,1-2im]
+y = real(ifft(x))
+
+f = F[nf...]
+fwn = int(sqrt((f[1])^2+(f[2])^2)*n2)
+pe = zeros(n2>>1 + 1)
+pe[fwn+1] = 2*abs2(x[nf...])/n1/n2
+P = periodogram(y,nfft=(n1,n2),radialsum=true)
+@test_approx_eq power(P) pe
+@test_approx_eq freq(P)[fwn+1] fwn/n2
+
+
+# error tests
+if VERSION.major==0 && VERSION.minor<=2  # v0.2 support
+    tests=quote
+    @test_throws periodogram([1 2 3])
+    @test_throws periodogram([1 2;3+1im 4])
+    @test_throws periodogram([1 2;3 4],radialsum=true, radialavg=true)
+    end
+    eval(tests)
+else
+    EE = ErrorException
+    tests=quote
+    @test_throws EE periodogram([1 2 3])
+    @test_throws EE periodogram([1 2;3+1im 4])
+    @test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
+    end
+    eval(tests)
+end
+

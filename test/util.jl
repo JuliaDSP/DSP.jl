@@ -92,3 +92,26 @@ r = int(rand(128)*20)
 for n = 1:7
 	@test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
 end
+
+c2a = function(x::AbstractArray)
+    out = Array(Float64,size(x,1),size(x,2),2)
+    for j=1:size(x,2)
+        for i=1:size(x,1)
+            out[i,j,:] = [x[i,j]...]
+        end
+    end
+    return out
+end
+@test_approx_eq c2a(fftfreq2(1,1)) c2a([(0.,0.)])
+@test_approx_eq c2a(fftfreq2(2,1)) c2a([(0.,0.); (-1/2,0.)])
+@test_approx_eq c2a(fftfreq2(1,2)) c2a([(0.,0.) (0.,-1/2)])
+@test_approx_eq c2a(fftfreq2(2,2)) c2a([(0.,0.) (0.,-1/2);(-1/2,0.) (-1/2,-1/2)])
+@test_approx_eq c2a(fftfreq2(1, 2, 1/2)) c2a([(0.,0.) (0.,-1/4)])
+@test_approx_eq c2a(fftfreq2(1, 3)) c2a([(0.,0.) (0.,1/3) (0.,-1/3)])
+
+# nextfastfft
+@test nextfastfft(64) == 64
+@test nextfastfft(65) == 70
+@test nextfastfft(127) == 128
+@test nextfastfft((64,65,127)) == (64,70,128)
+

@@ -27,6 +27,17 @@
     Frequencies object is an AbstractVector containing the frequency
     bin centers at every sample point. ``fs`` is the sample rate of the
     input signal.
+    
+.. function:: fftfreq2(n, fs=1)
+
+    Return discrete fourier transform sample frequencies. The returned
+    Frequencies2 object is an AbstractMatrix of size ``n`` containing 
+    tuples of the frequency bin centers at every sample point. ``fs`` 
+    is the sample rate of the input signal.
+    
+.. function:: fftfreq2(n1, n2, fs=1)
+    
+    Return ``fftfreq2((n1,n2), fs)``.
 
 .. function:: rfftfreq(n, fs=1)
 
