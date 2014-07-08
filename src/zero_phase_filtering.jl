@@ -61,7 +61,7 @@ function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(Abst
     B = b[2:end] - a[2:end] * b[1]
     # Solve si = A*si + B
     # (I - A)*si = B
-    (eye(size(A)[1]) - A) \ B
+    scale_factor \ (eye(size(A)[1]) - A) \ B
  end
 
 
