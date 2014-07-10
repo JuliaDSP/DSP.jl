@@ -131,12 +131,15 @@ fftabs2type{T<:Union(Real,Complex)}(::Type{T}) = Float64
 
 ## PERIODOGRAMS
 abstract TFR{T}
-immutable Periodogram{T} <: TFR{T}
+immutable Periodogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
     power::Vector{T}
-    freq::Frequencies
+    freq::F
 end
 power(p::TFR) = p.power
 freq(p::TFR) = p.freq
+Base.fftshift{T,F<:Frequencies}(p::Periodogram{T,F}) =
+    Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
+Base.fftshift{T,F<:Range}(p::Periodogram{T,F}) = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -198,11 +201,14 @@ end
 if !isdefined(Base, :FloatRange)
     typealias FloatRange{T} Range{T}
 end
-immutable Spectrogram{T} <: TFR{T}
+immutable Spectrogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
     power::Matrix{T}
-    freq::Frequencies
+    freq::F
     time::FloatRange{Float64}
 end
+Base.fftshift{T,F<:Frequencies}(p::Spectrogram{T,F}) =
+    Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
+Base.fftshift{T,F<:Range}(p::Spectrogram{T,F}) = p
 time(p::Spectrogram) = p.time
 
 function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 

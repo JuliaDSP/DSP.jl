@@ -59,6 +59,7 @@ Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
 Base.done(x::Frequencies, i::Int) = i > x.n
 Base.size(x::Frequencies) = (x.n,)
 Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
+Base.step(x::Frequencies) = x.multiplier
 
 # Remove once we no longer support Julia 0.2
 if VERSION < v"0.3.0-"
@@ -78,6 +79,7 @@ end
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
+Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
