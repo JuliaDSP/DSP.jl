@@ -190,34 +190,40 @@ data2dpad[1:size(data2d,1),1:size(data2d,2)] = data2d
 # 2-d periodgram radial freq
 @test_approx_eq freq(periodogram(data2d, fs=3.3, radialsum=true)) freq(periodogram(vec(data2d[1,:]), fs=3.3))
 # 2-d periodgram 2-d freq
-freq2 = freq(periodogram(data2d, fs=3.3))
-freq1 = freq(periodogram(vec(data2d[1,:]), fs=3.3, onesided=false))
+f1,f2 = freq(periodogram(data2d, fs=3.3))
+f1d = freq(periodogram(vec(data2d[1,:]), fs=3.3, onesided=false))
 @assert size(data2d,1)==size(data2d,2)
 for j=1:size(data2d,2)
     for i=1:size(data2d,1)
-        @test_approx_eq [freq2[i,j]...] [freq1[i],freq1[j]]
+        @test_approx_eq [f1[i],f2[j]] [f1d[i],f1d[j]]
     end
 end
+# Test fftshift
+p = periodogram(data2d)
+@test fftshift(power(p)) == power(fftshift(p))
+f = freq(p)
+@test (fftshift(f[1]),fftshift(f[2])) == freq(fftshift(p))
+
+
 # 2-d periodgram radial test for a non-square signal sparse in fft space
 n1 = 52
 n2 = 46  # assuming n1>n2
 nf = (22,7) # the non-zero location
-F = fftfreq2(n1,n2,1)
-ffun = function(x,a)
-        out=Array(Bool,size(x))
-        for i=1:length(x)
-            out[i] = [x[i]...]==[a...] || [x[i]...]==-[a...]
-        end
-        return out
+F = (fftfreq(n1,1),fftfreq(n2,1))
+a = [F[1][nf[1]],F[2][nf[2]]]
+FB = Array(Bool,n1,n2)
+for j = 1:n2
+    for i = 1:n1
+        FB[i,j] = [F[1][i], F[2][j]]==a || [F[1][i], F[2][j]]==-a
     end
+end
 
-ind = find(ffun(F,F[nf...]))
+ind = find(FB)
 x = zeros(n1,n2)*0im;
 x[ind] = [1+2im,1-2im]
 y = real(ifft(x))
 
-f = F[nf...]
-fwn = int(sqrt((f[1])^2+(f[2])^2)*n2)
+fwn = int(sqrt((a[1])^2+(a[2])^2)*n2)
 pe = zeros(n2>>1 + 1)
 pe[fwn+1] = 2*abs2(x[nf...])/n1/n2
 P = periodogram(y,nfft=(n1,n2),radialsum=true)
@@ -226,20 +232,8 @@ P = periodogram(y,nfft=(n1,n2),radialsum=true)
 
 
 # error tests
-if VERSION.major==0 && VERSION.minor<=2  # v0.2 support
-    tests=quote
-    @test_throws periodogram([1 2 3])
-    @test_throws periodogram([1 2;3+1im 4])
-    @test_throws periodogram([1 2;3 4],radialsum=true, radialavg=true)
-    end
-    eval(tests)
-else
-    EE = ErrorException
-    tests=quote
-    @test_throws EE periodogram([1 2 3])
-    @test_throws EE periodogram([1 2;3+1im 4])
-    @test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
-    end
-    eval(tests)
-end
+EE = ErrorException
+@test_throws EE periodogram([1 2 3])
+@test_throws EE periodogram(rand(2,3), nfft=(3,2))
+@test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
 

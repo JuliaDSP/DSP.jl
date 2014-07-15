@@ -195,15 +195,23 @@ immutable Periodogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
     power::Vector{T}
     freq::F
 end
-immutable Periodogram2{T} <: TFR{T}
+immutable Periodogram2{T,F1<:Union(Frequencies,Range),F2<:Union(Frequencies,Range)} <: TFR{T}
     power::Matrix{T}
-    freq::Frequencies2
+    freq1::F1
+    freq2::F2
 end
 power(p::TFR) = p.power
 freq(p::TFR) = p.freq
+freq(p::Periodogram2) = (p.freq1, p.freq2)
 Base.fftshift{T,F<:Frequencies}(p::Periodogram{T,F}) =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
 Base.fftshift{T,F<:Range}(p::Periodogram{T,F}) = p
+# 2-d
+Base.fftshift{T,F1<:Frequencies,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+    Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
+Base.fftshift{T,F1<:Range,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+    Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
+Base.fftshift{T,F1<:Range,F2<:Range}(p::Periodogram2{T,F1,F2}) = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -236,13 +244,12 @@ end
 # Compute the periodogram of a 2-d signal S. Returns 1/N*X[s(n)]^2, where X is the 2-d
 # DTFT of the signal S if radialsum and radialavg are both false (default), 
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
-function periodogram{T<:Number}(s::AbstractMatrix{T}; 
+function periodogram{T<:Real}(s::AbstractMatrix{T}; 
                                 nfft::NTuple{2,Int}=nextfastfft(size(s)),
                                 fs::Real=1,
                                 radialsum::Bool=false, radialavg::Bool=false)
-    T <: Complex && error("not supported for a complex signal")
-    nfft < size(s) && error("nfft must be >= n")
-    (size(s,1)==1 || size(s,2)==1) && error("input for 2-d periodogram is a 1*n or n*1 matrix")
+    @assert size(s,1)<=nfft[1] && size(s,2)<=nfft[2]
+    @assert size(s,1)!=1 && size(s,2)!=1
     if radialsum && radialavg
         error("radialsum and radialavg both true")
     elseif !radialsum && !radialavg
@@ -253,24 +260,23 @@ function periodogram{T<:Number}(s::AbstractMatrix{T};
         ptype = 2
     end
     norm2 = length(s)
-    n1, n2 = nfft[1], nfft[2]
-    nmin = min(n1,n2)
+    nmin = minimum(nfft)
     
     if prod(nfft) == length(s) && isa(s, StridedArray)
         input = s # no need to pad
     else
-        input = zeros(fftintype(T), nfft...)
+        input = zeros(fftintype(T), nfft)
         input[1:size(s,1), 1:size(s,2)] = s
     end
     
     if ptype == 0
         s_fft = fft(input)
-        out = zeros(fftabs2type(T),nfft...)
+        out = zeros(fftabs2type(T), nfft)
         fft2pow2!(out,s_fft,nfft...,fs*norm2)
-        return Periodogram2(out, fftfreq2(nfft,fs))
+        return Periodogram2(out, fftfreq(nfft[1],fs), fftfreq(nfft[2],fs))
     else
         s_fft = rfft(input)
-        out = zeros(fftabs2type(T),nmin>>1 + 1)
+        out = zeros(fftabs2type(T), nmin>>1 + 1)
         fft2pow2radial!(out,s_fft,nfft...,fs*norm2, ptype)
         return Periodogram(out, Frequencies(length(out), length(out), fs/nmin))
     end

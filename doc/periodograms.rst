@@ -43,11 +43,11 @@
 .. function:: periodogram(s::AbstractMatrix; nfft=nextfastfft(size(s)), fs=1, radialsum=false, radialavg=false)
 
     Computes periodogram of a 2-d signal by FFT and returns a
-    Periodogram object.
+    Periodogram2 object.
 
     Returns a 2-d periodogram by default. A radially summed or 
-    averaged periodogram is returned if ``radialsum`` or 
-    ``radialavg`` is true, respectively.
+    averaged periodogram is returned as a Periodogram object 
+    if ``radialsum`` or  ``radialavg`` is true, respectively.
 
     ``nfft`` specifies the number of points to use for the Fourier
     transform. If ``size(s)`` < ``nfft``, then the input is padded
@@ -66,6 +66,9 @@
 
 	Returns the frequency bin centers for a given Periodogram or
 	Spectrogram object.
+	
+	Returns a tuple of frequency bin centers for a given Periodogram2 
+	object.
 
 	See also: :func:`fftfreq`, :func:`rfftfreq`
 

@@ -1,6 +1,6 @@
 module Util
 
-export unwrap!, unwrap, hilbert, Frequencies, Frequencies2, fftfreq, fftfreq2, rfftfreq, nextfastfft
+export unwrap!, unwrap, hilbert, Frequencies, fftfreq, rfftfreq, nextfastfft
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -61,34 +61,6 @@ Base.size(x::Frequencies) = (x.n,)
 Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
 Base.step(x::Frequencies) = x.multiplier
 
-## FREQUENCY MATRIX
-
-immutable Frequencies2 <: AbstractMatrix{NTuple{2,Float64}}
-    f1::Frequencies
-    f2::Frequencies
-end
-
-unsafe_getindex(x::Frequencies2, i1::Int, i2::Int) =
-    (unsafe_getindex(x.f1,i1), unsafe_getindex(x.f2,i2))
-unsafe_getindex(x::Frequencies2, i::Int) =
-    unsafe_getindex(x,ind2sub((x.f1.n,x.f2.n),i)...)
-function Base.getindex(x::Frequencies2, i1::Int, i2::Int)
-    (i1 >= 1 && i1 <= x.f1.n) || throw(BoundsError())
-    (i2 >= 1 && i2 <= x.f2.n) || throw(BoundsError())
-    unsafe_getindex(x, i1, i2)
-end
-function Base.getindex(x::Frequencies2, i::Int)
-    i1,i2 = ind2sub((x.f1.n,x.f2.n), i)
-    (i1 >= 1 && i1 <= x.f1.n) || throw(BoundsError())
-    (i2 >= 1 && i2 <= x.f2.n) || throw(BoundsError())
-    unsafe_getindex(x, i1, i2)
-end
-Base.start(x::Frequencies2) = 1
-Base.next(x::Frequencies2, i::Int) = (unsafe_getindex(x, i), i+1)
-Base.done(x::Frequencies2, i) = i > x.f1.n*x.f2.n
-Base.size(x::Frequencies2) = (x.f1.n, x.f2.n)
-Base.similar(x::Frequencies2, T::Type, args...) = Array(T, args...)
-
 # Remove once we no longer support Julia 0.2
 if VERSION < v"0.3.0-"
     for (T1, T2) in ((:Frequencies, :Frequencies),
@@ -103,39 +75,16 @@ if VERSION < v"0.3.0-"
             end
         end
     end
-    for (T1, T2) in ((:Frequencies2, :Frequencies2),
-                     (:Frequencies2, :AbstractMatrix),
-                     (:(BitArray{2}), :Frequencies2),
-                     (:AbstractMatrix, :Frequencies2)),
-              op in (:(Base.(:(-))), :(Base.(:(+))))
-        @eval begin
-            function $op(x::$T1, y::$T2)
-                length(x) == length(y) || error("dimensions must match")
-                out = Array(Float64,size(x)...)
-                for i = 1:length(x)
-                    out[i] = $op(x[i], y[i])
-                end
-                out
-            end
-        end
-    end
 end
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
 Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
-fftfreq2(n::NTuple{2,Int}, fs::Real=1) = Frequencies2(fftfreq(n[1],fs),fftfreq(n[2],fs))
-fftfreq2(n1::Int, n2::Int, fs::Real=1) = fftfreq2((n1,n2),fs)
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
 nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
-function nextfastfft(n::Tuple)
-    out = Array(Int,length(n))
-    for i = 1:length(n)
-        out[i] = nextprod(FAST_FFT_SIZES, n[i])
-    end
-    return tuple(out...)
-end
+nextfastfft(n1, n2...) = tuple(nextfastfft(n1), nextfastfft(n2...)...)
+nextfastfft(n::Tuple) = nextfastfft(n...)
 
 end # end module definition
