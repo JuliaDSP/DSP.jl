@@ -1,6 +1,6 @@
 # Zero phase digital filtering for Julia
 # Created by Robert Luke (Robert.Luke@med.kuleuven.be)
-# Initial state and filter in place code by Matt Bauman https://github.com/mbauman
+# Initial state code by Matt Bauman https://github.com/mbauman
 
 module ZeroPhaseFiltering
 
@@ -24,8 +24,8 @@ function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractVector)
 
     x = [vec(2*x[1] - x[pad_length+1:-1:2]) , x, vec(2 * x[end] - x[end-1:-1:end-pad_length])]
 
-    x = flipud(filt!(x, b, a, x, zi*x[1]))
-    x = flipud(filt!(x, b, a, x, zi*x[1]))
+    reverse!(filt!(x, b, a, x, zi*x[1]))
+    reverse!(filt!(x, b, a, x, zi*x[1]))
 
     # Return to original size by removing padded length
     x[pad_length+1: end-pad_length]
@@ -65,8 +65,6 @@ function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(Abst
     # (I - A)*si = B
     scale_factor \ (eye(size(A)[1]) - A) \ B
  end
-
-
 
 
 end
