@@ -146,3 +146,22 @@ expected = [
 @test_approx_eq power(periodogram(data; window=hamming, nfft=32)) expected
 @test_approx_eq power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) expected
 @test_approx_eq power(spectrogram(data, length(data), 0; window=hamming, nfft=32)) expected
+
+# Test fftshift
+p = periodogram(data)
+@test power(p) == power(fftshift(p))
+@test_approx_eq freq(p) freq(fftshift(p))
+
+p = periodogram(data; onesided=false)
+@test fftshift(power(p)) == power(fftshift(p))
+@test fftshift(freq(p)) == freq(fftshift(p))
+
+data = 1:100
+
+p = spectrogram(data)
+@test power(p) == power(fftshift(p))
+@test_approx_eq freq(p) freq(fftshift(p))
+
+p = spectrogram(data; onesided=false)
+@test fftshift(power(p), 1) == power(fftshift(p))
+@test fftshift(freq(p)) == freq(fftshift(p))
