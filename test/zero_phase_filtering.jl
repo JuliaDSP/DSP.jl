@@ -53,7 +53,7 @@ a = [0.9, 0.6]
 b = [0.4, 1]
 z = [0.4750]
 x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-DSP.ZeroPhaseFiltering.filt!(b, a, vec(x), z)
+DSP.ZeroPhaseFiltering.filt!(vec(x), b, a, vec(x), z)
 
 @test_approx_eq matlab_filt x
 

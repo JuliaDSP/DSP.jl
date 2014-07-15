@@ -6,8 +6,9 @@ include("periodograms.jl")
 include("fftfilt.jl")
 include("filter_design.jl")
 include("filter_response.jl")
+include("backwards_compatability.jl")
 include("zero_phase_filtering.jl")
 
 using Reexport
-@reexport using .Windows, .Periodograms, .FFTFilt, .FilterDesign, .Util, .FilterResponse, .ZeroPhaseFiltering
+@reexport using .Windows, .Periodograms, .FFTFilt, .FilterDesign, .Util, .FilterResponse, .ZeroPhaseFiltering, .BackwardsCompatability
 end
