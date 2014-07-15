@@ -39,7 +39,26 @@ a = [1, 0.33, 0.22]
 
 ##############
 #
-# Filter check (with initial conditions)
+# Filter initial conditions
+# Python - non 1 first coeffecient
+#
+# b = array([ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922])
+# a = array([ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567])
+# zi = lfilter_zi(b, a)
+#
+##############
+
+zi_python = [0.55996501, -0.72343165,  0.68312446, -0.2220676 ,  0.04030775]
+
+b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
+a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
+
+@test_approx_eq_eps zi_python DSP.ZeroPhaseFiltering.filt_stepstate(b, a) 1e-7
+
+
+##############
+#
+# Filter in place check (with initial conditions)
 #
 # x = '/Users/rluke/.julia/v0.3/DSP/test/data/spectrogram_x.txt';
 # filtcheck  = filter([0.4, 1], [0.9, 0.6], x, 0.4750)
@@ -79,21 +98,18 @@ x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
 @test_approx_eq x2_matlab filtfilt(b, a, vec(x))
 
 
-
 ##############
 #
-# Filter initial conditions
-# Python - non 1 first coeffecient
-#
-# b = array([ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922])
-# a = array([ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567])
-# zi = lfilter_zi(b, a)
+# Profile the code to see where improvements could be made
 #
 ##############
 
-zi_python = [0.55996501, -0.72343165,  0.68312446, -0.2220676 ,  0.04030775]
+#=@time (for i in 1:10000; filtfilt(b, a, vec(x)); end)=#
 
-b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
-a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
+#=@profile (for i in 1:10000; filtfilt(b, a, vec(x)); end)=#
 
-@test_approx_eq_eps zi_python DSP.ZeroPhaseFiltering.filt_stepstate(b, a) 1e-7
+#=println()=#
+#=println()=#
+#=Profile.print(format=:flat)=#
+#=println()=#
+
