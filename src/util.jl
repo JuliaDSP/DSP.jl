@@ -61,22 +61,6 @@ Base.size(x::Frequencies) = (x.n,)
 Base.similar(x::Frequencies, T::Type, args...) = Array(T, args...)
 Base.step(x::Frequencies) = x.multiplier
 
-# Remove once we no longer support Julia 0.2
-if VERSION < v"0.3.0-"
-    for (T1, T2) in ((:Frequencies, :Frequencies),
-                     (:Frequencies, :AbstractVector),
-                     (:(BitArray{1}), :Frequencies),
-                     (:AbstractVector, :Frequencies)),
-              op in (:(Base.(:(-))), :(Base.(:(+))))
-        @eval begin
-            function $op(x::$T1, y::$T2)
-                length(x) == length(y) || error("dimensions must match")
-                [$op(x[i], y[i]) for i = 1:length(x)]
-            end
-        end
-    end
-end
-
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
 Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
