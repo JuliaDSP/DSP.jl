@@ -79,7 +79,7 @@ DSP.ZeroPhaseFiltering.filt!(vec(x), b, a, vec(x), z)
 
 #######################################
 #
-# Test filtfilt against matlab results
+# Test 1d filtfilt against matlab results
 #
 # x = '/Users/rluke/.julia/v0.3/DSP/test/data/spectrogram_x.txt'; x = textread(x);
 # b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922];
@@ -95,12 +95,44 @@ b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.0032792
 a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
 
-@test_approx_eq x2_matlab filtfilt(b, a, vec(x))
+@test_approx_eq x2_matlab filtfilt(b, a, x)
+
+
+#######################################
+#
+# Test 2d filtfilt against matlab results
+#
+
+#=x = '/Users/rluke/.julia/v0.3/DSP/test/data/spectrogram_x.txt'; x = textread(x);=#
+
+#=x = repmat(x, 1, 3);=#
+#=x(:,2) = circshift(x(:,2), 64);=#
+#=x(:,3) = circshift(x(:,3), 128);=#
+
+#=b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922];=#
+#=a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567];=#
+#=x2 = filtfilt(b, a, x);=#
+#=dlmwrite('filtfilt_output_2d.txt',[x2], 'delimiter', '\t', 'precision', '%.12f')=#
+
+#
+#######################################
+
+x2_matlab = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d.txt"),'\t')
+
+b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
+a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
+
+x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
+x = repmat(x, 1, 3)
+x[:,2] = circshift(x[:,2], 64)
+x[:,3] = circshift(x[:,3], 128)
+
+@test_approx_eq x2_matlab filtfilt(b, a, x)
 
 
 ##############
 #
-# Profile the code to see where improvements could be made
+# Profile code
 #
 ##############
 
