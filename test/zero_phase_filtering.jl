@@ -127,21 +127,22 @@ x  = repmat(x, 1, 3)
 x[:,2] = circshift(x[:,2], 64)
 x[:,3] = circshift(x[:,3], 128)
 
-@test_approx_eq x2_output[:,1] filtfilt(b, a, x[:,1])
+@test_approx_eq x2_output filtfilt(b, a, x)
 
 
-##############
+#######################################
 #
-# Profile code
+# Test 2d filtfilt with filter type
 #
-##############
+#
+#######################################
 
-#=@time (for i in 1:10000; filtfilt(b, a, vec(x)); end)=#
+b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
+a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-#=@profile (for i in 1:10000; filtfilt(b, a, vec(x)); end)=#
+f = TFFilter(b, a)
 
-#=println()=#
-#=println()=#
-#=Profile.print(format=:flat)=#
-#=println()=#
+# Use 2d data from last test
+@test_approx_eq x2_output filtfilt(f, x)
+
 

@@ -4,6 +4,8 @@
 
 module ZeroPhaseFiltering
 
+using ..FilterDesign
+
 export filtfilt
 
 ##############
@@ -19,17 +21,20 @@ function filtfilt{T}(b::AbstractVector, a::AbstractVector, x::AbstractArray{T})
 
     pad_length = 3 * (max(length(a), length(b)) - 1)
 
-    x = vcat(repmat(2 * x[1,:],   pad_length, 1) .- x[pad_length+1:-1:2,:],
+    x = vcat((2 * x[1,:]) .- x[pad_length+1:-1:2,:],
              x,
-             repmat(2 * x[end,:], pad_length, 1) .- x[end-1:-1:end-pad_length,:])
+             (2 * x[end,:]) .- x[end-1:-1:end-pad_length,:])
 
-    x = flipud(filt!(x, b, a, x, zi*x[1]))
-    x = flipud(filt!(x, b, a, x, zi*x[1]))
+    x = flipud(filt!(x, b, a, x, zi*x[1,:]))
+    x = flipud(filt!(x, b, a, x, zi*x[1,:]))
 
     # Return to original size by removing padded length
     x[pad_length+1: end-pad_length,:]
 end
 
+# Support for filter types
+filtfilt(f::Filter, x) = filtfilt(convert(TFFilter, f), x)
+filtfilt(f::TFFilter, x) = filtfilt(coeffs(f.b), coeffs(f.a), x)
 
 
 ##############
