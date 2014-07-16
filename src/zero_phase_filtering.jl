@@ -42,8 +42,6 @@ filtfilt(f::TFFilter, x) = filtfilt(coeffs(f.b), coeffs(f.a), x)
 # Determine initial state from Matt Bauman
 # https://github.com/mbauman
 #
-# This will be removed when added to base
-#
 ##############
 
 # Compute an initial state for filt with coefficients (b,a) such that its
