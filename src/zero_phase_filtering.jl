@@ -4,10 +4,7 @@
 
 module ZeroPhaseFiltering
 
-using ..BackwardsCompatability
-
 export filtfilt
-
 
 ##############
 #
@@ -16,20 +13,23 @@ export filtfilt
 ##############
 
 # zero phase digital filtering by processing data in forward and reverse direction
-function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractVector)
+function filtfilt{T}(b::AbstractVector, a::AbstractVector, x::AbstractArray{T})
 
     zi = filt_stepstate(b, a)
 
     pad_length = 3 * (max(length(a), length(b)) - 1)
 
-    x = [vec(2*x[1] - x[pad_length+1:-1:2]) , x, vec(2 * x[end] - x[end-1:-1:end-pad_length])]
+    x = vcat(repmat(2 * x[1,:],   pad_length, 1) .- x[pad_length+1:-1:2,:],
+             x,
+             repmat(2 * x[end,:], pad_length, 1) .- x[end-1:-1:end-pad_length,:])
 
-    reverse!(filt!(x, b, a, x, zi*x[1]))
-    reverse!(filt!(x, b, a, x, zi*x[1]))
+    x = flipud(filt!(x, b, a, x, zi*x[1]))
+    x = flipud(filt!(x, b, a, x, zi*x[1]))
 
     # Return to original size by removing padded length
-    x[pad_length+1: end-pad_length]
+    x[pad_length+1: end-pad_length,:]
 end
+
 
 
 ##############

@@ -117,17 +117,17 @@ x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
 #
 #######################################
 
-x2_matlab = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d.txt"),'\t')
-
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
+x2_output = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d.txt"),'\t')
+
 x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-x = repmat(x, 1, 3)
+x  = repmat(x, 1, 3)
 x[:,2] = circshift(x[:,2], 64)
 x[:,3] = circshift(x[:,3], 128)
 
-@test_approx_eq x2_matlab filtfilt(b, a, x)
+@test_approx_eq x2_output[:,1] filtfilt(b, a, x[:,1])
 
 
 ##############
