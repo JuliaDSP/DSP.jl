@@ -1,6 +1,9 @@
 # Zero phase digital filtering for Julia
-# Created by Robert Luke (Robert.Luke@med.kuleuven.be)
-# Initial state code by Matt Bauman https://github.com/mbauman
+#
+# Contributors:
+#     Robert Luke (Robert.Luke@med.kuleuven.be)
+#     Matt Bauman (mbauman@gmail.com)
+#     Simon Kornblith (simon@simonster.com)
 
 module ZeroPhaseFiltering
 
@@ -14,22 +17,49 @@ export filtfilt
 #
 ##############
 
-# zero phase digital filtering by processing data in forward and reverse direction
+# Extrapolate the beginning of a signal for use by filtfilt. This
+# computes:
+#
+# [(2 * x[1]) .- x[pad_length+1:-1:2],
+#  x,
+#  (2 * x[end]) .- x[end-1:-1:end-pad_length]]
+#
+# in place in output. The istart and n parameters determine the portion
+# of the input signal x to extrapolate.
+function extrapolate_signal!(out, sig, istart, n, pad_length)
+    length(out) == n+2*pad_length || error("output is incorrectly sized")
+    x = 2*sig[istart]
+    for i = 1:pad_length
+        out[i] = x - sig[istart+pad_length+1-i]
+    end
+    copy!(out, pad_length+1, sig, istart, n)
+    x = 2*sig[istart+n-1]
+    for i = 1:pad_length
+        out[n+pad_length+i] = x - sig[istart+n-1-i]
+    end
+    out
+end
+
+# Zero phase digital filtering by processing data in forward and reverse direction
 function filtfilt{T}(b::AbstractVector, a::AbstractVector, x::AbstractArray{T})
-
     zi = filt_stepstate(b, a)
-
+    zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
+    extrapolated = Array(T, size(x, 1)+pad_length*2)
+    out = similar(x)
 
-    x = vcat((2 * x[1,:]) .- x[pad_length+1:-1:2,:],
-             x,
-             (2 * x[end,:]) .- x[end-1:-1:end-pad_length,:])
+    istart = 1
+    for i = 1:size(x, 2)
+        extrapolate_signal!(extrapolated, x, istart, size(x, 1), pad_length)
+        reverse!(filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        for j = 1:size(x, 1)
+            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
+        end
+        istart += size(x, 1)
+    end
 
-    x = flipud(filt!(x, b, a, x, zi*x[1,:]))
-    x = flipud(filt!(x, b, a, x, zi*x[1,:]))
-
-    # Return to original size by removing padded length
-    x[pad_length+1: end-pad_length,:]
+    out
 end
 
 # Support for filter types
