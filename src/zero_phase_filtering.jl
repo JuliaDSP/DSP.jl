@@ -6,16 +6,10 @@
 #     Simon Kornblith (simon@simonster.com)
 
 module ZeroPhaseFiltering
-
 using ..FilterDesign
-
 export filtfilt
 
-##############
-#
-# filtfilt
-#
-##############
+## filtfilt
 
 # Extrapolate the beginning of a signal for use by filtfilt. This
 # computes:
@@ -62,42 +56,93 @@ function filtfilt{T}(b::AbstractVector, a::AbstractVector, x::AbstractArray{T})
     out
 end
 
-# Support for filter types
+# Extract si for a biquad, multiplied by a scaling factor
+function biquad_si!(zitmp, zi, i, scal)
+    zitmp[1] = zi[1, i]*scal
+    zitmp[2] = zi[2, i]*scal
+    zitmp
+end
+
+# Zero phase digital filtering for second order sections
+function filtfilt{T}(f::SOSFilter, x::AbstractArray{T})
+    zi = filt_stepstate(f)
+    zi2 = zeros(2)
+    zitmp = zeros(2)
+    pad_length = 3*size(zi, 1)
+    extrapolated = Array(T, size(x, 1)+pad_length*2)
+    out = similar(x)
+
+    istart = 1
+    for i = 1:size(x, 2)
+        # First biquad
+        extrapolate_signal!(extrapolated, x, istart, size(x, 1), pad_length)
+        f2 = f.biquads[1]*f.g
+        reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
+        reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
+
+        # Subsequent biquads
+        for j = 2:length(f.biquads)
+            f2 = f.biquads[j]
+            extrapolate_signal!(extrapolated, extrapolated, pad_length+1, size(x, 1), pad_length)
+            reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
+            reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
+        end
+
+        # Copy to output
+        copy!(out, istart, extrapolated, pad_length+1, size(x, 1))
+        istart += size(x, 1)
+    end
+
+    out
+end
+
+# Support for other filter types
 filtfilt(f::Filter, x) = filtfilt(convert(TFFilter, f), x)
-filtfilt(f::TFFilter, x) = filtfilt(coeffs(f.b), coeffs(f.a), x)
+filtfilt(f::TFFilter, x) = filtfilt(coefb(f), coefa(f), x)
 
-
-##############
-#
-# Determine initial state from Matt Bauman
-# https://github.com/mbauman
-#
-##############
+## Initial filter state
 
 # Compute an initial state for filt with coefficients (b,a) such that its
 # response to a step function is steady state.
 function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(AbstractVector{T}, T))
-
     scale_factor = a[1]
     if scale_factor != 1.0
         a = a ./ scale_factor
         b = b ./ scale_factor
     end
 
-    sz = length(a)
-    sz == length(b) || error("a and b must be the same length")
+    bs = length(b)
+    as = length(a)
+    sz = max(bs, as)
     sz > 0 || error("a and b must have at least one element each")
-    a[1] == 1 || error("a and b must be normalized such that a[1] == 1")
-
     sz == 1 && return T[]
+
+    # Pad the coefficients with zeros if needed
+    bs<sz && (b = copy!(zeros(eltype(b), sz), b))
+    as<sz && (a = copy!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
     A = [-a[2:end] [eye(T, sz-2); zeros(T, 1, sz-2)]]
     B = b[2:end] - a[2:end] * b[1]
     # Solve si = A*si + B
     # (I - A)*si = B
-    scale_factor \ (eye(size(A)[1]) - A) \ B
+    scale_factor \ (I - A) \ B
  end
 
+function filt_stepstate{T}(f::SOSFilter{T})
+    biquads = f.biquads
+    si = Array(T, 2, length(biquads))
+    for i = 1:length(biquads)
+        biquad = biquads[i]
+        A = [one(T)+biquad.a1 -one(T)
+                   +biquad.a2  one(T)]
+        B = [biquad.b1 - biquad.a1*biquad.b0,
+             biquad.b2 - biquad.a2*biquad.b0]
+        si[:, i] = A \ B
+    end
+    si[1, 1] *= f.g
+    si[2, 1] *= f.g
+    si
+end
 
 end

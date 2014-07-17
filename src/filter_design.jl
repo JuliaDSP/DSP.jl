@@ -42,15 +42,8 @@ module FilterDesign
 using Polynomials
 
 export ZPKFilter, TFFilter, BiquadFilter, SOSFilter, Butterworth, Lowpass, Highpass, Bandpass,
-       Bandstop, analogfilter, digitalfilter, Filter, coeffs
-import Base: convert, filt
-
-#
-# Utility functions
-#
-
-# Get coefficients of a polynomial
-coeffs{T}(p::Poly{T}) = reverse(p.a)
+       Bandstop, analogfilter, digitalfilter, Filter, coefb, coefa
+import Base: convert
 
 #
 # Filter types
@@ -58,32 +51,34 @@ coeffs{T}(p::Poly{T}) = reverse(p.a)
 
 abstract Filter
 
-# Filter in zero-pole-gain form
+#
+# Zero-pole gain form
+#
 immutable ZPKFilter{Z,P,K} <: Filter
     z::Vector{Z}
     p::Vector{P}
     k::K
 end
 
-# Filter in transfer function (numerator and denominator) form
-immutable TFFilter{T} <: Filter
+#
+# Transfer function form
+#
+immutable TFFilter{T<:Number} <: Filter
     b::Poly{T}
     a::Poly{T}
 
-    function TFFilter(b::Poly{T}, a::Poly{T})
-        new(b/a[end], a/a[end])
-    end
+    TFFilter(b::Poly, a::Poly) =
+        new(convert(Poly{T}, b/a[end]), convert(Poly{T}, a/a[end]))
 end
-TFFilter{T}(b::Poly{T}, a::Poly{T}) = TFFilter{T}(b, a)
+TFFilter{T<:Number}(b::Poly{T}, a::Poly{T}) = TFFilter{T}(b, a)
 
 # The DSP convention is lowest power first. The Polynomials.jl
 # convention is highest power first.
-TFFilter{T}(b::Vector{T}, a::Vector{T}) =
-    TFFilter{T}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
-
-function TFFilter{T,S}(b::Vector{T}, a::Vector{S})
-    V = promote_type(T, S)
-    TFFilter(convert(Vector{V}, b), convert(Vector{V}, a))
+function TFFilter{T<:Number,S<:Number}(b::Union(T,Vector{T}), a::Union(S,Vector{S}))
+    if findfirst(b) == 0 || findfirst(a) == 0
+        error("filter must have non-zero numerator and denominator")
+    end
+    TFFilter{promote_type(T,S)}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
 end
 
 function convert(::Type{TFFilter}, f::ZPKFilter)
@@ -99,6 +94,9 @@ function convert{T}(::Type{ZPKFilter}, f::TFFilter{T})
     p = convert(Vector{Complex{T}}, roots(f.a))
     ZPKFilter(z, p, k)
 end
+
+coefb(f::TFFilter) = reverse(f.b.a)
+coefa(f::TFFilter) = reverse(f.a.a)
 
 #
 # Biquad filter in transfer function form
@@ -153,8 +151,10 @@ function convert{T}(::Type{BiquadFilter}, f::TFFilter{T})
     end
 end
 
+*(f::BiquadFilter, g::Number) = BiquadFilter(f.b0*g, f.b1*g, f.b2*g, f.a1, f.a2)
+
 #
-# Filtering as second-order sections
+# Second-order sections (array of biquads)
 #
 
 immutable SOSFilter{T,G} <: Filter
@@ -248,25 +248,106 @@ end
 
 convert(::Type{SOSFilter}, f::Filter) = convert(SOSFilter, convert(ZPKFilter, f))
 
-filt(f::Filter, x) = filt(convert(TFFilter, f), x)
-filt(f::TFFilter, x) = filt(coeffs(f.b), coeffs(f.a), x)
+#
+# Filtering
+#
 
-function filt(f::SOSFilter, x::AbstractVector)
-    y = copy(x)
+## TFFilter
+_zerosi{T,S}(f::TFFilter{T}, x::AbstractArray{S}) =
+    zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
+
+Base.filt!{T,S}(out, f::TFFilter{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+    filt!(out, coefb(f), coefa(f), x, si)
+Base.filt(f::TFFilter, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+
+## SOSFilter
+_zerosi{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S}) =
+    zeros(promote_type(T, G, S), 2, length(f.biquads))
+
+function Base.filt!{S,N}(out::AbstractArray, f::SOSFilter, x::AbstractArray,
+                         si::AbstractArray{S,N}=_zerosi(f, x))
     biquads = f.biquads
-    si = zeros(2, length(biquads))
+    ncols = Base.trailingsize(x, 2)
 
-    @inbounds begin
-        for i = 1:size(x, 1), fi = 1:length(biquads)
-            biquad = biquads[fi]
-            yp = y[i]
-            y[i] = si[1, fi] + biquad.b0*yp
-            si[1, fi] = si[2, fi] + biquad.b1*yp - biquad.a1*y[i]
-            si[2, fi] = biquad.b2*yp - biquad.a2*y[i]
+    size(x) != size(out) && error("out size must match x")
+    (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && Base.trailingsize(si, 3) != ncols)) &&
+        error("si must be 2 x nbiquads or 2 x nbiquads x nsignals")
+
+    initial_si = si
+    for col = 1:ncols
+        si = initial_si[:, :, N > 2 ? col : 1]
+        @inbounds for i = 1:size(x, 1)
+            yi = x[i, col]
+            for fi = 1:length(biquads)
+                biquad = biquads[fi]
+                xi = yi
+                yi = si[1, fi] + biquad.b0*xi
+                si[1, fi] = si[2, fi] + biquad.b1*xi - biquad.a1*yi
+                si[2, fi] = biquad.b2*xi - biquad.a2*yi
+            end
+            out[i, col] = yi*f.g
         end
     end
-    scale!(y, f.g)
+    out
 end
+
+Base.filt{T,G,S<:Number}(f::SOSFilter{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+    filt!(Array(promote_type(T, G, S), size(x)), f, x, si)
+
+## BiquadFilter
+_zerosi{T,S}(f::BiquadFilter{T}, x::AbstractArray{S}) =
+    zeros(promote_type(T, S), 2)
+
+function Base.filt!{S,N}(out::AbstractArray, f::BiquadFilter, x::AbstractArray,
+                         si::AbstractArray{S,N}=_zerosi(f, x))
+    ncols = Base.trailingsize(x, 2)
+
+    size(x) != size(out) && error("out size must match x")
+    (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
+        error("si must have two rows and 1 or nsignals columns")
+
+    initial_si = si
+    for col = 1:ncols
+        si1 = initial_si[1, N > 1 ? col : 1]
+        si2 = initial_si[2, N > 1 ? col : 1]
+        @inbounds for i = 1:size(x, 1)
+            xi = x[i, col]
+            yi = si1 + f.b0*xi
+            si1 = si2 + f.b1*xi - f.a1*yi
+            si2 = f.b2*xi - f.a2*yi
+            out[i, col] = yi
+        end
+    end
+    out
+end
+
+Base.filt{T,S<:Number}(f::BiquadFilter{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+    filt!(Array(promote_type(T, S), size(x)), f, x, si)
+
+## For arbitrary filters, convert to SOSFilter
+Base.filt(f::Filter, x) = filt(convert(SOSFilter, f), x)
+
+#
+# Butterworth prototype
+#
+
+function Butterworth(N::Integer)
+    poles = zeros(Complex128, N)
+    for i = 1:div(N, 2)
+        w = (2*i-1)/2N
+        pole = complex(-sinpi(w), cospi(w))
+        poles[i*2-1] = pole
+        poles[i*2] = conj(pole)
+    end
+    if isodd(N)
+        poles[end] = -1.0+0.0im
+    end
+    ZPKFilter(Float64[], poles, 1)
+end
+
+#
+# Prototype transformations
+#
 
 abstract FilterType
 
@@ -286,20 +367,6 @@ end
 immutable Bandstop{T} <: FilterType
     w1::T
     w2::T
-end
-
-function Butterworth(N::Integer)
-    poles = zeros(Complex128, N)
-    for i = 1:div(N, 2)
-        w = (2*i-1)/2N
-        pole = complex(-sinpi(w), cospi(w))
-        poles[i*2-1] = pole
-        poles[i*2] = conj(pole)
-    end
-    if isodd(N)
-        poles[end] = -1.0+0.0im
-    end
-    ZPKFilter(Float64[], poles, 1)
 end
 
 # Create a lowpass filter from a lowpass filter prototype
@@ -422,7 +489,7 @@ function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
         den *= (2 * fs - f.p[i])
     end
 
-    ZPKFilter(z, p, f.k * real(num)/real(den))
+    ZPKFilter(z, p, f.k * real(num/den))
 end
 
 # Pre-warp filter frequencies for digital filtering
