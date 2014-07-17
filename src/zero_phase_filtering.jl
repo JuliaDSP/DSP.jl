@@ -35,12 +35,13 @@ function extrapolate_signal!(out, sig, istart, n, pad_length)
 end
 
 # Zero phase digital filtering by processing data in forward and reverse direction
-function filtfilt{T}(b::AbstractVector, a::AbstractVector, x::AbstractArray{T})
+function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zi = filt_stepstate(b, a)
     zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
-    extrapolated = Array(T, size(x, 1)+pad_length*2)
-    out = similar(x)
+    t = Base.promote_eltype(b, a, x)
+    extrapolated = Array(t, size(x, 1)+pad_length*2)
+    out = similar(x, t)
 
     istart = 1
     for i = 1:size(x, 2)
@@ -64,13 +65,14 @@ function biquad_si!(zitmp, zi, i, scal)
 end
 
 # Zero phase digital filtering for second order sections
-function filtfilt{T}(f::SOSFilter, x::AbstractArray{T})
+function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
     zi = filt_stepstate(f)
     zi2 = zeros(2)
     zitmp = zeros(2)
     pad_length = 3*size(zi, 1)
-    extrapolated = Array(T, size(x, 1)+pad_length*2)
-    out = similar(x)
+    t = Base.promote_type(T, G, S)
+    extrapolated = Array(t, size(x, 1)+pad_length*2)
+    out = similar(x, t)
 
     istart = 1
     for i = 1:size(x, 2)
