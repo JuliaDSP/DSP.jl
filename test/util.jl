@@ -71,6 +71,9 @@ h2 = hilbert([ones(10), zeros(9)])
 r = int(rand(128)*20)
 @test hilbert(r) == hilbert(float64(r))
 
+# Test hilbert with 2D input
+@test_approx_eq h hilbert(a)
+
 ## FFTFREQ
 
 @test_approx_eq fftfreq(1) [0.]

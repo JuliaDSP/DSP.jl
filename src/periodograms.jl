@@ -114,21 +114,6 @@ function compute_window(window::AbstractVector, n::Int)
     (window, sumabs2(window))
 end
 
-# Get the input element type of FFT for a given type
-fftintype{T<:Base.FFTW.fftwNumber}(::Type{T}) = T
-fftintype{T<:Real}(::Type{T}) = Float64
-fftintype{T<:Complex}(::Type{T}) = Complex128
-
-# Get the return element type of FFT for a given type
-fftouttype{T<:Base.FFTW.fftwComplex}(::Type{T}) = T
-fftouttype{T<:Base.FFTW.fftwReal}(::Type{T}) = Complex{T}
-fftouttype{T<:Union(Real,Complex)}(::Type{T}) = Complex128
-
-# Get the real part of the return element type of FFT for a given type
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{Complex{T}}) = T
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{T}) = T
-fftabs2type{T<:Union(Real,Complex)}(::Type{T}) = Float64
-
 ## PERIODOGRAMS
 abstract TFR{T}
 immutable Periodogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
