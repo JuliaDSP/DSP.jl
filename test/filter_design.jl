@@ -1,6 +1,5 @@
 using DSP, Base.Test, Polynomials
 import Base.Sort.Lexicographic
-import DSP.FilterDesign: coeffs
 
 function lt(a, b)
     if abs(real(a) - real(b)) > 1e-10
@@ -11,8 +10,8 @@ function lt(a, b)
 end
 
 function tffilter_eq(f1, f2)
-    b1, a1 = (coeffs(f1.b), coeffs(f1.a))
-    b2, a2 = (coeffs(f2.b), coeffs(f2.a))
+    b1, a1 = (coefb(f1), coefa(f1))
+    b2, a2 = (coefb(f2), coefa(f2))
     @test_approx_eq float64(b1) float64(b2)
     @test_approx_eq float64(a1) float64(a2)
 end
@@ -30,9 +29,9 @@ function zpkfilter_eq(f1, f2, eps)
 end
 
 function tffilter_accuracy(f1, f2, accurate_f)
-    b1, a1 = (coeffs(f1.b), coeffs(f1.a))
-    b2, a2 = (coeffs(f2.b), coeffs(f2.a))
-    accurate_b, accurate_a = (coeffs(accurate_f.b), coeffs(accurate_f.a))
+    b1, a1 = (coefb(f1), coefa(f1))
+    b2, a2 = (coefb(f2), coefa(f2))
+    accurate_b, accurate_a = (coefb(accurate_f), coefa(accurate_f))
     @test sum(abs(b1 - accurate_b)) <= sum(abs(b2 - accurate_b))
     @test sum(abs(a1 - accurate_a)) <= sum(abs(a2 - accurate_a))
 end
@@ -67,13 +66,13 @@ accurate_f = ZPKFilter(BigFloat[], accurate_prototype, BigFloat(1))
 m_a = [1,12.74549484318237,81.22381939879423,343.6513712403923,1081.352361133001,2687.409807920676,5468.931438945091,9326.061201886809,13528.36656744904,16852.27707949905,18122.54155403868,16852.27707949905,13528.36656744904,9326.061201886809,5468.931438945092,2687.409807920676,1081.352361133001,343.6513712403923,81.22381939879423,12.74549484318237,1]
 
 f = convert(TFFilter, Butterworth(20))
-@test_approx_eq coeffs(f.b) [1]
-@test_approx_eq coeffs(f.a) m_a
+@test_approx_eq coefb(f) [1]
+@test_approx_eq coefa(f) m_a
 
 # Test that our answers are more accurate than MATLAB's
-accurate_a = coeffs(convert(TFFilter, accurate_f).a)
-@test_approx_eq coeffs(f.a) float64(accurate_a)
-@test sum(abs(coeffs(f.a) - accurate_a)) <= sum(abs(m_a - accurate_a))
+accurate_a = coefa(convert(TFFilter, accurate_f))
+@test_approx_eq coefa(f) float64(accurate_a)
+@test sum(abs(coefa(f) - accurate_a)) <= sum(abs(m_a - accurate_a))
 
 #
 # Conversion between tf and zpk
@@ -207,7 +206,12 @@ for ftype in (Lowpass(0.5), Highpass(0.5), Bandpass(0.25, 0.75), Bandstop(0.25, 
         f1 = digitalfilter(ftype, Butterworth(order))
         f2 = digitalfilter(ftype, convert(SOSFilter, Butterworth(order)))
         @assert isa(f2, SOSFilter)
+
+        # Test out-of-place filtering
         @test_approx_eq filt(f1, x) filt(f2, x)
+        # Test in-place filtering
+        y = copy(x)
+        @test_approx_eq filt(f1, x) filt!(y, f2, y)
     end
 end
 
