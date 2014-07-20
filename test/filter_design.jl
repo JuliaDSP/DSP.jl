@@ -136,7 +136,7 @@ tffilter_eq(f, m_f)
 # Test that our answers are more accurate than MATLAB's
 x = [BigFloat(2*i-1) for i = 1:10]/(2*10)
 accurate_prototype = sort(complex(-sinpi(x), cospi(x)), lt=lt)
-accurate_f10 = DSP.FilterDesign.ZPKFilter(BigFloat[], accurate_prototype, BigFloat(1))
+accurate_f10 = ZPKFilter(BigFloat[], accurate_prototype, BigFloat(1))
 accurate_ft = analogfilter(Bandpass(0.25, 0.75), accurate_f10)
 tffilter_eq(f, accurate_ft)
 tffilter_accuracy(f, m_f, accurate_ft)

@@ -16,7 +16,7 @@ zi_python = [ 0.99672078, -1.49409147,  1.28412268, -0.45244173,  0.07559489]
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-@test_approx_eq_eps zi_python DSP.ZeroPhaseFiltering.filt_stepstate(b, a) 1e-7
+@test_approx_eq_eps zi_python DSP.Filters.filt_stepstate(b, a) 1e-7
 
 
 ##############
@@ -34,7 +34,7 @@ zi_matlab = [0.6580, 0.5184]
 b = [0.222, 0.43, 0.712]
 a = [1, 0.33, 0.22]
 
-@test_approx_eq zi_matlab DSP.ZeroPhaseFiltering.filt_stepstate(b, a)
+@test_approx_eq zi_matlab DSP.Filters.filt_stepstate(b, a)
 
 
 ##############
@@ -53,7 +53,7 @@ zi_python = [0.55996501, -0.72343165,  0.68312446, -0.2220676 ,  0.04030775]
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-@test_approx_eq_eps zi_python DSP.ZeroPhaseFiltering.filt_stepstate(b, a) 1e-7
+@test_approx_eq_eps zi_python DSP.Filters.filt_stepstate(b, a) 1e-7
 
 
 ##############
@@ -83,7 +83,7 @@ sosfilter = SOSFilter([BiquadFilter{Float64}(sos[i, 1], sos[i, 2], sos[i, 3], so
 zi_matlab = [0.003947378671810  14.451932524765136  11.374248987589889
              0  -4.492339385234015  -7.570022922409273];
 
-@test_approx_eq zi_matlab DSP.ZeroPhaseFiltering.filt_stepstate(sosfilter)
+@test_approx_eq zi_matlab DSP.Filters.filt_stepstate(sosfilter)
 
 
 ##############
@@ -102,7 +102,7 @@ a = [0.9, 0.6]
 b = [0.4, 1]
 z = [0.4750]
 x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-DSP.ZeroPhaseFiltering.filt!(vec(x), b, a, vec(x), z)
+DSP.Filters.filt!(vec(x), b, a, vec(x), z)
 
 @test_approx_eq matlab_filt x
 
