@@ -8,8 +8,8 @@ include("filt.jl")
 export filtfilt, fftfilt, firfilt
 
 include("design.jl")
-export FilterType, Butterworth, Lowpass, Highpass, Bandpass, Bandstop,
-       analogfilter, digitalfilter
+export FilterType, Butterworth, Chebyshev1, Chebyshev2, Lowpass,
+	   Highpass, Bandpass, Bandstop, analogfilter, digitalfilter
 
 include("response.jl")    
 export freqs, freqz

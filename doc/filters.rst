@@ -109,6 +109,16 @@ Filter families
 
     ``n`` pole Butterworth filter.
 
+.. function:: Chebyshev1(n, ripple)
+
+    ``n`` pole Chebyshev type I filter with ``ripple`` dB ripple in
+    the passband.
+
+.. function:: Chebyshev2(n, ripple)
+
+    ``n`` pole Chebyshev type II filter with ``ripple`` dB ripple in
+    the stopband.
+
 Filter response
 -----------------------
 

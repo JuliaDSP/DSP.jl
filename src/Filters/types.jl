@@ -137,26 +137,16 @@ end
 Base.convert(to::Union(Type{TFFilter}, Type{BiquadFilter}), f::SOSFilter) =
     convert(to, convert(ZPKFilter, f))
 
-# Lexicographic less than function
-# This is only necessary in Julia 0.2
-function lexlt(a::Complex, b::Complex)
-    if real(a) == real(b)
-        isless(imag(a), imag(b))
-    else
-        isless(real(a), real(b))
-    end
-end
-lexlt(a::Real, b::Real) = isless(a, b)
-
 # Convert a filter to second-order sections
 # The returned sections are in ZPK form
 function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     z = f.z
     p = f.p
-    n = max(length(z), length(p))
+    length(z) > length(p) && error("ZPKFilter must not have more zeros than poles")
+    n = length(p)
 
     # Sort poles lexicographically so that matched poles are adjacent
-    p = sort(p, lt=lexlt)
+    p = sort(p, order=Base.Order.Lexicographic)
 
     # Sort poles according to distance to unit circle (farthest first)
     p = sort!(p, by=x->abs(abs(x) - 1), rev=true)
@@ -170,25 +160,27 @@ function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     append!(complexp, realp)
     p = complexp
 
-    # Group each pole with a zero
-    zorder = zeros(Int, length(z))
+    # Group each pole with its closest zero
+    zorder = zeros(Int, length(z)) # map from zero indices -> pole indices
+    used = fill(false, length(p))  # whether poles have been mapped
     for i = 1:length(z)
-        closest_idx = 1
-        closest_val = Inf
+        closest_pole_idx = 1
+        closest_pole_val = Inf
         for j = 1:length(p)
-            zorder[j] == 0 || continue
-            val = abs(z[j] - p[i])
-            if val < closest_val
-                closest_idx = j
-                closest_val = val
+            !used[j] || continue
+            val = abs(z[i] - p[j])
+            if val < closest_pole_val
+                closest_pole_idx = j
+                closest_pole_val = val
             end
         end
-        zorder[closest_idx] = i
+        used[closest_pole_idx] = true
+        zorder[i] = closest_pole_idx
     end
 
     # Build second-order sections
     T = promote_type(realtype(Z), realtype(P))
-    biquads = Array(BiquadFilter{T}, div(n, 2)+isodd(n))
+    biquads = Array(BiquadFilter{T}, (n >> 1)+(n & 1))
     for i = 1:div(n, 2)
         biquads[i] = convert(BiquadFilter, ZPKFilter(z[2i-1 .<= zorder .<= 2i], p[2i-1:2i], one(T)))
     end

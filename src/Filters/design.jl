@@ -3,22 +3,80 @@
 abstract FilterType
 
 #
-# Butterworth prototype
+# Prototypes
 #
 
-function Butterworth(N::Integer)
-    poles = zeros(Complex128, N)
-    for i = 1:div(N, 2)
-        w = (2*i-1)/2N
+function Butterworth(T::Type, n::Integer)
+    poles = zeros(Complex{T}, n)
+    for i = 1:div(n, 2)
+        w = convert(T, 2i-1)/2n
         pole = complex(-sinpi(w), cospi(w))
-        poles[i*2-1] = pole
-        poles[i*2] = conj(pole)
+        poles[2i-1] = pole
+        poles[2i] = conj(pole)
     end
-    if isodd(N)
-        poles[end] = -1.0+0.0im
+    if isodd(n)
+        poles[end] = -1
     end
-    ZPKFilter(Float64[], poles, 1)
+    ZPKFilter(T[], poles, 1)
 end
+Butterworth(n::Integer) = Butterworth(Float64, n)
+
+function chebyshev_poles(T::Type, n::Integer, ε::Real)
+    p = zeros(Complex{T}, n)
+    μ = asinh(convert(T, 1)/ε)/n
+    b = -sinh(μ)
+    c = cosh(μ)
+    for i = 1:div(n, 2)
+        w = convert(T, 2i-1)/2n
+        pole = complex(b*sinpi(w), c*cospi(w))
+        p[2i-1] = pole
+        p[2i] = conj(pole)
+    end
+    if isodd(n)
+        w = convert(T, 2*div(n, 2)+1)/2n
+        pole = b*sinpi(w)
+        p[end] = pole
+    end
+    p
+end
+
+function Chebyshev1(T::Type, n::Integer, ripple::Real)
+    ε = sqrt(10^(convert(T, ripple)/10)-1)
+    p = chebyshev_poles(T, n, ε)
+    k = one(T)
+    for i = 1:div(n, 2)
+        k *= abs2(p[2i])
+    end
+    if iseven(n)
+        k /= sqrt(1+abs2(ε))
+    else
+        k *= real(-p[end])
+    end
+    ZPKFilter(Float64[], p, k)
+end
+Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
+
+function Chebyshev2(T::Type, n::Integer, ripple::Real)
+    ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
+    p = chebyshev_poles(T, n, ε)
+    for i = 1:length(p)
+        p[i] = inv(p[i])
+    end
+
+    z = zeros(Complex{T}, n-isodd(n))
+    k = one(T)
+    for i = 1:div(n, 2)
+        w = convert(T, 2i-1)/2n
+        ze = Complex(zero(T), -inv(cospi(w)))
+        z[2i-1] = ze
+        z[2i] = conj(ze)
+        k *= abs2(p[2i])/abs2(ze)
+    end
+    isodd(n) && (k *= -real(p[end]))
+
+    ZPKFilter(z, p, k)
+end
+Chebyshev2(n::Integer, ripple::Real) = Chebyshev2(Float64, n, ripple)
 
 #
 # Prototype transformations
