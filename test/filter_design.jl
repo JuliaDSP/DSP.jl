@@ -55,18 +55,26 @@ function tffilter_accuracy(f1, f2, accurate_f)
     accuracy_check(loss(a1, accurate_a), loss(a2, accurate_a), "a")
 end
 
-function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, test_approx_eq=true)
+function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
     z1, p1 = sort(f1.z, lt=lt), sort(f1.p, lt=lt)
     z2, p2 = sort(f2.z, lt=lt), sort(f2.p, lt=lt)
     accurate_z, accurate_p = sort(accurate_f.z, lt=lt), sort(accurate_f.p, lt=lt)
     if !isempty(z1) || !isempty(z2) || !isempty(accurate_z)
-        if test_approx_eq
+        if eps != nothing
+            @test_approx_eq_eps z1 accurate_z eps
+            @test_approx_eq_eps z2 accurate_z eps
+        else
             @test_approx_eq z1 accurate_z
             @test_approx_eq z2 accurate_z
         end
         accuracy_check(loss(z1, accurate_z), loss(z2, accurate_z), "z", relerr)
     end
-    if test_approx_eq
+    if eps != nothing
+        @test_approx_eq_eps p1 accurate_p eps
+        @test_approx_eq_eps p2 accurate_p eps
+        @test_approx_eq_eps f1.k accurate_f.k eps
+        @test_approx_eq_eps f2.k accurate_f.k eps
+    else
         @test_approx_eq p1 accurate_p
         @test_approx_eq p2 accurate_p
         @test_approx_eq f1.k accurate_f.k
@@ -86,12 +94,14 @@ matlab_butter = ZPKFilter([], matlab_p, 1)
 
 # Test that our answers are close to MATLAB's and at least as accurate
 butter = Butterworth(20)
+zpkfilter_eq(butter, matlab_butter)
 zpkfilter_accuracy(butter, matlab_butter, Butterworth(BigFloat, 20))
 
 # Poles of 19 pole Butterworth filter prototype from MATLAB 2013b (buttap(19))
 matlab_p = [-0.08257934547233227+0.9965844930066698im,-0.08257934547233227-0.9965844930066698im,-0.2454854871407991+0.9694002659393304im,-0.2454854871407991-0.9694002659393304im,-0.4016954246529694+0.9157733266550574im,-0.4016954246529694-0.9157733266550574im,-0.5469481581224267+0.8371664782625287im,-0.5469481581224267-0.8371664782625287im,-0.6772815716257409+0.7357239106731317im,-0.6772815716257409-0.7357239106731317im,-0.7891405093963935+0.6142127126896679im,-0.7891405093963935-0.6142127126896679im,-0.8794737512064892+0.4759473930370733im,-0.8794737512064892-0.4759473930370733im,-0.9458172417006346+0.3246994692046836im,-0.9458172417006346-0.3246994692046836im,-0.9863613034027224+0.1645945902807336im,-0.9863613034027224-0.1645945902807336im,-1+0im]
 
 # Test that our answers are close to MATLAB's and at least as accurate
+zpkfilter_eq(Butterworth(19), ZPKFilter([], matlab_p, 1))
 zpkfilter_accuracy(Butterworth(19), ZPKFilter([], matlab_p, 1), Butterworth(BigFloat, 19))
 
 #
@@ -107,6 +117,7 @@ matlab_p = [-0.005606643513655412+0.9994594480354867im,-0.01668187637027696+0.97
 matlab_k = 3.748372513504540e-06
 
 # Test that our answers are close to MATLAB's and at least as accurate
+zpkfilter_eq(Chebyshev1(20, 1), ZPKFilter([], matlab_p, matlab_k))
 zpkfilter_accuracy(Chebyshev1(20, 1), ZPKFilter([], matlab_p, matlab_k), Chebyshev1(BigFloat, 20, 1))
 
 # Poles of 19 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
@@ -119,13 +130,14 @@ matlab_p = [-0.006212227114275604+0.9994004289494353im,-0.0184672279812169+0.972
 matlab_k = 7.496745027009062e-06
 
 # Test that our answers are close to MATLAB's and at least as accurate
+zpkfilter_eq(Chebyshev1(19, 1), ZPKFilter([], matlab_p, matlab_k))
 zpkfilter_accuracy(Chebyshev1(19, 1), ZPKFilter([], matlab_p, matlab_k), Chebyshev1(BigFloat, 19, 1))
 
 #
 # Chebyshev type II filter
 #
 
-# Poles of 20 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
+# 20 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
 #=
     [z, p, k] = cheb2ap(20, 1)
     sprintf('%.16g%+.16gim,', [real(z) imag(z)]')
@@ -143,9 +155,10 @@ matlab_f = ZPKFilter(matlab_z, matlab_p, matlab_k)
 # the gain in enhanced precision yields the same value.
 
 f = Chebyshev2(20, 1)
+zpkfilter_eq(f, matlab_f)
 zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 20, 1), relerr=4)
 
-# Poles of 19 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
+# 19 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
 #=
     [z, p, k] = cheb2ap(19, 1)
     sprintf('%.16g%+.16gim,', [real(z) imag(z)]')
@@ -158,7 +171,46 @@ matlab_k = 37.33930783884512
 matlab_f = ZPKFilter(matlab_z, matlab_p, matlab_k)
 
 f = Chebyshev2(19, 1)
+zpkfilter_eq(f, matlab_f)
 zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 19, 1), relerr=2)
+
+#
+# Elliptic filter
+#
+
+# 20 pole elliptic filter prototype with 0.1 dB passband ripple and 10
+# dB stopband ripple from MATLAB 2013b:
+#=
+    [z, p, k] = ellipap(20, 0.1, 10)
+    sprintf('%.16g%+.16gim,', [real(z) imag(z)]')
+    sprintf('%.16g%+.16gim,', [real(p) imag(p)]')
+    sprintf('%.16g', k)
+=#
+matlab_z = [0-1.953252853757711im,0+1.953252853757711im,0-1.069599937693626im,0+1.069599937693626im,0-1.007032209276402im,0+1.007032209276402im,0-1.000730367252677im,0+1.000730367252677im,0-1.000076070678288im,0+1.000076070678288im,0-1.000007925871874im,0+1.000007925871874im,0-1.000000826312751im,0+1.000000826312751im,0-1.000000086632384im,0+1.000000086632384im,0-1.000000009576065im,0+1.000000009576065im,0-1.000000001633984im,0+1.000000001633984im]
+matlab_p = [-0.6665552331000151-0.9586923119289487im,-0.6665552331000151+0.9586923119289487im,-0.06598422536270995-1.015686365686964im,-0.06598422536270995+1.015686365686964im,-0.006773291804375061-1.001821704927991im,-0.006773291804375061+1.001821704927991im,-0.0007045345890457818-1.000191780070487im,-0.0007045345890457818+1.000191780070487im,-7.339097059946433e-05-1.000020003037497im,-7.339097059946433e-05+1.000020003037497im,-7.646273200288023e-06-1.000002084836051im,-7.646273200288023e-06+1.000002084836051im,-7.966432964216136e-07-1.000000217756124im,-7.966432964216136e-07+1.000000217756124im,-8.299912436196738e-08-1.000000023227775im,-8.299912436196738e-08+1.000000023227775im,-8.637784231770464e-09-1.000000002962719im,-8.637784231770464e-09+1.000000002962719im,-8.070974080610083e-10-1.000000000874029im,-8.070974080610083e-10+1.000000000874029im]
+matlab_k = 0.3162277662398871
+matlab_f = ZPKFilter(matlab_z, matlab_p, matlab_k)
+
+f = Elliptic(20, 0.1, 10)
+zpkfilter_eq(f, matlab_f)
+zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 20, 0.1, 10), eps=1e-9)
+
+# 19 pole elliptic filter prototype with 0.1 dB passband ripple and 10
+# dB stopband ripple from MATLAB 2013b:
+#=
+    [z, p, k] = ellipap(19, 0.1, 10)
+    sprintf('%.16g%+.16gim,', [real(z) imag(z)]')
+    sprintf('%.16g%+.16gim,', [real(p) imag(p)]')
+    sprintf('%.16g', k)
+=#
+matlab_z = [0-1.232609672486912im,0+1.232609672486912im,0-1.021948255265862im,0+1.021948255265862im,0-1.002264470627064im,0+1.002264470627064im,0-1.000235691798532im,0+1.000235691798532im,0-1.000024555183434im,0+1.000024555183434im,0-1.000002559984621im,0+1.000002559984621im,0-1.000000268394018im,0+1.000000268394018im,0-1.00000002966741im,0+1.00000002966741im,0-1.000000005062212im,0+1.000000005062212im]
+matlab_p = [-0.2102804655411482-1.034611529620449im,-0.2102804655411482+1.034611529620449im,-0.0210635609742992-1.005504639644632im,-0.0210635609742992+1.005504639644632im,-0.002183581313750937-1.00059265523267im,-0.002183581313750937+1.00059265523267im,-0.0002273805846473938-1.000061954788962im,-0.0002273805846473938+1.000061954788962im,-2.368886404726722e-05-1.000006458811389im,-2.368886404726722e-05+1.000006458811389im,-2.468065209676509e-06-1.00000067462382im,-2.468065209676509e-06+1.00000067462382im,-2.571378798158274e-07-1.000000071961468im,-2.571378798158274e-07+1.000000071961468im,-2.676054057433227e-08-1.000000009178736im,-2.676054057433227e-08+1.000000009178736im,-2.500451772444974e-09-1.00000000270781im,-2.500451772444974e-09+1.00000000270781im,-1.309071549907812+0im]
+matlab_k = 0.9266824319626478
+matlab_f = ZPKFilter(matlab_z, matlab_p, matlab_k)
+
+f = Elliptic(19, 0.1, 10)
+zpkfilter_eq(f, matlab_f)
+zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 19, 0.1, 10), eps=4e-9)
 
 #
 # Conversion between zpk and tf
@@ -188,7 +240,7 @@ zpkfilter_eq(f, butter, 1e-6)
 # Output of [z, p, k] = buttap(20); [b, a] = zp2tf(z, p, k); tf2zpk(b, a)
 m_p = [-0.07845909573254482+0.9969173337335029im,-0.07845909573254482-0.9969173337335029im,-0.2334453637958131+0.9723699203918822im,-0.2334453637958131-0.9723699203918822im,-0.3826834327796701+0.9238795325396184im,-0.3826834327796701-0.9238795325396184im,-0.5224985628488221+0.8526401643454914im,-0.5224985628488221-0.8526401643454914im,-0.6494480541398985+0.7604059651905597im,-0.6494480541398985-0.7604059651905597im,-0.760405952587916+0.6494480502272874im,-0.760405952587916-0.6494480502272874im,-0.8526401859847815+0.5224985598169277im,-0.8526401859847815-0.5224985598169277im,-0.9238795057196649+0.3826834415328767im,-0.9238795057196649-0.3826834415328767im,-0.9969173244841298+0.07845911266921719im,-0.9969173244841298-0.07845911266921719im,-0.97236994351794+0.2334453500964366im,-0.97236994351794-0.2334453500964366im]
 # println(complex128([sort(f.p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt) sort(m_p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt)]))
-zpkfilter_accuracy(f, ZPKFilter([], m_p, 1), Butterworth(BigFloat, 20); test_approx_eq=false, relerr=9)
+zpkfilter_accuracy(f, ZPKFilter([], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, relerr=9)
 
 #
 # Frequency scaling

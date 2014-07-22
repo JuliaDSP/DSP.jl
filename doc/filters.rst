@@ -119,6 +119,12 @@ Filter families
     ``n`` pole Chebyshev type II filter with ``ripple`` dB ripple in
     the stopband.
 
+.. function:: Elliptic(n, rp, rs) 
+
+    ``n`` pole elliptic (Cauer) filter with ``rp`` dB ripple in the
+    passband and ``rs`` dB ripple in the stopband.
+
+
 Filter response
 -----------------------
 
