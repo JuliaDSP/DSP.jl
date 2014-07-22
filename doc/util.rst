@@ -32,7 +32,7 @@
 .. function:: rfftfreq(n, fs=1)
 
     Return discrete fourier transform sample frequencies for use with
-    ``rfft`. The returned Frequencies object is an AbstractVector
+    ``rfft``. The returned Frequencies object is an AbstractVector
     containing the frequency bin centers at every sample point. ``fs``
     is the sample rate of the input signal.
 
