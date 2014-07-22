@@ -95,3 +95,11 @@ r = int(rand(128)*20)
 for n = 1:7
 	@test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
 end
+
+# nextfastfft
+@test nextfastfft(64) == 64
+@test nextfastfft(65) == 70
+@test nextfastfft(127) == 128
+@test nextfastfft((64,65,127)) == (64,70,128)
+@test nextfastfft(64,65,127) == nextfastfft((64,65,127))
+

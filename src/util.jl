@@ -123,5 +123,7 @@ Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
 nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
+nextfastfft(n1, n2...) = tuple(nextfastfft(n1), nextfastfft(n2...)...)
+nextfastfft(n::Tuple) = nextfastfft(n...)
 
 end # end module definition
