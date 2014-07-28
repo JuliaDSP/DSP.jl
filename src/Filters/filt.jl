@@ -172,7 +172,7 @@ function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
 end
 
 # Support for other filter types
-filtfilt(f::Filter, x) = filtfilt(convert(TFFilter, f), x)
+filtfilt(f::Filter, x) = filtfilt(convert(SOSFilter, f), x)
 filtfilt(f::TFFilter, x) = filtfilt(coefb(f), coefa(f), x)
 
 ## Initial filter state
