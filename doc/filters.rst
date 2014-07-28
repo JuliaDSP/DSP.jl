@@ -10,25 +10,34 @@ from one type to another using ``convert``.
 .. function:: ZPKFilter(z, p, k)
 
     Filter representation in terms of zeros (``z``), poles(``p``), and
-    gain (``k``).
+    gain (``k``):
+
+    .. math:: H(z) = k\frac{(s - \verb!z[1]!) \ldots (s - \verb!z[end]!)}{(s - \verb!p[1]!) \ldots (s - \verb!p[end]!)}
 
 .. function:: TFFilter(b, a)
 
     Filter representation in terms of the coefficients of the numerator
-    (``b``) and denominator ``a`` of the transfer function. ``b`` and
-    ``a`` may be either ``Polynomial`` objects or vectors ordered from
-    highest power to lowest.
+    (``b``) and denominator ``a`` of the transfer function:
+
+    .. math:: H(z) = \frac{\verb!b[1]! s^{n-1} + \ldots + \verb!b[n]!}{\verb!a[1]! s^{n-1} + \ldots + \verb!a[n]!}
+
+    or equivalently:
+
+    .. math:: H(z) = \frac{\verb!b[1]! + \ldots + \verb!b[n]! s^{-n+1}}{\verb!a[1]! + \ldots + \verb!b[n]! s^{-n+1}}
+
+    ``b`` and ``a`` may be specified as ``Polynomial`` objects or
+    vectors ordered from highest power to lowest.
 
 .. function:: BiquadFilter(b0, b1, b2, a1, a2)
 
     Filter representation in terms of the transfer function of a single
     second-order section given by:
 
-    .. math:: \frac{\verb!b0! s^2+\verb!b1! s+\verb!b2!}{s^2+\verb!a1! s + \verb!a2!}
+    .. math:: H(z) = \frac{\verb!b0! s^2+\verb!b1! s+\verb!b2!}{s^2+\verb!a1! s + \verb!a2!}
 
     or equivalently:
 
-    .. math:: \frac{\verb!b0!+\verb!b1! z^{-1}+\verb!b2! z^{-2}}{1+\verb!a1! z^{-1} + \verb!a2! z^{-2}}
+    .. math:: H(z) = \frac{\verb!b0!+\verb!b1! z^{-1}+\verb!b2! z^{-2}}{1+\verb!a1! z^{-1} + \verb!a2! z^{-2}}
 
 .. function:: SOSFilter(biquads, gain)
 
