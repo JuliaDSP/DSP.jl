@@ -48,6 +48,7 @@ end
 
 function Chebyshev1(T::Type, n::Integer, ripple::Real)
     n > 0 || error("n must be positive")
+    ripple >= 0 || error("ripple must be non-negative")
 
     ε = sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
@@ -66,6 +67,7 @@ Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
 function Chebyshev2(T::Type, n::Integer, ripple::Real)
     n > 0 || error("n must be positive")
+    ripple >= 0 || error("ripple must be non-negative")
 
     ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
@@ -147,7 +149,7 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
 
     # Eq. (3)
     k1 = εp/εs
-    k1 >= 1 && error("filter order is too high for ripple parameters")
+    k1 >= 1 && error("filter order is too high for parameters")
 
     # Eq. (20)
     k1′² = 1 - abs2(k1)
@@ -200,127 +202,153 @@ end
 Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 
 #
-# Prototype transformations
+# Prototype transformation types
 #
+
+function normalize_freq(w::Real, fs::Real)
+    w <= 0 && error("frequencies must be positive")
+    f = 2*w/fs
+    f >= 1 && error("frequencies must be less than the Nyquist frequency $(fs/2)")
+    f
+end
 
 immutable Lowpass{T} <: FilterType
     w::T
+
+    Lowpass(w) = new(convert(T, w))
 end
+Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
 
 immutable Highpass{T} <: FilterType
     w::T
+
+    Highpass(w) = new(convert(T, w))
 end
+Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
 
 immutable Bandpass{T} <: FilterType
     w1::T
     w2::T
+
+    Bandpass(w1, w2) = new(convert(T, w1), convert(T, w2))
+end
+function Bandpass(w1::Real, w2::Real; fs::Real=2)
+    w1 < w2 || error("w1 must be less than w2")
+    Bandpass{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
 end
 
 immutable Bandstop{T} <: FilterType
     w1::T
     w2::T
+
+    Bandstop(w1, w2) = new(convert(T, w1), convert(T, w2))
 end
+function Bandstop(w1::Real, w2::Real; fs::Real=2)
+    w1 < w2 || error("w1 must be less than w2")
+    Bandstop{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
+end
+
+#
+# Prototype transformation implementations
+#
+# The formulas implemented here come from the documentation for the
+# corresponding functionality in Octave, available at
+# https://staff.ti.bfh.ch/sha1/Octave/index/f/sftrans.html
+# The Octave implementation was not consulted in creating this code.
 
 # Create a lowpass filter from a lowpass filter prototype
-function transform_prototype(ftype::Lowpass, proto::TFFilter)
-    TFFilter(Poly([proto.b[i]/ftype.w^(i) for i = 0:length(proto.b)-1]),
-             Poly([proto.a[i]/ftype.w^(i) for i = 0:length(proto.a)-1]))
-end
+transform_prototype(ftype::Lowpass, proto::ZPKFilter) =
+    ZPKFilter(ftype.w * proto.z, ftype.w * proto.p,
+              proto.k * ftype.w^(length(proto.p)-length(proto.z)))
 
 # Create a highpass filter from a lowpass filter prototype
-function transform_prototype(ftype::Highpass, proto::TFFilter)
-    n = max(length(proto.b), length(proto.a))
-    TFFilter(Poly([proto.b[n-i-1]/ftype.w^(i) for i = 0:n-1]),
-             Poly([proto.a[n-i-1]/ftype.w^(i) for i = 0:n-1]))
+function transform_prototype(ftype::Highpass, proto::ZPKFilter)
+    z = proto.z
+    p = proto.p
+    nz = length(z)
+    np = length(p)
+    newz = zeros(Base.promote_eltype(z, p), max(nz, np))
+    newp = zeros(Base.promote_eltype(z, p), max(nz, np))
+    num = one(eltype(z))
+    for i = 1:nz
+        num *= -z[i]
+        newz[i] = ftype.w / z[i]
+    end
+    den = one(eltype(p))
+    for i = 1:np
+        den *= -p[i]
+        newp[i] = ftype.w / p[i]
+    end
+
+    abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
+    abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
+    ZPKFilter(newz, newp, proto.k * real(num)/real(den))
 end
 
 # Create a bandpass filter from a lowpass filter prototype
-# Thus is a direct port of Scipy's lp2bp
-function transform_prototype(ftype::Bandpass, proto::TFFilter)
-    bw = ftype.w2 - ftype.w1
-    wo = sqrt(ftype.w1 * ftype.w2)
-    b = proto.b
-    a = proto.a
-    D = length(a) - 1
-    N = length(b) - 1
-    M = max(N, D)
-    Np = N + M
-    Dp = D + M
-    bprime = zeros(eltype(b), Np+1)
-    aprime = zeros(eltype(a), Dp+1)
-    wosq = wo^2
-    for j = 0:Np
-        val = 0.0
-        for i = 0:N
-            for k = 0:i
-                if M - i + 2 * k == j
-                    val += binomial(i, k) * b[i] * wosq^(i - k) / bw^i
-                end
-            end
+function transform_prototype(ftype::Bandpass, proto::ZPKFilter)
+    z = proto.z
+    p = proto.p
+    nz = length(z)
+    np = length(p)
+    newz = zeros(Base.promote_eltype(z, p), 2*nz+np)
+    newp = zeros(Base.promote_eltype(z, p), 2*np+nz)
+    for (oldc, newc) in ((p, newp), (z, newz))
+        for i = 1:length(oldc)
+            b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
+            pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+            newc[2i-1] = b + pm
+            newc[2i] = b - pm
         end
-
-        bprime[j+1] = val
     end
-    for j = 0:Dp
-        val = 0.0
-        for i = 0:D
-            for k in 0:i+1
-                if M - i + 2 * k == j
-                    val += binomial(i, k) * a[i] * wosq ^(i - k) / bw^i
-                end
-            end
-        end
-        aprime[j+1] = val
-    end
-    TFFilter(Poly(bprime), Poly(aprime))
+    ZPKFilter(newz, newp, proto.k * (ftype.w2 - ftype.w1) ^ (np - nz))
 end
 
 # Create a bandstop filter from a lowpass filter prototype
-# Thus is a direct port of Scipy's lp2bs
-function transform_prototype(ftype::Bandstop, proto::TFFilter)
-    bw = ftype.w2 - ftype.w1
-    wo = sqrt(ftype.w1 * ftype.w2)
-    b = proto.b
-    a = proto.a
-    D = length(a) - 1
-    N = length(b) - 1
-    M = max(N, D)
-    Np = 2 * M
-    Dp = 2 * M
-    bprime = zeros(eltype(b), Np+1)
-    aprime = zeros(eltype(a), Dp+1)
-    wosq = wo^2
-    for j = 0:Np
-        val = 0.0
-        for i = 0:N
-            for k = 0:M-i
-                if i + 2 * k == j
-                    val += binomial(M - i, k) * b[i] * wosq^(M - i - k) * bw^i
-                end
-            end
-        end
-        bprime[j+1] = val
+function transform_prototype(ftype::Bandstop, proto::ZPKFilter)
+    z = proto.z
+    p = proto.p
+    nz = length(z)
+    np = length(p)
+    newz = zeros(Base.promote_eltype(z, p), 2*(nz+np))
+    newp = zeros(Base.promote_eltype(z, p), 2*(nz+np))
+    npm = sqrt(-complex(ftype.w2 * ftype.w1))
+
+    num = one(eltype(z))
+    for i = 1:length(z)
+        num *= -z[i]
+        b = (ftype.w2 - ftype.w1)/2/z[i]
+        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        newz[2i-1] = b - pm
+        newz[2i] = b + pm
+        newp[2i-1] = -npm
+        newp[2i] = npm
     end
-    for j = 0:Dp
-        val = 0.0
-        for i = 0:D
-            for k in 0:M-i
-                if i + 2 * k == j
-                    val += binomial(M - i, k) * a[i] * wosq^(M - i - k) * bw^i
-                end
-            end
-        end
-        aprime[j+1] = val
+
+    den = one(eltype(p))
+    off = 2*nz
+    for i = 1:length(p)
+        den *= -p[i]
+        b = (ftype.w2 - ftype.w1)/2/p[i]
+        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        newp[off+2i-1] = b - pm
+        newp[off+2i] = b + pm
+        newz[off+2i-1] = -npm
+        newz[off+2i] = npm
     end
-    TFFilter(Poly(bprime), Poly(aprime))
+
+    abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
+    abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
+    ZPKFilter(newz, newp, proto.k * real(num)/real(den))
 end
 
-transform_prototype(ftype::FilterType, proto::Filter) =
-    transform_prototype(ftype, convert(TFFilter, proto))
+transform_prototype(ftype, proto::Filter) =
+    transform_prototype(ftype, convert(ZPKFilter, proto))
 
-analogfilter(ftype::FilterType, proto::Filter) = transform_prototype(ftype, proto)
+analogfilter(ftype::FilterType, proto::Filter) =
+    transform_prototype(ftype, proto)
 
-# Do bilinear transform
+# Bilinear transform
 bilinear(f::Filter, fs::Real) = bilinear(convert(ZPKFilter, f), fs)
 function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
     ztype = typeof(0 + zero(Z)/fs)
@@ -341,25 +369,13 @@ function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
         den *= (2 * fs - f.p[i])
     end
 
-    ZPKFilter(z, p, f.k * real(num/den))
+    ZPKFilter(z, p, f.k * real(num)/real(den))
 end
 
 # Pre-warp filter frequencies for digital filtering
 prewarp(ftype::Union(Lowpass, Highpass)) = (typeof(ftype))(4*tan(pi*ftype.w/2))
 prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
 
-# Digital filter design using ZPKFilter->TFFilter->ZPKFilter conversion on all poles
-digitalfilter(ftype::FilterType, proto::Filter, as::Type{ZPKFilter}=ZPKFilter) =
+# Digital filter design
+digitalfilter(ftype::FilterType, proto::Filter) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
-
-# Digital filter design using second-order sections
-function digitalfilter(ftype::FilterType, proto::SOSFilter)
-    ftype = prewarp(ftype)
-    g = proto.g
-    biquads = vcat([begin
-                        s = convert(SOSFilter, bilinear(transform_prototype(ftype, f), 2))
-                        g *= s.g
-                        s.biquads
-                    end for f in proto.biquads]...)
-    SOSFilter(biquads, g)
-end

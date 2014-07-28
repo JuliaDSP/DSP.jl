@@ -78,6 +78,7 @@ Base.filt{T,S<:Number}(f::BiquadFilter{T}, x::AbstractArray{S}, si=_zerosi(f, x)
 
 ## For arbitrary filters, convert to SOSFilter
 Base.filt(f::Filter, x) = filt(convert(SOSFilter, f), x)
+Base.filt!(out, f::Filter, x) = filt!(out, convert(SOSFilter, f), x)
 
 #
 # filtfilt

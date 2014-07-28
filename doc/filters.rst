@@ -43,7 +43,9 @@ Filter application
 
     Apply filter ``f`` along the first dimension of array ``x``. ``si``
     is an optional array representing the initial filter state
-    (defaults to zeros).
+    (defaults to zeros). If ``f`` is a ``TFFilter``, ``BiquadFilter``,
+    or ``SOSFilter``, filtering is implemented directly. If ``f`` is a
+    ``ZPKFilter``, it is first converted to an ``SOSFilter``.
 
 .. function:: filt!(out, f, x[, si])
 
@@ -74,38 +76,46 @@ Filter application
 Filter design
 -------------
 
-.. function:: analogfilter(responsetype, family)
+.. function:: analogfilter(responsetype, prototype)
 
     Construct an analog filter.
 
-.. function:: digitalfilter(responsetype, family)
+.. function:: digitalfilter(responsetype, prototype)
 
     Construct a digital filter.
 
 Filter response types
 ---------------------
 
-.. function:: Lowpass(Wn)
+.. function:: Lowpass(Wn[; fs])
 
-    Low pass filter with normalized cutoff frequency ``Wn``.
+    Low pass filter with cutoff frequency ``Wn``. If ``fs`` is not
+    specified, ``Wn`` is interpreted as a normalized frequency in
+    half-cycles/sample.
 
-.. function:: Highpass(Wn)
+.. function:: Highpass(Wn[; fs])
 
-    High pass filter with normalized cutoff frequency ``Wn``.
+    High pass filter with cutoff frequency ``Wn``. If ``fs`` is not
+    specified, ``Wn`` is interpreted as a normalized frequency in
+    half-cycles/sample.
 
-.. function:: Bandpass(Wn1, Wn2)
+.. function:: Bandpass(Wn1, Wn2[; fs])
 
-    Band pass filter with normalized pass band (``Wn1``, ``Wn2``).
+    Band pass filter with normalized pass band (``Wn1``, ``Wn2``). If
+    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
+    frequency in half-cycles/sample.
 
-.. function:: Bandstop(Wn1, Wn2)
+.. function:: Bandstop(Wn1, Wn2[; fs])
 
-    Band stop filter with normalized stop band (``Wn1``, ``Wn2``).
+    Band stop filter with normalized stop band (``Wn1``, ``Wn2``). If
+    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
+    frequency in half-cycles/sample.
 
 
-Filter families
----------------
+Filter prototypes
+-----------------
 
-.. function:: Butterworth(n) 
+.. function:: Butterworth(n)
 
     ``n`` pole Butterworth filter.
 
@@ -122,11 +132,11 @@ Filter families
 .. function:: Elliptic(n, rp, rs) 
 
     ``n`` pole elliptic (Cauer) filter with ``rp`` dB ripple in the
-    passband and ``rs`` dB ripple in the stopband.
+    passband and ``rs`` dB attentuation in the stopband.
 
 
 Filter response
------------------------
+---------------
 
 .. function:: freqz(filter, w)
 
@@ -148,7 +158,38 @@ Filter response
     Frequency response of an analog ``filter`` at frequency or
     frequencies ``hz`` with sampling rate ``fs``.
 
+
+Miscellaneous
+-------------
+
+ .. function:: coefb(f)
+
+     Coefficients of the numerator of a TFFilter object, highest power
+     first, i.e., the ``b`` passed to ``Base.filt()``
+
+ .. function:: coefa(f)
+
+     Coefficients of the denominator of a TFFilter object, highest power
+     first, i.e., the ``a`` passed to ``Base.filt()``
+
+
 Examples
 --------
 
-TODO
+Construct a 4th order elliptic lowpass filter with normalized cutoff
+frequency 0.2, 0.5 dB of passband ripple, and 30 dB attentuation in
+the stopband and extract the coefficients of the numerator and
+denominator of the transfer function::
+
+  responsetype = Lowpass(0.2)
+  prototype = Elliptic(4, 0.5, 30)
+  tf = convert(TFFilter, digitalfilter(responsetype, prototype))
+  numerator_coefs = coefb(tf)
+  denominator_ceofs = coefa(tf)
+
+Filter the data in ``x``, sampled at 1000 Hz, with a 4th order
+Butterworth bandpass filter between 10 and 40 Hz::
+
+  responsetype = Bandpass(10, 40; fs=1000)
+  prototype = Butterworth(4)
+  filt(digitalfilter(responsetype, prototype), x)
