@@ -1,5 +1,44 @@
 using DSP, Base.Test
 
+#
+# filt with different filter forms
+#
+srand(1776)
+x = randn(100)
+
+for n = 1:6
+    for proto in (Butterworth(n), Chebyshev1(n, 1), Chebyshev2(n, 1), Elliptic(n, 0.5, 2))
+        zpk = digitalfilter(Lowpass(0.2), proto)
+        tf = convert(TFFilter, zpk)
+        if n <= 2
+            bq = convert(BiquadFilter, zpk)
+        else
+            @test_throws ErrorException convert(BiquadFilter, zpk)
+        end
+        sos = convert(SOSFilter, zpk)
+
+        res = filt(sos, x)
+
+        # Test with filt with tf/sos
+        @test_approx_eq res filt(tf, x)
+        @test_approx_eq res filt!(similar(x), sos, x)
+        @test_approx_eq res filt!(similar(x), tf, x)
+
+        # For <= 2 poles, test with biquads
+        if n <= 2
+            @test_approx_eq res filt(bq, x)
+            @test_approx_eq res filt!(similar(x), bq, x)
+        end
+
+        # Test that filt with zpk converts
+        @test res == filt(zpk, x)
+        @test res == filt!(similar(x), zpk, x)
+    end
+end
+
+#
+# filtfilt
+#
 
 ##############
 #
