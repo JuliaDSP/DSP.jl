@@ -224,8 +224,9 @@ end
 function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     z = f.z
     p = f.p
-    length(z) > length(p) && error("ZPKFilter must not have more zeros than poles")
+    nz = length(z)
     n = length(p)
+    nz > n && error("ZPKFilter must not have more zeros than poles")
 
     # Sort poles and zeros lexicographically so that matched values are adjacent
     z = sort(z, order=Base.Order.Lexicographic)
@@ -248,14 +249,15 @@ function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     z3, p3 = groupzp(realz, complexp)
     # Group remaining real poles with closest real zeros
     z4, p4 = groupzp(realz, realp)
-    # At this point, all real zeros should be paired
 
     # All zeros are now paired with a pole, but not all poles are
     # necessarily paired with a zero
     @assert isempty(complexz)
     @assert isempty(realz)
-    groupedz = [z1, z2, z3, z4]
-    groupedp = [p1, p2, p3, p4, complexp, realp]
+    groupedz = [z1, z2, z3, z4]::Vector{Z}
+    groupedp = [p1, p2, p3, p4, complexp, realp]::Vector{P}
+    @assert length(groupedz) == nz
+    @assert length(groupedp) == n
 
     # Allocate memory for biquads
     T = promote_type(realtype(Z), realtype(P))
