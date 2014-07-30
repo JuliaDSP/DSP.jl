@@ -1,4 +1,5 @@
-using DSP, Base.Test
+require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
+using DSP, Base.Test, FilterTestHelpers
 
 #
 # filt with different filter forms
@@ -117,8 +118,7 @@ sos = [
 ]
 g = 1.2825810789606842e-03
 
-sosfilter = SOSFilter([BiquadFilter{Float64}(sos[i, 1], sos[i, 2], sos[i, 3], sos[i, 5], sos[i, 6]) for i = 1:size(sos, 1)], g)
-
+sosfilter = matrix_to_sosfilter(sos, g)
 zi_matlab = [0.003947378671810  14.451932524765136  11.374248987589889
              0  -4.492339385234015  -7.570022922409273];
 

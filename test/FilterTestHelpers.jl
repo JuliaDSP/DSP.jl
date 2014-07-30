@@ -1,7 +1,8 @@
 module FilterTestHelpers
 using DSP, Base.Test
 
-export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy
+export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy,
+       matrix_to_sosfilter, sosfilter_to_matrix
 
 function lt(a, b)
     if abs(real(a) - real(b)) > 1e-10
@@ -84,5 +85,37 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
     end
     accuracy_check(loss(p1, accurate_p), loss(p2, accurate_p), "p", relerr)
     accuracy_check(loss(f1.k, accurate_f.k), loss(f2.k, accurate_f.k), "k", relerr)
+end
+
+# Convert an SOS matrix, as returned by MATLAB, to an SOSFilter
+matrix_to_sosfilter(sos::Matrix, g::Number) =
+    SOSFilter([BiquadFilter(sos[i, 1], sos[i, 2], sos[i, 3],
+                            sos[i, 4], sos[i, 5], sos[i, 6])
+               for i = 1:size(sos, 1)], g)
+
+# Convert an SOSFilter to an SOS matrix as returned by MATLAB
+function sosfilter_to_matrix(sos::SOSFilter)
+    A = ones(length(sos.biquads), 6)
+    for (i, biquad) in enumerate(sos.biquads)
+        A[i, 1] = biquad.b0
+        A[i, 2] = biquad.b1
+        A[i, 3] = biquad.b2
+        A[i, 5] = biquad.a1
+        A[i, 6] = biquad.a2
+    end
+    A
+end
+
+# Show the poles and zeros in each biquad
+# This is not currently used for testing, but is useful for debugging
+function sosfilter_poles_zeros{T}(sos::SOSFilter{T})
+    z = fill(complex(nan(T)), 2, length(sos.biquads))
+    p = fill(complex(nan(T)), 2, length(sos.biquads))
+    for (i, biquad) in enumerate(sos.biquads)
+        zpk = convert(ZPKFilter, biquad)
+        z[1:length(zpk.z), i] = zpk.z
+        p[1:length(zpk.p), i] = zpk.p
+    end
+    (z, p)
 end
 end

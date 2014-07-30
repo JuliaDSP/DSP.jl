@@ -291,8 +291,9 @@ function transform_prototype(ftype::Bandpass, proto::ZPKFilter)
     p = proto.p
     nz = length(z)
     np = length(p)
-    newz = zeros(Base.promote_eltype(z, p), 2*nz+np)
-    newp = zeros(Base.promote_eltype(z, p), 2*np+nz)
+    ncommon = min(nz, np)
+    newz = zeros(Base.promote_eltype(z, p), 2*nz+np-ncommon)
+    newp = zeros(Base.promote_eltype(z, p), 2*np+nz-ncommon)
     for (oldc, newc) in ((p, newp), (z, newz))
         for i = 1:length(oldc)
             b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
@@ -310,31 +311,35 @@ function transform_prototype(ftype::Bandstop, proto::ZPKFilter)
     p = proto.p
     nz = length(z)
     np = length(p)
-    newz = zeros(Base.promote_eltype(z, p), 2*(nz+np))
-    newp = zeros(Base.promote_eltype(z, p), 2*(nz+np))
-    npm = sqrt(-complex(ftype.w2 * ftype.w1))
+    npairs = nz+np-min(nz, np)
+    newz = Array(Base.promote_eltype(z, p), 2*npairs)
+    newp = Array(Base.promote_eltype(z, p), 2*npairs)
 
     num = one(eltype(z))
-    for i = 1:length(z)
+    for i = 1:nz
         num *= -z[i]
         b = (ftype.w2 - ftype.w1)/2/z[i]
         pm = sqrt(b^2 - ftype.w2 * ftype.w1)
         newz[2i-1] = b - pm
         newz[2i] = b + pm
-        newp[2i-1] = -npm
-        newp[2i] = npm
     end
 
     den = one(eltype(p))
-    off = 2*nz
-    for i = 1:length(p)
+    for i = 1:np
         den *= -p[i]
         b = (ftype.w2 - ftype.w1)/2/p[i]
         pm = sqrt(b^2 - ftype.w2 * ftype.w1)
-        newp[off+2i-1] = b - pm
-        newp[off+2i] = b + pm
-        newz[off+2i-1] = -npm
-        newz[off+2i] = npm
+        newp[2i-1] = b - pm
+        newp[2i] = b + pm
+    end
+
+    # Any emaining poles/zeros are real and not cancelled
+    npm = sqrt(-complex(ftype.w2 * ftype.w1))
+    for (n, newc) in ((np, newp), (nz, newz))
+        for i = n+1:npairs
+            newc[2i-1] = -npm
+            newc[2i] = npm
+        end
     end
 
     abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
