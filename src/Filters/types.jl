@@ -10,45 +10,7 @@ immutable ZPKFilter{Z<:Number,P<:Number,K<:Number} <: Filter
     z::Vector{Z}
     p::Vector{P}
     k::K
-
-    # Remove zeros and poles that cancel
-    function ZPKFilter(z::Vector{Z}, p::Vector{P}, k::K)
-        (isempty(z) || isempty(p)) && return new(z, p, k)
-
-        # Compute multiplicty of each zero
-        zmultiplicity = Dict{Z,Int}()
-        for az in z
-            zmultiplicity[az] = get(zmultiplicity, az, 0)+1
-        end
-
-        # Check for cancelling zeros
-        keep = trues(length(p))
-        for i = 1:length(p)
-            ap = p[i]
-            cancelling_zeros = get(zmultiplicity, ap, 0)
-            if cancelling_zeros != 0
-                zmultiplicity[ap] = cancelling_zeros - 1
-                keep[i] = false
-            end
-        end
-
-        # Build new arrays if necessary
-        if all(keep)
-            new(z, p, k)
-        else
-            newz = Z[]
-            sizehint(newz, length(z))
-            for (az, n) in zmultiplicity
-                for i = 1:n
-                    push!(newz, az)
-                end
-            end
-            new(newz, p[keep], k)
-        end
-    end
 end
-ZPKFilter{Z<:Number,P<:Number,K<:Number}(z::Vector{Z}, p::Vector{P}, k::K) =
-    ZPKFilter{Z,P,K}(z,p,k)
 
 #
 # Transfer function form
