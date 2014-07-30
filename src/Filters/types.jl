@@ -175,6 +175,50 @@ end
 Base.convert(to::Union(Type{TFFilter}, Type{BiquadFilter}), f::SOSFilter) =
     convert(to, convert(ZPKFilter, f))
 
+# Split real and complex values in a vector into separate vectors
+function split_real_complex{T<:Real}(v::Vector{Complex{T}})
+    c = Complex{T}[]
+    r = T[]
+    for x in v
+        push!(ifelse(imag(x) == 0, r, c), x)
+    end
+    (c, r)
+end
+split_real_complex{T<:Real}(v::Vector{T}) = (T[], v)
+
+# Check that each value in a vector is followed by its complex
+# conjugate
+function check_conjugates(v)
+    length(v) & 1 == 0 || return false
+    for i = 1:2:length(v)
+        v[i] == conj(v[i+1]) || return false
+    end
+    return true
+end
+
+# Group each pole in p with its closest zero in z
+# Remove paired poles from p and z
+function groupzp(z, p)
+    unpaired = fill(true, length(z))  # whether zeros have been mapped
+    n = min(length(z), length(p))
+    groupedz = similar(z, n)
+    for i = 1:n
+        closest_zero_idx = 0
+        closest_zero_val = Inf
+        for j = 1:length(z)
+            val = abs(z[j] - p[i])
+            if val < closest_zero_val
+                closest_zero_idx = j
+                closest_zero_val = val
+            end
+        end
+        groupedz[i] = splice!(z, closest_zero_idx)
+    end
+    ret = (groupedz, p[1:n])
+    splice!(p, 1:n)
+    ret
+end
+
 # Convert a filter to second-order sections
 # The returned sections are in ZPK form
 function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
@@ -183,47 +227,54 @@ function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     length(z) > length(p) && error("ZPKFilter must not have more zeros than poles")
     n = length(p)
 
-    # Sort poles lexicographically so that matched poles are adjacent
+    # Sort poles and zeros lexicographically so that matched values are adjacent
+    z = sort(z, order=Base.Order.Lexicographic)
     p = sort(p, order=Base.Order.Lexicographic)
 
-    # Sort poles according to distance to unit circle (farthest first)
-    p = sort!(p, by=x->abs(abs(x) - 1), rev=true)
+    # Sort poles according to distance to unit circle (nearest first)
+    p = sort!(p, by=x->abs(abs(x) - 1))
 
-    # Move real poles to the end
-    complexp = P[]
-    realp = P[]
-    for x in p
-        push!(ifelse(imag(x) == zero(P), realp, complexp), x)
-    end
-    append!(complexp, realp)
-    p = complexp
+    # Split real and complex poles
+    (complexz, realz) = split_real_complex(z)
+    check_conjugates(complexz) || error("complex zeros could not be matched to their conjugates")
+    (complexp, realp) = split_real_complex(p)
+    check_conjugates(complexp) || error("complex poles could not be matched to their conjugates")
 
-    # Group each pole with its closest zero
-    zorder = zeros(Int, length(z)) # map from zero indices -> pole indices
-    used = fill(false, length(p))  # whether poles have been mapped
-    for i = 1:length(z)
-        closest_pole_idx = 1
-        closest_pole_val = Inf
-        for j = 1:length(p)
-            !used[j] || continue
-            val = abs(z[i] - p[j])
-            if val < closest_pole_val
-                closest_pole_idx = j
-                closest_pole_val = val
-            end
-        end
-        used[closest_pole_idx] = true
-        zorder[i] = closest_pole_idx
-    end
+    # Group complex poles with closest complex zeros
+    z1, p1 = groupzp(complexz, complexp)
+    # Group real poles with remaining complex zeros
+    z2, p2 = groupzp(complexz, realp)
+    # Group remaining complex poles with closest real zeros
+    z3, p3 = groupzp(realz, complexp)
+    # Group remaining real poles with closest real zeros
+    z4, p4 = groupzp(realz, realp)
+    # At this point, all real zeros should be paired
 
-    # Build second-order sections
+    # All zeros are now paired with a pole, but not all poles are
+    # necessarily paired with a zero
+    @assert isempty(complexz)
+    @assert isempty(realz)
+    groupedz = [z1, z2, z3, z4]
+    groupedp = [p1, p2, p3, p4, complexp, realp]
+
+    # Allocate memory for biquads
     T = promote_type(realtype(Z), realtype(P))
     biquads = Array(BiquadFilter{T}, (n >> 1)+(n & 1))
-    for i = 1:div(n, 2)
-        biquads[i] = convert(BiquadFilter, ZPKFilter(z[2i-1 .<= zorder .<= 2i], p[2i-1:2i], one(T)))
+
+    # Build second-order sections in reverse
+    # First do complete pairs
+    npairs = length(groupedp) >> 1
+    odd = isodd(n)
+    for i = 1:npairs
+        pairidx = 2*(npairs-i)
+        biquads[odd+i] = convert(BiquadFilter, ZPKFilter(groupedz[pairidx+1:min(pairidx+2, length(groupedz))],
+                                                         groupedp[pairidx+1:pairidx+2], one(T)))
     end
-    if isodd(n)
-        biquads[end] = convert(BiquadFilter, ZPKFilter([z[zorder .== length(p)]], [p[end]], one(T)))
+
+    if odd
+        # Now do remaining pole and (maybe) zero
+        biquads[1] = convert(BiquadFilter, ZPKFilter(groupedz[length(groupedp):end],
+                                                     [groupedp[end]], one(T)))
     end
 
     SOSFilter(biquads, f.k)
