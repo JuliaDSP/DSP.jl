@@ -232,3 +232,18 @@ x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
 x2_output = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d_sos.txt"),'\t')
 
 @test_approx_eq x2_output filtfilt(sosfilter, x)
+
+#
+# fftfilt/firfilt
+#
+
+for xlen in 2.^(7:18).-1, blen in 2.^(1:6).-1
+    b = randn(blen)
+    for x in (rand(xlen), rand(xlen, 2))
+        filtres = filt(b, [1.0], x)
+        fftres = fftfilt(b, x)
+        firres = firfilt(b, x)
+        @test_approx_eq filtres fftres
+        @test_approx_eq filtres firres
+    end
+end

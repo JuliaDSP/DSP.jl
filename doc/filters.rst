@@ -75,12 +75,14 @@ Filter application
 
 .. function:: fftfilt(b, x)
 
-    Perform overlap-save filtering of ``x`` using filter ``b``.
+    Apply FIR filter ``b`` along the first dimension of array ``x``
+    using an FFT-based overlap-save algorithm.
 
 .. function:: firfilt(b, x)
 
-    Filter ``x`` using filter ``b``, using :func:`filt` or
-    :func:`fftfilt` depending on the lengths of ``b`` and ``x``.
+    Apply FIR filter ``b`` along the first dimension of array ``x``,
+    choosing the optimal algorithm based on the lengths of ``b`` and
+    ``x``.
 
 Filter design
 -------------

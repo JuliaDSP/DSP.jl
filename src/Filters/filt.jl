@@ -262,15 +262,16 @@ function optimalfftfiltlength(nb, nx)
 end
 
 # Filter x using FIR filter b by overlap-save method
-function fftfilt{T<:Real}(b::Vector{T}, x::Vector{T},
+function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
                           nfft=optimalfftfiltlength(length(b), length(x)))
     nb = length(b)
-    nx = length(x)
+    nx = size(x, 1)
+    normfactor = 1/nfft
 
     L = min(nx, nfft - (nb - 1))
     tmp1 = Array(T, nfft)
     tmp2 = Array(Complex{T}, nfft << 1 + 1)
-    out = zeros(T, nx)
+    out = Array(T, size(x))
 
     p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
     p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
@@ -282,34 +283,39 @@ function fftfilt{T<:Real}(b::Vector{T}, x::Vector{T},
     FFTW.execute(p1.plan, tmp1, filterft)
 
     # FFT of chunks
-    off = 1
-    while off <= nx
-        npadbefore = max(0, nb - off)
-        xstart = off - nb + npadbefore + 1
-        n = min(nfft - npadbefore, nx - xstart + 1)
+    for colstart = 0:nx:length(x)-1
+        off = 1
+        while off <= nx
+            npadbefore = max(0, nb - off)
+            xstart = off - nb + npadbefore + 1
+            n = min(nfft - npadbefore, nx - xstart + 1)
 
-        tmp1[1:npadbefore] = zero(T)
-        tmp1[npadbefore+n+1:end] = zero(T)
+            tmp1[1:npadbefore] = zero(T)
+            tmp1[npadbefore+n+1:end] = zero(T)
 
-        copy!(tmp1, npadbefore+1, x, xstart, n)
-        FFTW.execute(T, p1.plan)
-        broadcast!(*, tmp2, tmp2, filterft)
-        FFTW.execute(T, p2.plan)
-        copy!(out, off, tmp1, nb, min(L, nx - off + 1))
+            copy!(tmp1, npadbefore+1, x, colstart+xstart, n)
+            FFTW.execute(T, p1.plan)
+            broadcast!(*, tmp2, tmp2, filterft)
+            FFTW.execute(T, p2.plan)
 
-        off += L
+            # Copy to output
+            for j = 0:min(L - 1, nx - off)
+                @inbounds out[colstart+off+j] = tmp1[nb+j]*normfactor
+            end
+
+            off += L
+        end
     end
 
-    # Normalize
-    scale!(out, 1/nfft)
+    out
 end
 
 # Filter x using FIR filter b, heuristically choosing to perform
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
-function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractVector{T})
+function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
     nb = length(b)
-    nx = length(x)
+    nx = size(x, 1)
 
     filtops = nx * min(nx, nb)
     if filtops <= 100000
