@@ -317,7 +317,7 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
     nb = length(b)
     nx = size(x, 1)
 
-    filtops = nx * min(nx, nb)
+    filtops = length(x) * min(nx, nb)
     if filtops <= 100000
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
@@ -328,7 +328,7 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         # and filt()
         nfft = optimalfftfiltlength(nb, nx)
         L = min(nx, nfft - (nb - 1))
-        nchunk = iceil(nx/L)
+        nchunk = iceil(nx/L)*div(nx, length(x))
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 100000
 
         filtops > fftops ? fftfilt(b, x, nfft) : filt(b, [one(T)], x)
