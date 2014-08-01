@@ -247,3 +247,11 @@ for xlen in 2.^(7:18).-1, blen in 2.^(1:6).-1
         @test_approx_eq filtres firres
     end
 end
+
+# fir_filtfilt
+
+b = randn(10)
+for x in (randn(100), randn(100, 2))
+    @test_approx_eq DSP.Filters.fir_filtfilt(b, x) DSP.Filters.iir_filtfilt(b, [1.0], x)
+    @test_approx_eq DSP.Filters.filtfilt(b, [2.0], x) DSP.Filters.iir_filtfilt(b, [2.0], x)
+end

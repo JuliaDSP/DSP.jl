@@ -93,22 +93,22 @@ Base.filt!(out, f::Filter, x) = filt!(out, convert(SOSFilter, f), x)
 #
 # in place in output. The istart and n parameters determine the portion
 # of the input signal x to extrapolate.
-function extrapolate_signal!(out, sig, istart, n, pad_length)
-    length(out) == n+2*pad_length || error("output is incorrectly sized")
+function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
+    length(out) >= n+2*pad_length || error("output is incorrectly sized")
     x = 2*sig[istart]
     for i = 1:pad_length
-        out[i] = x - sig[istart+pad_length+1-i]
+        out[ostart+i-1] = x - sig[istart+pad_length+1-i]
     end
-    copy!(out, pad_length+1, sig, istart, n)
+    copy!(out, ostart+pad_length, sig, istart, n)
     x = 2*sig[istart+n-1]
     for i = 1:pad_length
-        out[n+pad_length+i] = x - sig[istart+n-1-i]
+        out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
     end
     out
 end
 
 # Zero phase digital filtering by processing data in forward and reverse direction
-function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
+function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zi = filt_stepstate(b, a)
     zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
@@ -117,8 +117,8 @@ function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     out = similar(x, t)
 
     istart = 1
-    for i = 1:size(x, 2)
-        extrapolate_signal!(extrapolated, x, istart, size(x, 1), pad_length)
+    for i = 1:Base.trailingsize(x, 2)
+        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
         reverse!(filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1])))
         filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
@@ -128,6 +128,45 @@ function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     end
 
     out
+end
+
+# Zero phase digital filtering with an FIR filter in a single pass
+function fir_filtfilt(b::AbstractVector, x::AbstractArray)
+    nb = length(b)
+    # Only need as much padding as the order of the filter
+    t = Base.promote_eltype(b, x)
+    extrapolated = similar(x, t, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
+
+    # Convolve b with its reverse
+    newb = firfilt(b, reverse(b))
+    resize!(newb, 2nb-1)
+    for i = 1:nb-1
+        newb[nb+i] = newb[nb-i]
+    end
+
+    # Extrapolate each column
+    for i = 1:size(extrapolated, 2)
+        extrapolate_signal!(extrapolated, (i-1)*size(extrapolated, 1)+1, x, (i-1)*size(x, 1)+1, size(x, 1), nb-1)
+    end
+
+    # Filter
+    out = firfilt(newb, extrapolated)
+
+    # Drop garbage at start
+    reshape(out[2nb-1:end, :], size(x))
+end
+
+# Choose whether to use fir_filtfilt or iir_filtfilt depending on
+# length of a
+function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
+    if length(a) == 1
+        if a[1] != 1
+            b /= a[1]
+        end
+        fir_filtfilt(b, x)
+    else
+        iir_filtfilt(b, a, x)
+    end
 end
 
 # Extract si for a biquad, multiplied by a scaling factor
@@ -150,7 +189,7 @@ function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
     istart = 1
     for i = 1:size(x, 2)
         # First biquad
-        extrapolate_signal!(extrapolated, x, istart, size(x, 1), pad_length)
+        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
         f2 = f.biquads[1]*f.g
         reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
         reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
@@ -158,7 +197,7 @@ function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
         # Subsequent biquads
         for j = 2:length(f.biquads)
             f2 = f.biquads[j]
-            extrapolate_signal!(extrapolated, extrapolated, pad_length+1, size(x, 1), pad_length)
+            extrapolate_signal!(extrapolated, 1, extrapolated, pad_length+1, size(x, 1), pad_length)
             reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
             reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
         end
