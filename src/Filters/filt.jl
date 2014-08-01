@@ -328,7 +328,7 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         # and filt()
         nfft = optimalfftfiltlength(nb, nx)
         L = min(nx, nfft - (nb - 1))
-        nchunk = iceil(nx/L)*div(nx, length(x))
+        nchunk = iceil(nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 100000
 
         filtops > fftops ? fftfilt(b, x, nfft) : filt(b, [one(T)], x)
