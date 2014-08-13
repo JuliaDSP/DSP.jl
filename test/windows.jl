@@ -46,3 +46,11 @@ end
 @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
 @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
 
+# tensor product windows
+w = hamming(15)
+w2 = hamming(20)
+@test_approx_eq w*w2' hamming((15,20))
+w = tukey(10, 0.4)
+w2 = tukey(4, 0.4)
+@test_approx_eq w*w2' tukey((10,4), 0.4)
+
