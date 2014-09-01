@@ -5,7 +5,7 @@
 module Periodograms
 using ..Util
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
-       freq, time
+       freq
 
 ## ARRAY SPLITTER
 
@@ -307,7 +307,7 @@ end
 Base.fftshift{T,F<:Frequencies}(p::Spectrogram{T,F}) =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
 Base.fftshift{T,F<:Range}(p::Spectrogram{T,F}) = p
-time(p::Spectrogram) = p.time
+Base.time(p::Spectrogram) = p.time
 
 function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
                         onesided::Bool=eltype(s)<:Real,
