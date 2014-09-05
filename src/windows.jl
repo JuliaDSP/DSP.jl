@@ -120,7 +120,13 @@ function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(v, 2))
     for i = 2:2:size(v, 2)
-        sgn[i] = sign(v[1, i])
+        s = 0
+        for j = 1:n
+            s = sign(v[j, i])
+            s != 0 && break
+        end
+        @assert s != 0
+        sgn[i] = s
     end
     scale!(v, sgn)
 end
