@@ -173,4 +173,18 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
     q
 end
 
+# tensor product window functions in 2-d, defined as w(x,y) = w(x) \otimes w(y)
+for func in (:tukey, :gaussian, :kaiser)
+	@eval begin
+		$func(n::NTuple{2,Integer}, a::Real) = $func(n[1], a) * $func(n[2], a)'
+	end
+end
+for func in (:rect, :hanning, :hamming, :cosine, :lanczos, 
+       :triang, :bartlett, :bartlett_hann, :blackman)
+	@eval begin
+		$func(n::NTuple{2,Integer}) = $func(n[1]) * $func(n[2])'
+	end
+end
+
+
 end # end module definition
