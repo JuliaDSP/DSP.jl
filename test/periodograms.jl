@@ -41,6 +41,9 @@ data0 = Float64[98.0,
 @test_approx_eq power(periodogram(data, onesided=false)) data0
 @test_approx_eq power(welch_pgram(data, length(data), 0, onesided=false)) data0
 @test_approx_eq power(spectrogram(data, length(data), 0, onesided=false)) data0
+@test_approx_eq power(periodogram(complex([data], [data]), onesided=false)) data0*2
+@test_approx_eq power(welch_pgram(complex([data], [data]), length(data), 0, onesided=false)) data0*2
+@test_approx_eq power(spectrogram(complex([data], [data]), length(data), 0, onesided=false)) data0*2
 
 # # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
 # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
@@ -69,24 +72,24 @@ expected = Float64[45, 2, 1, 2]
 # ~ value of the spectral density is obtained when
 # ~ using a window. More tests to be added if needed
 #Matlab: p = pwelch(0:7, window_func(8), 0, 8, 1, 'twosided')
-cases = [
-    hamming => Float64[65.461623986801527,
+cases = (
+    (hamming,  Float64[65.461623986801527,
                        20.556791795515764,
                         0.369313143650544,
                         0.022167446610882,
                         0.025502985564107,
                         0.022167446610882,
                         0.369313143650544,
-                        20.556791795515764],
-    bartlett => Float64[62.999999999999993,
-                        21.981076052592442,
-                         0.285714285714286,
-                         0.161781090264695,
-                         0.142857142857143,
-                         0.161781090264695,
-                         0.285714285714286,
-                        21.981076052592442]
-]
+                       20.556791795515764]),
+    (bartlett, Float64[62.999999999999993,
+                       21.981076052592442,
+                        0.285714285714286,
+                        0.161781090264695,
+                        0.142857142857143,
+                        0.161781090264695,
+                        0.285714285714286,
+                       21.981076052592442])
+)
 
 for (window1, expected) in cases
     @test_approx_eq power(periodogram(data; window=window1, onesided=false)) expected
