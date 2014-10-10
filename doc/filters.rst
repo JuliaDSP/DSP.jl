@@ -9,15 +9,15 @@ from one type to another using ``convert``.
 
 .. function:: ZPKFilter(z, p, k)
 
-    Filter representation in terms of zeros (``z``), poles(``p``), and
-    gain (``k``):
+    Filter representation in terms of zeros ``z``, poles ``p``, and
+    gain ``k``:
 
     .. math:: H(z) = k\frac{(s - \verb!z[1]!) \ldots (s - \verb!z[end]!)}{(s - \verb!p[1]!) \ldots (s - \verb!p[end]!)}
 
 .. function:: TFFilter(b, a)
 
     Filter representation in terms of the coefficients of the numerator
-    (``b``) and denominator ``a`` of the transfer function:
+    ``b`` and denominator ``a`` of the transfer function:
 
     .. math:: H(z) = \frac{\verb!b[1]! s^{n-1} + \ldots + \verb!b[n]!}{\verb!a[1]! s^{n-1} + \ldots + \verb!a[n]!}
 
