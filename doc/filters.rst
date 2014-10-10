@@ -173,15 +173,15 @@ Filter response
 Miscellaneous
 -------------
 
- .. function:: coefb(f)
+.. function:: coefb(f)
 
-     Coefficients of the numerator of a TFFilter object, highest power
-     first, i.e., the ``b`` passed to ``Base.filt()``
+    Coefficients of the numerator of a TFFilter object, highest power
+    first, i.e., the ``b`` passed to ``Base.filt()``
 
- .. function:: coefa(f)
+.. function:: coefa(f)
 
-     Coefficients of the denominator of a TFFilter object, highest power
-     first, i.e., the ``a`` passed to ``Base.filt()``
+    Coefficients of the denominator of a TFFilter object, highest power
+    first, i.e., the ``a`` passed to ``Base.filt()``
 
 
 Examples
@@ -196,7 +196,7 @@ denominator of the transfer function::
   prototype = Elliptic(4, 0.5, 30)
   tf = convert(TFFilter, digitalfilter(responsetype, prototype))
   numerator_coefs = coefb(tf)
-  denominator_ceofs = coefa(tf)
+  denominator_coefs = coefa(tf)
 
 Filter the data in ``x``, sampled at 1000 Hz, with a 4th order
 Butterworth bandpass filter between 10 and 40 Hz::
