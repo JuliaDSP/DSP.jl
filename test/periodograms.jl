@@ -233,10 +233,22 @@ P = periodogram(y,nfft=(n1,n2),radialsum=true)
 @test_approx_eq power(P) pe
 @test_approx_eq freq(P)[fwn+1] fwn/n2
 
+# Testing STFT function and comparing results with MATLAB
+
+fs = 16000
+nfft = 512
+nwin = int(0.025*fs)
+nhop = int(0.010*fs)
+s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
+
+Sjl = stft(s, nwin, nwin-nhop; nfft=nfft, fs=fs, window=hanning)
+Sml_re = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_real.txt"),'\t')
+Sml_im = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_imag.txt"),'\t')
+Sml = complex(Sml_re, Sml_im)
+@test_approx_eq Sjl Sml
 
 # error tests
 EE = ErrorException
 @test_throws EE periodogram([1 2 3])
 @test_throws EE periodogram(rand(2,3), nfft=(3,2))
 @test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
-
