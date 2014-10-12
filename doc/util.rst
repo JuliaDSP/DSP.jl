@@ -19,7 +19,8 @@
 .. function:: hilbert(x)
 
     Computes the analytic representation of x, :math:`x_a = x + j
-    \hat{x}`, where :math:`\hat{x}` is the Hilbert transform of x.
+    \hat{x}`, where :math:`\hat{x}` is the Hilbert transform of x,
+    along the first dimension of x.
 
 .. function:: fftfreq(n, fs=1)
 
@@ -31,7 +32,7 @@
 .. function:: rfftfreq(n, fs=1)
 
     Return discrete fourier transform sample frequencies for use with
-    ``rfft`. The returned Frequencies object is an AbstractVector
+    ``rfft``. The returned Frequencies object is an AbstractVector
     containing the frequency bin centers at every sample point. ``fs``
     is the sample rate of the input signal.
 

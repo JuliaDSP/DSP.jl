@@ -5,7 +5,7 @@
 module Periodograms
 using ..Util
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
-       freq, time, stft
+       freq, stft
 
 ## ARRAY SPLITTER
 
@@ -87,6 +87,66 @@ function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Rea
     out
 end
 
+# Convert the output of a 2-d FFT to a 2-d PSD and add it to out
+function fft2pow2!{T}(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real)
+    m1 = convert(T, 1/r)
+    for j = 1:n2
+        for i = 1:n1
+            @inbounds out[i,j] += abs2(s_fft[i,j])*m1
+        end
+    end
+    out
+end
+# Convert the output of a 2-d FFT to a radial PSD and add it to out
+function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real, ptype::Int)
+    nmin = min(n1,n2)
+    n1max = n1>>1 + 1    # since rfft is used
+    n1max != size(s_fft,1) && error("fft size incorrect")
+    m1 = convert(T, 1/r)
+    m2 = convert(T, 2/r)
+    wavenum = 0          # wavenumber index
+    kmax = length(out)   # the highest wavenumber
+    wc = zeros(Int,kmax) # wave count for radial average
+    if n1 == nmin        # scale the wavevector for non-square s_fft
+        c1 = 1
+        c2 = n1/n2
+    else
+        c1 = n2/n1
+        c2 = 1
+    end
+    
+    @inbounds begin
+        for j = 1:n2
+            kj2 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
+            kj2 = (kj2*c2)^2
+            
+            wavenum = int(sqrt( (c1*(1-1))^2 + kj2 )) + 1
+            if wavenum<=kmax
+                out[wavenum] += abs2(s_fft[1,j])*m1
+                wc[wavenum] += 1
+            end
+            for i = 2:n1max-1
+                wavenum = int(sqrt( (c1*(i-1))^2 + kj2 )) + 1
+                if wavenum<=kmax
+                    out[wavenum] += abs2(s_fft[i,j])*m2
+                    wc[wavenum] += 2
+                end
+            end
+            wavenum = int(sqrt( (c1*(n1max-1))^2 + kj2 )) + 1
+            if wavenum<=kmax
+                out[wavenum] += abs2(s_fft[n1max,j])*ifelse(iseven(n1), m1, m2)
+                wc[wavenum] += ifelse(iseven(n1), 1, 2)
+            end
+        end
+    end
+    if ptype == 2
+        for i = 1:kmax
+            @inbounds out[i] /= wc[i]
+        end
+    end
+    out
+end
+
 # Calculate sum of abs2
 # Remove this once we drop support for Julia 0.2
 if isdefined(Base, :sumabs2)
@@ -114,29 +174,29 @@ function compute_window(window::AbstractVector, n::Int)
     (window, sumabs2(window))
 end
 
-# Get the input element type of FFT for a given type
-fftintype{T<:Base.FFTW.fftwNumber}(::Type{T}) = T
-fftintype{T<:Real}(::Type{T}) = Float64
-fftintype{T<:Complex}(::Type{T}) = Complex128
-
-# Get the return element type of FFT for a given type
-fftouttype{T<:Base.FFTW.fftwComplex}(::Type{T}) = T
-fftouttype{T<:Base.FFTW.fftwReal}(::Type{T}) = Complex{T}
-fftouttype{T<:Union(Real,Complex)}(::Type{T}) = Complex128
-
-# Get the real part of the return element type of FFT for a given type
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{Complex{T}}) = T
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{T}) = T
-fftabs2type{T<:Union(Real,Complex)}(::Type{T}) = Float64
-
 ## PERIODOGRAMS
 abstract TFR{T}
-immutable Periodogram{T} <: TFR{T}
+immutable Periodogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
     power::Vector{T}
-    freq::Frequencies
+    freq::F
+end
+immutable Periodogram2{T,F1<:Union(Frequencies,Range),F2<:Union(Frequencies,Range)} <: TFR{T}
+    power::Matrix{T}
+    freq1::F1
+    freq2::F2
 end
 power(p::TFR) = p.power
 freq(p::TFR) = p.freq
+freq(p::Periodogram2) = (p.freq1, p.freq2)
+Base.fftshift{T,F<:Frequencies}(p::Periodogram{T,F}) =
+    Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
+Base.fftshift{T,F<:Range}(p::Periodogram{T,F}) = p
+# 2-d
+Base.fftshift{T,F1<:Frequencies,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+    Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
+Base.fftshift{T,F1<:Range,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+    Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
+Base.fftshift{T,F1<:Range,F2<:Range}(p::Periodogram2{T,F1,F2}) = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -166,6 +226,52 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
                 onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
 end
 
+# Compute the periodogram of a 2-d signal S. Returns 1/N*X[s(n)]^2, where X is the 2-d
+# DTFT of the signal S if radialsum and radialavg are both false (default), 
+# a radial sum if radialsum=true, or a radial averave if radialavg=true
+function periodogram{T<:Real}(s::AbstractMatrix{T}; 
+                                nfft::NTuple{2,Int}=nextfastfft(size(s)),
+                                fs::Real=1,
+                                radialsum::Bool=false, radialavg::Bool=false)
+    @assert size(s,1)<=nfft[1] && size(s,2)<=nfft[2]
+    @assert size(s,1)!=1 && size(s,2)!=1
+    if radialsum && radialavg
+        error("radialsum and radialavg both true")
+    elseif !radialsum && !radialavg
+        ptype = 0
+    elseif radialsum
+        ptype = 1
+    elseif radialavg
+        ptype = 2
+    end
+    norm2 = length(s)
+    nmin = minimum(nfft)
+    
+    if prod(nfft) == length(s) && isa(s, StridedArray)
+        input = s # no need to pad
+    else
+        input = zeros(fftintype(T), nfft)
+        input[1:size(s,1), 1:size(s,2)] = s
+    end
+    
+    if ptype == 0
+        s_fft = fft(input)
+        out = zeros(fftabs2type(T), nfft)
+        fft2pow2!(out,s_fft,nfft...,fs*norm2)
+        return Periodogram2(out, fftfreq(nfft[1],fs), fftfreq(nfft[2],fs))
+    else
+        s_fft = rfft(input)
+        out = zeros(fftabs2type(T), nmin>>1 + 1)
+        fft2pow2radial!(out,s_fft,nfft...,fs*norm2, ptype)
+        return Periodogram(out, Frequencies(length(out), length(out), fs/nmin))
+    end
+end
+
+forward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
+    FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+forward_plan{T<:Union(Complex64, Complex128)}(X::AbstractArray{T}, Y::AbstractArray{T}) =
+    FFTW.Plan(X, Y, 1, FFTW.FORWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
 # region of length M.  The method is detailed in "The Use of Fast Fourier Transform
@@ -184,7 +290,7 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     r = fs*norm2*length(sig_split)
 
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
-    plan = FFTW.Plan(sig_split.buf, tmp, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         FFTW.execute(plan, sig, tmp)
         fft2pow!(out, tmp, nfft, r, onesided)
@@ -198,12 +304,15 @@ end
 if !isdefined(Base, :FloatRange)
     typealias FloatRange{T} Range{T}
 end
-immutable Spectrogram{T} <: TFR{T}
+immutable Spectrogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
     power::Matrix{T}
-    freq::Frequencies
+    freq::F
     time::FloatRange{Float64}
 end
-time(p::Spectrogram) = p.time
+Base.fftshift{T,F<:Frequencies}(p::Spectrogram{T,F}) =
+    Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
+Base.fftshift{T,F<:Range}(p::Spectrogram{T,F}) = p
+Base.time(p::Spectrogram) = p.time
 
 function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
                         onesided::Bool=eltype(s)<:Real,
@@ -218,7 +327,7 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
-    plan = FFTW.Plan(sig_split.buf, tmp, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    plan = forward_plan(sig_split.buf, tmp)
     offset = 0
     for sig in sig_split
         FFTW.execute(plan, sig, tmp)
@@ -250,6 +359,5 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
     end
     out
 end
-
 
 end # end module definition

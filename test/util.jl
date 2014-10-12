@@ -71,6 +71,9 @@ h2 = hilbert([ones(10), zeros(9)])
 r = int(rand(128)*20)
 @test hilbert(r) == hilbert(float64(r))
 
+# Test hilbert with 2D input
+@test_approx_eq h hilbert(a)
+
 ## FFTFREQ
 
 @test_approx_eq fftfreq(1) [0.]
@@ -88,3 +91,15 @@ r = int(rand(128)*20)
 @test_approx_eq rfftfreq(3, 1/2) [0., 1/6]
 @test_approx_eq rfftfreq(6) [0., 1/6, 1/3, 1/2]
 @test_approx_eq rfftfreq(7) [0., 1/7, 2/7, 3/7]
+
+for n = 1:7
+	@test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
+end
+
+# nextfastfft
+@test nextfastfft(64) == 64
+@test nextfastfft(65) == 70
+@test nextfastfft(127) == 128
+@test nextfastfft((64,65,127)) == (64,70,128)
+@test nextfastfft(64,65,127) == nextfastfft((64,65,127))
+

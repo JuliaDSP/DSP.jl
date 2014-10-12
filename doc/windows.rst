@@ -60,3 +60,10 @@
     follow the convention that the first element of the skew-symmetric
     (odd) tapers is positive. The time-bandwidth product is given by
     ``nw``.
+
+.. function:: dpsseig(A, nw)
+
+    Eigenvalues of the DPSS matrix, representing the ratios of the
+    power within the main lobe to the total power (main and sidelobes).
+    ``A`` is the output of :func:`dpss`, and ``nw`` is the
+    time-bandwidth product provided to :func:`dpss` as input.

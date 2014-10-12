@@ -5,6 +5,10 @@ d1 = dpss(128, 4)
 d2 = readdlm(joinpath(dirname(@__FILE__), "data", "dpss128,4.txt"), '\t')
 @test_approx_eq d1 d2
 
+# Test dpsseig against dpss from MATLAB
+lambda = [0.9999999997159923,0.9999999731146645,0.9999988168667646,0.9999680890685374,0.9994167543397652,0.9925560207018469,0.9368556668429153]
+@test_approx_eq dpsseig(d1, 4) lambda
+
 # Checking Hanning, Hamming, Triangular, Bartlett, Bartlett-Hann, and Blackman windows against values computed with MATLAB. Lanczos and cosine are not checked since there's no standard MATLAB implementation.
 hanning_jl = hanning(128)
 hanning_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hanning128.txt"), '\t')
@@ -41,4 +45,12 @@ end
 @test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
 @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
 @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
+
+# tensor product windows
+w = hamming(15)
+w2 = hamming(20)
+@test_approx_eq w*w2' hamming((15,20))
+w = tukey(10, 0.4)
+w2 = tukey(4, 0.4)
+@test_approx_eq w*w2' tukey((10,4), 0.4)
 
