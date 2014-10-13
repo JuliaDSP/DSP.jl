@@ -40,7 +40,7 @@
     with overlap ``noverlap`` and returns a Spectrogram object. See
     :func:`periodogram` for description of optional keyword arguments.
 
-.. function:: spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+.. function:: stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
     Computes the STFT of a signal ``s`` based on ``n`` segments
     with overlap ``noverlap`` and returns a matrix containing the STFT coefficients. See :func:`periodogram` for description of optional keyword arguments.
