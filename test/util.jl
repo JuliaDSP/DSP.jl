@@ -93,7 +93,7 @@ r = int(rand(128)*20)
 @test_approx_eq rfftfreq(7) [0., 1/7, 2/7, 3/7]
 
 for n = 1:7
-	@test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
+    @test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
 end
 
 # nextfastfft
@@ -102,4 +102,29 @@ end
 @test nextfastfft(127) == 128
 @test nextfastfft((64,65,127)) == (64,70,128)
 @test nextfastfft(64,65,127) == nextfastfft((64,65,127))
+
+
+## COMMON DSP TOOLS
+
+# dB conversion
+@test_approx_eq 3dB db2pow(3)
+@test_approx_eq -3dB db2pow(-3)
+@test_approx_eq 3dBa db2amp(3)
+@test_approx_eq -3dBa db2amp(-3)
+@test isa(3e0dB, Float64)
+@test isa(3f0dB, Float32)
+num = float64(pi)
+@test_approx_eq pow2db(num) 10*log10(num)
+@test_approx_eq amp2db(num) 20*log10(num)
+@test_approx_eq num*dB db2pow(num)
+@test_approx_eq num*dBa db2amp(num)
+@test_approx_eq num db2pow(pow2db(num))
+@test_approx_eq num db2amp(amp2db(num))
+
+n = (5,6)
+for x in ( randn(n), randn(n)+randn(n)im )
+    @test_approx_eq rms(x) sqrt(mean(abs(x).^2))
+    @test_approx_eq rmsfft(fft(x)) rms(x)
+end # for
+
 

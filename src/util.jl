@@ -1,7 +1,8 @@
 module Util
 
 export unwrap!, unwrap, hilbert, Frequencies, fftintype, fftouttype,
-       fftabs2type, fftfreq, rfftfreq, nextfastfft
+       fftabs2type, fftfreq, rfftfreq, nextfastfft,
+       dB, dBa, pow2db, amp2db, db2pow, db2amp, rms, rmsfft
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -125,5 +126,31 @@ const FAST_FFT_SIZES = [2, 3, 5, 7]
 nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
 nextfastfft(n1, n2...) = tuple(nextfastfft(n1), nextfastfft(n2...)...)
 nextfastfft(n::Tuple) = nextfastfft(n...)
+
+
+## COMMON DSP TOOLS
+
+immutable dBconvert end
+immutable dBaconvert end
+const dB = dBconvert()
+const dBa = dBaconvert()
+# for using e.g. 3dB or -3dBa
+*(a::Real, ::dBconvert) = db2pow(a)
+*(a::Real, ::dBaconvert) = db2amp(a)
+# convert dB to power ratio
+db2pow(a::Real) = 10^(a/10)
+# convert dB to amplitude ratio
+db2amp(a::Real) = 10^(a/20)
+# convert power ratio to dB
+pow2db(a::Real) = 10*log10(a)
+# convert amplitude ratio to dB
+amp2db(a::Real) = 20*log10(a)
+
+# root mean square
+rms{T<:Number}(s::AbstractArray{T}) = sqrt(sumabs2(s)/length(s))
+# root mean square of fft of signal
+rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
+
+
 
 end # end module definition
