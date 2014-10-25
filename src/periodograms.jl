@@ -318,46 +318,39 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
                         window::Union(Function,AbstractVector,Nothing)=nothing)
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-
-    win, norm2 = compute_window(window, n)
-    sig_split = arraysplit(s, n, noverlap, nfft, win)
-    nout = onesided ? (nfft >> 1)+1 : nfft
-    out = zeros(fftabs2type(T), nout, length(sig_split))
-    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
-    r = fs*norm2
-
-    plan = forward_plan(sig_split.buf, tmp)
-    offset = 0
-    for sig in sig_split
-        FFTW.execute(plan, sig, tmp)
-        fft2pow!(out, tmp, nfft, r, onesided, offset)
-        offset += nout
-    end
-
-    Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
-                ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
+    stft(s, n, noverlap; onesided=onesided, nfft=nfft, fs=fs, window=window, psdonly=true)
 end
 
 function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
-                        window::Union(Function,AbstractVector,Nothing)=nothing)
+                        window::Union(Function,AbstractVector,Nothing)=nothing, psdonly::Bool=false)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
-    out = zeros(fftouttype(T), nout, length(sig_split))
+    out = zeros(psdonly ? fftabs2type(T) : fftouttype(T), nout, length(sig_split))
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+    r = fs*norm2
 
-    plan = FFTW.Plan(sig_split.buf, tmp, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    plan = forward_plan(sig_split.buf, tmp)
     offset = 0
     for k = 1:length(sig_split)
         FFTW.execute(plan, sig_split[k], tmp)
-        out[:,k] = tmp
+        if psdonly
+            fft2pow!(out, tmp, nfft, r, onesided, offset)
+            offset += nout
+        else
+            out[:,k] = tmp
+        end
     end
-    out
+    if psdonly
+        Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
+                ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
+    else
+        out
+    end
 end
 
 end # end module definition
