@@ -147,6 +147,31 @@ function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n
     out
 end
 
+function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0)
+    n = length(s_fft)
+    if onesided
+        copy!(out, offset+1, s_fft, 1, n)
+    else
+        if n == nfft
+            copy!(out, offset+1, s_fft, 1, length(s_fft))
+        else
+            # Convert real FFT to two-sided
+            out[offset+1] = s_fft[1]
+            @inbounds for i = 2:length(s_fft)-1
+                v = s_fft[i]
+                out[offset+i] = v
+                out[offset+nfft-i+2] = v
+            end
+            out[offset+n] = s_fft[n]
+            if isodd(nfft)
+                out[offset+nfft] = s_fft[n]
+            end
+        end
+    end
+    out
+end
+
+
 # Calculate sum of abs2
 # Remove this once we drop support for Julia 0.2
 if isdefined(Base, :sumabs2)
@@ -318,7 +343,11 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
                         window::Union(Function,AbstractVector,Nothing)=nothing)
-    stft(s, n, noverlap; onesided=onesided, nfft=nfft, fs=fs, window=window, psdonly=true)
+
+    out = stft(s, n, noverlap; onesided=onesided, nfft=nfft, fs=fs, window=window, psdonly=true)
+    Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
+                ((0:size(out,2)-1)*(n-noverlap)+n/2)/fs)
+
 end
 
 function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
@@ -340,17 +369,12 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
         FFTW.execute(plan, sig_split[k], tmp)
         if psdonly
             fft2pow!(out, tmp, nfft, r, onesided, offset)
-            offset += nout
         else
-            out[:,k] = tmp
+            fft2oneortwosided!(out, tmp, nfft, onesided, offset)
         end
+        offset += nout
     end
-    if psdonly
-        Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
-                ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
-    else
-        out
-    end
+    out
 end
 
 end # end module definition
