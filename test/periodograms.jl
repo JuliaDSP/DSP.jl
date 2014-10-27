@@ -251,7 +251,7 @@ Sml = complex(Sml_re, Sml_im)
 n = 10
 floatt = Float64
 for onesided in (true, false),
-        nfft in (n, n+2),
+        nfft in (n, n+2, n+3),
        atype in (floatt, Complex{floatt})
     nout = nout = onesided ? (nfft >> 1)+1 : nfft
     x = zeros(atype, nfft)
