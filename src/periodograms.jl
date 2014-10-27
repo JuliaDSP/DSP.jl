@@ -160,7 +160,7 @@ function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}
             @inbounds for i = 2:length(s_fft)-1
                 v = s_fft[i]
                 out[offset+i] = v
-                out[offset+nfft-i+2] = v
+                out[offset+nfft-i+2] = conj(v)
             end
             out[offset+n] = s_fft[n]
             if isodd(nfft)
