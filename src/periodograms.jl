@@ -149,23 +149,14 @@ end
 
 function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0)
     n = length(s_fft)
-    if onesided
-        copy!(out, offset+1, s_fft, 1, n)
-    else
-        if n == nfft
-            copy!(out, offset+1, s_fft, 1, length(s_fft))
-        else
-            # Convert real FFT to two-sided
-            out[offset+1] = s_fft[1]
-            @inbounds for i = 2:length(s_fft)-1
-                v = s_fft[i]
-                out[offset+i] = v
-                out[offset+nfft-i+2] = conj(v)
-            end
-            out[offset+n] = s_fft[n]
-            if isodd(nfft)
-                out[offset+nfft] = s_fft[n]
-            end
+    copy!(out, offset+1, s_fft, 1, n)
+    if !onesided && n != nfft
+        # Convert real FFT to two-sided
+        @inbounds for i = 2:n-1
+            out[offset+nfft-i+2] = conj(s_fft[i])
+        end
+        if isodd(nfft)
+            out[offset+n+1] = conj(s_fft[n])
         end
     end
     out
