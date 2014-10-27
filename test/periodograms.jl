@@ -247,6 +247,41 @@ Sml_im = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_imag.txt"),'\t')
 Sml = complex(Sml_re, Sml_im)
 @test_approx_eq Sjl Sml
 
+# fft2oneortwosided!
+n = 10
+floatt = Float64
+for onesided in (true, false),
+        nfft in (n, n+2),
+       atype in (floatt, Complex{floatt})
+    nout = nout = onesided ? (nfft >> 1)+1 : nfft
+    x = zeros(atype, nfft)
+    if atype <: Real
+        x[1:n] = rand(atype, n)
+        xrcfft = rfft(x)
+    else
+        x[1:n] = rand(floatt, n)+im*rand(floatt, n)
+        xrcfft = fft(x)
+    end
+    xfft = fft(x)
+    out = zeros(fftouttype(atype),nout,3)
+    if !(onesided == true && atype <: Complex)
+        outft = DSP.Periodograms.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
+    end
+    if onesided == true && atype <: Real
+        @test_approx_eq out[:,2] xrcfft
+        @test_approx_eq out[:,[1,3]] xrcfft*[0 0]
+    elseif onesided == false && atype <: Real
+        @test_approx_eq out[:,2] xfft
+        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+    elseif onesided == false && atype <: Complex
+        @test_approx_eq out[:,2] xfft
+        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+    else
+        #onesided complex
+    end
+end
+
+
 # error tests
 EE = ErrorException
 @test_throws EE periodogram([1 2 3])
