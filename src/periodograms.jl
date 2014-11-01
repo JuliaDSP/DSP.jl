@@ -80,7 +80,7 @@ function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Rea
             end
             out[offset+n] += abs2(s_fft[n])*m1
             if isodd(nfft)
-                out[offset+nfft] += abs2(s_fft[n])*m1
+                out[offset+n+1] += abs2(s_fft[n])*m1
             end
         end
     end
