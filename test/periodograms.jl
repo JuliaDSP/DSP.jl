@@ -233,10 +233,57 @@ P = periodogram(y,nfft=(n1,n2),radialsum=true)
 @test_approx_eq power(P) pe
 @test_approx_eq freq(P)[fwn+1] fwn/n2
 
+# Testing STFT function and comparing results with MATLAB
+
+fs = 16000
+nfft = 512
+nwin = int(0.025*fs)
+nhop = int(0.010*fs)
+s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
+
+Sjl = stft(s, nwin, nwin-nhop; nfft=nfft, fs=fs, window=hanning)
+Sml_re = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_real.txt"),'\t')
+Sml_im = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_imag.txt"),'\t')
+Sml = complex(Sml_re, Sml_im)
+@test_approx_eq Sjl Sml
+
+# fft2oneortwosided!
+n = 10
+floatt = Float64
+for onesided in (true, false),
+        nfft in (n, n+2, n+3),
+       atype in (floatt, Complex{floatt})
+    nout = nout = onesided ? (nfft >> 1)+1 : nfft
+    x = zeros(atype, nfft)
+    if atype <: Real
+        x[1:n] = rand(atype, n)
+        xrcfft = rfft(x)
+    else
+        x[1:n] = rand(floatt, n)+im*rand(floatt, n)
+        xrcfft = fft(x)
+    end
+    xfft = fft(x)
+    out = zeros(fftouttype(atype),nout,3)
+    if !(onesided == true && atype <: Complex)
+        outft = DSP.Periodograms.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
+    end
+    if onesided == true && atype <: Real
+        @test_approx_eq out[:,2] xrcfft
+        @test_approx_eq out[:,[1,3]] xrcfft*[0 0]
+    elseif onesided == false && atype <: Real
+        @test_approx_eq out[:,2] xfft
+        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+    elseif onesided == false && atype <: Complex
+        @test_approx_eq out[:,2] xfft
+        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+    else
+        #onesided complex
+    end
+end
+
 
 # error tests
 EE = ErrorException
 @test_throws EE periodogram([1 2 3])
 @test_throws EE periodogram(rand(2,3), nfft=(3,2))
 @test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
-

@@ -5,7 +5,7 @@
 module Periodograms
 using ..Util
 export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
-       freq
+       freq, stft
 
 ## ARRAY SPLITTER
 
@@ -146,6 +146,22 @@ function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n
     end
     out
 end
+
+function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0)
+    n = length(s_fft)
+    copy!(out, offset+1, s_fft, 1, n)
+    if !onesided && n != nfft
+        # Convert real FFT to two-sided
+        @inbounds for i = 2:n-1
+            out[offset+nfft-i+2] = conj(s_fft[i])
+        end
+        if isodd(nfft)
+            out[offset+n+1] = conj(s_fft[n])
+        end
+    end
+    out
+end
+
 
 # Calculate sum of abs2
 # Remove this once we drop support for Julia 0.2
@@ -318,27 +334,38 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
                         window::Union(Function,AbstractVector,Nothing)=nothing)
+
+    out = stft(s, n, noverlap; onesided=onesided, nfft=nfft, fs=fs, window=window, psdonly=true)
+    Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
+                ((0:size(out,2)-1)*(n-noverlap)+n/2)/fs)
+
+end
+
+function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
+                        onesided::Bool=eltype(s)<:Real,
+                        nfft::Int=nextfastfft(n), fs::Real=1,
+                        window::Union(Function,AbstractVector,Nothing)=nothing, psdonly::Bool=false)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
-    out = zeros(fftabs2type(T), nout, length(sig_split))
+    out = zeros(psdonly ? fftabs2type(T) : fftouttype(T), nout, length(sig_split))
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)
     offset = 0
-    for sig in sig_split
-        FFTW.execute(plan, sig, tmp)
-        fft2pow!(out, tmp, nfft, r, onesided, offset)
+    for k = 1:length(sig_split)
+        FFTW.execute(plan, sig_split[k], tmp)
+        if psdonly
+            fft2pow!(out, tmp, nfft, r, onesided, offset)
+        else
+            fft2oneortwosided!(out, tmp, nfft, onesided, offset)
+        end
         offset += nout
     end
-
-    Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
-                ((0:length(sig_split)-1)*(n-noverlap)+n/2)/fs)
+    out
 end
-
-
 
 end # end module definition
