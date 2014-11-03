@@ -36,14 +36,14 @@
 
 .. function:: spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
-    Computes the spectrogram of a signal ``s`` based on ``n`` segments
-    with overlap ``noverlap`` and returns a Spectrogram object. See
+    Computes the spectrogram of a signal ``s`` based on segments with ``n`` samples
+    with overlap of ``noverlap`` samples, and returns a Spectrogram object. See
     :func:`periodogram` for description of optional keyword arguments.
 
 .. function:: stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing, psdonly=false)
 
-    Computes the STFT of a signal ``s`` based on ``n`` segments
-    with overlap ``noverlap`` and returns a matrix containing the STFT
+    Computes the STFT of a signal ``s`` based on segments with ``n`` samples
+    with overlap of ``noverlap`` samples, and returns a matrix containing the STFT
     coefficients. See :func:`periodogram` for description of optional
     keyword arguments. The argument ``psdonly``, when set to `true`, 
     makes this function return the power spectral density instead
