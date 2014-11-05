@@ -281,6 +281,11 @@ for onesided in (true, false),
     end
 end
 
+# Testing mt_pgram
+# MATLAB: x = pmtm(stft_x, 4, 5000, 16000, 'unity')
+mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
+@test_approx_eq power(mt_pgram(s; fs=16000)) mtdata
+@test_approx_eq power(mt_pgram(s; fs=16000, window=dpss(length(s), 4))) mtdata
 
 # error tests
 EE = ErrorException

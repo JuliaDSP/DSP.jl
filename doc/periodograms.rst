@@ -34,6 +34,22 @@
     object. For a Bartlett periodogram, set ``noverlap=0``. See
     :func:`periodogram` for description of optional keyword arguments.
 
+.. function:: mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1,
+                          window=dpss(length(s), nw, ntapers))
+
+    Computes the multitaper periodogram of a signal ``s``.
+
+    If ``window`` is not specified, the signal is tapered with
+    ``ntapers`` discrete prolate spheroidal sequences with
+    time-bandwidth product ``nw``. Each sequence is equally weighted;
+    adaptive multitaper is not (yet) supported.
+
+    If ``window`` is specified, each column is applied as a taper. The
+    sum of periodograms is normalized by the total sum of squares of
+    ``window``.
+
+    See also: :func:`dpss`
+
 .. function:: spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
     Computes the spectrogram of a signal ``s`` based on segments with ``n`` samples

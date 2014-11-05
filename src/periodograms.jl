@@ -3,9 +3,9 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..Util
-export arraysplit, nextfastfft, periodogram, welch_pgram, spectrogram, power,
-       freq, stft
+using ..Util, ..Windows
+export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
+       spectrogram, power, freq, stft
 
 ## ARRAY SPLITTER
 
@@ -299,6 +299,7 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
                                 nfft::Int=nextfastfft(n), fs::Real=1,
                                 window::Union(Function,AbstractVector,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    nfft >= n || error("nfft must be >= n")
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
@@ -309,6 +310,38 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         FFTW.execute(plan, sig, tmp)
+        fft2pow!(out, tmp, nfft, r, onesided)
+    end
+
+    Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
+end
+
+function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
+                             nfft::Int=nextfastfft(length(s)), fs::Real=1,
+                             nw::Int=4, ntapers::Int=iceil(2nw)-1,
+                             window::Union(AbstractMatrix, Nothing)=nothing)
+    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    nfft >= length(s) || error("nfft must be >= n")
+
+    if isa(window, Nothing)
+        window = dpss(length(s), nw, ntapers)
+        r::T = fs*ntapers
+    else
+        size(window, 1) == length(s) ||
+            error(DimensionMismatch("length of signal $(length(s)) must match first dimension of window $(size(window,1))"))
+        r = fs*sumabs2(window)
+    end
+
+    out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
+    input = zeros(fftintype(T), nfft)
+    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+
+    plan = forward_plan(input, tmp)
+    for j = 1:size(window, 2)
+        for i = 1:size(window, 1)
+            @inbounds input[i] = window[i, j]*s[i]
+        end
+        FFTW.execute(plan, input, tmp)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
