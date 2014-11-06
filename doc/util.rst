@@ -42,3 +42,33 @@
     to ``n``. FFTW contains optimized kernels for these sizes and
     computes Fourier transforms of input that is a product of these
     sizes faster than for input of other sizes.
+
+.. function:: pow2db(a)
+
+    Convert a power ratio to dB (decibel), or :math:`10\log_{10}(a)`. 
+    The inverse of ``db2pow``.
+
+.. function:: amp2db(a)
+
+    Convert an amplitude ratio to dB (decibel), or :math:`20
+    \log_{10}(a)=10\log_{10}(a^2)`. The inverse of ``db2amp``.
+
+.. function:: db2pow(a)
+
+    Convert dB to a power ratio. This function call also be called 
+    using ``a*dB``, i.e. ``3dB == db2pow(3)``. The inverse of ``pow2db``.
+
+.. function:: db2amp(a)
+
+    Convert dB to an amplitude ratio. This function call also be called 
+    using ``a*dBa``, i.e. ``3dBa == db2amp(3)``. The inverse of ``amp2db``.
+
+.. function:: rms(s)
+
+    Return the root mean square of signal ``s``.
+
+.. function:: rmsfft(f)
+
+    Return the root mean square of signal ``s`` given the FFT transform
+    ``f = fft(s)``. Equivalent to ``rms(ifft(f))``.
+
