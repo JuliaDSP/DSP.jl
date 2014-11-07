@@ -34,8 +34,7 @@
     object. For a Bartlett periodogram, set ``noverlap=0``. See
     :func:`periodogram` for description of optional keyword arguments.
 
-.. function:: mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1,
-                          window=dpss(length(s), nw, ntapers))
+.. function:: mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1, window=dpss(length(s), nw, ntapers))
 
     Computes the multitaper periodogram of a signal ``s``.
 
@@ -62,7 +61,6 @@
     with overlap of ``noverlap`` samples, and returns a matrix containing the STFT
     coefficients. See :func:`periodogram` for description of optional
     keyword arguments.
-
 
 .. function:: periodogram(s::AbstractMatrix; nfft=nextfastfft(size(s)), fs=1, radialsum=false, radialavg=false)
 
