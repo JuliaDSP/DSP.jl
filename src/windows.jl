@@ -2,7 +2,8 @@ module Windows
 using ..Util
 export rect, hanning, hamming, tukey, cosine, lanczos, 
        triang, bartlett, gaussian, bartlett_hann, blackman, 
-       kaiser, dpss, dpsseig
+       kaiser, dpss, dpsseig,
+       SmoothEdges
 # 
 # Window functions
 #
@@ -186,5 +187,7 @@ for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
 	end
 end
 
+# default smoothing function for extensions
+const SmoothEdges = n->kaiser(n, 2.5)
 
 end # end module definition
