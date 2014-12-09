@@ -11,7 +11,7 @@
 function freqz(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
     ejw = exp(-im * w)
-    polyval(filter.b, ejw) / polyval(filter.a, ejw)
+    polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
 
@@ -36,7 +36,7 @@ end
 function freqs(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
     s = im * w
-    polyval(filter.b, s) / polyval(filter.a, s)
+    polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
 
