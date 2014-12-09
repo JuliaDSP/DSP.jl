@@ -1,12 +1,8 @@
-# Filter response functions for Julia
-# Created by Robert Luke (Robert.Luke@med.kuleuven.be)
+# Filter response functions
 
-#######################################
 #
 # Frequency response of a digital filter
 #
-#######################################
-
 
 function freqz(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
@@ -14,12 +10,10 @@ function freqz(filter::Filter, w::Number)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
-
 function freqz(filter::Filter, w::AbstractVector)
     filter = convert(TFFilter, filter)
     [freqz(filter, i) for i = w]
 end
-
 
 function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
     filter = convert(TFFilter, filter)
@@ -27,11 +21,9 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
 end
 
 
-#######################################
 #
 # Frequency response of an analog filter
 #
-#######################################
 
 function freqs(filter::Filter, w::Number)
     filter = convert(TFFilter, filter)
@@ -39,12 +31,10 @@ function freqs(filter::Filter, w::Number)
     polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
-
 function freqs(filter::Filter, w::AbstractVector)
     filter = convert(TFFilter, filter)
     [freqs(filter, i) for i = w]
 end
-
 
 function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
     filter = convert(TFFilter, filter)
@@ -52,11 +42,9 @@ function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
 end
 
 
-#######################################
 #
 # Helper functions
 #
-#######################################
 
 function hz_to_radians_per_second(hz, fs)
     hz * ((2 * pi) / fs)
