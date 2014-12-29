@@ -20,15 +20,25 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
+function freqz(filter::Filter)
+  filter = convert(TFFilter, filter)
+  w = linspace(0, π, 250)
+  [freqz(filter, i) for i = w]
+end
 
 
 #
 # Phase response of a digital filter
 #
 
-function phasez(filter::Filter, w)
+function phasez(filter::Filter, w::AbstractVector)
     h = freqz(filter, w)
     unwrap(-atan2(imag(h), real(h)))
+end
+
+function phasez(filter::Filter)
+  h = freqz(filter)
+  unwrap(-atan2(imag(h), real(h)))
 end
 
 #
