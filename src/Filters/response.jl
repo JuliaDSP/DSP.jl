@@ -21,6 +21,34 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
 end
 
 
+
+#
+# Phase response of a digital filter
+#
+
+function phasez(filter::Filter, w)
+    h = freqz(filter, w)
+    unwrap(-atan2(imag(h), real(h)))
+end
+
+#
+# Impulse response of a digital filter
+#
+
+function impz(filter::Filter, n=100)
+  i = [1, zeros(n-1)]
+  filt(filter, i)
+end
+
+#
+# Step response of a digital filter
+#
+
+function stepz(filter::Filter, n=100)
+  cumsum(impz(filter, n))
+end
+
+
 #
 # Frequency response of an analog filter
 #
