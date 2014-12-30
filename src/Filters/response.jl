@@ -55,7 +55,8 @@ end
 #
 
 function stepz(filter::Filter, n=100)
-  cumsum(impz(filter, n))
+  i = [0, ones(n-1)]
+  filt(filter, i)
 end
 
 
