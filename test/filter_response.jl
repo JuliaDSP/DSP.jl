@@ -113,6 +113,44 @@ matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 #=xlabel("Frequency (rad/s)")=#
 #=file(figure, "MATLAB-freqs-phase.png", width=1200, height=800)=#
 
+#######################################
+#
+#  Test frequency, phase, impulse and step response
+#
+#  Data from Matlab:
+#  [b,a]=cheby2(10, 80, [0.2 0.4]);
+#  ir = impz(b,a, 512);
+#  stepr = stepz(b,a, 512);
+#  h = abs(freqz(b,a));
+#  [phi,f] =  phasez(b, a);
+#  all = [f, ir, stepr, h, phi];
+#  dlmwrite('responses-eg1.txt',all, 'delimiter', '\t', 'precision', '%.12f')
+#
+#######################################
+
+cheby2_matlab = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
+df = digitalfilter(Bandpass(0.2, 0.4), Chebyshev2(10, 80))
+w = cheby2_matlab[:,1]
+
+#Impulse response
+impz_matlab = cheby2_matlab[:,2]
+@test_approx_eq_eps(impz(df, 512), impz_matlab, 1e-7)
+
+#Step response
+stepz_matlab = cheby2_matlab[:,3]
+@test_approx_eq_eps(stepz(df, 512), stepz_matlab, 1e-7)
+
+h_matlab = cheby2_matlab[:,4]
+@test_approx_eq_eps(abs(freqz(df, w)), h_matlab, 1e-5)
+
+phi_matlab = cheby2_matlab[:,5]
+@test_approx_eq_eps(phasez(df, w), phi_matlab, 1e-5)
+
+
+#Test if we get same results with summing impz and stepz
+@test_approx_eq(cumsum(impz(df)), stepz(df))
+
+
 
 #######################################
 #

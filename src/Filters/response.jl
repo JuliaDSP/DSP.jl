@@ -55,7 +55,7 @@ end
 #
 
 function stepz(filter::Filter, n=100)
-  i = [0, ones(n-1)]
+  i = ones(n)
   filt(filter, i)
 end
 
