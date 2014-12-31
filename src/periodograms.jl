@@ -284,9 +284,9 @@ function periodogram{T<:Real}(s::AbstractMatrix{T};
 end
 
 forward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
-    FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
 forward_plan{T<:Union(Complex64, Complex128)}(X::AbstractArray{T}, Y::AbstractArray{T}) =
-    FFTW.Plan(X, Y, 1, FFTW.FORWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+    FFTW.Plan(X, Y, 1, FFTW.FORWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
@@ -309,7 +309,7 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
-        FFTW.execute(plan, sig, tmp)
+        FFTW.execute(plan.plan, sig, tmp)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -341,7 +341,7 @@ function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Rea
         for i = 1:size(window, 1)
             @inbounds input[i] = window[i, j]*s[i]
         end
-        FFTW.execute(plan, input, tmp)
+        FFTW.execute(plan.plan, input, tmp)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -394,7 +394,7 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     plan = forward_plan(sig_split.buf, tmp)
     offset = 0
     for k = 1:length(sig_split)
-        FFTW.execute(plan, sig_split[k], tmp)
+        FFTW.execute(plan.plan, sig_split[k], tmp)
         if isa(psdonly, PSDOnly)
             fft2pow!(out, tmp, nfft, r, onesided, offset)
         else
