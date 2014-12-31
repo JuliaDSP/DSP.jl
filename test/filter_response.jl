@@ -42,6 +42,44 @@ h_abs = convert(Array{Float64}, abs(h))
 
 #######################################
 #
+#  Test frequency, phase, impulse and step response
+#
+#  Data from Matlab using b,a and a from above:
+#  ir = impz(b,a, 512);
+#  stepr = stepz(b,a, 512);
+#  h = abs(freqz(b,a));
+#  [phi,f] =  phasez(b, a);
+#  all = [f, ir, stepr, h, phi];
+#  dlmwrite('responses-eg1.txt',all, 'delimiter', '\t', 'precision', '%.12f')
+#
+#######################################
+
+matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
+df = TFFilter(b, a)
+w = matlab_resp[:,1]
+
+#Impulse response
+impz_matlab = matlab_resp[:,2]
+@test_approx_eq impz(df, 512) impz_matlab
+
+#Step response
+stepz_matlab = matlab_resp[:,3]
+@test_approx_eq stepz(df, 512) stepz_matlab
+
+h_matlab = matlab_resp[:,4]
+@test_approx_eq abs(freqz(df, w)) h_matlab
+
+phi_matlab = matlab_resp[:,5]
+@test_approx_eq phasez(df, w) phi_matlab
+
+
+# Test diffent versions of the functions
+@test freqz(df) == freqz(df, linspace(0, pi, 250))
+@test phasez(df) == phasez(df, linspace(0, pi, 250))
+@test_approx_eq(cumsum(impz(df)), stepz(df))
+
+#######################################
+#
 #  Test digital filter with frequency specified in hz
 #
 #  TODO: Create a MATLAB ground truth to compare against
@@ -113,44 +151,6 @@ matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 #=xlabel("Frequency (rad/s)")=#
 #=file(figure, "MATLAB-freqs-phase.png", width=1200, height=800)=#
 
-#######################################
-#
-#  Test frequency, phase, impulse and step response
-#
-#  Data from Matlab:
-#  [b,a]=cheby2(10, 80, [0.2 0.4]);
-#  ir = impz(b,a, 512);
-#  stepr = stepz(b,a, 512);
-#  h = abs(freqz(b,a));
-#  [phi,f] =  phasez(b, a);
-#  all = [f, ir, stepr, h, phi];
-#  dlmwrite('responses-eg1.txt',all, 'delimiter', '\t', 'precision', '%.12f')
-#
-#######################################
-
-cheby2_matlab = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
-df = digitalfilter(Bandpass(0.2, 0.4), Chebyshev2(10, 80))
-w = cheby2_matlab[:,1]
-
-#Impulse response
-impz_matlab = cheby2_matlab[:,2]
-@test_approx_eq_eps(impz(df, 512), impz_matlab, 1e-7)
-
-#Step response
-stepz_matlab = cheby2_matlab[:,3]
-@test_approx_eq_eps(stepz(df, 512), stepz_matlab, 1e-7)
-
-h_matlab = cheby2_matlab[:,4]
-@test_approx_eq_eps(abs(freqz(df, w)), h_matlab, 1e-5)
-
-phi_matlab = cheby2_matlab[:,5]
-@test_approx_eq_eps(phasez(df, w), phi_matlab, 1e-5)
-
-
-# Test diffent versions of the functions
-@test freqz(df) == freqz(df, linspace(0, pi, 250))
-@test phasez(df) == phasez(df, linspace(0, pi, 250))
-@test_approx_eq(cumsum(impz(df)), stepz(df))
 
 
 
