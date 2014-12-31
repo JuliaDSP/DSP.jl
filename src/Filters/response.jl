@@ -21,9 +21,7 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
 end
 
 function freqz(filter::Filter)
-  filter = convert(TFFilter, filter)
-  w = linspace(0, π, 250)
-  [freqz(filter, i) for i = w]
+  freqz(filter, linspace(0, π, 250))
 end
 
 

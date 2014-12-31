@@ -147,8 +147,11 @@ phi_matlab = cheby2_matlab[:,5]
 @test_approx_eq_eps(phasez(df, w), phi_matlab, 1e-5)
 
 
-#Test if we get same results with summing impz and stepz
+# Test diffent versions of the functions
+@test freqz(df) == freqz(df, linspace(0, pi, 250))
+@test phasez(df) == phasez(df, linspace(0, pi, 250))
 @test_approx_eq(cumsum(impz(df)), stepz(df))
+
 
 
 
