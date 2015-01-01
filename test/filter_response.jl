@@ -42,6 +42,44 @@ h_abs = convert(Array{Float64}, abs(h))
 
 #######################################
 #
+#  Test frequency, phase, impulse and step response
+#
+#  Data from Matlab using b,a and a from above:
+#  ir = impz(b,a, 512);
+#  stepr = stepz(b,a, 512);
+#  h = abs(freqz(b,a));
+#  [phi,f] =  phasez(b, a);
+#  all = [f, ir, stepr, h, phi];
+#  dlmwrite('responses-eg1.txt',all, 'delimiter', '\t', 'precision', '%.12f')
+#
+#######################################
+
+matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
+df = TFFilter(b, a)
+w = matlab_resp[:,1]
+
+#Impulse response
+impz_matlab = matlab_resp[:,2]
+@test_approx_eq impz(df, 512) impz_matlab
+
+#Step response
+stepz_matlab = matlab_resp[:,3]
+@test_approx_eq stepz(df, 512) stepz_matlab
+
+h_matlab = matlab_resp[:,4]
+@test_approx_eq abs(freqz(df, w)) h_matlab
+
+phi_matlab = matlab_resp[:,5]
+@test_approx_eq phasez(df, w) phi_matlab
+
+
+# Test diffent versions of the functions
+@test freqz(df) == freqz(df, linspace(0, pi, 250))
+@test phasez(df) == phasez(df, linspace(0, pi, 250))
+@test_approx_eq(cumsum(impz(df)), stepz(df))
+
+#######################################
+#
 #  Test digital filter with frequency specified in hz
 #
 #  TODO: Create a MATLAB ground truth to compare against
@@ -112,6 +150,9 @@ matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 #=ylabel("Phase (degrees)")=#
 #=xlabel("Frequency (rad/s)")=#
 #=file(figure, "MATLAB-freqs-phase.png", width=1200, height=800)=#
+
+
+
 
 
 #######################################

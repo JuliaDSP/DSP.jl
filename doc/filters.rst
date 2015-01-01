@@ -140,7 +140,7 @@ Filter prototypes
     ``n`` pole Chebyshev type II filter with ``ripple`` dB ripple in
     the stopband.
 
-.. function:: Elliptic(n, rp, rs) 
+.. function:: Elliptic(n, rp, rs)
 
     ``n`` pole elliptic (Cauer) filter with ``rp`` dB ripple in the
     passband and ``rs`` dB attentuation in the stopband.
@@ -149,7 +149,7 @@ Filter prototypes
 Filter response
 ---------------
 
-.. function:: freqz(filter, w)
+.. function:: freqz(filter, w = linspace(0, π, 250))
 
     Frequency response of a digital ``filter`` at normalised frequency
     or frequencies ``w`` in radians/sample.
@@ -158,6 +158,19 @@ Filter response
 
     Frequency response of a digital ``filter`` at frequency or
     frequencies ``hz`` with sampling rate ``fs``.
+
+.. function:: phasez(filter, w = linspace(0, π, 250))
+
+    Phase response of a digital ``filter`` at normalised frequency
+    or frequencies ``w`` in radians/sample.
+
+.. function:: impz(filter, n=100)
+
+    Impulse response of a digital ``filter`` with ``n`` points.
+
+.. function:: stepz(filter, n=100)
+
+    Step response of a digital ``filter`` with ``n`` points.
 
 .. function:: freqs(filter, w)
 
