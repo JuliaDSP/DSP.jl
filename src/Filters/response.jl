@@ -10,7 +10,7 @@ function freqz(filter::Filter, w::Number)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
-function freqz(filter::Filter, w::AbstractVector)
+function freqz(filter::Filter, w = linspace(0, π, 250))
     filter = convert(TFFilter, filter)
     [freqz(filter, i) for i = w]
 end
@@ -20,24 +20,16 @@ function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
-function freqz(filter::Filter)
-  freqz(filter, linspace(0, π, 250))
-end
-
 
 #
 # Phase response of a digital filter
 #
 
-function phasez(filter::Filter, w::AbstractVector)
+function phasez(filter::Filter, w = linspace(0, π, 250))
     h = freqz(filter, w)
     unwrap(-atan2(imag(h), real(h)))
 end
 
-function phasez(filter::Filter)
-  h = freqz(filter)
-  unwrap(-atan2(imag(h), real(h)))
-end
 
 #
 # Impulse response of a digital filter

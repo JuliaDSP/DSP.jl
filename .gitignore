@@ -25,3 +25,4 @@
 *.orig
 
 /usr
+/doc/_build
