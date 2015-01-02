@@ -1,8 +1,19 @@
 module Windows
 using ..Util
-export rect, hanning, hamming, tukey, cosine, lanczos, 
-       triang, bartlett, gaussian, bartlett_hann, blackman, 
-       kaiser, dpss, dpsseig
+export  rect,
+        hanning, 
+        hamming, 
+        tukey, 
+        cosine, 
+        lanczos, 
+        triang, 
+        bartlett, 
+        gaussian, 
+        bartlett_hann, 
+        blackman, 
+        kaiser, 
+        dpss, 
+        dpsseig
 # 
 # Window functions
 #
