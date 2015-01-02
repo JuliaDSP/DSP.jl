@@ -1,8 +1,26 @@
 module Util
 
-export unwrap!, unwrap, hilbert, Frequencies, fftintype, fftouttype,
-       fftabs2type, fftfreq, rfftfreq, nextfastfft,
-       dB, dBa, pow2db, amp2db, db2pow, db2amp, rms, rmsfft
+export  unwrap!,
+        unwrap,
+        hilbert,
+        Frequencies,
+        fftintype,
+        fftouttype,
+        fftabs2type,
+        fftfreq,
+        rfftfreq,
+        nextfastfft,
+        dB,
+        dBa,
+        pow2db,
+        amp2db,
+        db2pow,
+        db2amp,
+        rms,
+        rmsfft,
+        unsafe_dot,
+        polyfit,
+        shiftin!
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -211,7 +229,12 @@ end
 
 
 # Shifts b into the end a.
-# a = [ a, b ][1:length(a)]
+# julia> DSP.Util.shiftin!( [1,2,3,4], [5, 6])
+# 4-element Array{Int64,1}:
+#  3
+#  4
+#  5
+#  6
 function shiftin!{T}( a::Vector{T}, b::Vector{T} )
     aLen = length( a )
     bLen = length( b )
