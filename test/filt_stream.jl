@@ -43,7 +43,7 @@ end
 function test_singlerate( h, x )
     xLen       = length( x )
     hLen       = length( h )
-    pivotPoint = min( rand(50:150, 1)[1], ifloor( xLen/4 ))
+    pivotPoint = min( rand(50:150, 1)[1], int(floor( xLen/4 )))
     x1         = x[ 1 : pivotPoint ]
     x2         = x[ pivotPoint+1 : end ]
 
@@ -105,7 +105,7 @@ end
 function test_decimation( h, x, decimation )
     xLen       = length( x )
     hLen       = length( h )
-    pivotPoint = min( rand(50:150, 1)[1], ifloor( xLen/4 ))
+    pivotPoint = min( rand(50:150, 1)[1], int(floor( xLen/4 )))
     x1         = x[ 1 : pivotPoint ]
     x2         = x[ pivotPoint+1 : end ]
 
@@ -162,7 +162,7 @@ end
 function test_interpolation( h, x, interpolation )
     xLen       = length( x )
     hLen       = length( h )
-    pivotPoint = min( rand(50:150, 1)[1], ifloor( xLen/4 ))
+    pivotPoint = min( rand(50:150, 1)[1], int(floor( xLen/4 )))
     x1         = x[ 1 : pivotPoint ]
     x2         = x[ pivotPoint+1 : end ]
 
@@ -224,7 +224,7 @@ end
 function test_rational( h, x, ratio )
     xLen       = length( x )
     hLen       = length( h )
-    pivotPoint = min( rand(50:150, 1)[1], ifloor( xLen/4 ))
+    pivotPoint = min( rand(50:150, 1)[1], int(floor( xLen/4 )))
     x1         = x[ 1 : pivotPoint ]
     x2         = x[ pivotPoint+1 : end ]
     upfactor   = num( ratio )
@@ -303,7 +303,7 @@ function test_arbitrary( Th, x, resampleRate, numFilters )
     @printf( "\n\tPiecewise arbitrary resampling\n\t\t" )
     self           = DSP.FIRFilter( h, resampleRate, numFilters )
     piecwiseResult = eltype(x)[]
-    sizehint( piecwiseResult, iceil( length(x)*resampleRate ) )
+    sizehint( piecwiseResult, int(ceil( length(x)*resampleRate )) )
     @time for i in 1:length( x )
         thisY = filt( self, x[i:i] )
         append!( piecwiseResult, thisY )
