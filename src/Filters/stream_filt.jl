@@ -73,7 +73,7 @@ function FIRRational( h::Vector, ratio::Rational )
     pfb          = taps2pfb( h, num(ratio) )
     N𝜙           = size( pfb )[2]
     tapsPer𝜙     = size( pfb )[1]
-    criticalYidx = ifloor( tapsPer𝜙 * ratio )
+    criticalYidx = int(floor( tapsPer𝜙 * ratio ))
     𝜙Idx         = 1
     inputDeficit = 1
     FIRRational( pfb, ratio, N𝜙, tapsPer𝜙, criticalYidx, 𝜙Idx, inputDeficit )
@@ -283,7 +283,7 @@ end
 
 function taps2pfb{T}( h::Vector{T}, N𝜙::Integer )
     hLen     = length( h )
-    tapsPer𝜙 = iceil( hLen/N𝜙 )
+    tapsPer𝜙 = int(ceil( hLen/N𝜙 ))
     pfbSize  = tapsPer𝜙 * N𝜙
     pfb      = Array( T, tapsPer𝜙, N𝜙 )
     hIdx     = 1
@@ -322,7 +322,7 @@ end
 
 function taps2pnfb{T}( h::Vector{T}, N𝜙::Integer, polyorder::Integer )
     hLen     = length( h )
-    tapsPer𝜙 = iceil( hLen/N𝜙 )
+    tapsPer𝜙 = int(ceil( hLen/N𝜙 ))
     pnfb     = Array( Poly{T}, tapsPer𝜙 )
     pfbSize  = N𝜙 * tapsPer𝜙
     h        = hLen < pfbSize + 1 ? [ h, zeros( T, pfbSize+1-hLen ) ] : h
@@ -353,7 +353,7 @@ function outputlength( inputlength::Integer, ratio::Rational, initial𝜙::Integ
     interpolation = num( ratio )
     decimation    = den( ratio )
     outLen        = (( inputlength * interpolation ) - initial𝜙 + 1 ) / decimation
-    iceil(  outLen  )
+    int(ceil(  outLen  ))
 end
 
 function outputlength( kernel::FIRStandard, inputlength::Integer )
@@ -373,11 +373,11 @@ function outputlength( kernel::FIRRational, inputlength::Integer )
 end
 
 function outputlength( kernel::FIRArbitrary, inputlength::Integer )
-    iceil( (inputlength-kernel.inputDeficit+1) * kernel.rate )
+    int(ceil( (inputlength-kernel.inputDeficit+1) * kernel.rate ))
 end
 
 function outputlength( kernel::FIRFarrow, inputlength::Integer )
-    iceil( (inputlength-kernel.inputDeficit+1) * kernel.rate )
+    int(ceil( (inputlength-kernel.inputDeficit+1) * kernel.rate ))
 end
 
 function outputlength( self::FIRFilter, inputlength::Integer )
@@ -397,7 +397,7 @@ function inputlength( outputlength::Int, ratio::Rational, initial𝜙::Integer )
     interpolation = num( ratio )
     decimation    = den( ratio )
     inLen         = ( outputlength * decimation + initial𝜙 - 1 ) / interpolation
-    iceil( inLen )
+    int(ceil( inLen ))
 end
 
 function inputlength( self::FIRFilter{FIRStandard}, outputlength::Integer )
@@ -564,7 +564,7 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRRational{T
         end
 
         buffer[ bufIdx ] = accumulator
-        inputIdx      += ifloor( ( kernel.𝜙Idx + decimation - 1 ) / interpolation )
+        inputIdx      += int(floor( ( kernel.𝜙Idx + decimation - 1 ) / interpolation ))
         kernel.𝜙Idx    = nextphase( kernel.𝜙Idx, kernel.ratio )
     end
 
@@ -664,11 +664,11 @@ function update( kernel::FIRArbitrary )
     kernel.𝜙Accumulator += kernel.Δ
 
     if kernel.𝜙Accumulator > kernel.N𝜙
-        kernel.xIdx        += ifloor( (kernel.𝜙Accumulator-1) / kernel.N𝜙 )
+        kernel.xIdx        += int(floor( (kernel.𝜙Accumulator-1) / kernel.N𝜙 ))
         kernel.𝜙Accumulator = mod( (kernel.𝜙Accumulator-1), kernel.N𝜙 ) + 1
     end
 
-    kernel.𝜙Idx = ifloor( kernel.𝜙Accumulator )
+    kernel.𝜙Idx = int(floor( kernel.𝜙Accumulator ))
     kernel.α    = kernel.𝜙Accumulator - kernel.𝜙Idx
 end
 
@@ -771,7 +771,7 @@ function update( kernel::FIRFarrow )
     kernel.𝜙Idx += kernel.Δ
 
     if kernel.𝜙Idx > kernel.N𝜙
-        kernel.xIdx += ifloor( (kernel.𝜙Idx-1) / kernel.N𝜙 )
+        kernel.xIdx += int(floor( (kernel.𝜙Idx-1) / kernel.N𝜙 ))
         kernel.𝜙Idx  = mod( (kernel.𝜙Idx-1), kernel.N𝜙 ) + 1
     end
 
