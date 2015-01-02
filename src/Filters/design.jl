@@ -1,5 +1,7 @@
 # Filter prototypes, transformations, and transforms
 
+using ..Windows
+
 abstract FilterType
 
 #
@@ -8,7 +10,7 @@ abstract FilterType
 
 function Butterworth(T::Type, n::Integer)
     n > 0 || error("n must be positive")
-    
+
     poles = zeros(Complex{T}, n)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
@@ -384,3 +386,94 @@ prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2)
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::Filter) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
+
+
+
+
+#==============================================================================#
+#          _  _ ____ _ ____ ____ ____    ___  ____ ____ _ ____ _  _            #
+#          |_/  |__| | [__  |___ |__/    |  \ |___ [__  | | __ |\ |            #
+#          | \_ |  | | ___] |___ |  \    |__/ |___ ___] | |__] | \|            #
+#==============================================================================#
+
+function kaiserlength( transition::Real, attenuation::Real = 60 )
+    n = iceil(( attenuation - 7.95 )/( 2*π*2.285*transition ))
+
+    if attenuation > 50
+        β = 0.1102*( attenuation - 8.7 )
+    elseif attenuation >= 21
+        β = 0.5842*( attenuation - 21 )^( 0.4 ) + 0.07886*( attenuation - 21 )
+    else
+        β = 0.0
+    end
+
+    return n, β
+end
+
+
+
+
+#==============================================================================#
+#          ____ _ ____    ___  ____ ____ ___ ____ ___ _   _ ___  ____          #
+#          |___ | |__/    |__] |__/ |  |  |  |  |  |   \_/  |__] |___          #
+#          |    | |  \    |    |  \ |__|  |  |__|  |    |   |    |___          #
+#==============================================================================#
+
+# Lowpass
+function firprototype( n::Integer, parameters::Lowpass )
+    w = parameters.w
+
+    [ 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1) ]
+end
+
+# Bandpass
+function firprototype( n::Integer, parameters::Bandpass )
+    w1 = parameters.w1
+    w2 = parameters.w2
+
+    [ 2*(w1*sinc(2*w1*(k-(n-1)/2)) - w2*sinc(2*w2*(k-(n-1)/2))) for k = 0:(n-1) ]
+end
+
+# Highpass
+function firprototype( n::Integer, parameters::Highpass )
+    w = parameters.w
+
+    [ sinc(k-(n-1)/2) - 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1) ]
+end
+
+# Bandstop
+function firprototype( n::Integer, parameters::Highpass )
+    w1 = parameters.w1
+    w2 = parameters.w2
+
+    [ 2*(w2*sinc(2*w2*(k-(n-1)/2)) - w1*sinc(2*w1*(k-(n-1)/2))) for k = 0:(n-1) ]
+end
+
+
+
+
+#==============================================================================#
+#                        ____ _ ____ ___  ____ ____                            #
+#                        |___ | |__/ |  \ |___ [__                             #
+#                        |    | |  \ |__/ |___ ___]                            #
+#==============================================================================#
+
+function firdes( n::Integer, parameters::FilterType, windowfunction::Function )
+    prototype = firprototype( n, parameters )
+    n         = length( prototype )
+
+    prototype .*  windowfunction( n )
+end
+
+function firdes( n::Integer, parameters::FilterType, windowfunction::Function, beta )
+    prototype = firprototype( n, parameters )
+    n         = length( prototype )
+
+    prototype .* kaiser( n, beta )
+end
+
+# TODO: FilterType nomralizes frequency, but the user might not know that and pass an unnormalized transisition width
+function firdes( parameters::FilterType, transitionWidth::Real; attenuation::Real = 60 )
+    ( n, beta ) = kaiserlength( transitionWidth, attenuation )
+    firdes( n, parameters, kaiser, beta )
+end
