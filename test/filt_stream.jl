@@ -34,7 +34,6 @@ end
 
 
 
-
 #==============================================================================#
 #               ____ _ _  _ ____ _    ____    ____ ____ ___ ____               #
 #               [__  | |\ | | __ |    |___    |__/ |__|  |  |___               #
@@ -55,7 +54,7 @@ function test_singlerate( h, x )
     @printf( "\nTesting single-rate fitering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
 
     @printf( "\n\tBase.filt\n\t\t")
-    @time baseResult = Base.filt( h, 1.0, x )
+    @time naiveResult = Base.filt( h, 1.0, x )
 
     if method_exists( DSP.firfilt, ( typeof(h), typeof(x) ))
         @printf( "\n\tDSP.firfilt\n\t\t")
@@ -84,11 +83,11 @@ function test_singlerate( h, x )
     piecewiseResult = [ y1, y2 ]
 
 
-     if isapprox( baseResult, statelesResult ) && isapprox( baseResult, statefulResult ) && isapprox( baseResult, piecewiseResult )
+     if isapprox( naiveResult, statelesResult ) && isapprox( naiveResult, statefulResult ) && isapprox( naiveResult, piecewiseResult )
          return true
      end
 
-     display( [ baseResult statelesResult statefulResult piecewiseResult ] )
+     display( [ naiveResult statelesResult statefulResult piecewiseResult ] )
 
      return false
 
@@ -179,18 +178,7 @@ function test_interpolation( h, x, interpolation )
         for n = 0:xLen-1;
             xZeroStuffed[ n*interpolation+1 ] = x[ n+1 ]
         end
-        baseResult = Base.filt( h, one(eltype(h)), xZeroStuffed )
-    end
-
-    if method_exists( DSP.firfilt, ( typeof(h), typeof(x) ))
-        @printf( "\n\tNaive interpolation with DSP.firfilt\n\t\t")
-        @time begin
-            xZeroStuffed = zeros( eltype(x), xLen * interpolation )
-            for n = 0:xLen-1;
-                xZeroStuffed[ n*interpolation+1 ] = x[ n+1 ]
-            end
-            dspResult = DSP.firfilt( h, xZeroStuffed )
-        end
+        naiveResult = Base.filt( h, one(eltype(h)), xZeroStuffed )
     end
 
     @printf( "\n\tDSP.filt( h, x, %d//1 )\n\t\t", interpolation )
@@ -215,11 +203,11 @@ function test_interpolation( h, x, interpolation )
     end
     piecewiseResult = [ y1, y2 ]
 
-    if isapprox( baseResult, statelesResult ) && isapprox( baseResult, statefulResult ) && isapprox( piecewiseResult, baseResult )
+    if isapprox( naiveResult, statelesResult ) && isapprox( naiveResult, statefulResult ) && isapprox( piecewiseResult, naiveResult )
         return true
     end
 
-    display( [ [1:length(baseResult)] baseResult statefulResult piecewiseResult ] )
+    display( [ naiveResult statelesResult statefulResult piecewiseResult ] )
 
     return false
 end
@@ -281,7 +269,7 @@ function test_rational( h, x, ratio )
         return true
     end
 
-    display( [  naiveResult statefulResult piecewiseResult ] )
+    display( [  naiveResult statelesResult statefulResult piecewiseResult ] )
 
     return false
 end
@@ -331,10 +319,8 @@ function test_arbitrary( Th, x, resampleRate, numFilters )
         return true
     end
 
-    display( [  [1:commonLen] naiveResult statelessResult  piecwiseResult abs(naiveResult.-statelessResult) abs(naiveResult.-piecwiseResult) ] )
+    display( [ naiveResult statelessResult piecwiseResult  ] )
 
-
-    display( [ [1:commonLen-1] diff(naiveResult) diff(statelessResult) diff(piecwiseResult) ] )
     return false
 end
 
@@ -381,22 +367,22 @@ function test_all()
     end
 end
 
-# function test_nextphase()
-#     for interpolation in 1:8
-#         for decimation in 1:8
-#             ratio           = interpolation//decimation
-#             interpolation   = num(ratio)
-#             decimation      = den(ratio)
-#             x               = repmat( [1:interpolation], decimation )
-#             reference = [ x[n] for n = 1:decimation:length( x ) ]
-#             result = [ 1 ]
-#             for i in 2:interpolation
-#                 append!( result, [ DSP.nextphase( result[end], ratio ) ] )
-#             end
-#             @test isapprox( reference, result )
-#         end
-#     end
-# end
-#
-# test_nextphase()
+function test_nextphase()
+    for interpolation in 1:8
+        for decimation in 1:8
+            ratio           = interpolation//decimation
+            interpolation   = num(ratio)
+            decimation      = den(ratio)
+            x               = repmat( [1:interpolation], decimation )
+            reference = [ x[n] for n = 1:decimation:length( x ) ]
+            result = [ 1 ]
+            for i in 2:interpolation
+                append!( result, [ DSP.Filters.nextphase( result[end], ratio ) ] )
+            end
+            @test isapprox( reference, result )
+        end
+    end
+end
+
+test_nextphase()
 test_all()
