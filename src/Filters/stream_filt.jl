@@ -447,7 +447,7 @@ end
 #               ___] | | \| |__] |___ |___    |  \ |  |  |  |___               #
 #==============================================================================#
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx} )
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     hLen                = kernel.hLen
@@ -472,7 +472,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, 
     return buffer
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx} )
     buffer = Array( promote_type(Th, Tx), length(x) )
     filt!( buffer, self, x )
 end
@@ -486,7 +486,7 @@ end
 #               | | \|  |  |___ |  \ |    |___ |__| |  |  |  |___              #
 #==============================================================================#
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     interpolation       = kernel.interpolation
@@ -516,7 +516,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th
     return buffer
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
     xLen   = length( x )
     outlen = outputlength( self, xLen )
     buffer = Array( promote_type(Th,Tx), outlen )
@@ -533,7 +533,7 @@ end
 #           |  \ |  |  |  .   |  \ |___ ___] |  | |  | |    |___ |___          #
 #==============================================================================#
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th}}, x::Vector{Tx} )
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     xLen                = length( x )
@@ -574,7 +574,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th}}, 
     return bufIdx
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRRational{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRRational{Th}}, x::Vector{Tx} )
     kernel         = self.kernel
     xLen           = length( x )
     bufLen         = outputlength( self, xLen )
@@ -595,7 +595,7 @@ end
 #                      |__/ |___ |___ | |  | |  |  |  |___                     #
 #==============================================================================#
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx} )
     kernel = self.kernel
     xLen   = length( x )
 
@@ -630,7 +630,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}},
     return yIdx
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx} )
     kernel = self.kernel
     xLen   = length( x )
     Tb     = promote_type( Th, Tx)
@@ -690,7 +690,7 @@ end
 tapsforphase{T}( kernel::FIRArbitrary{T}, phase::Real ) = tapsforphase!( Array(T,kernel.tapsPer𝜙), kernel, phase )
 
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
@@ -731,7 +731,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}},
     return bufIdx
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
     bufLen         = outputlength( self, length(x) )
     buffer         = Array( promote_type(Th,Tx), bufLen )
     samplesWritten = filt!( buffer, self, x )
@@ -782,7 +782,7 @@ function update( kernel::FIRFarrow )
 end
 
 
-function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRFarrow{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRFarrow{Th}}, x::Vector{Tx} )
     kernel              = self.kernel
     xLen                = length( x )
     bufIdx              = 0
@@ -819,7 +819,7 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRFarrow{Th}}, x:
     return bufIdx
 end
 
-function filt{Th,Tx}( self::FIRFilter{FIRFarrow{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}( self::FIRFilter{FIRFarrow{Th}}, x::Vector{Tx} )
     bufLen         = outputlength( self, length(x) )
     buffer         = Array( promote_type(Th,Tx), bufLen )
     samplesWritten = filt!( buffer, self, x )
@@ -839,19 +839,19 @@ end
 #==============================================================================#
 
 # Single-rate, decimation, interpolation, and rational resampling.
-function filt( h::Vector, x::Vector, ratio::Rational = 1//1 )
+function Base.filt( h::Vector, x::Vector, ratio::Rational = 1//1 )
     self = FIRFilter( h, ratio )
     filt( self, x )
 end
 
 # Arbitrary resampling with polyphase interpolation and two neighbor lnear interpolation.
-function filt( h::Vector, x::Vector, rate::FloatingPoint, N𝜙::Integer = 32 )
+function Base.filt( h::Vector, x::Vector, rate::FloatingPoint, N𝜙::Integer = 32 )
     self = FIRFilter( h, rate, N𝜙 )
     filt( self, x )
 end
 
 # Arbitrary resampling with polyphase interpolation and polynomial generated intra-phase taps.
-function filt( h::Vector, x::Vector, rate::FloatingPoint, N𝜙::Integer, polyorder::Integer )
+function Base.filt( h::Vector, x::Vector, rate::FloatingPoint, N𝜙::Integer, polyorder::Integer )
     self = FIRFilter( h, rate, N𝜙, polyorder )
     filt( self, x )
 end
