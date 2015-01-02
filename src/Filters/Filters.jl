@@ -1,6 +1,5 @@
 module  Filters
-using   Polynomials,
-        ..Util
+using   Polynomials, ..Util
 
 include("types.jl")
 export  Filter,
