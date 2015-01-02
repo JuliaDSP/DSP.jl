@@ -697,9 +697,6 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}},
     xLen                = length( x )
     bufIdx              = 0
     history::Vector{Tx} = self.history
-    # TODO: Remove when arb and farrow filters are rock-solid.
-    # db_vec_phi          = Array(Float64, bufLen)
-    # db_vec_xidx         = Array(Int, bufLen)
 
     # Do we have enough input samples to produce one or more output samples?
     if xLen < kernel.inputDeficit
@@ -715,9 +712,6 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}},
     kernel.xIdx = kernel.inputDeficit
 
     while kernel.xIdx <= xLen
-        # TODO: Remove when arb and farrow filters are rock-solid.
-        # db_vec_xidx[bufIdx] = kernel.xIdx
-        # db_vec_phi[bufIdx]  = kernel.𝜙Idx + kernel.α
         bufIdx += 1
 
         if kernel.xIdx < kernel.tapsPer𝜙
@@ -734,10 +728,6 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}},
     kernel.inputDeficit = kernel.xIdx - xLen
     self.history        = shiftin!( history, x )
 
-    # TODO: Remove when arb and farrow filters are rock-solid.
-    # resize!( db_vec_phi, length(buffer) )
-    # resize!( db_vec_xidx, length(buffer) )
-    # return buffer, db_vec_xidx, db_vec_phi
     return bufIdx
 end
 
@@ -797,9 +787,6 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRFarrow{Th}}, x:
     xLen                = length( x )
     bufIdx              = 0
     history::Vector{Tx} = self.history
-    # TODO: Remove when arb and farrow filters are rock-solid.
-    # db_vec_phi          = Array(Float64, bufLen)
-    # db_vec_xidx         = Array(Int, bufLen)
 
     # Do we have enough input samples to produce one or more output samples?
     if xLen < kernel.inputDeficit
@@ -813,9 +800,6 @@ function filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRFarrow{Th}}, x:
 
     while kernel.xIdx <= xLen
         bufIdx        += 1
-        # TODO: Remove when arb and farrow filters are rock-solid.
-        # db_vec_xidx[bufIdx] = kernel.xIdx
-        # db_vec_phi[bufIdx]  = kernel.𝜙Idx
         if kernel.xIdx < kernel.tapsPer𝜙
             y = unsafe_dot( kernel.currentTaps, history, x, kernel.xIdx )
         else
