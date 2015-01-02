@@ -30,9 +30,12 @@ export  FilterType,
         kaiserlength,
         firdes
 
-include("response.jl")    
+include("response.jl")
 export  freqs,
-        freqz
+        freqz,
+        phasez,
+        impz,
+        stepz
 
 include("stream_filt.jl")
 export  FIRFilter,
@@ -44,3 +47,4 @@ include("naive_resampling.jl")
 export  naivefilt
 
 end
+
