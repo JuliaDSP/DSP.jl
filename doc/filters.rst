@@ -45,6 +45,35 @@ from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``BiquadFilters``.
 
+Streaming Finite Impulse Response (FIR) Filter
+---------------------------------------
+
+DSP.jl's ``FIRFilter`` type maintains state between calls to :func`filt`, allowing
+you to filter a signal of indefinite length in RAM-friendly chunks. ``FIRFilter``
+contains nothing more that the state of the filter, and a ``FIRKernel``. There are
+five different kinds of ``FIRKernel`` for single rate, up-sampling, down-sampling,
+rational resampling, and arbitrary sample-rate conversion. You need not specify the
+type of kernel. The ``FIRFilter`` constructor selects the correct kernel based on input
+parameters.
+
+.. function:: FIRFilter(h[, resampleRatio])
+    
+    Returns a FIRFilter object from the vector of filter taps ``h``.
+    ``resampleRatio`` is an optional rational integer which specifies
+    the input to output sample rate relationship (e.g. ``147//160`` for
+    converting recorded audio from 48 KHz to 44.1 KHz).
+    
+.. function:: FIRFilter(h, rate[, N𝜙])
+
+    Returns a polyphase FIRFilter object from the vector of filter taps ``h``.
+    ``rate`` is a floating point number that specifies the input to
+    output sample-rate relationship:
+    
+    .. math:: \verb!rate! = \frac{fs_{out}}{fs_{in}}
+
+    ``N𝜙`` is an optional parameter which
+    specifies the number of *phases* created from ``h``. ``N𝜙`` defaults to 32.
+
 Filter application
 ------------------
 
