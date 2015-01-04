@@ -48,7 +48,7 @@ from one type to another using ``convert``.
 Streaming Finite Impulse Response (FIR) Filter
 ---------------------------------------
 
-DSP.jl's ``FIRFilter`` type maintains state between calls to :func`filt`, allowing
+DSP.jl's ``FIRFilter`` type maintains state between calls to :func:`filt`, allowing
 you to filter a signal of indefinite length in RAM-friendly chunks. ``FIRFilter``
 contains nothing more that the state of the filter, and a ``FIRKernel``. There are
 five different kinds of ``FIRKernel`` for single rate, up-sampling, down-sampling,
@@ -56,23 +56,20 @@ rational resampling, and arbitrary sample-rate conversion. You need not specify 
 type of kernel. The ``FIRFilter`` constructor selects the correct kernel based on input
 parameters.
 
-.. function:: FIRFilter(h[, resampleRatio])
+.. function:: FIRFilter(h[, ratio])
     
     Returns a FIRFilter object from the vector of filter taps ``h``.
-    ``resampleRatio`` is an optional rational integer which specifies
+    ``ratio`` is an optional rational integer which specifies
     the input to output sample rate relationship (e.g. ``147//160`` for
     converting recorded audio from 48 KHz to 44.1 KHz).
     
 .. function:: FIRFilter(h, rate[, N𝜙])
 
     Returns a polyphase FIRFilter object from the vector of filter taps ``h``.
-    ``rate`` is a floating point number that specifies the input to
-    output sample-rate relationship:
-    
-    .. math:: \verb!rate! = \frac{fs_{out}}{fs_{in}}
-
-    ``N𝜙`` is an optional parameter which
-    specifies the number of *phases* created from ``h``. ``N𝜙`` defaults to 32.
+    ``rate`` is a floating point number that specifies the input to output
+    sample-rate relationship :math:`\frac{fs_{out}}{fs_{in}}`. ``N𝜙`` is an 
+    optional parameter which specifies the number of *phases* created from
+    ``h``. ``N𝜙`` defaults to 32.
 
 Filter application
 ------------------
@@ -123,6 +120,21 @@ Filter design
 .. function:: digitalfilter(responsetype, prototype)
 
     Construct a digital filter.
+    
+.. function:: firdes(n, responsetype, windowfunction[, alpha])
+    
+    Create vector of FIR taps of length ``n``. ``alpha`` is required
+    when using a window function that expects it.
+    
+.. function:: firdes(responsetype, transition[; attenuation])
+    
+    Similar to previous method, but the required number of taps is
+    calculated based on ``transition`` width and stopband ``attenuation``.
+    ``attenuation`` defaults to 60 dB. NOTE: ``responsetype`` is normalized
+    for you when using the response type constructors with an explicit
+    sample rate, but you will need to normalize ``transition`` yourself:
+    ``transition = transition_hz/samplerate_hz``
+    
 
 Filter response types
 ---------------------
@@ -246,3 +258,4 @@ Butterworth bandpass filter between 10 and 40 Hz::
   responsetype = Bandpass(10, 40; fs=1000)
   prototype = Butterworth(4)
   filt(digitalfilter(responsetype, prototype), x)
+
