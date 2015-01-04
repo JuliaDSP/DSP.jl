@@ -469,7 +469,7 @@ function firdes( n::Integer, parameters::FilterType, windowfunction::Function, b
     prototype = firprototype( n, parameters )
     n         = length( prototype )
 
-    prototype .* kaiser( n, beta )
+    prototype .* windowfunction( n, beta )
 end
 
 # TODO: FilterType nomralizes frequency, but the user might not know that and pass an unnormalized transisition width
