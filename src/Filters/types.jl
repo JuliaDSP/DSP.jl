@@ -216,8 +216,8 @@ function Base.convert{Z,P}(::Type{SOSFilter}, f::ZPKFilter{Z,P})
     # necessarily paired with a zero
     @assert isempty(complexz)
     @assert isempty(realz)
-    groupedz = [z1, z2, z3, z4]::Vector{Z}
-    groupedp = [p1, p2, p3, p4, complexp, realp]::Vector{P}
+    groupedz = [z1; z2; z3; z4]::Vector{Z}
+    groupedp = [p1; p2; p3; p4; complexp; realp]::Vector{P}
     @assert length(groupedz) == nz
     @assert length(groupedp) == n
 

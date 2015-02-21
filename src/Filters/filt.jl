@@ -284,7 +284,7 @@ function optimalfftfiltlength(nb, nx)
         L = 0
         for i = firsti:lasti
             curL = FFT_LENGTHS[i] - (nb - 1)
-            estimate = iceil(nx/curL)*FFT_TIMES[i]
+            estimate = ceil(Int, nx/curL)*FFT_TIMES[i]
             if estimate < fastestestimate
                 nfft = FFT_LENGTHS[i]
                 fastestestimate = estimate
@@ -367,7 +367,7 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         # and filt()
         nfft = optimalfftfiltlength(nb, nx)
         L = min(nx, nfft - (nb - 1))
-        nchunk = iceil(nx/L)*div(length(x), nx)
+        nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 100000
 
         filtops > fftops ? fftfilt(b, x, nfft) : filt(b, [one(T)], x)

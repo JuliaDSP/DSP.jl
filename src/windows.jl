@@ -1,5 +1,5 @@
 module Windows
-using ..Util
+using Compat, ..Util
 export rect, hanning, hamming, tukey, cosine, lanczos, 
        triang, bartlett, gaussian, bartlett_hann, blackman, 
        kaiser, dpss, dpsseig
@@ -105,7 +105,7 @@ end
 # See Gruenbacher, D. M., & Hummels, D. R. (1994). A simple algorithm
 # for generating discrete prolate spheroidal sequences. IEEE
 # Transactions on Signal Processing, 42(11), 3276-3278.
-function dpss(n::Int, nw::Real, ntapers::Int=iceil(2*nw)-1)
+function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
     0 < ntapers <= n || error("ntapers must be in interval (0, n]")
     0 <= nw < n/2 || error("nw must be in interval [0, n/2)")
 

@@ -23,7 +23,7 @@ unwrapped = hcat(unwrapped, unwrapped)
 @test_approx_eq(unwrap(wrapped, 1), unwrapped)
 
 # test unwrapping with other ranges
-unwrapped = [1.0:100]
+unwrapped = [1.0:100;]
 wrapped = unwrapped % 10
 @test_approx_eq(unwrap(wrapped, range=10), unwrapped)
 
@@ -48,24 +48,24 @@ h_real = real(h)
 
 #For the 'slow' sine - the phase should go from -pi/2 to pi/2 in
 #the first 256 bins:
-@test_approx_eq h_angle[1:256,1] [-pi/2:pi/256:pi/2-pi/256]
+@test_approx_eq h_angle[1:256,1] -pi/2:pi/256:pi/2-pi/256
 
 #For the 'slow' cosine - the phase should go from 0 to pi in the
 #same interval:
-@test_approx_eq h_angle[1:256,2] [0:pi/256:pi-pi/256]
+@test_approx_eq h_angle[1:256,2] 0:pi/256:pi-pi/256
 
 #The 'fast' sine should make this phase transition in half the time:
-@test_approx_eq h_angle[1:128,3] [-pi/2:pi/128:pi/2-pi/128]
+@test_approx_eq h_angle[1:128,3] -pi/2:pi/128:pi/2-pi/128
                     
 #Ditto for the 'fast' cosine:
-@test_approx_eq h_angle[1:128,4] [0:pi/128:pi-pi/128]
+@test_approx_eq h_angle[1:128,4] 0:pi/128:pi-pi/128
 
 #The imaginary part of hilbert(cos(t)) = sin(t) Wikipedia
 @test_approx_eq imag(h[:,2]) a0
 
 #Sanity check with odd number of samples
-h2 = hilbert([ones(10), zeros(9)]) 
-@test_approx_eq real(h2) [ones(10), zeros(9)]
+h2 = hilbert([ones(10); zeros(9)]) 
+@test_approx_eq real(h2) [ones(10); zeros(9)]
 
 #Sanity check with integer arguments
 r = int(rand(128)*20)
@@ -93,7 +93,7 @@ r = int(rand(128)*20)
 @test_approx_eq rfftfreq(7) [0., 1/7, 2/7, 3/7]
 
 for n = 1:7
-    @test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n)])
+    @test_approx_eq fftshift(fftfreq(n)) fftshift([fftfreq(n);])
 end
 
 # nextfastfft

@@ -3,7 +3,7 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..Util, ..Windows
+using Compat, ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 
@@ -246,13 +246,13 @@ end
 # DTFT of the signal S if radialsum and radialavg are both false (default), 
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
 function periodogram{T<:Real}(s::AbstractMatrix{T}; 
-                                nfft::NTuple{2,Int}=nextfastfft(size(s)),
-                                fs::Real=1,
-                                radialsum::Bool=false, radialavg::Bool=false)
-    @assert size(s,1)<=nfft[1] && size(s,2)<=nfft[2]
-    @assert size(s,1)!=1 && size(s,2)!=1
+                              nfft::NTuple{2,Int}=nextfastfft(size(s)),
+                              fs::Real=1,
+                              radialsum::Bool=false, radialavg::Bool=false)
+    size(s,1)<=nfft[1] && size(s,2)<=nfft[2] || throw(ArgumentError("nfft must be >= size(s)"))
+    size(s,1)>1 && size(s,2)>1 || throw(ArgumentError("dimensions of s must be > 1"))
     if radialsum && radialavg
-        error("radialsum and radialavg both true")
+        throw(ArgumentError("radialsum and radialavg are mutually exclusive"))
     elseif !radialsum && !radialavg
         ptype = 0
     elseif radialsum
@@ -318,7 +318,7 @@ end
 
 function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                              nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                             nw::Int=4, ntapers::Int=iceil(2nw)-1,
+                             nw::Int=4, ntapers::Int=ceil(Int, 2nw)-1,
                              window::Union(AbstractMatrix, Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")

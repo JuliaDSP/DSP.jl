@@ -1,5 +1,5 @@
 module Filters
-using Polynomials, ..Util
+using Polynomials, Compat, ..Util
 
 include("types.jl")
 export Filter, ZPKFilter, TFFilter, BiquadFilter, SOSFilter, coefa, coefb

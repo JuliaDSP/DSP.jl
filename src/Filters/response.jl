@@ -36,7 +36,7 @@ end
 #
 
 function impz(filter::Filter, n=100)
-  i = [1, zeros(n-1)]
+  i = [1; zeros(n-1)]
   filt(filter, i)
 end
 

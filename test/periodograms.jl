@@ -41,9 +41,9 @@ data0 = Float64[98.0,
 @test_approx_eq power(periodogram(data, onesided=false)) data0
 @test_approx_eq power(welch_pgram(data, length(data), 0, onesided=false)) data0
 @test_approx_eq power(spectrogram(data, length(data), 0, onesided=false)) data0
-@test_approx_eq power(periodogram(complex([data], [data]), onesided=false)) data0*2
-@test_approx_eq power(welch_pgram(complex([data], [data]), length(data), 0, onesided=false)) data0*2
-@test_approx_eq power(spectrogram(complex([data], [data]), length(data), 0, onesided=false)) data0*2
+@test_approx_eq power(periodogram(complex([data;], [data;]), onesided=false)) data0*2
+@test_approx_eq power(welch_pgram(complex([data;], [data;]), length(data), 0, onesided=false)) data0*2
+@test_approx_eq power(spectrogram(complex([data;], [data;]), length(data), 0, onesided=false)) data0*2
 
 # # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
 # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
@@ -288,7 +288,6 @@ mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
 @test_approx_eq power(mt_pgram(s; fs=16000, window=dpss(length(s), 4))) mtdata
 
 # error tests
-EE = ErrorException
-@test_throws EE periodogram([1 2 3])
-@test_throws EE periodogram(rand(2,3), nfft=(3,2))
-@test_throws EE periodogram([1 2;3 4],radialsum=true, radialavg=true)
+@test_throws ArgumentError periodogram([1 2 3])
+@test_throws ArgumentError periodogram(rand(2,3), nfft=(3,2))
+@test_throws ArgumentError periodogram([1 2;3 4],radialsum=true, radialavg=true)
