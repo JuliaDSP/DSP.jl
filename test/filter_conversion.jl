@@ -35,7 +35,7 @@ m_sos_full = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   7.1961394067477846e-01   1.7609890829003397e-01   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_full sosfilter_to_matrix(convert(SOSFilter, ZPKFilter(z, p, k)))
+@test_approx_eq m_sos_full sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, p, k)))
 
 # And with half of the zeros removed
 # MATLAB:
@@ -53,7 +53,7 @@ m_sos_half = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   2.1275529126166826e-01   1.1404343849064294e-02   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_half sosfilter_to_matrix(convert(SOSFilter, ZPKFilter(zp, p, k)))
+@test_approx_eq m_sos_half sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(zp, p, k)))
 
 # And with an extra real pole
 pp = [p; 0.7]
@@ -75,29 +75,29 @@ m_sos_extra = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   7.1961394067477846e-01   1.7609890829003397e-01   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_extra sosfilter_to_matrix(convert(SOSFilter, ZPKFilter(z, pp, k)))
+@test_approx_eq m_sos_extra sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, pp, k)))
 
 # And with only poles (no zeros)
 m_sos_only_poles = copy(m_sos_full)
 m_sos_only_poles[:, 1:2] = 0
 m_sos_only_poles[:, 3] = 1
-@test_approx_eq m_sos_only_poles sosfilter_to_matrix(convert(SOSFilter, ZPKFilter(Float64[], p, k)))
+@test_approx_eq m_sos_only_poles sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(Float64[], p, k)))
 
 # Test that a numerically challenging filter (high order, clustered
 # roots) has acceptable errors in its coefficients after conversion to
 # SOS
-f = ZPKFilter(ones(100), 0.99*ones(100), 1)
-g = convert(SOSFilter, f)
-tffilter_eq(convert(TFFilter, f), convert(TFFilter, g))
+f = ZeroPoleGain(ones(100), 0.99*ones(100), 1)
+g = convert(SecondOrderSections, f)
+tffilter_eq(convert(PolynomialRatio, f), convert(PolynomialRatio, g))
 
 for f in (digitalfilter(Lowpass(0.5), Butterworth(1)), digitalfilter(Lowpass(0.5), Butterworth(2)),
           digitalfilter(Bandpass(0.25, 0.75), Butterworth(1)))
-    for ftype1 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
+    for ftype1 in (ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections)
         f2 = convert(ftype1, f)
-        for ftype2 in (ZPKFilter, TFFilter, BiquadFilter, SOSFilter)
+        for ftype2 in (ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections)
             f3 = convert(ftype2, f)
             try
-                zpkfilter_eq(convert(ZPKFilter, f), convert(ZPKFilter, f3), sqrt(eps()))
+                zpkfilter_eq(convert(ZeroPoleGain, f), convert(ZeroPoleGain, f3), sqrt(eps()))
             catch e
                 println("Conversion from $ftype1 to $ftype2 failed:")
                 rethrow(e)
@@ -108,11 +108,11 @@ end
 
 for proto in (Butterworth(3), Chebyshev1(3, 1), Chebyshev2(3, 1))
     f = digitalfilter(Lowpass(0.5), proto)
-    for ftype1 in (ZPKFilter, TFFilter, SOSFilter)
+    for ftype1 in (ZeroPoleGain, PolynomialRatio, SecondOrderSections)
         f2 = convert(ftype1, f)
-        for ftype2 in (ZPKFilter, TFFilter, SOSFilter)
+        for ftype2 in (ZeroPoleGain, PolynomialRatio, SecondOrderSections)
             f3 = convert(ftype2, f2)
-            zpkfilter_eq(convert(ZPKFilter, f), convert(ZPKFilter, f3), 2e-5)
+            zpkfilter_eq(convert(ZeroPoleGain, f), convert(ZeroPoleGain, f3), 2e-5)
         end
     end
 end

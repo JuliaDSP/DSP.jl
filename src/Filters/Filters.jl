@@ -2,7 +2,7 @@ module Filters
 using Polynomials, Compat, ..Util
 
 include("types.jl")
-export Filter, ZPKFilter, TFFilter, BiquadFilter, SOSFilter, coefa, coefb
+export Filter, ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections, coefa, coefb
 
 include("filt.jl")
 export filtfilt, fftfilt, firfilt

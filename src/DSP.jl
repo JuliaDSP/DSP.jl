@@ -7,4 +7,6 @@ include("Filters/Filters.jl")
 
 using Reexport
 @reexport using  .Util, .Windows, .Periodograms, .Filters
+
+include("deprecated.jl")
 end

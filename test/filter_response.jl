@@ -25,7 +25,7 @@ b = b0*conv(b1, b2)
 a = conv(a1, a2)
 
 #=w     = linspace(0, 2*pi, 200)=#        # Does not produce same values as matlab
-h     = freqz(TFFilter(b, a), matlab_w)   # So use frequencies from matlab
+h     = freqz(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
 h_abs = convert(Array{Float64}, abs(h))
 
 # Test
@@ -55,7 +55,7 @@ h_abs = convert(Array{Float64}, abs(h))
 #######################################
 
 matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
-df = TFFilter(b, a)
+df = PolynomialRatio(b, a)
 w = matlab_resp[:,1]
 
 #Impulse response
@@ -98,7 +98,7 @@ a = conv(a1, a2)
 
 fs    = 8192
 hz    = linspace(0, fs, 200)
-h     = freqz(TFFilter(b, a), hz, fs)
+h     = freqz(PolynomialRatio(b, a), hz, fs)
 h_abs = convert(Array{Float64}, abs(h))
 
 #=using Winston=#
@@ -123,7 +123,7 @@ a = [1.0, 0.4, 1.0]
 b = [0.2, 0.3, 1.0]
 w = logspace(-1, 1, 50)
 
-h        = freqs(TFFilter(b, a), w)
+h        = freqs(PolynomialRatio(b, a), w)
 mag      = convert(Array{Float64}, abs(h))
 phasedeg = (180/pi)*convert(Array{Float64}, angle(h))
 
@@ -170,7 +170,7 @@ b  = [0.2, 0.3, 1.0]
 fs = 8192
 hz = linspace(0, fs, 50)
 
-h        = freqs(TFFilter(b, a), hz, fs)
+h        = freqs(PolynomialRatio(b, a), hz, fs)
 mag      = convert(Array{Float64}, abs(h))
 phasedeg = (180/pi)*convert(Array{Float64}, angle(h))
 

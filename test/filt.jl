@@ -10,13 +10,13 @@ x = randn(100)
 for n = 1:6
     for proto in (Butterworth(n), Chebyshev1(n, 1), Chebyshev2(n, 1), Elliptic(n, 0.5, 2))
         zpk = digitalfilter(Lowpass(0.2), proto)
-        tf = convert(TFFilter, zpk)
+        tf = convert(PolynomialRatio, zpk)
         if n <= 2
-            bq = convert(BiquadFilter, zpk)
+            bq = convert(Biquad, zpk)
         else
-            @test_throws ErrorException convert(BiquadFilter, zpk)
+            @test_throws ErrorException convert(Biquad, zpk)
         end
-        sos = convert(SOSFilter, zpk)
+        sos = convert(SecondOrderSections, zpk)
 
         res = filt(sos, x)
 
@@ -209,7 +209,7 @@ x[:,3] = circshift(x[:,3], 128)
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-f = TFFilter(b, a)
+f = PolynomialRatio(b, a)
 
 # Use 2d data from last test
 @test_approx_eq x2_output filtfilt(f, x)
@@ -217,7 +217,7 @@ f = TFFilter(b, a)
 
 #######################################
 #
-# Test 2d filtfilt with SOSFilter
+# Test 2d filtfilt with SecondOrderSections
 #
 
 #=
