@@ -12,18 +12,18 @@ from one type to another using ``convert``.
     Filter representation in terms of zeros ``z``, poles ``p``, and
     gain ``k``:
 
-    .. math:: H(z) = k\frac{(s - \verb!z[1]!) \ldots (s - \verb!z[end]!)}{(s - \verb!p[1]!) \ldots (s - \verb!p[end]!)}
+    .. math:: H(x) = k\frac{(x - \verb!z[1]!) \ldots (x - \verb!z[end]!)}{(x - \verb!p[1]!) \ldots (x - \verb!p[end]!)}
 
 .. function:: TFFilter(b, a)
 
     Filter representation in terms of the coefficients of the numerator
     ``b`` and denominator ``a`` of the transfer function:
 
-    .. math:: H(z) = \frac{\verb!b[1]! s^{n-1} + \ldots + \verb!b[n]!}{\verb!a[1]! s^{n-1} + \ldots + \verb!a[n]!}
+    .. math:: H(s) = \frac{\verb!b[1]! s^{n-1} + \ldots + \verb!b[n]!}{\verb!a[1]! s^{n-1} + \ldots + \verb!a[n]!}
 
     or equivalently:
 
-    .. math:: H(z) = \frac{\verb!b[1]! + \ldots + \verb!b[n]! s^{-n+1}}{\verb!a[1]! + \ldots + \verb!b[n]! s^{-n+1}}
+    .. math:: H(z) = \frac{\verb!b[1]! + \ldots + \verb!b[n]! z^{-n+1}}{\verb!a[1]! + \ldots + \verb!a[n]! z^{-n+1}}
 
     ``b`` and ``a`` may be specified as ``Polynomial`` objects or
     vectors ordered from highest power to lowest.
@@ -33,7 +33,7 @@ from one type to another using ``convert``.
     Filter representation in terms of the transfer function of a single
     second-order section given by:
 
-    .. math:: H(z) = \frac{\verb!b0! s^2+\verb!b1! s+\verb!b2!}{s^2+\verb!a1! s + \verb!a2!}
+    .. math:: H(s) = \frac{\verb!b0! s^2+\verb!b1! s+\verb!b2!}{s^2+\verb!a1! s + \verb!a2!}
 
     or equivalently:
 
