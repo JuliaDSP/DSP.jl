@@ -152,6 +152,7 @@ type FIRFilter{Tk<:FIRKernel} <: Filter
     kernel::Tk
     history::Vector
     historyLen::Int
+    h::Vector
 end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
@@ -176,7 +177,7 @@ function FIRFilter( h::Vector, resampleRatio::Rational = 1//1 )
 
     history = zeros( historyLen )
 
-    FIRFilter( kernel, history, historyLen )
+    FIRFilter( kernel, history, historyLen, h )
 end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation )
@@ -732,7 +733,8 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{
 end
 
 function Base.filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
-    bufLen         = outputlength( self, length(x) )
+    # FIXME: was getting getting access error in filt!, why is this +1 necessary?
+    bufLen         = outputlength( self, length(x) )  + 1                       
     buffer         = Array( promote_type(Th,Tx), bufLen )
     samplesWritten = filt!( buffer, self, x )
 
