@@ -25,7 +25,8 @@
     an optional window function or vector to be applied to the original
     signal before computing the Fourier transform. The computed
     periodogram is normalized so that the area under the periodogram is
-    equal to the uncentered variance of the original signal.
+    equal to the uncentered variance (or average power) of the original
+    signal.
 
 .. function:: welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
