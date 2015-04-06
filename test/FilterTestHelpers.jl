@@ -87,14 +87,14 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
     accuracy_check(loss(f1.k, accurate_f.k), loss(f2.k, accurate_f.k), "k", relerr)
 end
 
-# Convert an SOS matrix, as returned by MATLAB, to an SOSFilter
+# Convert an SOS matrix, as returned by MATLAB, to an SecondOrderSections
 matrix_to_sosfilter(sos::Matrix, g::Number) =
-    SOSFilter([BiquadFilter(sos[i, 1], sos[i, 2], sos[i, 3],
+    SecondOrderSections([Biquad(sos[i, 1], sos[i, 2], sos[i, 3],
                             sos[i, 4], sos[i, 5], sos[i, 6])
                for i = 1:size(sos, 1)], g)
 
-# Convert an SOSFilter to an SOS matrix as returned by MATLAB
-function sosfilter_to_matrix(sos::SOSFilter)
+# Convert an SecondOrderSections to an SOS matrix as returned by MATLAB
+function sosfilter_to_matrix(sos::SecondOrderSections)
     A = ones(length(sos.biquads), 6)
     for (i, biquad) in enumerate(sos.biquads)
         A[i, 1] = biquad.b0
@@ -108,11 +108,11 @@ end
 
 # Show the poles and zeros in each biquad
 # This is not currently used for testing, but is useful for debugging
-function sosfilter_poles_zeros{T}(sos::SOSFilter{T})
+function sosfilter_poles_zeros{T}(sos::SecondOrderSections{T})
     z = fill(complex(nan(T)), 2, length(sos.biquads))
     p = fill(complex(nan(T)), 2, length(sos.biquads))
     for (i, biquad) in enumerate(sos.biquads)
-        zpk = convert(ZPKFilter, biquad)
+        zpk = convert(ZeroPoleGain, biquad)
         z[1:length(zpk.z), i] = zpk.z
         p[1:length(zpk.p), i] = zpk.p
     end

@@ -19,7 +19,7 @@ function Butterworth(T::Type, n::Integer)
     if isodd(n)
         poles[end] = -1
     end
-    ZPKFilter(T[], poles, 1)
+    ZeroPoleGain(T[], poles, 1)
 end
 Butterworth(n::Integer) = Butterworth(Float64, n)
 
@@ -61,7 +61,7 @@ function Chebyshev1(T::Type, n::Integer, ripple::Real)
     else
         k *= real(-p[end])
     end
-    ZPKFilter(Float64[], p, k)
+    ZeroPoleGain(Float64[], p, k)
 end
 Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
@@ -86,7 +86,7 @@ function Chebyshev2(T::Type, n::Integer, ripple::Real)
     end
     isodd(n) && (k *= -real(p[end]))
 
-    ZPKFilter(z, p, k)
+    ZeroPoleGain(z, p, k)
 end
 Chebyshev2(n::Integer, ripple::Real) = Chebyshev2(Float64, n, ripple)
 
@@ -197,7 +197,7 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
         gain *= 10^(-convert(T, rp)/20)
     end
 
-    ZPKFilter(z, p, gain)
+    ZeroPoleGain(z, p, gain)
 end
 Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 
@@ -257,12 +257,12 @@ end
 # The Octave implementation was not consulted in creating this code.
 
 # Create a lowpass filter from a lowpass filter prototype
-transform_prototype(ftype::Lowpass, proto::ZPKFilter) =
-    ZPKFilter(ftype.w * proto.z, ftype.w * proto.p,
+transform_prototype(ftype::Lowpass, proto::ZeroPoleGain) =
+    ZeroPoleGain(ftype.w * proto.z, ftype.w * proto.p,
               proto.k * ftype.w^(length(proto.p)-length(proto.z)))
 
 # Create a highpass filter from a lowpass filter prototype
-function transform_prototype(ftype::Highpass, proto::ZPKFilter)
+function transform_prototype(ftype::Highpass, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
     nz = length(z)
@@ -282,11 +282,11 @@ function transform_prototype(ftype::Highpass, proto::ZPKFilter)
 
     abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
     abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
-    ZPKFilter(newz, newp, proto.k * real(num)/real(den))
+    ZeroPoleGain(newz, newp, proto.k * real(num)/real(den))
 end
 
 # Create a bandpass filter from a lowpass filter prototype
-function transform_prototype(ftype::Bandpass, proto::ZPKFilter)
+function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
     nz = length(z)
@@ -302,11 +302,11 @@ function transform_prototype(ftype::Bandpass, proto::ZPKFilter)
             newc[2i] = b - pm
         end
     end
-    ZPKFilter(newz, newp, proto.k * (ftype.w2 - ftype.w1) ^ (np - nz))
+    ZeroPoleGain(newz, newp, proto.k * (ftype.w2 - ftype.w1) ^ (np - nz))
 end
 
 # Create a bandstop filter from a lowpass filter prototype
-function transform_prototype(ftype::Bandstop, proto::ZPKFilter)
+function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
     nz = length(z)
@@ -344,18 +344,18 @@ function transform_prototype(ftype::Bandstop, proto::ZPKFilter)
 
     abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
     abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
-    ZPKFilter(newz, newp, proto.k * real(num)/real(den))
+    ZeroPoleGain(newz, newp, proto.k * real(num)/real(den))
 end
 
 transform_prototype(ftype, proto::Filter) =
-    transform_prototype(ftype, convert(ZPKFilter, proto))
+    transform_prototype(ftype, convert(ZeroPoleGain, proto))
 
 analogfilter(ftype::FilterType, proto::Filter) =
     transform_prototype(ftype, proto)
 
 # Bilinear transform
-bilinear(f::Filter, fs::Real) = bilinear(convert(ZPKFilter, f), fs)
-function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
+bilinear(f::Filter, fs::Real) = bilinear(convert(ZeroPoleGain, f), fs)
+function bilinear{Z,P,K}(f::ZeroPoleGain{Z,P,K}, fs::Real)
     ztype = typeof(0 + zero(Z)/fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
 
@@ -374,7 +374,7 @@ function bilinear{Z,P,K}(f::ZPKFilter{Z,P,K}, fs::Real)
         den *= (2 * fs - f.p[i])
     end
 
-    ZPKFilter(z, p, f.k * real(num)/real(den))
+    ZeroPoleGain(z, p, f.k * real(num)/real(den))
 end
 
 # Pre-warp filter frequencies for digital filtering

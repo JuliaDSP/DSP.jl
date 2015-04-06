@@ -5,18 +5,18 @@
 #
 
 function freqz(filter::Filter, w::Number)
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     ejw = exp(-im * w)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
 function freqz(filter::Filter, w = linspace(0, π, 250))
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     [freqz(filter, i) for i = w]
 end
 
 function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
@@ -55,18 +55,18 @@ end
 #
 
 function freqs(filter::Filter, w::Number)
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     s = im * w
     polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
 function freqs(filter::Filter, w::AbstractVector)
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     [freqs(filter, i) for i = w]
 end
 
 function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
-    filter = convert(TFFilter, filter)
+    filter = convert(PolynomialRatio, filter)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end
 

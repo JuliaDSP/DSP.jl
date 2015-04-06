@@ -4,19 +4,19 @@
 # filt and filt!
 #
 
-## TFFilter
-_zerosi{T,S}(f::TFFilter{T}, x::AbstractArray{S}) =
+## PolynomialRatio
+_zerosi{T,S}(f::PolynomialRatio{T}, x::AbstractArray{S}) =
     zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
 
-Base.filt!{T,S}(out, f::TFFilter{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+Base.filt!{T,S}(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
     filt!(out, coefb(f), coefa(f), x, si)
-Base.filt(f::TFFilter, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+Base.filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
-## SOSFilter
-_zerosi{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S}) =
+## SecondOrderSections
+_zerosi{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S}) =
     zeros(promote_type(T, G, S), 2, length(f.biquads))
 
-function Base.filt!{S,N}(out::AbstractArray, f::SOSFilter, x::AbstractArray,
+function Base.filt!{S,N}(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
                          si::AbstractArray{S,N}=_zerosi(f, x))
     biquads = f.biquads
     ncols = Base.trailingsize(x, 2)
@@ -43,14 +43,14 @@ function Base.filt!{S,N}(out::AbstractArray, f::SOSFilter, x::AbstractArray,
     out
 end
 
-Base.filt{T,G,S<:Number}(f::SOSFilter{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+Base.filt{T,G,S<:Number}(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) =
     filt!(Array(promote_type(T, G, S), size(x)), f, x, si)
 
-## BiquadFilter
-_zerosi{T,S}(f::BiquadFilter{T}, x::AbstractArray{S}) =
+## Biquad
+_zerosi{T,S}(f::Biquad{T}, x::AbstractArray{S}) =
     zeros(promote_type(T, S), 2)
 
-function Base.filt!{S,N}(out::AbstractArray, f::BiquadFilter, x::AbstractArray,
+function Base.filt!{S,N}(out::AbstractArray, f::Biquad, x::AbstractArray,
                          si::AbstractArray{S,N}=_zerosi(f, x))
     ncols = Base.trailingsize(x, 2)
 
@@ -73,12 +73,12 @@ function Base.filt!{S,N}(out::AbstractArray, f::BiquadFilter, x::AbstractArray,
     out
 end
 
-Base.filt{T,S<:Number}(f::BiquadFilter{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
+Base.filt{T,S<:Number}(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
     filt!(Array(promote_type(T, S), size(x)), f, x, si)
 
-## For arbitrary filters, convert to SOSFilter
-Base.filt(f::Filter, x) = filt(convert(SOSFilter, f), x)
-Base.filt!(out, f::Filter, x) = filt!(out, convert(SOSFilter, f), x)
+## For arbitrary filters, convert to SecondOrderSections
+Base.filt(f::Filter, x) = filt(convert(SecondOrderSections, f), x)
+Base.filt!(out, f::Filter, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 #
 # filtfilt
@@ -177,7 +177,7 @@ function biquad_si!(zitmp, zi, i, scal)
 end
 
 # Zero phase digital filtering for second order sections
-function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
+function filtfilt{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S})
     zi = filt_stepstate(f)
     zi2 = zeros(2)
     zitmp = zeros(2)
@@ -211,8 +211,8 @@ function filtfilt{T,G,S}(f::SOSFilter{T,G}, x::AbstractArray{S})
 end
 
 # Support for other filter types
-filtfilt(f::Filter, x) = filtfilt(convert(SOSFilter, f), x)
-filtfilt(f::TFFilter, x) = filtfilt(coefb(f), coefa(f), x)
+filtfilt(f::Filter, x) = filtfilt(convert(SecondOrderSections, f), x)
+filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
 
 ## Initial filter state
 
@@ -243,7 +243,7 @@ function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(Abst
     scale_factor \ (I - A) \ B
  end
 
-function filt_stepstate{T}(f::SOSFilter{T})
+function filt_stepstate{T}(f::SecondOrderSections{T})
     biquads = f.biquads
     si = Array(T, 2, length(biquads))
     for i = 1:length(biquads)

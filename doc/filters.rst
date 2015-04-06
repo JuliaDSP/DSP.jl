@@ -7,14 +7,14 @@ Linear time-invariant filter representations
 DSP.jl supports common filter representations. Filters can be converted
 from one type to another using ``convert``.
 
-.. function:: ZPKFilter(z, p, k)
+.. function:: ZeroPoleGain(z, p, k)
 
     Filter representation in terms of zeros ``z``, poles ``p``, and
     gain ``k``:
 
     .. math:: H(x) = k\frac{(x - \verb!z[1]!) \ldots (x - \verb!z[end]!)}{(x - \verb!p[1]!) \ldots (x - \verb!p[end]!)}
 
-.. function:: TFFilter(b, a)
+.. function:: PolynomialRatio(b, a)
 
     Filter representation in terms of the coefficients of the numerator
     ``b`` and denominator ``a`` of the transfer function:
@@ -28,7 +28,7 @@ from one type to another using ``convert``.
     ``b`` and ``a`` may be specified as ``Polynomial`` objects or
     vectors ordered from highest power to lowest.
 
-.. function:: BiquadFilter(b0, b1, b2, a1, a2)
+.. function:: Biquad(b0, b1, b2, a1, a2)
 
     Filter representation in terms of the transfer function of a single
     second-order section given by:
@@ -39,11 +39,11 @@ from one type to another using ``convert``.
 
     .. math:: H(z) = \frac{\verb!b0!+\verb!b1! z^{-1}+\verb!b2! z^{-2}}{1+\verb!a1! z^{-1} + \verb!a2! z^{-2}}
 
-.. function:: SOSFilter(biquads, gain)
+.. function:: SecondOrderSections(biquads, gain)
 
     Filter representation in terms of a cascade of second-order
     sections and gain. ``biquads`` must be specified as a vector of
-    ``BiquadFilters``.
+    ``Biquads``.
 
 Filter application
 ------------------
@@ -52,9 +52,9 @@ Filter application
 
     Apply filter ``f`` along the first dimension of array ``x``. ``si``
     is an optional array representing the initial filter state
-    (defaults to zeros). If ``f`` is a ``TFFilter``, ``BiquadFilter``,
-    or ``SOSFilter``, filtering is implemented directly. If ``f`` is a
-    ``ZPKFilter``, it is first converted to an ``SOSFilter``.
+    (defaults to zeros). If ``f`` is a ``PolynomialRatio``, ``Biquad``,
+    or ``SecondOrderSections``, filtering is implemented directly. If ``f`` is a
+    ``ZeroPoleGain``, it is first converted to an ``SecondOrderSections``.
 
 .. function:: filt!(out, f, x[, si])
 
@@ -188,12 +188,12 @@ Miscellaneous
 
 .. function:: coefb(f)
 
-    Coefficients of the numerator of a TFFilter object, highest power
+    Coefficients of the numerator of a PolynomialRatio object, highest power
     first, i.e., the ``b`` passed to ``Base.filt()``
 
 .. function:: coefa(f)
 
-    Coefficients of the denominator of a TFFilter object, highest power
+    Coefficients of the denominator of a PolynomialRatio object, highest power
     first, i.e., the ``a`` passed to ``Base.filt()``
 
 
@@ -207,7 +207,7 @@ denominator of the transfer function::
 
   responsetype = Lowpass(0.2)
   prototype = Elliptic(4, 0.5, 30)
-  tf = convert(TFFilter, digitalfilter(responsetype, prototype))
+  tf = convert(PolynomialRatio, digitalfilter(responsetype, prototype))
   numerator_coefs = coefb(tf)
   denominator_coefs = coefa(tf)
 
