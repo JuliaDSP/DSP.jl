@@ -1,4 +1,4 @@
-# DSP v0.1.0 Release Notes
+# DSP v0.0.7 Release Notes
 
 - Filter coefficient types have been renamed to distinguish them from implementations ([#96](https://github.com/JuliaDSP/DSP.jl/pull/96)):
   - The `Filter` abstract type is now `FilterCoefficients`
