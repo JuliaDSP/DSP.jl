@@ -1,12 +1,12 @@
 # Filter types and conversions
 
-abstract Filter
+abstract FilterCoefficients
 
 #
 # Zero-pole gain form
 #
 
-immutable ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: Filter
+immutable ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: FilterCoefficients
     z::Vector{Z}
     p::Vector{P}
     k::K
@@ -16,7 +16,7 @@ end
 # Transfer function form
 #
 
-immutable PolynomialRatio{T<:Number} <: Filter
+immutable PolynomialRatio{T<:Number} <: FilterCoefficients
     b::Poly{T}
     a::Poly{T}
 
@@ -56,7 +56,7 @@ coefa(f::PolynomialRatio) = reverse(f.a.a)
 # A separate immutable to improve efficiency of filtering using SecondOrderSectionss
 #
 
-immutable Biquad{T} <: Filter
+immutable Biquad{T} <: FilterCoefficients
     b0::T
     b1::T
     b2::T
@@ -110,7 +110,7 @@ end
 # Second-order sections (array of biquads)
 #
 
-immutable SecondOrderSections{T,G} <: Filter
+immutable SecondOrderSections{T,G} <: FilterCoefficients
     biquads::Vector{Biquad{T}}
     g::G
 end
@@ -244,4 +244,4 @@ function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
     SecondOrderSections(biquads, f.k)
 end
 
-Base.convert(::Type{SecondOrderSections}, f::Filter) = convert(SecondOrderSections, convert(ZeroPoleGain, f))
+Base.convert(::Type{SecondOrderSections}, f::FilterCoefficients) = convert(SecondOrderSections, convert(ZeroPoleGain, f))

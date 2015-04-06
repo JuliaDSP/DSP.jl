@@ -77,8 +77,8 @@ Base.filt{T,S<:Number}(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
     filt!(Array(promote_type(T, S), size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
-Base.filt(f::Filter, x) = filt(convert(SecondOrderSections, f), x)
-Base.filt!(out, f::Filter, x) = filt!(out, convert(SecondOrderSections, f), x)
+Base.filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
+Base.filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 #
 # filtfilt
@@ -211,7 +211,7 @@ function filtfilt{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S})
 end
 
 # Support for other filter types
-filtfilt(f::Filter, x) = filtfilt(convert(SecondOrderSections, f), x)
+filtfilt(f::FilterCoefficients, x) = filtfilt(convert(SecondOrderSections, f), x)
 filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
 
 ## Initial filter state

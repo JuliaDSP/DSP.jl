@@ -4,18 +4,18 @@
 # Frequency response of a digital filter
 #
 
-function freqz(filter::Filter, w::Number)
+function freqz(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     ejw = exp(-im * w)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
-function freqz(filter::Filter, w = linspace(0, π, 250))
+function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
     filter = convert(PolynomialRatio, filter)
     [freqz(filter, i) for i = w]
 end
 
-function freqz(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
+function freqz(filter::FilterCoefficients, hz::Union(Number, AbstractVector), fs::Number)
     filter = convert(PolynomialRatio, filter)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
@@ -25,7 +25,7 @@ end
 # Phase response of a digital filter
 #
 
-function phasez(filter::Filter, w = linspace(0, π, 250))
+function phasez(filter::FilterCoefficients, w = linspace(0, π, 250))
     h = freqz(filter, w)
     unwrap(-atan2(imag(h), real(h)))
 end
@@ -35,7 +35,7 @@ end
 # Impulse response of a digital filter
 #
 
-function impz(filter::Filter, n=100)
+function impz(filter::FilterCoefficients, n=100)
   i = [1; zeros(n-1)]
   filt(filter, i)
 end
@@ -44,7 +44,7 @@ end
 # Step response of a digital filter
 #
 
-function stepz(filter::Filter, n=100)
+function stepz(filter::FilterCoefficients, n=100)
   i = ones(n)
   filt(filter, i)
 end
@@ -54,18 +54,18 @@ end
 # Frequency response of an analog filter
 #
 
-function freqs(filter::Filter, w::Number)
+function freqs(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     s = im * w
     polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
-function freqs(filter::Filter, w::AbstractVector)
+function freqs(filter::FilterCoefficients, w::AbstractVector)
     filter = convert(PolynomialRatio, filter)
     [freqs(filter, i) for i = w]
 end
 
-function freqs(filter::Filter, hz::Union(Number, AbstractVector), fs::Number)
+function freqs(filter::FilterCoefficients, hz::Union(Number, AbstractVector), fs::Number)
     filter = convert(PolynomialRatio, filter)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end

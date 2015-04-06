@@ -347,14 +347,14 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
     ZeroPoleGain(newz, newp, proto.k * real(num)/real(den))
 end
 
-transform_prototype(ftype, proto::Filter) =
+transform_prototype(ftype, proto::FilterCoefficients) =
     transform_prototype(ftype, convert(ZeroPoleGain, proto))
 
-analogfilter(ftype::FilterType, proto::Filter) =
+analogfilter(ftype::FilterType, proto::FilterCoefficients) =
     transform_prototype(ftype, proto)
 
 # Bilinear transform
-bilinear(f::Filter, fs::Real) = bilinear(convert(ZeroPoleGain, f), fs)
+bilinear(f::FilterCoefficients, fs::Real) = bilinear(convert(ZeroPoleGain, f), fs)
 function bilinear{Z,P,K}(f::ZeroPoleGain{Z,P,K}, fs::Real)
     ztype = typeof(0 + zero(Z)/fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
@@ -382,5 +382,5 @@ prewarp(ftype::Union(Lowpass, Highpass)) = (typeof(ftype))(4*tan(pi*ftype.w/2))
 prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
 
 # Digital filter design
-digitalfilter(ftype::FilterType, proto::Filter) =
+digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
