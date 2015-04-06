@@ -14,7 +14,7 @@
 #  close(fid)
 #end
 
-using DSP, Base.Test
+using DSP, Base.Test, Compat
 
 x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
 f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
@@ -226,7 +226,7 @@ x = zeros(n1,n2)*0im;
 x[ind] = [1+2im,1-2im]
 y = real(ifft(x))
 
-fwn = int(sqrt((a[1])^2+(a[2])^2)*n2)
+fwn = round(Int, sqrt((a[1])^2+(a[2])^2)*n2)
 pe = zeros(n2>>1 + 1)
 pe[fwn+1] = 2*abs2(x[nf...])/n1/n2
 P = periodogram(y,nfft=(n1,n2),radialsum=true)
@@ -237,8 +237,8 @@ P = periodogram(y,nfft=(n1,n2),radialsum=true)
 
 fs = 16000
 nfft = 512
-nwin = int(0.025*fs)
-nhop = int(0.010*fs)
+nwin = 400
+nhop = 160
 s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
 
 Sjl = stft(s, nwin, nwin-nhop; nfft=nfft, fs=fs, window=hanning)

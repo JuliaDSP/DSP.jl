@@ -115,7 +115,7 @@ function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
                          [0.5.*(i*n - abs2(i)) for i=1:(n-1)])
 
     # Get tapers
-    v = fliplr(eigfact!(mat, n-ntapers+1:n)[:vectors]::Matrix{Float64})
+    v = flipdim(eigfact!(mat, n-ntapers+1:n)[:vectors]::Matrix{Float64}, 2)
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(v, 2))

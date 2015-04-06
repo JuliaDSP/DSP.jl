@@ -1,5 +1,5 @@
 module FilterTestHelpers
-using DSP, Base.Test
+using DSP, Base.Test, Compat
 
 export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy,
        matrix_to_sosfilter, sosfilter_to_matrix
@@ -12,40 +12,40 @@ function lt(a, b)
     end
 end
 
-function tffilter_eq(f1, f2)
+@compat function tffilter_eq(f1, f2)
     b1, a1 = (coefb(f1), coefa(f1))
     b2, a2 = (coefb(f2), coefa(f2))
-    @test_approx_eq float64(b1) float64(b2)
-    @test_approx_eq float64(a1) float64(a2)
+    @test_approx_eq map(Float64, b1) map(Float64, b2)
+    @test_approx_eq map(Float64, a1) map(Float64, a2)
 end
 
-function zpkfilter_eq(f1, f2)
+@compat function zpkfilter_eq(f1, f2)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test_approx_eq complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt))
+        @test_approx_eq map(Complex128, sort(f1.z, lt=lt)) map(Complex128, sort(f2.z, lt=lt))
     end
-    @test_approx_eq complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt))
-    @test_approx_eq float64(f1.k) float64(f2.k)
+    @test_approx_eq map(Complex128, sort(f1.p, lt=lt)) map(Complex128, sort(f2.p, lt=lt))
+    @test_approx_eq map(Float64, f1.k) map(Float64, f2.k)
 end
 
-function zpkfilter_eq(f1, f2, eps)
+@compat function zpkfilter_eq(f1, f2, eps)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test_approx_eq_eps complex128(sort(f1.z, lt=lt)) complex128(sort(f2.z, lt=lt)) eps
+        @test_approx_eq_eps map(Complex128, sort(f1.z, lt=lt)) map(Complex128, sort(f2.z, lt=lt)) eps
     end
-    @test_approx_eq_eps complex128(sort(f1.p, lt=lt)) complex128(sort(f2.p, lt=lt)) eps
-    @test_approx_eq_eps float64(f1.k) float64(f2.k) eps
+    @test_approx_eq_eps map(Complex128, sort(f1.p, lt=lt)) map(Complex128, sort(f2.p, lt=lt)) eps
+    @test_approx_eq_eps map(Float64, f1.k) map(Float64, f2.k) eps
 end
 
 loss(x::Real, y::Real) = abs(float(x) - float(y))/eps(float(x))
 loss(x::Union(Real,Complex), y::Union(Real,Complex)) = loss(real(x), real(y)) + loss(imag(x), imag(y))
 loss(x::AbstractVector, y::AbstractVector) = sum(map(loss, x, y))
 
-function accuracy_check(err1, err2, part, relerr=1)
+@compat function accuracy_check(err1, err2, part, relerr=1)
     try
         @test err1 <= relerr*err2
     catch e
-        println("Filter 1 $part error (ULP): ", float64(err1))
-        println("Filter 2 $part error (ULP): ", float64(err2))
-        println("Ratio: ", float64(err1/err2))
+        println("Filter 1 $part error (ULP): ", map(Float64, err1))
+        println("Filter 2 $part error (ULP): ", map(Float64, err2))
+        println("Ratio: ", map(Float64, err1/err2))
         rethrow(e)
     end
 end

@@ -1,5 +1,5 @@
 require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
-using DSP, Base.Test, FilterTestHelpers
+using DSP, Base.Test, FilterTestHelpers, Compat
 
 #
 # Butterworth filter prototype
@@ -142,7 +142,7 @@ f = convert(PolynomialRatio, Butterworth(20))
 
 # Test that our answers are more accurate than MATLAB's
 accurate_a = coefa(convert(PolynomialRatio, Butterworth(BigFloat, 20)))
-@test_approx_eq coefa(f) float64(accurate_a)
+@compat @test_approx_eq coefa(f) map(Float64, accurate_a)
 @test sum(abs(coefa(f) - accurate_a)) <= sum(abs(m_a - accurate_a))
 
 #

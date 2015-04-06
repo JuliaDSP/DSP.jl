@@ -1,4 +1,4 @@
-using DSP, Base.Test
+using DSP, Base.Test, Compat
 
 @test_approx_eq(unwrap([0.1, 0.2, 0.3, 0.4]), [0.1, 0.2, 0.3, 0.4])
 @test_approx_eq(unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]), [0.1, 0.2, 0.3, 0.4])
@@ -68,8 +68,8 @@ h2 = hilbert([ones(10); zeros(9)])
 @test_approx_eq real(h2) [ones(10); zeros(9)]
 
 #Sanity check with integer arguments
-r = int(rand(128)*20)
-@test hilbert(r) == hilbert(float64(r))
+r = round(Int, rand(128)*20)
+@compat @test hilbert(r) == hilbert(map(Float64, r))
 
 # Test hilbert with 2D input
 @test_approx_eq h hilbert(a)
@@ -113,7 +113,7 @@ end
 @test_approx_eq -3dBa db2amp(-3)
 @test isa(3e0dB, Float64)
 @test isa(3f0dB, Float32)
-num = float64(pi)
+num = convert(Float64, pi)
 @test_approx_eq pow2db(num) 10*log10(num)
 @test_approx_eq amp2db(num) 20*log10(num)
 @test_approx_eq num*dB db2pow(num)

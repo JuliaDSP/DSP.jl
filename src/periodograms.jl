@@ -120,19 +120,19 @@ function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n
             kj2 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
             kj2 = (kj2*c2)^2
             
-            wavenum = int(sqrt( (c1*(1-1))^2 + kj2 )) + 1
+            wavenum = round(Int, sqrt( (c1*(1-1))^2 + kj2 )) + 1
             if wavenum<=kmax
                 out[wavenum] += abs2(s_fft[1,j])*m1
                 wc[wavenum] += 1
             end
             for i = 2:n1max-1
-                wavenum = int(sqrt( (c1*(i-1))^2 + kj2 )) + 1
+                wavenum = round(Int, sqrt( (c1*(i-1))^2 + kj2 )) + 1
                 if wavenum<=kmax
                     out[wavenum] += abs2(s_fft[i,j])*m2
                     wc[wavenum] += 2
                 end
             end
-            wavenum = int(sqrt( (c1*(n1max-1))^2 + kj2 )) + 1
+            wavenum = round(Int, sqrt( (c1*(n1max-1))^2 + kj2 )) + 1
             if wavenum<=kmax
                 out[wavenum] += abs2(s_fft[n1max,j])*ifelse(iseven(n1), m1, m2)
                 wc[wavenum] += ifelse(iseven(n1), 1, 2)
