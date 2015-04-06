@@ -1,11 +1,11 @@
 module Filters
 using Polynomials, Compat, ..Util
 
-include("types.jl")
-export Filter, ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections, coefa, coefb
+include("coefficients.jl")
+export FilterCoefficients, ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections, coefa, coefb
 
 include("filt.jl")
-export filtfilt, fftfilt, firfilt
+export DF2TFilter, filtfilt, fftfilt, firfilt
 
 include("design.jl")
 export FilterType, Butterworth, Chebyshev1, Chebyshev2, Elliptic,
