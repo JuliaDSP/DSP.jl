@@ -1,11 +1,19 @@
 :mod:`Filters` - filter design and filtering
 ============================================
 
-Linear time-invariant filter representations
---------------------------------------------
+DSP.jl differentiates between filter coefficients and filters. Filter
+coefficient objects specify the response of the filter in one of
+several standard forms. Filter objects carry the state of the filter
+together with filter coefficients in an implementable form
+(``PolynomialRatio``, ``Biquad``, or ``SecondOrderSections``).
+When invoked on a filter coefficient object, ``filt`` preserves state
+between invocations.
 
-DSP.jl supports common filter representations. Filters can be converted
-from one type to another using ``convert``.
+Linear time-invariant filter coefficient objects
+------------------------------------------------
+
+DSP.jl supports common filter representations. Filter coefficients can
+be converted from one type to another using ``convert``.
 
 .. function:: ZeroPoleGain(z, p, k)
 
@@ -45,28 +53,45 @@ from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``Biquads``.
 
+
+Filter objects
+----------------------------------
+
+.. function:: DF2TFilter(coef[, si])
+
+    Construct a stateful direct form II transposed filter with
+    coefficients ``coef``. ``si`` is an optional array representing the
+    initial filter state (defaults to zeros). If ``f`` is a
+    ``PolynomialRatio``, ``Biquad``, or ``SecondOrderSections``,
+    filtering is implemented directly. If ``f`` is a ``ZeroPoleGain``
+    object, it is first converted to a ``SecondOrderSections`` object.
+
+
 Filter application
 ------------------
 
 .. function:: filt(f, x[, si])
 
-    Apply filter ``f`` along the first dimension of array ``x``. ``si``
-    is an optional array representing the initial filter state
-    (defaults to zeros). If ``f`` is a ``PolynomialRatio``, ``Biquad``,
-    or ``SecondOrderSections``, filtering is implemented directly. If ``f`` is a
-    ``ZeroPoleGain``, it is first converted to an ``SecondOrderSections``.
+    Apply filter or filter coefficients ``f`` along the first dimension
+    of array ``x``. If ``f`` is a filter coefficient object, ``si``
+    is an optional array representing the initial filter state (defaults
+    to zeros). If ``f`` is a ``PolynomialRatio``, ``Biquad``, or
+    ``SecondOrderSections``, filtering is implemented directly. If
+    ``f`` is a ``ZeroPoleGain`` object, it is first converted to a
+    ``SecondOrderSections`` object.
 
 .. function:: filt!(out, f, x[, si])
 
     Same as :func:`filt()` but writes the result into the ``out``
     argument, which may alias the input ``x`` to modify it in-place.
 
-.. function:: filtfilt(f, x)
+.. function:: filtfilt(coef, x)
 
-    Filter ``x`` in the forward and reverse directions. The initial
-    state of the filter is computed so that its response to a step
-    function is steady state. Before filtering, the data is
-    extrapolated at both ends with an odd-symmetric extension of length
+    Filter ``x`` in the forward and reverse directions using filter
+    coefficients ``f``. The initial state of the filter is computed so
+    that its response to a step function is steady state. Before
+    filtering, the data is extrapolated at both ends with an
+    odd-symmetric extension of length
     ``3*(max(length(b), length(a))-1)``.
 
     Because ``filtfilt`` applies the given filter twice, the effective
@@ -84,6 +109,7 @@ Filter application
     choosing the optimal algorithm based on the lengths of ``b`` and
     ``x``.
 
+
 Filter design
 -------------
 
@@ -94,6 +120,7 @@ Filter design
 .. function:: digitalfilter(responsetype, prototype)
 
     Construct a digital filter.
+
 
 Filter response types
 ---------------------
