@@ -21,7 +21,8 @@ for n = 1:6
         res = filt(sos, x)
 
         # Test with filt with tf/sos
-        @test_approx_eq res filt(tf, x)
+        tfres = filt(tf, x)
+        @test_approx_eq res tfres
         @test_approx_eq res filt!(similar(x), sos, x)
         @test_approx_eq res filt!(similar(x), tf, x)
 
@@ -29,13 +30,26 @@ for n = 1:6
         if n <= 2
             @test_approx_eq res filt(bq, x)
             @test_approx_eq res filt!(similar(x), bq, x)
+            f = DF2TFilter(bq)
+            @test tfres == [filt(f, x[1:50]); filt(f, x[51:end])]
         end
 
         # Test that filt with zpk converts
         @test res == filt(zpk, x)
         @test res == filt!(similar(x), zpk, x)
+
+        # Test with DF2TFilter
+        f = DF2TFilter(sos)
+        @test res == [filt(f, x[1:50]); filt(f, x[51:end])]
+        f = DF2TFilter(tf)
+        @test tfres == [filt(f, x[1:50]); filt(f, x[51:end])]
+        f = DF2TFilter(zpk)
+        @test res == [filt(f, x[1:50]); filt(f, x[51:end])]
     end
 end
+
+# Test simple scaling with DF2TFilter
+@test filt(DF2TFilter(PolynomialRatio([3.7], [4.2])), x) == scale(x, 3.7/4.2)
 
 #
 # filtfilt

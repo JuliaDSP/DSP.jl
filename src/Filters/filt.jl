@@ -16,6 +16,26 @@ Base.filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x,
 _zerosi{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S}) =
     zeros(promote_type(T, G, S), 2, length(f.biquads))
 
+# filt! algorithm (no checking, returns si)
+function _filt!{S,N}(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections,
+                     x::AbstractArray, col::Int)
+    g = f.g
+    biquads = f.biquads
+    n = length(biquads)
+    @inbounds for i = 1:size(x, 1)
+        yi = x[i, col]
+        for fi = 1:n
+            biquad = biquads[fi]
+            xi = yi
+            yi = si[1, fi] + biquad.b0*xi
+            si[1, fi] = si[2, fi] + biquad.b1*xi - biquad.a1*yi
+            si[2, fi] = biquad.b2*xi - biquad.a2*yi
+        end
+        out[i, col] = yi*g
+    end
+    si
+end
+
 function Base.filt!{S,N}(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
                          si::AbstractArray{S,N}=_zerosi(f, x))
     biquads = f.biquads
@@ -26,19 +46,10 @@ function Base.filt!{S,N}(out::AbstractArray, f::SecondOrderSections, x::Abstract
         error("si must be 2 x nbiquads or 2 x nbiquads x nsignals")
 
     initial_si = si
+    g = f.g
+    n = length(biquads)
     for col = 1:ncols
-        si = initial_si[:, :, N > 2 ? col : 1]
-        @inbounds for i = 1:size(x, 1)
-            yi = x[i, col]
-            for fi = 1:length(biquads)
-                biquad = biquads[fi]
-                xi = yi
-                yi = si[1, fi] + biquad.b0*xi
-                si[1, fi] = si[2, fi] + biquad.b1*xi - biquad.a1*yi
-                si[2, fi] = biquad.b2*xi - biquad.a2*yi
-            end
-            out[i, col] = yi*f.g
-        end
+        _filt!(out, initial_si[:, :, N > 2 ? col : 1], f, x, col)
     end
     out
 end
@@ -50,6 +61,20 @@ Base.filt{T,G,S<:Number}(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_z
 _zerosi{T,S}(f::Biquad{T}, x::AbstractArray{S}) =
     zeros(promote_type(T, S), 2)
 
+# filt! algorithm (no checking, returns si)
+function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad,
+                x::AbstractArray, col::Int)
+    @inbounds for i = 1:size(x, 1)
+        xi = x[i, col]
+        yi = si1 + f.b0*xi
+        si1 = si2 + f.b1*xi - f.a1*yi
+        si2 = f.b2*xi - f.a2*yi
+        out[i, col] = yi
+    end
+    (si1, si2)
+end
+
+# filt! variant that preserves si
 function Base.filt!{S,N}(out::AbstractArray, f::Biquad, x::AbstractArray,
                          si::AbstractArray{S,N}=_zerosi(f, x))
     ncols = Base.trailingsize(x, 2)
@@ -60,15 +85,7 @@ function Base.filt!{S,N}(out::AbstractArray, f::Biquad, x::AbstractArray,
 
     initial_si = si
     for col = 1:ncols
-        si1 = initial_si[1, N > 1 ? col : 1]
-        si2 = initial_si[2, N > 1 ? col : 1]
-        @inbounds for i = 1:size(x, 1)
-            xi = x[i, col]
-            yi = si1 + f.b0*xi
-            si1 = si2 + f.b1*xi - f.a1*yi
-            si2 = f.b2*xi - f.a2*yi
-            out[i, col] = yi
-        end
+        _filt!(out, initial_si[1, N > 1 ? col : 1], initial_si[2, N > 1 ? col : 1], f, x, col)
     end
     out
 end
@@ -79,6 +96,88 @@ Base.filt{T,S<:Number}(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
 ## For arbitrary filters, convert to SecondOrderSections
 Base.filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
 Base.filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
+
+#
+# Direct form II transposed filter with state
+#
+
+immutable DF2TFilter{T<:FilterCoefficients,S<:Array}
+    coef::T
+    state::S
+
+    function DF2TFilter(coef::PolynomialRatio, state::Vector)
+        length(state) == length(coef.a)-1 == length(coef.b)-1 ||
+            throw(ArgumentError("length of state vector must match filter order"))
+        new(coef, state)
+    end
+    function DF2TFilter(coef::SecondOrderSections, state::Matrix)
+        (size(state, 1) == 2 && size(state, 2) == length(coef.biquads)) ||
+            throw(ArgumentError("state must be 2 x nbiquads"))
+        new(coef, state)
+    end
+    function DF2TFilter(coef::Biquad, state::Vector)
+        length(state) == 2 || throw(ArgumentError("length of state must be 2"))
+        new(coef, state)
+    end
+end
+
+## PolynomialRatio
+DF2TFilter{T,S}(coef::PolynomialRatio{T},
+                state::Vector{S}=zeros(T, max(length(coef.a), length(coef.b))-1)) =
+    DF2TFilter{PolynomialRatio{T}, Vector{S}}(coef, state)
+
+function Base.filt!{T,S}(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}}, x::AbstractVector)
+    length(x) != length(out) && throw(ArgumentError("out size must match x"))
+
+    si = f.state
+    # Note: these are in the Polynomials.jl convention, which is
+    # reversed WRT the usual DSP convention
+    b = f.coef.b.a
+    a = f.coef.a.a
+    n = length(b)
+    if n == 1
+        scale!(out, x, b[1])
+    else
+        @inbounds for i=1:length(x)
+            xi = x[i]
+            val = si[1] + b[n]*xi
+            for j=1:n-2
+                si[j] = si[j+1] + b[n-j]*xi - a[n-j]*val
+            end
+            si[n-1] = b[1]*xi - a[1]*val
+            out[i] = val
+        end
+    end
+    out
+end
+
+## SecondOrderSections
+DF2TFilter{T,G,S}(coef::SecondOrderSections{T,G},
+                  state::Matrix{S}=zeros(promote_type(T, G), 2, length(coef.biquads))) =
+    DF2TFilter{SecondOrderSections{T,G}, Matrix{S}}(coef, state)
+
+function Base.filt!{T,G,S}(out::AbstractVector, f::DF2TFilter{SecondOrderSections{T,G},Matrix{S}}, x::AbstractVector)
+    length(x) != length(out) && throw(ArgumentError("out size must match x"))
+    _filt!(out, f.state, f.coef, x, 1)
+    out
+end
+
+## Biquad
+DF2TFilter{T,S}(coef::Biquad{T}, state::Vector{S}=zeros(T, 2)) =
+    DF2TFilter{Biquad{T}, Vector{S}}(coef, state)
+function Base.filt!{T,S}(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::AbstractVector)
+    length(x) != length(out) && throw(ArgumentError("out size must match x"))
+    si = f.state
+    (si[1], si[2]) =_filt!(out, si[1], si[2], f.coef, x, 1)
+    out
+end
+
+# Variant that allocates the output
+Base.filt{T,S<:Array}(f::DF2TFilter{T,S}, x::AbstractVector) =
+    filt!(Array(eltype(S), length(x)), f, x)
+
+# Fall back to SecondOrderSections
+DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, coef))
 
 #
 # filtfilt
