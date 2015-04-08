@@ -273,8 +273,8 @@ end
 #
 
 function test_all()
-    for interpolation in sort([1; unique(rand(2:32,8))]),
-            decimation in sort([1; unique(rand(2:32,8))]),
+    for interpolation in [1, 5, 14, 23],
+            decimation in [1, 9, 17, 21],
                 Th in [Float32, Float64],
                     Tx in [Float32, Float64, Complex64, Complex128]
 
