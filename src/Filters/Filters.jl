@@ -1,7 +1,7 @@
 module Filters
 using Polynomials, Compat, ..Util
 
-include("types.jl")
+include("coefficients.jl")
 export  Filter,
         ZeroPoleGain,
         PolynomialRatio,
@@ -11,7 +11,8 @@ export  Filter,
         coefb
 
 include("filt.jl")
-export  filtfilt,
+export  DF2TFilter,
+        filtfilt,
         fftfilt,
         firfilt
 
