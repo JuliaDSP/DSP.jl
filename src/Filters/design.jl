@@ -387,22 +387,19 @@ prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2)
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
 
+#
+# FIR filter design
+#
 
-
-
-#==============================================================================#
-#          _  _ ____ _ ____ ____ ____    ___  ____ ____ _ ____ _  _            #
-#          |_/  |__| | [__  |___ |__/    |  \ |___ [__  | | __ |\ |            #
-#          | \_ |  | | ___] |___ |  \    |__/ |___ ___] | |__] | \|            #
-#==============================================================================#
-
-function kaiserlength( transition::Real, attenuation::Real = 60 )
-    n = iceil(( attenuation - 7.95 )/( 2*π*2.285*transition ))
+# Get length and beta for Kaiser window filter with specified
+# transition band width and stopband attenuation in dB
+function kaiserlength(transitionwidth::Real, attenuation::Real=60)
+    n = ceil(Int, (attenuation - 7.95)/(2*π*2.285*transitionwidth))
 
     if attenuation > 50
-        β = 0.1102*( attenuation - 8.7 )
+        β = 0.1102*(attenuation - 8.7)
     elseif attenuation >= 21
-        β = 0.5842*( attenuation - 21 )^( 0.4 ) + 0.07886*( attenuation - 21 )
+        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
     else
         β = 0.0
     end
@@ -410,70 +407,44 @@ function kaiserlength( transition::Real, attenuation::Real = 60 )
     return n, β
 end
 
-
-
-
-#==============================================================================#
-#          ____ _ ____    ___  ____ ____ ___ ____ ___ _   _ ___  ____          #
-#          |___ | |__/    |__] |__/ |  |  |  |  |  |   \_/  |__] |___          #
-#          |    | |  \    |    |  \ |__|  |  |__|  |    |   |    |___          #
-#==============================================================================#
-
-# Lowpass
-function firprototype( n::Integer, parameters::Lowpass )
-    w = parameters.w
-
-    [ 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1) ]
+immutable WindowFIR
+    window::Vector{Float64}
 end
 
-# Bandpass
-function firprototype( n::Integer, parameters::Bandpass )
-    w1 = parameters.w1
-    w2 = parameters.w2
+# WindowFIR(n::Integer, window::Function, args...) = WindowFIR(window(n, args...))
+WindowFIR(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
+          attenuation::Real=60) =
+    WindowFIR(kaiser(kaiserlength(transitionwidth, attenuation)...))
 
-    [ 2*(w1*sinc(2*w1*(k-(n-1)/2)) - w2*sinc(2*w2*(k-(n-1)/2))) for k = 0:(n-1) ]
+# Compute coefficients for FIR prototype with specified order
+function firprototype(n::Integer, ftype::Lowpass)
+    w = ftype.w
+
+    [2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
-# Highpass
-function firprototype( n::Integer, parameters::Highpass )
-    w = parameters.w
+function firprototype(n::Integer, ftype::Bandpass)
+    w1 = ftype.w1
+    w2 = ftype.w2
 
-    [ sinc(k-(n-1)/2) - 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1) ]
+    [2*(w1*sinc(2*w1*(k-(n-1)/2)) - w2*sinc(2*w2*(k-(n-1)/2))) for k = 0:(n-1)]
 end
 
-# Bandstop
-function firprototype( n::Integer, parameters::Highpass )
-    w1 = parameters.w1
-    w2 = parameters.w2
+function firprototype(n::Integer, ftype::Highpass)
+    w = ftype.w
 
-    [ 2*(w2*sinc(2*w2*(k-(n-1)/2)) - w1*sinc(2*w1*(k-(n-1)/2))) for k = 0:(n-1) ]
+    [sinc(k-(n-1)/2) - 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
+function firprototype(n::Integer, ftype::Bandstop)
+    w1 = ftype.w1
+    w2 = ftype.w2
 
-
-
-#==============================================================================#
-#                        ____ _ ____ ___  ____ ____                            #
-#                        |___ | |__/ |  \ |___ [__                             #
-#                        |    | |  \ |__/ |___ ___]                            #
-#==============================================================================#
-
-function firdes( n::Integer, parameters::FilterType, windowfunction::Function )
-    prototype = firprototype( n, parameters )
-    n         = length( prototype )
-
-    prototype .*  windowfunction( n )
+    [2*(w2*sinc(2*w2*(k-(n-1)/2)) - w1*sinc(2*w1*(k-(n-1)/2))) for k = 0:(n-1)]
 end
 
-function firdes( n::Integer, parameters::FilterType, windowfunction::Function, beta )
-    prototype = firprototype( n, parameters )
-    n         = length( prototype )
-
-    prototype .* windowfunction( n, beta )
-end
-
-# TODO: FilterType nomralizes frequency, but the user might not know that and pass an unnormalized transisition width
-function firdes( parameters::FilterType, transitionWidth::Real; attenuation::Real = 60 )
-    ( n, beta ) = kaiserlength( transitionWidth, attenuation )
-    firdes( n, parameters, kaiser, beta )
+function digitalfilter(ftype::FilterType, proto::WindowFIR)
+    prototype = firprototype(length(proto.window), ftype)
+    @assert length(proto.window) == length(prototype)
+    prototype .* proto.window
 end

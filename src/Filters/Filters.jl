@@ -27,8 +27,7 @@ export  FilterType,
         Bandstop,
         analogfilter,
         digitalfilter,
-        kaiserlength,
-        firdes
+        WindowFIR
 
 include("response.jl")
 export  freqs,

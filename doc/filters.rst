@@ -121,20 +121,6 @@ Filter design
 
     Construct a digital filter.
     
-.. function:: firdes(n, responsetype, windowfunction[, alpha])
-    
-    Create vector of FIR taps of length ``n``. ``alpha`` is required
-    when using a window function that expects it.
-    
-.. function:: firdes(responsetype, transition[; attenuation])
-    
-    Similar to previous method, but the required number of taps is
-    calculated based on ``transition`` width and stopband ``attenuation``.
-    ``attenuation`` defaults to 60 dB. NOTE: ``responsetype`` is normalized
-    for you when using the response type constructors with an explicit
-    sample rate, but you will need to normalize ``transition`` yourself:
-    ``transition = transition_hz/samplerate_hz``
-    
 
 Filter response types
 ---------------------
@@ -164,8 +150,8 @@ Filter response types
     frequency in half-cycles/sample.
 
 
-Filter prototypes
------------------
+IIR filter types
+----------------
 
 .. function:: Butterworth(n)
 
@@ -185,6 +171,21 @@ Filter prototypes
 
     ``n`` pole elliptic (Cauer) filter with ``rp`` dB ripple in the
     passband and ``rs`` dB attentuation in the stopband.
+
+
+FIR filter types
+----------------
+
+.. function:: WindowFIR(window)
+
+    FIR filter design using window ``window``, a vector whose length
+    matches the number of taps in the resulting filter.
+    
+.. function:: WindowFIR(; transition, attenuation=60)
+
+    Kaiser window FIR filter design. The required number of taps is
+    calculated based on ``transition`` width and stopband
+    ``attenuation``. ``attenuation`` defaults to 60 dB.
 
 
 Filter response
@@ -259,3 +260,9 @@ Butterworth bandpass filter between 10 and 40 Hz::
   prototype = Butterworth(4)
   filt(digitalfilter(responsetype, prototype), x)
 
+Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
+window FIR lowpass filter at 5 Hz:
+
+  responsetype = Lowpass(5; fs=50)
+  prototype = WindowFIR(hanning(64))
+  filt(digitalfilter(responsetype, prototype), x)
