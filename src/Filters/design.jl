@@ -1,5 +1,7 @@
 # Filter prototypes, transformations, and transforms
 
+using ..Windows
+
 abstract FilterType
 
 #
@@ -8,7 +10,7 @@ abstract FilterType
 
 function Butterworth(T::Type, n::Integer)
     n > 0 || error("n must be positive")
-    
+
     poles = zeros(Complex{T}, n)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
@@ -384,3 +386,65 @@ prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2)
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
+
+#
+# FIR filter design
+#
+
+# Get length and beta for Kaiser window filter with specified
+# transition band width and stopband attenuation in dB
+function kaiserlength(transitionwidth::Real, attenuation::Real=60)
+    n = ceil(Int, (attenuation - 7.95)/(2*π*2.285*transitionwidth))
+
+    if attenuation > 50
+        β = 0.1102*(attenuation - 8.7)
+    elseif attenuation >= 21
+        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
+    else
+        β = 0.0
+    end
+
+    return n, β
+end
+
+immutable WindowFIR
+    window::Vector{Float64}
+end
+
+# WindowFIR(n::Integer, window::Function, args...) = WindowFIR(window(n, args...))
+WindowFIR(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
+          attenuation::Real=60) =
+    WindowFIR(kaiser(kaiserlength(transitionwidth, attenuation)...))
+
+# Compute coefficients for FIR prototype with specified order
+function firprototype(n::Integer, ftype::Lowpass)
+    w = ftype.w
+
+    [2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
+end
+
+function firprototype(n::Integer, ftype::Bandpass)
+    w1 = ftype.w1
+    w2 = ftype.w2
+
+    [2*(w1*sinc(2*w1*(k-(n-1)/2)) - w2*sinc(2*w2*(k-(n-1)/2))) for k = 0:(n-1)]
+end
+
+function firprototype(n::Integer, ftype::Highpass)
+    w = ftype.w
+
+    [sinc(k-(n-1)/2) - 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
+end
+
+function firprototype(n::Integer, ftype::Bandstop)
+    w1 = ftype.w1
+    w2 = ftype.w2
+
+    [2*(w2*sinc(2*w2*(k-(n-1)/2)) - w1*sinc(2*w1*(k-(n-1)/2))) for k = 0:(n-1)]
+end
+
+function digitalfilter(ftype::FilterType, proto::WindowFIR)
+    prototype = firprototype(length(proto.window), ftype)
+    @assert length(proto.window) == length(prototype)
+    prototype .* proto.window
+end
