@@ -241,7 +241,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     @printfifinteractive( "____ ____ ___      ____ ____ ____ ____ _  _ ___  _    _ _  _ ____\n" )
     @printfifinteractive( "|__| |__/ |__]     |__/ |___ [__  |__| |\\/| |__] |    | |\\ | | __\n" )
     @printfifinteractive( "|  | |  \\ |__] .   |  \\ |___ ___] |  | |  | |    |___ | | \\| |__]\n" )
-    @printfifinteractive( "\n\nh::%s, x::%s, rate = %f, N𝜙 = %d, xLen = %d, ", string(typeof(h)), string(typeof(x)), resampleRate, numFilters, length(x) )
+    @printfifinteractive( "\n\nh::%s, x::%s, rate = %f, Nϕ = %d, xLen = %d, ", string(typeof(h)), string(typeof(x)), resampleRate, numFilters, length(x) )
 
     @printfifinteractive( "\n\tNaive arbitrary resampling\n\t\t" )
     @timeifinteractive naiveResult = DSP.naivefilt(h, x, resampleRate, numFilters)

@@ -74,19 +74,19 @@ type of kernel. The ``FIRFilter`` constructor selects the correct kernel based o
 parameters.
 
 .. function:: FIRFilter(h[, ratio])
-    
+
     Construct a stateful FIRFilter object from the vector of filter taps ``h``.
     ``ratio`` is an optional rational integer which specifies
     the input to output sample rate relationship (e.g. ``147//160`` for
     converting recorded audio from 48 KHz to 44.1 KHz).
-    
-.. function:: FIRFilter(h, rate[, N𝜙])
+
+.. function:: FIRFilter(h, rate[, Nϕ])
 
     Returns a polyphase FIRFilter object from the vector of filter taps ``h``.
     ``rate`` is a floating point number that specifies the input to output
-    sample-rate relationship :math:`\frac{fs_{out}}{fs_{in}}`. ``N𝜙`` is an 
+    sample-rate relationship :math:`\frac{fs_{out}}{fs_{in}}`. ``Nϕ`` is an
     optional parameter which specifies the number of *phases* created from
-    ``h``. ``N𝜙`` defaults to 32.
+    ``h``. ``Nϕ`` defaults to 32.
 
 Filter application
 ------------------
@@ -141,7 +141,7 @@ Filter design
 .. function:: digitalfilter(responsetype, prototype)
 
     Construct a digital filter.
-    
+
 
 
 Filter response types
@@ -202,7 +202,7 @@ FIR filter types
 
     FIR filter design using window ``window``, a vector whose length
     matches the number of taps in the resulting filter.
-    
+
 .. function:: WindowFIR(; transition, attenuation=60)
 
     Kaiser window FIR filter design. The required number of taps is

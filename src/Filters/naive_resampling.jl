@@ -25,8 +25,8 @@ function naivefilt(h::Vector, x::Vector, resamplerate::FloatingPoint, numfilters
     yIdx          = 1
     xIdx          = 1
     α             = 0.0
-    (δ, 𝜙Stride)  = modf(numfilters/resamplerate)
-    𝜙Stride       = convert(Int, 𝜙Stride)
+    (δ, ϕStride)  = modf(numfilters/resamplerate)
+    ϕStride       = convert(Int, ϕStride)
 
     while xIdx < xLen
         yLower  = xInterpolated[xIdx]
@@ -34,7 +34,7 @@ function naivefilt(h::Vector, x::Vector, resamplerate::FloatingPoint, numfilters
         y[yIdx] = yLower + α*(yUpper - yLower)
         yIdx   += 1
         α      += δ
-        xIdx   += floor(Int, α) + 𝜙Stride
+        xIdx   += floor(Int, α) + ϕStride
         α       = mod(α, 1.0)
     end
 
