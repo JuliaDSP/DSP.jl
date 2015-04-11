@@ -306,22 +306,4 @@ function test_all()
     end
 end
 
-function test_nextphase()
-    for interpolation in 1:8
-        for decimation in 1:8
-            ratio           = interpolation//decimation
-            interpolation   = num(ratio)
-            decimation      = den(ratio)
-            x               = repmat([1:interpolation;], decimation)
-            reference = [x[n] for n = 1:decimation:length(x)]
-            result = [1]
-            for i in 2:interpolation
-                append!(result, [DSP.Filters.nextphase(result[end], ratio)])
-            end
-            @test_approx_eq reference result
-        end
-    end
-end
-
-test_nextphase()
 test_all()
