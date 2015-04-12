@@ -257,12 +257,4 @@ function shiftin!{T}(a::Vector{T}, b::Vector{T})
 end
 
 
-
-
-function polyfit(y::AbstractVector, polyorder::Integer)
-  A = [x^p for x in 1:length(y), p = 0:polyorder]
-  Poly(A \ y)
-end
-
-
 end # end module definition

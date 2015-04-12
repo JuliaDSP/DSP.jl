@@ -127,4 +127,4 @@ for x in ( randn(n), randn(n)+randn(n)im )
     @test_approx_eq rmsfft(fft(x)) rms(x)
 end # for
 
-
+@test_approx_eq shiftin!([1,2,3,4],[5,6]) [3,4,5,6]
