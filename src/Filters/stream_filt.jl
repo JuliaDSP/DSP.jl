@@ -1,11 +1,10 @@
 typealias PFB{T} Matrix{T}          # polyphase filter bank
-# typealias PNFB{T} Vector{Poly{T}}   # polynomial filter bank (used for farrow filter)
 
 abstract Filter
-abstract FIRKernel
+abstract FIRKernel{T}
 
 # Single rate FIR kernel
-type FIRStandard{T} <: FIRKernel
+type FIRStandard{T} <: FIRKernel{T}
     h::Vector{T}
     hLen::Int
 end
@@ -18,7 +17,7 @@ end
 
 
 # Interpolator FIR kernel
-type FIRInterpolator{T} <: FIRKernel
+type FIRInterpolator{T} <: FIRKernel{T}
     pfb::PFB{T}
     interpolation::Int
     Nϕ::Int
@@ -34,7 +33,7 @@ end
 
 
 # Decimator FIR kernel
-type FIRDecimator{T} <: FIRKernel
+type FIRDecimator{T} <: FIRKernel{T}
     h::Vector{T}
     hLen::Int
     decimation::Int
@@ -50,13 +49,12 @@ end
 
 
 # Rational resampler FIR kernel
-type FIRRational{T}  <: FIRKernel
+type FIRRational{T}  <: FIRKernel{T}
     pfb::PFB{T}
     ratio::Rational{Int}
     Nϕ::Int
     ϕIdxStepSize::Int
     tapsPerϕ::Int
-    criticalYidx::Int
     ϕIdx::Int
     inputDeficit::Int
 end
@@ -65,11 +63,11 @@ function FIRRational(h::Vector, ratio::Rational)
     pfb          = taps2pfb(h, num(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(den(ratio), num(ratio))
-    criticalYidx = round(Int, floor(tapsPerϕ * ratio))
     ϕIdx         = 1
     inputDeficit = 1
-    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, criticalYidx, ϕIdx, inputDeficit)
+    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit)
 end
+
 
 #
 # Arbitrary resampler FIR kernel
@@ -82,7 +80,7 @@ end
 # a derivitive filter, we can always compute the output in that scenario.
 # See section 7.6.1 in [1] for a better explanation.
 
-type FIRArbitrary{T} <: FIRKernel
+type FIRArbitrary{T} <: FIRKernel{T}
     rate::Float64
     pfb::PFB{T}
     dpfb::PFB{T}
@@ -155,26 +153,39 @@ end
 
 
 #
-# Reset filter and its kernel to an initial state
+# reset! filter and its kernel to an initial state
 #
 
-# Does nothing for non-rational kernels
-reset(self::FIRKernel) = self
+# Generic case for FIRInterpolator and FIRStandard
+function reset!(kernel::FIRKernel)
+    kernel
+end
 
-# For rational kernel, set ϕIdx back to 1
-reset(self::FIRRational) = self.ϕIdx = 1
+function reset!(kernel::FIRRational)
+    kernel.ϕIdx         = 1
+    kernel.inputDeficit = 1
+    kernel
+end
 
-# For rational kernel, set ϕIdx back to 1
-function reset( self::FIRArbitrary )
-    self.yCount = 0
-    update(self)
+function reset!(kernel::FIRDecimator)
+    kernel.inputDeficit = 1
+    kernel
+end
+
+function reset!(kernel::FIRArbitrary)
+    kernel.ϕAccumulator = 1.0
+    kernel.ϕIdx         = 1
+    kernel.α            = 0.0
+    kernel.inputDeficit = 1
+    kernel.xIdx         = 1
+    kernel
 end
 
 # For FIRFilter, set history vector to zeros of same type and required length
-function reset( self::FIRFilter )
+function reset!(self::FIRFilter)
     self.history = zeros( eltype( self.history ), self.historyLen )
-    reset( self.kernel )
-    return self
+    reset!( self.kernel )
+    self
 end
 
 #
@@ -244,10 +255,6 @@ function outputlength( kernel::FIRArbitrary, inputlength::Integer )
     ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
 end
 
-# function outputlength(kernel::FIRFarrow, inputlength::Integer)
-#     ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
-# end
-
 function outputlength(self::FIRFilter, inputlength::Integer)
     outputlength(self.kernel, inputlength)
 end
@@ -265,25 +272,27 @@ function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
     ceil(Int, inLen)
 end
 
-function inputlength(self::FIRFilter{FIRStandard}, outputlength::Integer)
+function inputlength(kernel::FIRStandard, outputlength::Integer)
     outputlength
 end
 
-function inputlength(self::FIRFilter{FIRInterpolator}, outputlength::Integer)
+function inputlength(kernel::FIRInterpolator, outputlength::Integer)
     kernel = self.kernel
     inputlength(outputlength, kernel.interpolation//1, 1)
 end
 
-function inputlength(self::FIRFilter{FIRDecimator}, outputlength::Integer)
-    kernel = self.kernel
+function inputlength(kernel::FIRDecimator, outputlength::Integer)
     inLen  = inputlength(outputlength, 1//kernel.decimation, 1)
     inLen  = inLen + kernel.inputlength - 1
 end
 
-function inputlength(self::FIRFilter{FIRRational}, outputlength::Integer)
-    kernel = self.kernel
+function inputlength(kernel::FIRRational, outputlength::Integer)
     inLen = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
     inLen = inLen + kernel.inputDeficit - 1
+end
+
+function inputlength(self::FIRFilter, outputlength::Integer)
+    inputlength(self.kernel, outputlength)
 end
 
 
@@ -294,31 +303,38 @@ end
 function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
-    hLen                = kernel.hLen
-    historyLen          = self.historyLen
     bufLen              = length(buffer)
     xLen                = length(x)
-    outLen              = xLen
-    criticalYidx        = min(hLen, outLen)
+    criticalIdx         = min(kernel.hLen, bufLen)
+    inputIdx            = 1
+    bufIdx              = 0
 
     bufLen >= xLen || error("buffer length must be >= x length")
 
-    for yIdx in 1:criticalYidx        # this first loop takes care of filter ramp up and previous history
-        @inbounds buffer[yIdx] = unsafe_dot(kernel.h, history, x, yIdx)
-    end
-
-    for yIdx in criticalYidx+1:xLen
-        @inbounds buffer[yIdx] = unsafe_dot( kernel.h, x, yIdx )
+    while inputIdx <= xLen
+        bufIdx += 1
+        if inputIdx < kernel.hLen
+            accumulator = unsafe_dot(kernel.h, history, x, inputIdx)
+        else
+            accumulator = unsafe_dot( kernel.h, x, inputIdx )
+        end
+        buffer[bufIdx] = accumulator
+        inputIdx += 1
     end
 
     self.history = shiftin!(history, x)
 
-    return buffer
+    return bufIdx
 end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
-    buffer = Array(promote_type(Th, Tx), length(x))
-    filt!(buffer, self, x)
+    bufLen         = outputlength(self, length(x))
+    buffer         = Array(promote_type(Th,Tx), bufLen)
+    samplesWritten = filt!(buffer, self, x)
+
+    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+
+    return buffer
 end
 
 
@@ -340,12 +356,14 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolat
 
     while inputIdx <= xLen
         bufIdx += 1
+
         if inputIdx < kernel.tapsPerϕ
-            @inbounds buffer[bufIdx] = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
         else
-            @inbounds buffer[bufIdx] = unsafe_dot( kernel.pfb, ϕIdx, x, inputIdx )
+            accumulator = unsafe_dot( kernel.pfb, ϕIdx, x, inputIdx )
         end
 
+        buffer[bufIdx]   = accumulator
         (ϕIdx, inputIdx) = ϕIdx == kernel.Nϕ ? (1, inputIdx+1) : (ϕIdx+1, inputIdx)
     end
 
@@ -355,10 +373,12 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolat
 end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
-    xLen   = length(x)
-    outlen = outputlength(self, xLen)
-    buffer = Array(promote_type(Th,Tx), outlen)
-    filt!(buffer, self, x)
+    bufLen         = outputlength(self, length(x))
+    buffer         = Array(promote_type(Th,Tx), bufLen)
+    samplesWritten = filt!(buffer, self, x)
+
+    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+
     return buffer
 end
 
@@ -385,12 +405,11 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th
 
     interpolation       = num(kernel.ratio)
     decimation          = den(kernel.ratio)
-    # ϕIdxStepSize        = mod(decimation, interpolation)
-    # criticalϕIdx        = kernel.Nϕ - ϕIdxStepSize
     inputIdx            = kernel.inputDeficit
 
     while inputIdx <= xLen
         bufIdx += 1
+
         if inputIdx < kernel.tapsPerϕ
             accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
         else
@@ -410,13 +429,11 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th
 end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
-    kernel         = self.kernel
-    xLen           = length(x)
-    bufLen         = outputlength(self, xLen)
+    bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    samplesWritten == bufLen || resize!( buffer, samplesWritten)
 
     return buffer
 end
@@ -427,23 +444,22 @@ end
 #
 
 function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
-    kernel = self.kernel
-    xLen   = length(x)
+    kernel              = self.kernel
+    xLen                = length(x)
+    history::Vector{Tx} = self.history
+    bufIdx              = 0
 
     if xLen < kernel.inputDeficit
         self.history = shiftin!(history, x)
         kernel.inputDeficit -= xLen
-        return Tx[]
+        return bufIdx
     end
 
     outLen              = outputlength(self, xLen)
-    history::Vector{Tx} = self.history
     inputIdx            = kernel.inputDeficit
-    yIdx                = 0
 
     while inputIdx <= xLen
-        accumulator = zero(Tb)
-        yIdx       += 1
+        bufIdx += 1
 
         if inputIdx < kernel.hLen
             accumulator = unsafe_dot(kernel.h, history, x, inputIdx)
@@ -451,31 +467,22 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{T
             accumulator = unsafe_dot(kernel.h, x, inputIdx)
         end
 
-        buffer[ yIdx ] = accumulator
-        inputIdx      += kernel.decimation
+        @inbounds buffer[bufIdx] = accumulator
+        inputIdx                += kernel.decimation
     end
 
     kernel.inputDeficit = inputIdx - xLen
     self.history        = shiftin!(history, x)
 
-    return yIdx
+    return bufIdx
 end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
-    kernel = self.kernel
-    xLen   = length(x)
-    Tb     = promote_type(Th, Tx)
+    bufLen         = outputlength(self, length(x))
+    buffer         = Array(promote_type(Th,Tx), bufLen)
+    samplesWritten = filt!(buffer, self, x)
 
-    if xLen < kernel.inputDeficit
-        history::Vector{Tx}  = self.history
-        self.history         = shiftin!(history, x)
-        kernel.inputDeficit -= xLen
-        return Tb[]
-    end
-
-    outLen = outputlength(self, xLen)
-    buffer = Array(Tb, outLen)
-    filt!(buffer, self, x)
+    samplesWritten == bufLen || resize!( buffer, samplesWritten)
 
     return buffer
 end
@@ -530,7 +537,8 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{T
             yLower = unsafe_dot(pfb,  kernel.ϕIdx, x, kernel.xIdx)
             yUpper = unsafe_dot(dpfb, kernel.ϕIdx, x, kernel.xIdx)
         end
-        buffer[bufIdx] = yLower + yUpper * kernel.α
+
+        @inbounds buffer[bufIdx] = yLower + yUpper * kernel.α
         update(kernel)
     end
 
@@ -541,8 +549,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{T
 end
 
 function Base.filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
-    # FIXME: was getting getting access error in filt!, why is this +1 necessary?
-    bufLen         = outputlength(self, length(x))  + 1
+    bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
@@ -568,11 +575,6 @@ function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer=32)
     filt(self, x)
 end
 
-# Arbitrary resampling with polyphase interpolation and polynomial generated intra-phase taps.
-function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer, polyorder::Integer)
-    self = FIRFilter(h, rate, Nϕ, polyorder)
-    filt(self, x)
-end
 
 #
 # References
