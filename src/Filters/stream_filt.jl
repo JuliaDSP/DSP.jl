@@ -244,10 +244,6 @@ function outputlength( kernel::FIRArbitrary, inputlength::Integer )
     ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
 end
 
-# function outputlength(kernel::FIRFarrow, inputlength::Integer)
-#     ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
-# end
-
 function outputlength(self::FIRFilter, inputlength::Integer)
     outputlength(self.kernel, inputlength)
 end
@@ -568,11 +564,6 @@ function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer=32)
     filt(self, x)
 end
 
-# Arbitrary resampling with polyphase interpolation and polynomial generated intra-phase taps.
-function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer, polyorder::Integer)
-    self = FIRFilter(h, rate, Nϕ, polyorder)
-    filt(self, x)
-end
 
 #
 # References
