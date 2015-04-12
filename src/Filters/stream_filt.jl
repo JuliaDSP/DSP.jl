@@ -381,8 +381,6 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th
 
     interpolation       = num(kernel.ratio)
     decimation          = den(kernel.ratio)
-    # ϕIdxStepSize        = mod(decimation, interpolation)
-    # criticalϕIdx        = kernel.Nϕ - ϕIdxStepSize
     inputIdx            = kernel.inputDeficit
 
     while inputIdx <= xLen
