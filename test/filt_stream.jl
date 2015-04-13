@@ -63,6 +63,9 @@ function test_singlerate(h, x)
     end
     piecewiseResult = [y1; y2]
     @test_approx_eq naiveResult piecewiseResult
+    
+    DSP.reset!(myfilt)
+    @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
 
@@ -111,6 +114,9 @@ function test_decimation(h, x, decimation)
     piecewiseResult = [y1; y2]
 
     @test all(map(isapprox, naiveResult, piecewiseResult))
+    
+    DSP.reset!(myfilt)
+    @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
 
@@ -153,6 +159,9 @@ function test_interpolation(h, x, interpolation)
     statefulResult = [y1; y2]
     @test_approx_eq naiveResult statefulResult
 
+    DSP.reset!(myfilt)
+    @test inputlength(myfilt, length(statefulResult)) == xLen
+
     @printfifinteractive( "\n\tDSP.filt interpolation. Piecewise for first %d inputs\n\t\t", length(x1) )
     DSP.reset!(myfilt)
     y1 = similar(x, 0)
@@ -163,8 +172,7 @@ function test_interpolation(h, x, interpolation)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    # @test_approx_eq naiveResult piecewiseResult
-    @test all(map(isapprox, naiveResult, piecewiseResult))
+    @test all(map(isapprox, naiveResult, piecewiseResult))    
 end
 
 
@@ -218,6 +226,9 @@ function test_rational(h, x, ratio)
     end
     piecewiseResult = y1
     @test_approx_eq naiveResult piecewiseResult
+    
+    DSP.reset!(myfilt)
+    @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
 
@@ -231,6 +242,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     h               = digitalfilter(Lowpass(cutoffFreq, fs=numFilters), WindowFIR(transitionwidth=transitionWidth/numFilters)) .* numFilters
     h               = convert(Vector{Th}, h)
     myfilt          = DSP.FIRFilter(h, resampleRate, numFilters)
+    xLen            = length(x)
 
     @printfifinteractive( "____ ____ ___      ____ ____ ____ ____ _  _ ___  _    _ _  _ ____\n" )
     @printfifinteractive( "|__| |__/ |__]     |__/ |___ [__  |__| |\\/| |__] |    | |\\ | | __\n" )
@@ -246,6 +258,10 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     @printfifinteractive( "\n\tStateful arbitrary resampling\n\t\t" )
     @timeifinteractive statefulResult = DSP.filt(myfilt, x)
 
+    # DSP.reset!(myfilt)                                 
+    # TODO: figure out why this fails
+    # @test inputlength(myfilt, length(statefulResult)) == xLen
+
     @printfifinteractive( "\n\tPiecewise arbitrary resampling\n\t\t" )
     reset!(myfilt)
     piecwiseResult = eltype(x)[]
@@ -256,7 +272,6 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     end
 
     commonLen = min(length(naiveResult), length(statelessResult), length(statefulResult), length(piecwiseResult))
-
     resize!(naiveResult, commonLen)
     resize!(statelessResult, commonLen)
     resize!(statefulResult, commonLen)
@@ -264,7 +279,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
 
     @test_approx_eq naiveResult statelessResult
     @test_approx_eq naiveResult statefulResult
-    @test_approx_eq naiveResult piecwiseResult
+    @test_approx_eq naiveResult piecwiseResult    
 end
 
 #

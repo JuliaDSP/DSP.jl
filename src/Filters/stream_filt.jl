@@ -277,18 +277,23 @@ function inputlength(kernel::FIRStandard, outputlength::Integer)
 end
 
 function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    kernel = self.kernel
     inputlength(outputlength, kernel.interpolation//1, 1)
 end
 
 function inputlength(kernel::FIRDecimator, outputlength::Integer)
     inLen  = inputlength(outputlength, 1//kernel.decimation, 1)
-    inLen  = inLen + kernel.inputlength - 1
+    inLen += kernel.inputDeficit - 1
 end
 
 function inputlength(kernel::FIRRational, outputlength::Integer)
-    inLen = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
-    inLen = inLen + kernel.inputDeficit - 1
+    inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
+    inLen += kernel.inputDeficit - 1
+end
+
+# TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
+function inputlength(kernel::FIRArbitrary, outputlength::Integer)
+    inLen  = ifloor(outputlength/kernel.rate)
+    inLen += kernel.inputDeficit - 1
 end
 
 function inputlength(self::FIRFilter, outputlength::Integer)
