@@ -183,51 +183,63 @@ DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, c
 # filtfilt
 #
 
-# Extrapolate the beginning of a signal for use by filtfilt. This
-# computes:
-#
-# [(2 * x[1]) .- x[pad_length+1:-1:2],
-#  x,
-#  (2 * x[end]) .- x[end-1:-1:end-pad_length]]
-#
-# in place in output. The istart and n parameters determine the portion
-# of the input signal x to extrapolate.
-function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
-    length(out) >= n+2*pad_length || error("output is incorrectly sized")
-    x = 2*sig[istart]
+# Extrapolate the beginning of a signal for use by filtfilt. Computes:
+# [(2 * x[1]) .- x[pad_length+1:-1:2]]
+# in place in output.
+function extrapolate_start!(out, sig)
+    x = 2*sig[1]
+    pad_length = length(out)
     for i = 1:pad_length
-        out[ostart+i-1] = x - sig[istart+pad_length+1-i]
-    end
-    copy!(out, ostart+pad_length, sig, istart, n)
-    x = 2*sig[istart+n-1]
-    for i = 1:pad_length
-        out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
+        out[i] = x - sig[pad_length+2-i]
     end
     out
 end
 
-# Zero phase digital filtering by processing data in forward and reverse direction
-function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
-    zi = filt_stepstate(b, a)
-    zitmp = copy(zi)
-    pad_length = 3 * (max(length(a), length(b)) - 1)
-    t = Base.promote_eltype(b, a, x)
-    extrapolated = Array(t, size(x, 1)+pad_length*2)
+# Extrapolate the end of a signal for use by filtfilt. Computes:
+# (2 * x[end]) .- x[end-1:-1:end-pad_length]]
+# in place in output.
+function extrapolate_end!(out, sig)
+    x = 2*sig[end]
+    for i = 1:length(out)
+        out[i] = x - sig[end-i]
+    end
+    out
+end
+
+padlength(coefs::PolynomialRatio) = 3 * (max(length(coefs.a), length(coefs.b)) - 1)
+padlength(coefs::SecondOrderSections) = 6 * length(coefs.biquads)
+function filtfilt{T}(coefs::Union(PolynomialRatio{T}, SecondOrderSections{T}), x::AbstractArray)
+    zi = filt_stepstate(coefs)
+    zitmp = similar(zi)
+    t = Base.promote_eltype(T, x)
+    extrapolated = Array(t, padlength(coefs))
     out = similar(x, t)
+    f = DF2TFilter(coefs, zitmp)
 
-    istart = 1
     for i = 1:Base.trailingsize(x, 2)
-        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1]))
-        for j = 1:size(x, 1)
-            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
-        end
-        istart += size(x, 1)
+        # Forward pass
+        sigout = sub(out, :, i)
+        sig = sub(x, :, i)
+        extrapolate_start!(extrapolated, sig)
+        scale!(zitmp, zi, extrapolated[1])
+        filt!(extrapolated, f, extrapolated)
+        filt!(sigout, f, sig)
+        extrapolate_end!(extrapolated, sig)
+        filt!(extrapolated, f, extrapolated)
+
+        # Reverse pass
+        sigoutrev = sub(out, size(x, 1):-1:1, i)
+        reverse!(extrapolated)
+        scale!(zitmp, zi, extrapolated[1])
+        filt!(extrapolated, f, extrapolated)
+        filt!(sigoutrev, f, sigoutrev)
     end
 
     out
 end
+
+# Support for other filter types
+filtfilt(f::FilterCoefficients, x) = filtfilt(convert(SecondOrderSections, f), x)
 
 # Zero phase digital filtering with an FIR filter in a single pass
 function fir_filtfilt(b::AbstractVector, x::AbstractArray)
@@ -245,7 +257,10 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
 
     # Extrapolate each column
     for i = 1:size(extrapolated, 2)
-        extrapolate_signal!(extrapolated, (i-1)*size(extrapolated, 1)+1, x, (i-1)*size(x, 1)+1, size(x, 1), nb-1)
+        sig = sub(x, :, i)
+        extrapolate_start!(sub(extrapolated, 1:nb-1, i), sig)
+        copy!(extrapolated, (i-1)*size(extrapolated, 1)+nb, x, (i-1)*size(x, 1)+1, size(x, 1))
+        extrapolate_end!(sub(extrapolated, size(extrapolated, 1)-nb+2:size(extrapolated, 1), i), sig)
     end
 
     # Filter
@@ -255,73 +270,45 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     reshape(out[2nb-1:end, :], size(x))
 end
 
-# Choose whether to use fir_filtfilt or iir_filtfilt depending on
-# length of a
-function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
+# Support for passing b and a
+function filtfilt(b::AbstractVector, a::AbstractVector, x)
     if length(a) == 1
         if a[1] != 1
             b /= a[1]
         end
         fir_filtfilt(b, x)
     else
-        iir_filtfilt(b, a, x)
+        bs = length(b)
+        as = length(a)
+        sz = max(bs, as)
+
+        # Pad the coefficients with zeros if needed
+        bs<sz && (b = copy!(zeros(eltype(b), sz), b))
+        as<sz && (a = copy!(zeros(eltype(a), sz), a))
+        sz > 0 || error("a and b must have at least one element each")
+
+        filtfilt(PolynomialRatio(b, a), x)
     end
 end
-
-# Zero phase digital filtering for second order sections
-function filtfilt{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S})
-    zi = filt_stepstate(f)
-    zitmp = similar(zi)
-    pad_length = 6 * length(f.biquads)
-    t = Base.promote_type(T, G, S)
-    extrapolated = Array(t, size(x, 1)+pad_length*2)
-    out = similar(x, t)
-
-    istart = 1
-    for i = 1:Base.trailingsize(x, 2)
-        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1]))
-        for j = 1:size(x, 1)
-            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
-        end
-        istart += size(x, 1)
-    end
-
-    out
-end
-
-# Support for other filter types
-filtfilt(f::FilterCoefficients, x) = filtfilt(convert(SecondOrderSections, f), x)
-filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
 
 ## Initial filter state
 
 # Compute an initial state for filt with coefficients (b,a) such that its
 # response to a step function is steady state.
-function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(AbstractVector{T}, T))
-    scale_factor = a[1]
-    if scale_factor != 1.0
-        a = a ./ scale_factor
-        b = b ./ scale_factor
-    end
+function filt_stepstate{T<:Number}(f::PolynomialRatio{T})
+    b = coefb(f)
+    a = coefa(f)
+    sz = length(b)
+    sz == length(a) || throw(ArgumentError("a and b must have same length"))
+    a[1] == 1 || throw(ArgumentError("first element of a must be 1"))
+    max(length(b), length(a)) == 1 && return T[]
 
-    bs = length(b)
-    as = length(a)
-    sz = max(bs, as)
-    sz > 0 || error("a and b must have at least one element each")
-    sz == 1 && return T[]
-
-    # Pad the coefficients with zeros if needed
-    bs<sz && (b = copy!(zeros(eltype(b), sz), b))
-    as<sz && (a = copy!(zeros(eltype(a), sz), a))
-
-    # construct the companion matrix A and vector B:
+    # Construct the companion matrix A and vector B:
     A = [-a[2:end] [eye(T, sz-2); zeros(T, 1, sz-2)]]
     B = b[2:end] - a[2:end] * b[1]
     # Solve si = A*si + B
     # (I - A)*si = B
-    scale_factor \ (I - A) \ B
+    (I - A) \ B
  end
 
 function filt_stepstate{T}(f::SecondOrderSections{T})
