@@ -391,10 +391,10 @@ digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
 # FIR filter design
 #
 
-# Get length and beta for Kaiser window filter with specified
+# Get length and alpha for Kaiser window filter with specified
 # transition band width and stopband attenuation in dB
-function kaiserlength(transitionwidth::Real, attenuation::Real=60)
-    n = ceil(Int, (attenuation - 7.95)/(2*π*2.285*transitionwidth))
+function kaiserord(transitionwidth::Real, attenuation::Real=60)
+    n = ceil(Int, (attenuation - 7.95)/(π*2.285*transitionwidth))+1
 
     if attenuation > 50
         β = 0.1102*(attenuation - 8.7)
@@ -404,7 +404,9 @@ function kaiserlength(transitionwidth::Real, attenuation::Real=60)
         β = 0.0
     end
 
-    return n, β
+    α = π*β
+
+    return n, α
 end
 
 immutable WindowFIR
@@ -414,7 +416,7 @@ end
 # WindowFIR(n::Integer, window::Function, args...) = WindowFIR(window(n, args...))
 WindowFIR(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
           attenuation::Real=60) =
-    WindowFIR(kaiser(kaiserlength(transitionwidth, attenuation)...))
+    WindowFIR(kaiser(kaiserord(transitionwidth, attenuation)...))
 
 # Compute coefficients for FIR prototype with specified order
 function firprototype(n::Integer, ftype::Lowpass)
