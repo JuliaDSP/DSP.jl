@@ -41,7 +41,7 @@ include("stream_filt.jl")
 export  FIRFilter,
         outputlength,
         inputlength,
-        reset
+        reset!
 
 include("naive_resampling.jl")
 export  naivefilt
