@@ -28,6 +28,7 @@ export  FilterType,
         Bandstop,
         analogfilter,
         digitalfilter,
+        kaiserord,
         WindowFIR
 
 include("response.jl")
