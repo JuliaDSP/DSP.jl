@@ -383,6 +383,35 @@ f = convert(PolynomialRatio, digitalfilter(Bandstop(0.6, 0.7), Elliptic(15, 1.8,
 tffilter_eq(f, m_f)
 
 #
+# kaiserord
+#
+
+kaiserord_jl    = kaiserord(0.1, 60)
+kaiserord_scipy = (74, 17.760240084833036)          # (n,beta)=kaiserord(60,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test isapprox(kaiserord_jl[2], kaiserord_scipy[2])
+
+kaiserord_jl    = kaiserord(0.1, 21.0 + eps(21.0))
+kaiserord_scipy = (20, 3.0474424209258472e-06)      # (n,beta)=kaiserord(21.000000000000004,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test isapprox(kaiserord_jl[2], kaiserord_scipy[2])
+
+kaiserord_jl    = kaiserord(0.1, 15)
+kaiserord_scipy = (11, 0.0)                         # (n,beta)=kaiserord(15,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test isapprox(kaiserord_jl[2], kaiserord_scipy[2])
+
+
+#
+# Window FIR filter taps
+#
+winfirtaps_jl    = digitalfilter(Lowpass(0.25),WindowFIR(hamming(128)))
+# firwin(128, 0.25, nyq=.5,scale=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hammming_128_fc0.25_fs1.0.txt"),'\t')
+@test all(map(isapprox, winfirtaps_jl, winfirtaps_scipy))
+
+
+#
 # Error conditions
 #
 
