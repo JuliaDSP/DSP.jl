@@ -207,9 +207,9 @@ FIR filter types
     scaled so that the following holds:
 
     - For :func:`Lowpass` and :func:`Bandstop` filters, the frequency
-      response is unity at the Nyquist frequency.
+      response is unity at 0 (DC).
     - For :func:`Highpass` filters, the frequency response is unity
-      at 0 (DC).
+      at the Nyquist frequency.
     - For :func:`Bandpass` filters, the frequency response is unity
       in the center of the passband.
 
