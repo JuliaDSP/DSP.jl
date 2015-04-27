@@ -422,27 +422,33 @@ WindowFIR(; transitionwidth::Real=throw(ArgumentError("must specify transitionwi
 function firprototype(n::Integer, ftype::Lowpass)
     w = ftype.w
 
-    [2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
+    [w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
 function firprototype(n::Integer, ftype::Bandpass)
     w1 = ftype.w1
     w2 = ftype.w2
 
-    [2*(w1*sinc(2*w1*(k-(n-1)/2)) - w2*sinc(2*w2*(k-(n-1)/2))) for k = 0:(n-1)]
+    [w2*sinc(w2*(k-(n-1)/2)) - w1*sinc(w1*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
 function firprototype(n::Integer, ftype::Highpass)
     w = ftype.w
+    isodd(n) || throw(ArgumentError("WindowFIR highpass filters must have an odd number of coefficients"))
 
-    [sinc(k-(n-1)/2) - 2*w*sinc(2*w*(k-(n-1)/2)) for k = 0:(n-1)]
+    out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
+    out[div(n, 2)+1] += 1
+    out
 end
 
 function firprototype(n::Integer, ftype::Bandstop)
     w1 = ftype.w1
     w2 = ftype.w2
+    isodd(n) || throw(ArgumentError("WindowFIR bandstop filters must have an odd number of coefficients"))
 
-    [2*(w2*sinc(2*w2*(k-(n-1)/2)) - w1*sinc(2*w1*(k-(n-1)/2))) for k = 0:(n-1)]
+    out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
+    out[div(n, 2)+1] += 1
+    out
 end
 
 function digitalfilter(ftype::FilterType, proto::WindowFIR)
