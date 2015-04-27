@@ -198,12 +198,12 @@ IIR filter types
 FIR filter types
 ----------------
 
-.. function:: WindowFIR(window)
+.. function:: FIRWindow(window)
 
     FIR filter design using window ``window``, a vector whose length
     matches the number of taps in the resulting filter.
 
-.. function:: WindowFIR(; transition, attenuation=60)
+.. function:: FIRWindow(; transition, attenuation=60)
 
     Kaiser window FIR filter design. The required number of taps is
     calculated based on ``transition`` width and stopband
@@ -286,5 +286,5 @@ Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
 window FIR lowpass filter at 5 Hz:
 
   responsetype = Lowpass(5; fs=50)
-  prototype = WindowFIR(hanning(64))
+  prototype = FIRWindow(hanning(64))
   filt(digitalfilter(responsetype, prototype), x)

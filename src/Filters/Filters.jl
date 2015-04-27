@@ -29,7 +29,7 @@ export  FilterType,
         analogfilter,
         digitalfilter,
         kaiserord,
-        WindowFIR
+        FIRWindow
 
 include("response.jl")
 export  freqs,

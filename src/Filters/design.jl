@@ -409,14 +409,14 @@ function kaiserord(transitionwidth::Real, attenuation::Real=60)
     return n, α
 end
 
-immutable WindowFIR
+immutable FIRWindow
     window::Vector{Float64}
 end
 
-# WindowFIR(n::Integer, window::Function, args...) = WindowFIR(window(n, args...))
-WindowFIR(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
+# FIRWindow(n::Integer, window::Function, args...) = FIRWindow(window(n, args...))
+FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
           attenuation::Real=60) =
-    WindowFIR(kaiser(kaiserord(transitionwidth, attenuation)...))
+    FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...))
 
 # Compute coefficients for FIR prototype with specified order
 function firprototype(n::Integer, ftype::Lowpass)
@@ -434,7 +434,7 @@ end
 
 function firprototype(n::Integer, ftype::Highpass)
     w = ftype.w
-    isodd(n) || throw(ArgumentError("WindowFIR highpass filters must have an odd number of coefficients"))
+    isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
 
     out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
     out[div(n, 2)+1] += 1
@@ -444,14 +444,14 @@ end
 function firprototype(n::Integer, ftype::Bandstop)
     w1 = ftype.w1
     w2 = ftype.w2
-    isodd(n) || throw(ArgumentError("WindowFIR bandstop filters must have an odd number of coefficients"))
+    isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
 
     out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
     out[div(n, 2)+1] += 1
     out
 end
 
-function digitalfilter(ftype::FilterType, proto::WindowFIR)
+function digitalfilter(ftype::FilterType, proto::FIRWindow)
     prototype = firprototype(length(proto.window), ftype)
     @assert length(proto.window) == length(prototype)
     prototype .* proto.window
