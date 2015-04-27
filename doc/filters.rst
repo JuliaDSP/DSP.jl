@@ -293,7 +293,7 @@ Butterworth bandpass filter between 10 and 40 Hz::
   filt(digitalfilter(responsetype, prototype), x)
 
 Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
-window FIR lowpass filter at 5 Hz:
+window FIR lowpass filter at 5 Hz::
 
   responsetype = Lowpass(5; fs=50)
   prototype = FIRWindow(hanning(64))
