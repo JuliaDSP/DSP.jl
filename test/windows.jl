@@ -34,6 +34,11 @@ blackman_jl = blackman(128)
 blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
 @test_approx_eq blackman_jl blackman_ml
 
+kaiser_jl = kaiser(128, 0.4/π)
+kaiser_ml = readdlm(joinpath(dirname(@__FILE__), "data", "kaiser128,0.4.txt"), '\t')
+@test_approx_eq kaiser_jl kaiser_ml
+
+
 # make sure return types are correct
 n = 12
 ft = typeof(1.0)

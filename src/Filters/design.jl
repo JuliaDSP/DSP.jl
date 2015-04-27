@@ -1,5 +1,7 @@
 # Filter prototypes, transformations, and transforms
 
+using ..Windows
+
 abstract FilterType
 
 #
@@ -8,7 +10,7 @@ abstract FilterType
 
 function Butterworth(T::Type, n::Integer)
     n > 0 || error("n must be positive")
-    
+
     poles = zeros(Complex{T}, n)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
@@ -384,3 +386,94 @@ prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2)
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
+
+#
+# FIR filter design
+#
+
+# Get length and alpha for Kaiser window filter with specified
+# transition band width and stopband attenuation in dB
+function kaiserord(transitionwidth::Real, attenuation::Real=60)
+    n = ceil(Int, (attenuation - 7.95)/(π*2.285*transitionwidth))+1
+
+    if attenuation > 50
+        β = 0.1102*(attenuation - 8.7)
+    elseif attenuation >= 21
+        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
+    else
+        β = 0.0
+    end
+
+    α = π*β
+
+    return n, α
+end
+
+immutable FIRWindow{T}
+    window::Vector{T}
+    scale::Bool
+end
+FIRWindow(window::Vector; scale::Bool=true) = FIRWindow(window, scale)
+
+# FIRWindow(n::Integer, window::Function, args...) = FIRWindow(window(n, args...))
+FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
+          attenuation::Real=60, scale::Bool=true) =
+    FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
+
+# Compute coefficients for FIR prototype with specified order
+function firprototype(n::Integer, ftype::Lowpass)
+    w = ftype.w
+
+    [w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
+end
+
+function firprototype(n::Integer, ftype::Bandpass)
+    w1 = ftype.w1
+    w2 = ftype.w2
+
+    [w2*sinc(w2*(k-(n-1)/2)) - w1*sinc(w1*(k-(n-1)/2)) for k = 0:(n-1)]
+end
+
+function firprototype(n::Integer, ftype::Highpass)
+    w = ftype.w
+    isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
+
+    out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
+    out[div(n, 2)+1] += 1
+    out
+end
+
+function firprototype(n::Integer, ftype::Bandstop)
+    w1 = ftype.w1
+    w2 = ftype.w2
+    isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
+
+    out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
+    out[div(n, 2)+1] += 1
+    out
+end
+
+scalefactor(coefs::Vector, ::Union(Lowpass, Bandstop)) = sum(coefs)
+function scalefactor(coefs::Vector, ::Highpass)
+    c = zero(coefs[1])
+    for k = 1:length(coefs)
+        c += ifelse(isodd(k), coefs[k], -coefs[k])
+    end
+    c
+end
+function scalefactor(coefs::Vector, ftype::Bandpass)
+    n = length(coefs)
+    freq = middle(ftype.w1, ftype.w2)
+    c = zero(coefs[1])
+    for k = 0:n-1
+        c += coefs[k+1]*cospi(freq*(k-(n-1)/2))
+    end
+    c
+end
+
+function digitalfilter(ftype::FilterType, proto::FIRWindow)
+    coefs = firprototype(length(proto.window), ftype)
+    @assert length(proto.window) == length(coefs)
+    out = coefs .* proto.window
+    proto.scale ? scale!(out, 1/scalefactor(out, ftype)) : out
+end

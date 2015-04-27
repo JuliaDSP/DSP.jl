@@ -315,7 +315,7 @@ f = analogfilter(Bandstop(0.2, 0.8), Elliptic(10, 0.5, 20))
 zpkfilter_eq(f, m_f)
 
 #
-# Digital filter creation
+# IIR digital filter creation
 #
 
 # Output of [b, a] = butter(20, 0.5)
@@ -383,7 +383,7 @@ f = convert(PolynomialRatio, digitalfilter(Bandstop(0.6, 0.7), Elliptic(15, 1.8,
 tffilter_eq(f, m_f)
 
 #
-# Error conditions
+# IIR digital filter error conditions
 #
 
 # zero pole
@@ -403,7 +403,95 @@ tffilter_eq(f, m_f)
 #
 # Specification of sample rate
 #
+
 @test Lowpass(20, fs=100) == Lowpass(0.4)
 @test Highpass(20, fs=100) == Highpass(0.4)
 @test Bandpass(20, 21, fs=100) == Bandpass(0.4, 0.42)
 @test Bandstop(20, 21, fs=100) == Bandstop(0.4, 0.42)
+
+#
+# kaiserord
+#
+
+kaiserord_jl    = kaiserord(0.1, 60)
+kaiserord_scipy = (74, 17.760240084833036)          # (n,beta)=kaiserord(60,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
+
+kaiserord_jl    = kaiserord(0.1, 21.0 + eps(21.0))
+kaiserord_scipy = (20, 3.0474424209258472e-06)      # (n,beta)=kaiserord(21.000000000000004,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
+
+kaiserord_jl    = kaiserord(0.1, 15)
+kaiserord_scipy = (11, 0.0)                         # (n,beta)=kaiserord(15,.1); (n,beta*math.pi)
+@test kaiserord_jl[1] == kaiserord_scipy[1]
+@test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
+
+#
+# Window FIR filter taps
+#
+
+winfirtaps_jl    = digitalfilter(Lowpass(0.25; fs=1),FIRWindow(hamming(128), scale=false))
+# firwin(128, 0.25, nyq=.5, scale=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_128_lowpass_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Lowpass(0.25; fs=1),FIRWindow(hamming(129), scale=false))
+# firwin(129, 0.25, nyq=.5, scale=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_lowpass_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+@test_throws ArgumentError digitalfilter(Highpass(0.25; fs=1),FIRWindow(hamming(128), scale=false))
+
+winfirtaps_jl    = digitalfilter(Highpass(0.25; fs=1),FIRWindow(hamming(129), scale=false))
+# firwin(129, 0.25, nyq=.5, scale=False, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_highpass_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Bandpass(0.1, 0.2; fs=1),FIRWindow(hamming(128), scale=false))
+# firwin(128, [0.1, 0.2], nyq=.5, scale=False, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_128_bandpass_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Bandpass(0.1, 0.2; fs=1),FIRWindow(hamming(129), scale=false))
+# firwin(129, [0.1, 0.2], nyq=.5, scale=False, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandpass_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+@test_throws ArgumentError digitalfilter(Bandstop(0.1, 0.2; fs=1),FIRWindow(hamming(128), scale=false))
+
+winfirtaps_jl    = digitalfilter(Bandstop(0.1, 0.2; fs=1),FIRWindow(hamming(129), scale=false))
+# firwin(129, [0.1, 0.2], nyq=.5, scale=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandstop_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl vec(winfirtaps_scipy)
+
+winfirtaps_jl    = digitalfilter(Lowpass(0.25; fs=1),FIRWindow(hamming(128), scale=true))
+# firwin(128, 0.25, nyq=.5)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_128_lowpass_scaled_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Lowpass(0.25; fs=1),FIRWindow(hamming(129), scale=true))
+# firwin(129, 0.25, nyq=.5)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_lowpass_scaled_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Highpass(0.25; fs=1),FIRWindow(hamming(129), scale=true))
+# firwin(129, 0.25, nyq=.5, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_highpass_scaled_fc0.25_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Bandpass(0.1, 0.2; fs=1),FIRWindow(hamming(128), scale=true))
+# firwin(128, [0.1, 0.2], nyq=.5, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_128_bandpass_scaled_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Bandpass(0.1, 0.2; fs=1),FIRWindow(hamming(129), scale=true))
+# firwin(129, [0.1, 0.2], nyq=.5, scale=False, pass_zero=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandpass_scaled_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl winfirtaps_scipy
+
+winfirtaps_jl    = digitalfilter(Bandstop(0.1, 0.2; fs=1),FIRWindow(hamming(129), scale=true))
+# firwin(129, [0.1, 0.2], nyq=.5, scale=False)
+winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandstop_scaled_fc0.1_0.2_fs1.0.txt"),'\t')
+@test_approx_eq winfirtaps_jl vec(winfirtaps_scipy)

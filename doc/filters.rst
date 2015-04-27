@@ -53,7 +53,6 @@ be converted from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``Biquads``.
 
-
 Filter objects
 ----------------------------------
 
@@ -66,6 +65,28 @@ Filter objects
     filtering is implemented directly. If ``f`` is a ``ZeroPoleGain``
     object, it is first converted to a ``SecondOrderSections`` object.
 
+DSP.jl's ``FIRFilter`` type maintains state between calls to :func:`filt`, allowing
+you to filter a signal of indefinite length in RAM-friendly chunks. ``FIRFilter``
+contains nothing more that the state of the filter, and a ``FIRKernel``. There are
+five different kinds of ``FIRKernel`` for single rate, up-sampling, down-sampling,
+rational resampling, and arbitrary sample-rate conversion. You need not specify the
+type of kernel. The ``FIRFilter`` constructor selects the correct kernel based on input
+parameters.
+
+.. function:: FIRFilter(h[, ratio])
+
+    Construct a stateful FIRFilter object from the vector of filter taps ``h``.
+    ``ratio`` is an optional rational integer which specifies
+    the input to output sample rate relationship (e.g. ``147//160`` for
+    converting recorded audio from 48 KHz to 44.1 KHz).
+
+.. function:: FIRFilter(h, rate[, Nϕ])
+
+    Returns a polyphase FIRFilter object from the vector of filter taps ``h``.
+    ``rate`` is a floating point number that specifies the input to output
+    sample-rate relationship :math:`\frac{fs_{out}}{fs_{in}}`. ``Nϕ`` is an
+    optional parameter which specifies the number of *phases* created from
+    ``h``. ``Nϕ`` defaults to 32.
 
 Filter application
 ------------------
@@ -122,6 +143,7 @@ Filter design
     Construct a digital filter.
 
 
+
 Filter response types
 ---------------------
 
@@ -150,8 +172,8 @@ Filter response types
     frequency in half-cycles/sample.
 
 
-Filter prototypes
------------------
+IIR filter types
+----------------
 
 .. function:: Butterworth(n)
 
@@ -171,6 +193,31 @@ Filter prototypes
 
     ``n`` pole elliptic (Cauer) filter with ``rp`` dB ripple in the
     passband and ``rs`` dB attentuation in the stopband.
+
+
+FIR filter types
+----------------
+
+.. function:: FIRWindow(window; scale=true)
+
+    FIR filter design using window ``window``, a vector whose length
+    matches the number of taps in the resulting filter.
+
+    If ``scale`` is ``true`` (default), the designed FIR filter is
+    scaled so that the following holds:
+
+    - For :func:`Lowpass` and :func:`Bandstop` filters, the frequency
+      response is unity at the Nyquist frequency.
+    - For :func:`Highpass` filters, the frequency response is unity
+      at 0 (DC).
+    - For :func:`Bandpass` filters, the frequency response is unity
+      in the center of the passband.
+
+.. function:: FIRWindow(; transition, attenuation=60, scale=true)
+
+    Kaiser window FIR filter design. The required number of taps is
+    calculated based on ``transition`` width and stopband
+    ``attenuation``. ``attenuation`` defaults to 60 dB.
 
 
 Filter response
@@ -243,4 +290,11 @@ Butterworth bandpass filter between 10 and 40 Hz::
 
   responsetype = Bandpass(10, 40; fs=1000)
   prototype = Butterworth(4)
+  filt(digitalfilter(responsetype, prototype), x)
+
+Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
+window FIR lowpass filter at 5 Hz:
+
+  responsetype = Lowpass(5; fs=50)
+  prototype = FIRWindow(hanning(64))
   filt(digitalfilter(responsetype, prototype), x)
