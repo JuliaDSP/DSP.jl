@@ -44,8 +44,5 @@ export  FIRFilter,
         inputlength,
         reset!
 
-include("naive_resampling.jl")
-export  naivefilt
-
 end
 

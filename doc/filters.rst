@@ -198,12 +198,22 @@ IIR filter types
 FIR filter types
 ----------------
 
-.. function:: FIRWindow(window)
+.. function:: FIRWindow(window; scale=true)
 
     FIR filter design using window ``window``, a vector whose length
     matches the number of taps in the resulting filter.
 
-.. function:: FIRWindow(; transition, attenuation=60)
+    If ``scale`` is ``true`` (default), the designed FIR filter is
+    scaled so that the following holds:
+
+    - For :func:`Lowpass` and :func:`Bandstop` filters, the frequency
+      response is unity at the Nyquist frequency.
+    - For :func:`Highpass` filters, the frequency response is unity
+      at 0 (DC).
+    - For :func:`Bandpass` filters, the frequency response is unity
+      in the center of the passband.
+
+.. function:: FIRWindow(; transition, attenuation=60, scale=true)
 
     Kaiser window FIR filter design. The required number of taps is
     calculated based on ``transition`` width and stopband

@@ -1,6 +1,51 @@
 using DSP
 using Base.Test
 
+# Naive rational resampler
+function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
+
+    upfactor     = num(resamplerate)
+    downfactor   = den(resamplerate)
+    xLen         = length(x)
+    xZeroStuffed = zeros(eltype(x), length(x) * upfactor)
+
+    for n in 0:length(x)-1
+        xZeroStuffed[n*upfactor+1] = x[n+1]
+    end
+
+    y = Base.filt(h, one(eltype(x)), xZeroStuffed)
+    y = [y[n] for n = 1:downfactor:length(y)]
+end
+
+
+# Naive arbitrary resampler
+function naivefilt(h::Vector, x::Vector, resamplerate::FloatingPoint, numfilters::Integer=32)
+    xLen          = length(x)
+    xInterpolated = naivefilt(h, x, numfilters//1)
+    xLen          = length(xInterpolated)
+    yLen          = ceil(Int, xLen * resamplerate)
+    y             = similar(x, yLen)
+    yIdx          = 1
+    xIdx          = 1
+    α             = 0.0
+    (δ, ϕStride)  = modf(numfilters/resamplerate)
+    ϕStride       = convert(Int, ϕStride)
+
+    while xIdx < xLen
+        yLower  = xInterpolated[xIdx]
+        yUpper  = xInterpolated[xIdx+1]
+        y[yIdx] = yLower + α*(yUpper - yLower)
+        yIdx   += 1
+        α      += δ
+        xIdx   += floor(Int, α) + ϕStride
+        α       = mod(α, 1.0)
+    end
+
+    resize!(y, yIdx-1)
+
+    return y
+end
+
 # Disable time and printf macros when not running interactivly ( for travis )
 if isinteractive()
     macro timeifinteractive(ex)
@@ -87,7 +132,7 @@ function test_decimation(h, x, decimation)
     @printfifinteractive( "\nTesting decimation. h::%s, x::%s. xLen = %d, hLen = %d, decimation = %d", string(typeof(h)), string(typeof(h)), xLen, hLen, decimation )
 
     @printfifinteractive( "\n\tNaive decimation\n\t\t")
-    @timeifinteractive naiveResult = DSP.naivefilt(h, x, 1//decimation)
+    @timeifinteractive naiveResult = naivefilt(h, x, 1//decimation)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, 1//%d)\n\t\t", decimation )
     @timeifinteractive statelesResult = DSP.filt(h, x, 1//decimation)
@@ -201,7 +246,7 @@ function test_rational(h, x, ratio)
     @printfifinteractive( "\n\nTesting rational resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d//%d", string(typeof(h)), string(typeof(x)), xLen, hLen, upfactor, downfactor )
 
     @printfifinteractive( "\n\tNaive rational resampling\n\t\t")
-    @timeifinteractive naiveResult = DSP.naivefilt(h, x, ratio)
+    @timeifinteractive naiveResult = naivefilt(h, x, ratio)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
     @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
@@ -250,7 +295,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     @printfifinteractive( "\n\nh::%s, x::%s, rate = %f, Nϕ = %d, xLen = %d, ", string(typeof(h)), string(typeof(x)), resampleRate, numFilters, length(x) )
 
     @printfifinteractive( "\n\tNaive arbitrary resampling\n\t\t" )
-    @timeifinteractive naiveResult = DSP.naivefilt(h, x, resampleRate, numFilters)
+    @timeifinteractive naiveResult = naivefilt(h, x, resampleRate, numFilters)
 
     @printfifinteractive( "\n\tStateless arbitrary resampling\n\t\t" )
     @timeifinteractive statelessResult = DSP.filt(h, x, resampleRate, numFilters)

@@ -409,14 +409,16 @@ function kaiserord(transitionwidth::Real, attenuation::Real=60)
     return n, α
 end
 
-immutable FIRWindow
-    window::Vector{Float64}
+immutable FIRWindow{T}
+    window::Vector{T}
+    scale::Bool
 end
+FIRWindow(window::Vector; scale::Bool=true) = FIRWindow(window, scale)
 
 # FIRWindow(n::Integer, window::Function, args...) = FIRWindow(window(n, args...))
 FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
-          attenuation::Real=60) =
-    FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...))
+          attenuation::Real=60, scale::Bool=true) =
+    FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
 
 # Compute coefficients for FIR prototype with specified order
 function firprototype(n::Integer, ftype::Lowpass)
@@ -451,8 +453,27 @@ function firprototype(n::Integer, ftype::Bandstop)
     out
 end
 
+scalefactor(coefs::Vector, ::Union(Lowpass, Bandstop)) = sum(coefs)
+function scalefactor(coefs::Vector, ::Highpass)
+    c = zero(coefs[1])
+    for k = 1:length(coefs)
+        c += ifelse(isodd(k), coefs[k], -coefs[k])
+    end
+    c
+end
+function scalefactor(coefs::Vector, ftype::Bandpass)
+    n = length(coefs)
+    freq = middle(ftype.w1, ftype.w2)
+    c = zero(coefs[1])
+    for k = 0:n-1
+        c += coefs[k+1]*cospi(freq*(k-(n-1)/2))
+    end
+    c
+end
+
 function digitalfilter(ftype::FilterType, proto::FIRWindow)
-    prototype = firprototype(length(proto.window), ftype)
-    @assert length(proto.window) == length(prototype)
-    prototype .* proto.window
+    coefs = firprototype(length(proto.window), ftype)
+    @assert length(proto.window) == length(coefs)
+    out = coefs .* proto.window
+    proto.scale ? scale!(out, 1/scalefactor(out, ftype)) : out
 end
