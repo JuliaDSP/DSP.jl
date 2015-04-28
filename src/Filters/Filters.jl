@@ -2,7 +2,7 @@ module Filters
 using Polynomials, Compat, ..Util
 
 include("coefficients.jl")
-export  Filter,
+export FilterCoefficients,
         ZeroPoleGain,
         PolynomialRatio,
         Biquad,
@@ -45,4 +45,3 @@ export  FIRFilter,
         reset!
 
 end
-
