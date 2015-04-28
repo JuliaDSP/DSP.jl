@@ -174,7 +174,7 @@ rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-function unsafe_dot(a::Matrix, aColIdx::Integer, b::Vector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
     dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
@@ -185,7 +185,7 @@ function unsafe_dot(a::Matrix, aColIdx::Integer, b::Vector, bLastIdx::Integer)
     return dotprod
 end
 
-function unsafe_dot{T}(a::Matrix, aColIdx::Integer, b::Vector{T}, c::Vector{T}, cLastIdx::Integer)
+function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
     aLen = size(a, 1)
     bLen = length(b)
     bLen == aLen-1  || error( "length(b) must equal to length(a)[1] - 1" )
@@ -202,7 +202,7 @@ function unsafe_dot{T}(a::Matrix, aColIdx::Integer, b::Vector{T}, c::Vector{T}, 
     return dotprod
 end
 
-function unsafe_dot(a::Vector, b::Vector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractVector, b::AbstractVector, bLastIdx::Integer)
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
     dotprod  = a[1] * b[bBaseIdx + 1]
@@ -213,7 +213,7 @@ function unsafe_dot(a::Vector, b::Vector, bLastIdx::Integer)
     return dotprod
 end
 
-function unsafe_dot{T}(a::Vector, b::Vector{T}, c::Vector{T}, cLastIdx::Integer)
+function unsafe_dot{T}(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
     aLen    = length(a)
     dotprod = zero(a[1]*b[1])
     @simd for i in 1:aLen-cLastIdx
@@ -235,7 +235,7 @@ end
 #  4
 #  5
 #  6
-function shiftin!{T}(a::Vector{T}, b::Vector{T})
+function shiftin!{T}(a::AbstractVector{T}, b::AbstractVector{T})
     aLen = length(a)
     bLen = length(b)
 

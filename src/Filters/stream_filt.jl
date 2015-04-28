@@ -305,7 +305,7 @@ end
 # Single rate filtering
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     bufLen              = length(buffer)
@@ -332,7 +332,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -347,7 +347,7 @@ end
 # Interpolation
 #
 
-function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     interpolation       = kernel.interpolation
@@ -377,7 +377,7 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolat
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -392,7 +392,7 @@ end
 # Rational resampling
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     xLen                = length(x)
@@ -433,7 +433,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -448,7 +448,7 @@ end
 # Decimation
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     xLen                = length(x)
     history::Vector{Tx} = self.history
@@ -482,7 +482,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{T
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -511,7 +511,7 @@ function update(kernel::FIRArbitrary)
     kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
 end
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
@@ -553,7 +553,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{T
     return bufIdx
 end
 
-function Base.filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -569,13 +569,13 @@ end
 #
 
 # Single-rate, decimation, interpolation, and rational resampling.
-function Base.filt(h::Vector, x::Vector, ratio::Rational=1//1)
+function Base.filt(h::Vector, x::AbstractVector, ratio::Rational=1//1)
     self = FIRFilter(h, ratio)
     filt(self, x)
 end
 
 # Arbitrary resampling with polyphase interpolation and two neighbor lnear interpolation.
-function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer=32)
+function Base.filt(h::Vector, x::AbstractVector, rate::FloatingPoint, Nϕ::Integer=32)
     self = FIRFilter(h, rate, Nϕ)
     filt(self, x)
 end
