@@ -83,6 +83,20 @@ m_sos_only_poles[:, 1:2] = 0
 m_sos_only_poles[:, 3] = 1
 @test_approx_eq m_sos_only_poles sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(Float64[], p, k)))
 
+# Test that a filter with repeated zeros is handled properly
+# MATLAB:
+#= 
+ [z,p,k] = butter(2, [49.5 50.5]/500, 'stop')
+ [sos,g] = zp2sos(z, p, k)
+=#
+m_sos_butterworth_bs = [
+   1.0000000000000000e+00  -1.9021224191804869e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.8964983429993663e+00   9.9553672990017417e-01
+   1.0000000000000000e+00  -1.9021224191804869e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.8992956433548462e+00   9.9559721515078736e-01
+]
+f = convert(SecondOrderSections, digitalfilter(Bandstop(49.5, 50.5; fs=1000), DSP.Butterworth(2)))
+@test_approx_eq m_sos_butterworth_bs sosfilter_to_matrix(f)
+@test_approx_eq f.g 0.995566972017647
+
 # Test that a numerically challenging filter (high order, clustered
 # roots) has acceptable errors in its coefficients after conversion to
 # SOS
