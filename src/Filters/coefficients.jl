@@ -137,27 +137,6 @@ end
 Base.convert(to::Union(Type{PolynomialRatio}, Type{Biquad}), f::SecondOrderSections) =
     convert(to, convert(ZeroPoleGain, f))
 
-# Split real and complex values in a vector into separate vectors
-function split_real_complex{T<:Real}(v::Vector{Complex{T}})
-    c = Complex{T}[]
-    r = T[]
-    for x in v
-        push!(ifelse(imag(x) == 0, r, c), x)
-    end
-    (c, r)
-end
-split_real_complex{T<:Real}(v::Vector{T}) = (T[], v)
-
-# Check that each value in a vector is followed by its complex
-# conjugate
-function check_conjugates(v)
-    length(v) & 1 == 0 || return false
-    for i = 1:2:length(v)
-        v[i] == conj(v[i+1]) || return false
-    end
-    return true
-end
-
 # Group each pole in p with its closest zero in z
 # Remove paired poles from p and z
 function groupzp(z, p)
@@ -181,6 +160,38 @@ function groupzp(z, p)
     ret
 end
 
+# Sort zeros or poles lexicographically (so that poles are adjacent to
+# their conjugates). Handle repeated values. Split real and complex
+# values into separate vectors. Ensure that each value has a conjugate.
+function split_real_complex{T}(x::Vector{T})
+    # Get counts and store in a Dict
+    d = Dict{T,Int}()
+    for v in x
+        d[v] = get(d, v, 0)+1
+    end
+
+    c = T[]
+    r = typeof(real(zero(T)))[]
+    for k in sort!(collect(keys(d)), order=Base.Order.Lexicographic)
+        if imag(k) != 0
+            if !haskey(d, conj(k))
+                # No match for conjugate
+                return (c, r, false)
+            elseif imag(k) > 0
+                # Add key and its conjugate
+                for n = 1:d[k]
+                    push!(c, k, conj(k))
+                end
+            end
+        else
+            for n = 1:d[k]
+                push!(r, k)
+            end
+        end
+    end
+    return (c, r, true)
+end
+
 # Convert a filter to second-order sections
 # The returned sections are in ZPK form
 function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
@@ -190,18 +201,15 @@ function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
     n = length(p)
     nz > n && error("ZeroPoleGain must not have more zeros than poles")
 
-    # Sort poles and zeros lexicographically so that matched values are adjacent
-    z = sort(z, order=Base.Order.Lexicographic)
-    p = sort(p, order=Base.Order.Lexicographic)
+    # Split real and complex poles
+    (complexz, realz, matched) = split_real_complex(z)
+    matched || error("complex zeros could not be matched to their conjugates")
+    (complexp, realp, matched) = split_real_complex(p)
+    matched || error("complex poles could not be matched to their conjugates")
 
     # Sort poles according to distance to unit circle (nearest first)
-    p = sort!(p, by=x->abs(abs(x) - 1))
-
-    # Split real and complex poles
-    (complexz, realz) = split_real_complex(z)
-    check_conjugates(complexz) || error("complex zeros could not be matched to their conjugates")
-    (complexp, realp) = split_real_complex(p)
-    check_conjugates(complexp) || error("complex poles could not be matched to their conjugates")
+    sort!(complexp, by=x->abs(abs(x) - 1))
+    sort!(realp, by=x->abs(abs(x) - 1))
 
     # Group complex poles with closest complex zeros
     z1, p1 = groupzp(complexz, complexp)
