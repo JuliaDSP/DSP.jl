@@ -29,7 +29,8 @@ export  FilterType,
         analogfilter,
         digitalfilter,
         kaiserord,
-        FIRWindow
+        FIRWindow,
+        resample_filter
 
 include("response.jl")
 export  freqs,

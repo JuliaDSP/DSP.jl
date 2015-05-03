@@ -471,6 +471,21 @@ function scalefactor(coefs::Vector, ftype::Bandpass)
     c
 end
 
+# Compute FIR coefficients necessary for resampling
+function resample_filter(resamp_rate::Real, relative_bandwidth = 0.8, attenuation = 60; gain = 1.0)
+
+    f_nyq            = resamp_rate > 1.0 ? 0.5 : resamp_rate * 0.5
+    cutoff           = f_nyq * relative_bandwidth
+    transition_width = (1.0-relative_bandwidth) * f_nyq
+
+    # Determine resampling filter order
+    L, beta = kaiserord(transition_width, attenuation)
+
+    # Design filter
+    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(L, beta)))
+    scale!(h, gain)
+end
+
 function digitalfilter(ftype::FilterType, proto::FIRWindow)
     coefs = firprototype(length(proto.window), ftype)
     @assert length(proto.window) == length(coefs)
