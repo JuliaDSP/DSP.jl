@@ -43,6 +43,7 @@ include("stream_filt.jl")
 export  FIRFilter,
         outputlength,
         inputlength,
-        reset!
+        reset!,
+        resample
 
 end
