@@ -383,6 +383,25 @@ f = convert(PolynomialRatio, digitalfilter(Bandstop(0.6, 0.7), Elliptic(15, 1.8,
 tffilter_eq(f, m_f)
 
 #
+# Special filters
+#
+
+# Output of [num, den] = iirnotch(0.1, 0.1)
+notch = iirnotch(0.1, 0.1)
+@test_approx_eq notch.b0 0.863271264002681
+@test_approx_eq notch.b1 -1.642039521920206
+@test_approx_eq notch.b2 0.863271264002681
+@test_approx_eq notch.a1 -1.642039521920206
+@test_approx_eq notch.a2 0.726542528005361
+
+notch = iirnotch(60, 1, fs=1000)
+@test_approx_eq notch.b0 0.996868235770807
+@test_approx_eq notch.b1 -1.853729290297204
+@test_approx_eq notch.b2 0.996868235770807
+@test_approx_eq notch.a1 -1.853729290297204
+@test_approx_eq notch.a2 0.993736471541615
+
+#
 # IIR digital filter error conditions
 #
 

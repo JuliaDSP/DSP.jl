@@ -134,14 +134,21 @@ Filter application
 Filter design
 -------------
 
-.. function:: analogfilter(responsetype, prototype)
+.. function:: analogfilter(responsetype, filtertype)
 
-    Construct an analog filter.
+    Construct an analog filter. See below for possible response and
+    filter types.
 
-.. function:: digitalfilter(responsetype, prototype)
+.. function:: digitalfilter(responsetype, filtertype)
 
-    Construct a digital filter.
+    Construct a digital filter. See below for possible response and
+    filter types.
 
+.. function:: iirnotch(Wn, bandwidth[; fs])
+
+    Second-order digital IIR notch filter at frequency ``Wn`` with
+    bandwidth ``bandwidth``. If ``fs`` is not specified, ``Wn`` is
+    interpreted as a normalized frequency in half-cycles/sample.
 
 
 Filter response types
@@ -162,14 +169,14 @@ Filter response types
 .. function:: Bandpass(Wn1, Wn2[; fs])
 
     Band pass filter with normalized pass band (``Wn1``, ``Wn2``). If
-    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
-    frequency in half-cycles/sample.
+    ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
+    normalized frequencies in half-cycles/sample.
 
 .. function:: Bandstop(Wn1, Wn2[; fs])
 
     Band stop filter with normalized stop band (``Wn1``, ``Wn2``). If
-    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
-    frequency in half-cycles/sample.
+    ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
+    normalized frequencies in half-cycles/sample.
 
 
 IIR filter types

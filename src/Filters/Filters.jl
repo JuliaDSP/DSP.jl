@@ -28,6 +28,7 @@ export  FilterType,
         Bandstop,
         analogfilter,
         digitalfilter,
+        iirnotch,
         kaiserord,
         FIRWindow
 
