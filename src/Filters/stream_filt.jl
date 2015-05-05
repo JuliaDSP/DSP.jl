@@ -152,8 +152,8 @@ function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
-function FIRFilter(rate::Real)
-    h = resample_filter(rate)
+function FIRFilter(rate::Real, Nϕ::Integer=32)
+    h = resample_filter(rate, Nϕ)
     FIRFilter(h, rate)
 end
 
