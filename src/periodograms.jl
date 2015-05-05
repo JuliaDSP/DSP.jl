@@ -303,7 +303,7 @@ end
 
 function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                              nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                             nw::Int=4, ntapers::Int=ceil(Int, 2nw)-1,
+                             nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
                              window::Union(AbstractMatrix, Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
