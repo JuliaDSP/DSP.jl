@@ -220,11 +220,12 @@ FIR filter types
     - For :func:`Bandpass` filters, the frequency response is unity
       in the center of the passband.
 
-.. function:: FIRWindow(; transition, attenuation=60, scale=true)
+.. function:: FIRWindow(; transitionwidth, attenuation=60, scale=true)
 
     Kaiser window FIR filter design. The required number of taps is
-    calculated based on ``transition`` width and stopband
-    ``attenuation``. ``attenuation`` defaults to 60 dB.
+    calculated based on ``transitionwidth`` (in half-cycles/sample)
+    and stopband ``attenuation`` (in dB). ``attenuation`` defaults to
+    60 dB.
 
 
 Filter response
