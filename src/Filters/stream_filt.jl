@@ -159,6 +159,26 @@ end
 
 
 #
+# setphase! set's filter kernel phase index
+#
+
+function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
+    @assert zero(ϕ) <= ϕ <= one(ϕ)
+    kernel.ϕIdx = int(ϕIdx)
+    nothing
+end
+
+function setphase!(kernel::FIRArbitrary, ϕ::Real)
+    @assert zero(ϕ) <= ϕ <= one(ϕ)
+    kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
+    kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
+    kernel.α            = modf(kernel.ϕAccumulator)[1]
+    nothing
+end
+
+setphase!(self::FIRFilter, ϕ::Real) = setphase!(self.kernel, ϕ)
+
+#
 # reset! filter and its kernel to an initial state
 #
 
