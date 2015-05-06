@@ -25,7 +25,7 @@ type FIRInterpolator{T} <: FIRKernel{T}
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
-    pfb           = taps2pfb( h, interpolation )
+    pfb           = taps2pfb(h, interpolation)
     tapsPerϕ, Nϕ  = size(pfb)
     interpolation = interpolation
     FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ)
@@ -94,7 +94,7 @@ type FIRArbitrary{T} <: FIRKernel{T}
     xIdx::Int
 end
 
-function FIRArbitrary( h::Vector, rate::Real, Nϕ::Integer )
+function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     dh           = [diff(h); zero(eltype(h))]
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
@@ -105,7 +105,7 @@ function FIRArbitrary( h::Vector, rate::Real, Nϕ::Integer )
     Δ            = Nϕ/rate
     inputDeficit = 1
     xIdx         = 1
-    FIRArbitrary( rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx )
+    FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx)
 end
 
 
@@ -147,7 +147,7 @@ function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
     rate > 0.0 || error("rate must be greater than 0")
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
-    history    = zeros(historyLen )
+    history    = zeros(historyLen)
     FIRFilter(kernel, history, historyLen, h)
 end
 
@@ -183,8 +183,8 @@ end
 
 # For FIRFilter, set history vector to zeros of same type and required length
 function reset!(self::FIRFilter)
-    self.history = zeros( eltype( self.history ), self.historyLen )
-    reset!( self.kernel )
+    self.history = zeros(eltype(self.history), self.historyLen)
+    reset!(self.kernel)
     self
 end
 
@@ -204,11 +204,11 @@ end
 #
 #  In this example, the first phase, or ϕ, is [9, 5, 1].
 
-function taps2pfb{T}( h::Vector{T}, Nϕ::Integer )
-    hLen     = length( h )
+function taps2pfb{T}(h::Vector{T}, Nϕ::Integer)
+    hLen     = length(h)
     tapsPerϕ = ceil(Int, hLen/Nϕ)
     pfbSize  = tapsPerϕ * Nϕ
-    pfb      = Array( T, tapsPerϕ, Nϕ )
+    pfb      = Array(T, tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
@@ -228,7 +228,7 @@ end
 # ( It's hard to explain how this works without a diagram )
 #
 
-function outputlength(inputlength::Integer, ratio::Rational, initialϕ::Integer )
+function outputlength(inputlength::Integer, ratio::Rational, initialϕ::Integer)
     interpolation = num(ratio)
     decimation    = den(ratio)
     outLen        = ((inputlength * interpolation) - initialϕ + 1) / decimation
@@ -251,7 +251,7 @@ function outputlength(kernel::FIRRational, inputlength::Integer)
     outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
 end
 
-function outputlength( kernel::FIRArbitrary, inputlength::Integer )
+function outputlength(kernel::FIRArbitrary, inputlength::Integer)
     ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
 end
 
@@ -321,7 +321,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th
         if inputIdx < kernel.hLen
             accumulator = unsafe_dot(kernel.h, history, x, inputIdx)
         else
-            accumulator = unsafe_dot( kernel.h, x, inputIdx )
+            accumulator = unsafe_dot(kernel.h, x, inputIdx)
         end
         buffer[bufIdx] = accumulator
         inputIdx += 1
@@ -337,7 +337,7 @@ function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+    samplesWritten == bufLen || resize!(buffer, samplesWritten)
 
     return buffer
 end
@@ -347,7 +347,7 @@ end
 # Interpolation
 #
 
-function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx} )
+function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     interpolation       = kernel.interpolation
@@ -357,7 +357,7 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolat
     bufIdx              = 0
     ϕIdx                = 1
 
-    bufLen >= outputlength(self, xLen) || error("length( buffer ) must be >= interpolation * length(x)")
+    bufLen >= outputlength(self, xLen) || error("length(buffer) must be >= interpolation * length(x)")
 
     while inputIdx <= xLen
         bufIdx += 1
@@ -365,7 +365,7 @@ function Base.filt!{Tb,Th,Tx}( buffer::Vector{Tb}, self::FIRFilter{FIRInterpolat
         if inputIdx < kernel.tapsPerϕ
             accumulator = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
         else
-            accumulator = unsafe_dot( kernel.pfb, ϕIdx, x, inputIdx )
+            accumulator = unsafe_dot(kernel.pfb, ϕIdx, x, inputIdx)
         end
 
         buffer[bufIdx]   = accumulator
@@ -382,7 +382,7 @@ function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+    samplesWritten == bufLen || resize!(buffer, samplesWritten)
 
     return buffer
 end
@@ -438,7 +438,7 @@ function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+    samplesWritten == bufLen || resize!(buffer, samplesWritten)
 
     return buffer
 end
@@ -487,7 +487,7 @@ function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+    samplesWritten == bufLen || resize!(buffer, samplesWritten)
 
     return buffer
 end
@@ -553,12 +553,12 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{T
     return bufIdx
 end
 
-function Base.filt{Th,Tx}( self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx} )
+function Base.filt{Th,Tx}(self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!( buffer, samplesWritten)
+    samplesWritten == bufLen || resize!(buffer, samplesWritten)
 
     return buffer
 end
