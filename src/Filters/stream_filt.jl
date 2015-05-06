@@ -310,25 +310,20 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th
     history::Vector{Tx} = self.history
     bufLen              = length(buffer)
     xLen                = length(x)
-    inputIdx            = 1
-    bufIdx              = 0
 
     bufLen >= xLen || error("buffer length must be >= x length")
 
-    while inputIdx <= xLen
-        bufIdx += 1
-        if inputIdx < kernel.hLen
-            accumulator = unsafe_dot(kernel.h, history, x, inputIdx)
-        else
-            accumulator = unsafe_dot(kernel.h, x, inputIdx)
-        end
-        buffer[bufIdx] = accumulator
-        inputIdx += 1
+    h = kernel.h
+    for i = 1:min(kernel.hLen-1, xLen)
+        @inbounds buffer[i] = unsafe_dot(h, history, x, i)
+    end
+    for i = kernel.hLen:xLen
+        @inbounds buffer[i] = unsafe_dot(h, x, i)
     end
 
     self.history = shiftin!(history, x)
 
-    return bufIdx
+    return xLen
 end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
@@ -567,8 +562,8 @@ end
 # Stateless filt implementations
 #
 
-# Single-rate, decimation, interpolation, and rational resampling.
-function Base.filt(h::Vector, x::Vector, ratio::Rational=1//1)
+# Decimation, interpolation, and rational resampling.
+function Base.filt(h::Vector, x::Vector, ratio::Rational)
     self = FIRFilter(h, ratio)
     filt(self, x)
 end

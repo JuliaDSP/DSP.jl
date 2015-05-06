@@ -359,6 +359,37 @@ function filt_stepstate{T}(f::SecondOrderSections{T})
 end
 
 #
+# filt implementation for FIR filters (faster than Base)
+#
+
+function Base.filt!(out::AbstractArray, h::Vector, x::AbstractArray)
+    h = reverse(h)
+    hLen = length(h)
+    xLen = size(x, 1)
+    size(x) != size(out) && error("out size must match x")
+    ncols = Base.trailingsize(x, 2)
+
+    for col = 0:ncols-1
+        offset = col*size(x, 1)
+        for i = 1:min(hLen-1, xLen)
+            dotprod = zero(eltype(h))*zero(eltype(x))
+            @simd for j = 1:i
+                @inbounds dotprod += h[hLen-i+j] * x[j+offset]
+            end
+            @inbounds out[i+offset] = dotprod
+        end
+        for i = hLen:xLen
+            @inbounds out[i+offset] = unsafe_dot(h, x, i+offset)
+        end
+    end
+
+    out
+end
+
+Base.filt(h::AbstractArray, x::AbstractArray) =
+    Base.filt!(Array(eltype(x), size(x)), h, x)
+
+#
 # fftfilt and firfilt
 #
 
@@ -460,15 +491,15 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt(b, [one(T)], x)
+        filt(b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
         nfft = optimalfftfiltlength(nb, nx)
         L = min(nx, nfft - (nb - 1))
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
-        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 100000
+        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt(b, [one(T)], x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt(b, x)
     end
 end
