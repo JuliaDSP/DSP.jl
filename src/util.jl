@@ -175,7 +175,7 @@ rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-@inline function _unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
     dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
@@ -186,15 +186,8 @@ rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
     return dotprod
 end
 
-unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer) =
-    _unsafe_dot(a, aColIdx, b, bLastIdx)
-
 @inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer)
-    if size(a, 1) > 16
-        BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
-    else
-        _unsafe_dot(a, aColIdx, b, bLastIdx)
-    end
+    BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
 end
 
 function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
@@ -214,7 +207,7 @@ function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}
     return dotprod
 end
 
-@inline function _unsafe_dot(a::AbstractVector, b::AbstractArray, bLastIdx::Integer)
+function unsafe_dot{T}(a::T, b::AbstractArray, bLastIdx::Integer)
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
     @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
@@ -225,14 +218,8 @@ end
     return dotprod
 end
 
-unsafe_dot(a::AbstractVector, b::AbstractArray, bLastIdx::Integer) = _unsafe_dot(a, b, bLastIdx)
-
 @inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Vector{T}, b::Array{T}, bLastIdx::Integer)
-    if length(a) > 16
-        BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
-    else
-        _unsafe_dot(a, b, bLastIdx)
-    end
+    BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
 function unsafe_dot{T}(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)

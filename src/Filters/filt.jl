@@ -362,7 +362,49 @@ end
 # filt implementation for FIR filters (faster than Base)
 #
 
-function Base.filt!(out::AbstractArray, h::Vector, x::AbstractArray)
+for n = 2:15
+    silen = n-1
+    si = [symbol("si$i") for i = 1:silen]
+    @eval function Base.filt!{T}(out, b::NTuple{$n,T}, x)
+        size(x) != size(out) && error("out size must match x")
+        ncols = Base.trailingsize(x, 2)
+        for col = 0:ncols-1
+            $(Expr(:block, [:($(si[i]) = zero(b[$i])*zero(x[1])) for i = 1:silen]...))
+            offset = col*size(x, 1)
+            @inbounds for i=1:size(x, 1)
+                xi = x[i+offset]
+                val = $(si[1]) + b[1]*xi
+                $(Expr(:block, [:($(si[j]) = $(si[j+1]) + b[$(j+1)]*xi) for j = 1:(silen-1)]...))
+                $(si[silen]) = b[$(silen+1)]*xi
+                out[i+offset] = val
+            end
+        end
+        out
+    end
+end
+
+chain = :(throw(ArgumentError("invalid tuple size")))
+for n = 15:-1:2
+    chain = quote
+        if length(h) == $n
+            filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
+        else
+            $chain
+        end
+    end
+end
+
+@eval function small_filt!{T}(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray)
+    $chain
+end
+
+function Base.filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+    if length(h) == 1
+        return scale!(out, h[1], x)
+    elseif length(h) <= 15
+        return small_filt!(out, h, x)
+    end
+
     h = reverse(h)
     hLen = length(h)
     xLen = size(x, 1)
@@ -382,7 +424,6 @@ function Base.filt!(out::AbstractArray, h::Vector, x::AbstractArray)
             @inbounds out[i+offset] = unsafe_dot(h, x, i+offset)
         end
     end
-
     out
 end
 
