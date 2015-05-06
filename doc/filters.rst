@@ -99,7 +99,9 @@ Filter application
     to zeros). If ``f`` is a ``PolynomialRatio``, ``Biquad``, or
     ``SecondOrderSections``, filtering is implemented directly. If
     ``f`` is a ``ZeroPoleGain`` object, it is first converted to a
-    ``SecondOrderSections`` object.
+    ``SecondOrderSections`` object.  If ``f`` is a Vector, it is
+    interpreted as an FIR filter, and a naïve or FFT-based algorithm is
+    selected based on the data and filter length.
 
 .. function:: filt!(out, f, x[, si])
 
@@ -123,12 +125,6 @@ Filter application
 
     Apply FIR filter ``b`` along the first dimension of array ``x``
     using an FFT-based overlap-save algorithm.
-
-.. function:: firfilt(b, x)
-
-    Apply FIR filter ``b`` along the first dimension of array ``x``,
-    choosing the optimal algorithm based on the lengths of ``b`` and
-    ``x``.
 
 
 Filter design

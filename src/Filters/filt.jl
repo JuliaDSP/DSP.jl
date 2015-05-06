@@ -1,4 +1,4 @@
-# Implementations of filt, filtfilt, fftfilt, and firfilt
+# Implementations of filt, filtfilt, and fftfilt
 
 #
 # filt and filt!
@@ -237,7 +237,7 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     extrapolated = similar(x, t, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
 
     # Convolve b with its reverse
-    newb = firfilt(b, reverse(b))
+    newb = filt(b, reverse(b))
     resize!(newb, 2nb-1)
     for i = 1:nb-1
         newb[nb+i] = newb[nb-i]
@@ -249,7 +249,7 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     end
 
     # Filter
-    out = firfilt(newb, extrapolated)
+    out = filt(newb, extrapolated)
 
     # Drop garbage at start
     reshape(out[2nb-1:end, :], size(x))
@@ -390,7 +390,7 @@ Base.filt(h::AbstractArray, x::AbstractArray) =
     Base.filt!(Array(eltype(x), size(x)), h, x)
 
 #
-# fftfilt and firfilt
+# fftfilt and filt
 #
 
 const FFT_LENGTHS = 2.^(1:28)
@@ -482,16 +482,16 @@ end
 # Filter x using FIR filter b, heuristically choosing to perform
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
-function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
+function Base.filt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
     nb = length(b)
     nx = size(x, 1)
 
     filtops = length(x) * min(nx, nb)
-    if filtops <= 100000
+    if filtops <= 500000
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt(b, x)
+        filt!(Array(eltype(x), size(x)), b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -500,6 +500,6 @@ function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt(b, x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array(eltype(x), size(x)), b, x)
     end
 end
