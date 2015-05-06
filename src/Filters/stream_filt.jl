@@ -310,7 +310,6 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th
     history::Vector{Tx} = self.history
     bufLen              = length(buffer)
     xLen                = length(x)
-    criticalIdx         = min(kernel.hLen, bufLen)
     inputIdx            = 1
     bufIdx              = 0
 
