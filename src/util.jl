@@ -1,4 +1,5 @@
 module Util
+using Compat
 
 export  unwrap!,
         unwrap,
@@ -174,7 +175,7 @@ rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-function unsafe_dot(a::Matrix, aColIdx::Integer, b::Vector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
     dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
@@ -185,7 +186,11 @@ function unsafe_dot(a::Matrix, aColIdx::Integer, b::Vector, bLastIdx::Integer)
     return dotprod
 end
 
-function unsafe_dot{T}(a::Matrix, aColIdx::Integer, b::Vector{T}, c::Vector{T}, cLastIdx::Integer)
+@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer)
+    BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
+end
+
+function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
     aLen = size(a, 1)
     bLen = length(b)
     bLen == aLen-1  || error( "length(b) must equal to length(a)[1] - 1" )
@@ -202,10 +207,10 @@ function unsafe_dot{T}(a::Matrix, aColIdx::Integer, b::Vector{T}, c::Vector{T}, 
     return dotprod
 end
 
-function unsafe_dot(a::Vector, b::Vector, bLastIdx::Integer)
+function unsafe_dot{T}(a::T, b::AbstractArray, bLastIdx::Integer)
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
-    dotprod  = a[1] * b[bBaseIdx + 1]
+    @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
     @simd for i in 2:aLen
         @inbounds dotprod += a[i] * b[bBaseIdx + i]
     end
@@ -213,7 +218,11 @@ function unsafe_dot(a::Vector, b::Vector, bLastIdx::Integer)
     return dotprod
 end
 
-function unsafe_dot{T}(a::Vector, b::Vector{T}, c::Vector{T}, cLastIdx::Integer)
+@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Vector{T}, b::Array{T}, bLastIdx::Integer)
+    BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
+end
+
+function unsafe_dot{T}(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
     aLen    = length(a)
     dotprod = zero(a[1]*b[1])
     @simd for i in 1:aLen-cLastIdx

@@ -13,8 +13,7 @@ export FilterCoefficients,
 include("filt.jl")
 export  DF2TFilter,
         filtfilt,
-        fftfilt,
-        firfilt
+        fftfilt
 
 include("design.jl")
 export  FilterType,
