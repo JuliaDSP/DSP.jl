@@ -248,7 +248,7 @@ x2_output = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d_sos
 @test_approx_eq x2_output filtfilt(sosfilter, x)
 
 #
-# fftfilt/firfilt
+# fftfilt/filt
 #
 
 for xlen in 2.^(7:18).-1, blen in 2.^(1:6).-1
@@ -256,7 +256,7 @@ for xlen in 2.^(7:18).-1, blen in 2.^(1:6).-1
     for x in (rand(xlen), rand(xlen, 2))
         filtres = filt(b, [1.0], x)
         fftres = fftfilt(b, x)
-        firres = firfilt(b, x)
+        firres = filt(b, x)
         @test_approx_eq filtres fftres
         @test_approx_eq filtres firres
     end

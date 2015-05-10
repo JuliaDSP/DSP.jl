@@ -386,6 +386,25 @@ prewarp(ftype::Union(Bandpass, Bandstop)) = (typeof(ftype))(4*tan(pi*ftype.w1/2)
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
+digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
+    bilinear(transform_prototype(prewarp(ftype), proto), 2)
+
+#
+# Special filter types
+#
+
+# See Orfanidis, S. J. (1996). Introduction to signal processing.
+# Englewood Cliffs, N.J: Prentice Hall, p. 370
+function iirnotch(w::Real, bandwidth::Real; fs=2)
+    w = normalize_freq(w, fs)
+    bandwidth = normalize_freq(bandwidth, fs)
+
+    # Eq. 8.2.23
+    b = 1/(1+tan(pi*bandwidth/2))
+    # Eq. 8.2.22
+    cosw0 = cospi(w)
+    Biquad(b, -2b*cosw0, b, -2b*cosw0, 2b-1)
+end
 
 #
 # FIR filter design

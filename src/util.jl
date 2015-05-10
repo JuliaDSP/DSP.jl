@@ -1,4 +1,5 @@
 module Util
+using Compat
 
 export  unwrap!,
         unwrap,
@@ -185,6 +186,10 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLas
     return dotprod
 end
 
+@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer)
+    BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
+end
+
 function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
     aLen = size(a, 1)
     bLen = length(b)
@@ -202,15 +207,19 @@ function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}
     return dotprod
 end
 
-function unsafe_dot(a::AbstractVector, b::AbstractVector, bLastIdx::Integer)
+function unsafe_dot{T}(a::T, b::AbstractArray, bLastIdx::Integer)
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
-    dotprod  = a[1] * b[bBaseIdx + 1]
+    @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
     @simd for i in 2:aLen
         @inbounds dotprod += a[i] * b[bBaseIdx + i]
     end
 
     return dotprod
+end
+
+@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Vector{T}, b::Array{T}, bLastIdx::Integer)
+    BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
 function unsafe_dot{T}(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
@@ -235,7 +244,7 @@ end
 #  4
 #  5
 #  6
-function shiftin!{T}(a::AbstractVector{T}, b::AbstractVector{T})
+function shiftin!{T}(a::Vector{T}, b::Vector{T})
     aLen = length(a)
     bLen = length(b)
 

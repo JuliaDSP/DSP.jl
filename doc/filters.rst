@@ -99,7 +99,9 @@ Filter application
     to zeros). If ``f`` is a ``PolynomialRatio``, ``Biquad``, or
     ``SecondOrderSections``, filtering is implemented directly. If
     ``f`` is a ``ZeroPoleGain`` object, it is first converted to a
-    ``SecondOrderSections`` object.
+    ``SecondOrderSections`` object.  If ``f`` is a Vector, it is
+    interpreted as an FIR filter, and a naïve or FFT-based algorithm is
+    selected based on the data and filter length.
 
 .. function:: filt!(out, f, x[, si])
 
@@ -124,24 +126,25 @@ Filter application
     Apply FIR filter ``b`` along the first dimension of array ``x``
     using an FFT-based overlap-save algorithm.
 
-.. function:: firfilt(b, x)
-
-    Apply FIR filter ``b`` along the first dimension of array ``x``,
-    choosing the optimal algorithm based on the lengths of ``b`` and
-    ``x``.
-
 
 Filter design
 -------------
 
-.. function:: analogfilter(responsetype, prototype)
+.. function:: analogfilter(responsetype, filtertype)
 
-    Construct an analog filter.
+    Construct an analog filter. See below for possible response and
+    filter types.
 
-.. function:: digitalfilter(responsetype, prototype)
+.. function:: digitalfilter(responsetype, filtertype)
 
-    Construct a digital filter.
+    Construct a digital filter. See below for possible response and
+    filter types.
 
+.. function:: iirnotch(Wn, bandwidth[; fs])
+
+    Second-order digital IIR notch filter at frequency ``Wn`` with
+    bandwidth ``bandwidth``. If ``fs`` is not specified, ``Wn`` is
+    interpreted as a normalized frequency in half-cycles/sample.
 
 
 Filter response types
@@ -162,14 +165,14 @@ Filter response types
 .. function:: Bandpass(Wn1, Wn2[; fs])
 
     Band pass filter with normalized pass band (``Wn1``, ``Wn2``). If
-    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
-    frequency in half-cycles/sample.
+    ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
+    normalized frequencies in half-cycles/sample.
 
 .. function:: Bandstop(Wn1, Wn2[; fs])
 
     Band stop filter with normalized stop band (``Wn1``, ``Wn2``). If
-    ``fs`` is not specified, ``Wn`` is interpreted as a normalized
-    frequency in half-cycles/sample.
+    ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
+    normalized frequencies in half-cycles/sample.
 
 
 IIR filter types
@@ -207,17 +210,18 @@ FIR filter types
     scaled so that the following holds:
 
     - For :func:`Lowpass` and :func:`Bandstop` filters, the frequency
-      response is unity at the Nyquist frequency.
+      response is unity at 0 (DC).
     - For :func:`Highpass` filters, the frequency response is unity
-      at 0 (DC).
+      at the Nyquist frequency.
     - For :func:`Bandpass` filters, the frequency response is unity
       in the center of the passband.
 
-.. function:: FIRWindow(; transition, attenuation=60, scale=true)
+.. function:: FIRWindow(; transitionwidth, attenuation=60, scale=true)
 
     Kaiser window FIR filter design. The required number of taps is
-    calculated based on ``transition`` width and stopband
-    ``attenuation``. ``attenuation`` defaults to 60 dB.
+    calculated based on ``transitionwidth`` (in half-cycles/sample)
+    and stopband ``attenuation`` (in dB). ``attenuation`` defaults to
+    60 dB.
 
 
 Filter response
@@ -293,7 +297,7 @@ Butterworth bandpass filter between 10 and 40 Hz::
   filt(digitalfilter(responsetype, prototype), x)
 
 Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
-window FIR lowpass filter at 5 Hz:
+window FIR lowpass filter at 5 Hz::
 
   responsetype = Lowpass(5; fs=50)
   prototype = FIRWindow(hanning(64))

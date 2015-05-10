@@ -1,4 +1,4 @@
-# Implementations of filt, filtfilt, fftfilt, and firfilt
+# Implementations of filt, filtfilt, and fftfilt
 
 #
 # filt and filt!
@@ -237,7 +237,7 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     extrapolated = similar(x, t, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
 
     # Convolve b with its reverse
-    newb = firfilt(b, reverse(b))
+    newb = filt(b, reverse(b))
     resize!(newb, 2nb-1)
     for i = 1:nb-1
         newb[nb+i] = newb[nb-i]
@@ -249,7 +249,7 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     end
 
     # Filter
-    out = firfilt(newb, extrapolated)
+    out = filt(newb, extrapolated)
 
     # Drop garbage at start
     reshape(out[2nb-1:end, :], size(x))
@@ -359,7 +359,79 @@ function filt_stepstate{T}(f::SecondOrderSections{T})
 end
 
 #
-# fftfilt and firfilt
+# filt implementation for FIR filters (faster than Base)
+#
+
+for n = 2:15
+    silen = n-1
+    si = [symbol("si$i") for i = 1:silen]
+    @eval function Base.filt!{T}(out, b::NTuple{$n,T}, x)
+        size(x) != size(out) && error("out size must match x")
+        ncols = Base.trailingsize(x, 2)
+        for col = 0:ncols-1
+            $(Expr(:block, [:($(si[i]) = zero(b[$i])*zero(x[1])) for i = 1:silen]...))
+            offset = col*size(x, 1)
+            @inbounds for i=1:size(x, 1)
+                xi = x[i+offset]
+                val = $(si[1]) + b[1]*xi
+                $(Expr(:block, [:($(si[j]) = $(si[j+1]) + b[$(j+1)]*xi) for j = 1:(silen-1)]...))
+                $(si[silen]) = b[$(silen+1)]*xi
+                out[i+offset] = val
+            end
+        end
+        out
+    end
+end
+
+chain = :(throw(ArgumentError("invalid tuple size")))
+for n = 15:-1:2
+    chain = quote
+        if length(h) == $n
+            filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
+        else
+            $chain
+        end
+    end
+end
+
+@eval function small_filt!{T}(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray)
+    $chain
+end
+
+function Base.filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+    if length(h) == 1
+        return scale!(out, h[1], x)
+    elseif length(h) <= 15
+        return small_filt!(out, h, x)
+    end
+
+    h = reverse(h)
+    hLen = length(h)
+    xLen = size(x, 1)
+    size(x) != size(out) && error("out size must match x")
+    ncols = Base.trailingsize(x, 2)
+
+    for col = 0:ncols-1
+        offset = col*size(x, 1)
+        for i = 1:min(hLen-1, xLen)
+            dotprod = zero(eltype(h))*zero(eltype(x))
+            @simd for j = 1:i
+                @inbounds dotprod += h[hLen-i+j] * x[j+offset]
+            end
+            @inbounds out[i+offset] = dotprod
+        end
+        for i = hLen:xLen
+            @inbounds out[i+offset] = unsafe_dot(h, x, i+offset)
+        end
+    end
+    out
+end
+
+Base.filt(h::AbstractArray, x::AbstractArray) =
+    Base.filt!(Array(eltype(x), size(x)), h, x)
+
+#
+# fftfilt and filt
 #
 
 const FFT_LENGTHS = 2.^(1:28)
@@ -451,24 +523,24 @@ end
 # Filter x using FIR filter b, heuristically choosing to perform
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
-function firfilt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
+function Base.filt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
     nb = length(b)
     nx = size(x, 1)
 
     filtops = length(x) * min(nx, nb)
-    if filtops <= 100000
+    if filtops <= 500000
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt(b, [one(T)], x)
+        filt!(Array(eltype(x), size(x)), b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
         nfft = optimalfftfiltlength(nb, nx)
         L = min(nx, nfft - (nb - 1))
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
-        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 100000
+        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt(b, [one(T)], x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array(eltype(x), size(x)), b, x)
     end
 end
