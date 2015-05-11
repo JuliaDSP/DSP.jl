@@ -152,8 +152,13 @@ function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
-function FIRFilter(rate::Real, Nϕ::Integer=32)
+function FIRFilter(rate::FloatingPoint, Nϕ::Integer=32)
     h = resample_filter(rate, Nϕ)
+    FIRFilter(h, rate)
+end
+
+function FIRFilter(rate::Rational)
+    h = resample_filter(rate)
     FIRFilter(h, rate)
 end
 
@@ -164,7 +169,7 @@ end
 
 function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
     @assert zero(ϕ) <= ϕ <= one(ϕ)
-    kernel.ϕIdx = int(ϕIdx)
+    kernel.ϕIdx = int(ϕ*(kernel.Nϕ-1.0) + 1.0)
     nothing
 end
 
@@ -459,7 +464,6 @@ function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
     return buffer
 end
 
@@ -602,6 +606,23 @@ end
 
 function resample(x::AbstractVector, rate::Real)
     self = FIRFilter(rate)
+
+    # Get delay, in # of samples at the output rate, caused by filtering processes
+    τ = (self.kernel.tapsPerϕ-1/self.kernel.Nϕ)/2
+
+    # Convert τ (possibly a non-integer number), into whole and fractional parts
+    # Equivelent to (hLen - 1)/(2 * Nϕ)
+    (ϕInitial, xThrowaway) = modf(τ)
+
+    # Do not use the xThrowaway input samples to create outputs
+    # However, they will still be shifted into the delay line and used in the filtering process
+    self.kernel.inputDeficit += xThrowaway
+
+    # To account for the fractional part of τ, set the phase of the polyphase filter bank
+    # Adding an initial phase of 0 imparts no delay.
+    # An initial phase of 1 represents a delay of 1 input sample
+    setphase!(self, ϕInitial)
+
     filt(self, x)
 end
 
