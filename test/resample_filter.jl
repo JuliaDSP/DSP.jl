@@ -15,6 +15,15 @@ arbTime = [0.0:length(yArb)-1]/float64(rerate)
 yRat    = resample(x, rerate)
 ratTime = [0.0:length(yRat)-1]/float64(rerate)
 
+# Manually resampling with a rational factor
+h    = resample_filter(11//3)
+pf   = FIRFilter(h, 11//3)
+yMan = filt(pf, x)
+dMan = DSP.Filters.timedelay(pf)
+manTime = ([0.0:length(yMan)-1]/float64(rerate)).-dMan
+
+
+
 using PyPlot
 
 figure(num=1, figsize=(10, 10/golden), dpi=100, facecolor="w", edgecolor="k")
@@ -23,14 +32,19 @@ rc("font", size=10)
 
 hold(true)
 
-subplot(211)
+subplot(311)
 plt.title("Arbitrary Polphase Resampling, rate = $(float64(rerate))")
 plot(xTime, x, "g.-")
 plot(arbTime, yArb, "b.-")
 
-subplot(212)
+subplot(312)
 plt.title("Rational Polphase Resampling, rate = $rerate")
 plot(xTime, x, "g.-")
 plot(ratTime, yRat, "b.-")
+
+subplot(313)
+plt.title("Manual Polphase Resampling, rate = $rerate")
+plot(xTime, x, "g.-")
+plot(manTime, yMan, "b.-")
 
 hold(false)

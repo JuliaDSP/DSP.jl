@@ -333,6 +333,23 @@ end
 
 
 #
+# Calculates the delay in # samples, at the output sample rate, caused by the filter process
+#
+
+function timedelay(kernel::Union(FIRRational, FIRInterpolator, FIRArbitrary))
+    (kernel.tapsPerϕ - 1/kernel.Nϕ)/2
+end
+
+function timedelay(kernel::Union(FIRStandard, FIRDecimator))
+    (kernel.hLen - 1)/2
+end
+
+function timedelay(self::FIRFilter)
+    timedelay(self.kernel)
+end
+
+
+#
 # Single rate filtering
 #
 
@@ -608,7 +625,8 @@ function resample(x::AbstractVector, rate::Real)
     self = FIRFilter(rate)
 
     # Get delay, in # of samples at the output rate, caused by filtering processes
-    τ = (self.kernel.tapsPerϕ-1/self.kernel.Nϕ)/2
+    # τ = (self.kernel.tapsPerϕ-1/self.kernel.Nϕ)/2
+    τ = timedelay(self)
 
     # Convert τ (possibly a non-integer number), into whole and fractional parts
     # Equivelent to (hLen - 1)/(2 * Nϕ)
