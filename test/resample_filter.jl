@@ -5,7 +5,8 @@ xƒ1    = 0.125      # First singal frequency
 xƒ2    = 0.3        # Second signal frequency
 xLen   = 80         # Number of signal samples
 xTime  = [0:xLen-1] # Time vector
-x      = cos(2*pi*0.125*xTime) + 0.5sin(2*pi*0.3*xTime*pi) + cos(0.1*xTime)
+# x      = cos(2*pi*0.125*xTime) + 0.5sin(2*pi*0.3*xTime*pi) + cos(0.1*xTime)
+x = cos(2π*0.25*xTime)
 
 # Resample with arbitrary factor
 yArb    = resample(x, float64(rerate))
@@ -16,7 +17,9 @@ yRat    = resample(x, rerate)
 ratTime = [0.0:length(yRat)-1]/float64(rerate)
 
 # Manually resampling with a rational factor
-h    = resample_filter(11//3)
+# h    = resample_filter(11//3)
+h = digitalfilter(Lowpass(.9/11), FIRWindow(hamming(11*11)))
+scale!(h,11)
 pf   = FIRFilter(h, 11//3)
 yMan = filt(pf, x)
 dMan = DSP.Filters.timedelay(pf)
