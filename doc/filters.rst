@@ -1,16 +1,20 @@
 :mod:`Filters` - filter design and filtering
 ============================================
 
-DSP.jl differentiates between filter coefficients and filters. Filter
+DSP.jl differentiates between
+:ref`filter coefficients <coefficient-objects>` and
+:ref:`stateful filters <stateful-filter-objects>`. Filter
 coefficient objects specify the response of the filter in one of
-several standard forms. Filter objects carry the state of the filter
-together with filter coefficients in an implementable form
+several standard forms. Stateful filter objects carry the state of the
+filter together with filter coefficients in an implementable form
 (``PolynomialRatio``, ``Biquad``, or ``SecondOrderSections``).
 When invoked on a filter coefficient object, ``filt`` preserves state
 between invocations.
 
-Linear time-invariant filter coefficient objects
-------------------------------------------------
+.. _coefficient-objects:
+
+Filter coefficient objects
+--------------------------
 
 DSP.jl supports common filter representations. Filter coefficients can
 be converted from one type to another using ``convert``.
@@ -53,8 +57,10 @@ be converted from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``Biquads``.
 
-Filter objects
-----------------------------------
+.. stateful-filter-objects:
+
+Stateful filter objects
+-----------------------
 
 .. function:: DF2TFilter(coef[, si])
 
@@ -131,7 +137,7 @@ Filter design
 -------------
 
 Most analog and digital filters are constructed by composing
-:ref:`response types <response-types>`, which determine the frequency 
+:ref:`response types <response-types>`, which determine the frequency
 response of the filter, with :ref:`design methods <design-methods>`,
 which determine how the filter is constructed.
 
