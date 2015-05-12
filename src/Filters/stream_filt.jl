@@ -625,11 +625,9 @@ function resample(x::AbstractVector, rate::Real)
     self = FIRFilter(rate)
 
     # Get delay, in # of samples at the output rate, caused by filtering processes
-    # τ = (self.kernel.tapsPerϕ-1/self.kernel.Nϕ)/2
     τ = timedelay(self)
 
     # Convert τ (possibly a non-integer number), into whole and fractional parts
-    # Equivelent to (hLen - 1)/(2 * Nϕ)
     (ϕInitial, xThrowaway) = modf(τ)
 
     # Do not use the xThrowaway input samples to create outputs
@@ -641,7 +639,13 @@ function resample(x::AbstractVector, rate::Real)
     # An initial phase of 1 represents a delay of 1 input sample
     setphase!(self, ϕInitial)
 
-    filt(self, x)
+    # Calculate the number of 0's required so that w
+    outLen      = ceil(Int, length(x)*rate)
+    reqInlen    = inputlength(self, outlen)
+    reqZerosLen = reqInlen - length(x)
+    xPadded     = [x, zeros(eltype(x), numZerosNeeded)]
+
+    [filt(self, x), filt(self, xPadded)]
 end
 
 #
