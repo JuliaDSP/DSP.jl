@@ -2,7 +2,7 @@
 ============================================
 
 DSP.jl differentiates between
-:ref`filter coefficients <coefficient-objects>` and
+:ref:`filter coefficients <coefficient-objects>` and
 :ref:`stateful filters <stateful-filter-objects>`. Filter
 coefficient objects specify the response of the filter in one of
 several standard forms. Stateful filter objects carry the state of the
@@ -57,7 +57,7 @@ be converted from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``Biquads``.
 
-.. stateful-filter-objects:
+.. _stateful-filter-objects:
 
 Stateful filter objects
 -----------------------
