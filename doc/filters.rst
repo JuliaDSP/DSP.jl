@@ -131,9 +131,9 @@ Filter design
 -------------
 
 Most analog and digital filters are constructed by composing
-:ref:`response-types`, which determine the frequency response of the
-filter, with :ref:`design-methods`, which determine how the filter is
-constructed.
+:ref:`response types <response-types>`, which determine the frequency 
+response of the filter, with :ref:`design methods <design-methods>`,
+which determine how the filter is constructed.
 
 .. function:: analogfilter(responsetype, designmethod)
 
@@ -183,7 +183,7 @@ Filter response types
     ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
     normalized frequencies in half-cycles/sample.
 
-.. design-methods:
+.. _design-methods:
 
 Filter design methods
 ~~~~~~~~~~~~~~~~~~~~~
