@@ -416,16 +416,16 @@ function kaiserord(transitionwidth::Real, attenuation::Real=60)
     n = ceil(Int, (attenuation - 7.95)/(π*2.285*transitionwidth))+1
 
     if attenuation > 50
-        β = 0.1102*(attenuation - 8.7)
+        α = 0.1102*(attenuation - 8.7)
     elseif attenuation >= 21
-        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
+        α = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
     else
-        β = 0.0
+        α = 0.0
     end
 
-    α = π*β
+    β = α*π
 
-    return n, α
+    return n, β
 end
 
 immutable FIRWindow{T}
@@ -499,7 +499,7 @@ end
 
 # Compute FIR coefficients necessary for arbitrary rate resampling
 function resample_filter(rate::FloatingPoint, Nϕ::Integer, rel_bw = 0.8, attenuation = 60)
-    f_nyq        = rate >= 1.0 ? 0.5/Nϕ : rate/Nϕ
+    f_nyq        = rate >= 1.0 ? 1.0/Nϕ : rate/Nϕ
     cutoff      = f_nyq * rel_bw
     trans_width = (1.0-rel_bw) * f_nyq
 
@@ -511,14 +511,15 @@ function resample_filter(rate::FloatingPoint, Nϕ::Integer, rel_bw = 0.8, attenu
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
     # Design filter
-    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β)))
+    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β/π)))
     scale!(h, Nϕ)
 end
 
 # Compute FIR coefficients necessary for rational rate resampling
 function resample_filter(rate::Rational, rel_bw = 0.8, attenuation = 60)
     Nϕ          = num(rate)
-    f_nyq       = min(0.5/Nϕ, 0.5/den(rate))
+    decimation  = den(rate)
+    f_nyq       = min(1/Nϕ, 1/decimation)
     cutoff      = f_nyq * rel_bw
     trans_width = (1.0-rel_bw) * f_nyq
 
@@ -530,6 +531,6 @@ function resample_filter(rate::Rational, rel_bw = 0.8, attenuation = 60)
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
     # Design filter
-    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β)))
+    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β/π)))
     scale!(h, Nϕ)
 end
