@@ -641,11 +641,11 @@ function resample(x::AbstractVector, rate::Real)
 
     # Calculate the number of 0's required so that w
     outLen      = ceil(Int, length(x)*rate)
-    reqInlen    = inputlength(self, outlen)
+    reqInlen    = inputlength(self, outLen)
     reqZerosLen = reqInlen - length(x)
-    xPadded     = [x, zeros(eltype(x), numZerosNeeded)]
+    xPadded     = [x, zeros(eltype(x), reqZerosLen)]
 
-    [filt(self, x), filt(self, xPadded)]
+    filt(self, xPadded)
 end
 
 #
