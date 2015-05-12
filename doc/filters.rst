@@ -130,15 +130,23 @@ Filter application
 Filter design
 -------------
 
-.. function:: analogfilter(responsetype, filtertype)
+Most analog and digital filters are constructed by composing
+:ref:`response-types`, which determine the frequency response of the
+filter, with :ref:`design-methods`, which determine how the filter is
+constructed.
+
+.. function:: analogfilter(responsetype, designmethod)
 
     Construct an analog filter. See below for possible response and
     filter types.
 
-.. function:: digitalfilter(responsetype, filtertype)
+.. function:: digitalfilter(responsetype, designmethod)
 
     Construct a digital filter. See below for possible response and
     filter types.
+
+For some filters, the design method inherently implies a response type.
+Such filters are documented below.
 
 .. function:: iirnotch(Wn, bandwidth[; fs])
 
@@ -146,9 +154,10 @@ Filter design
     bandwidth ``bandwidth``. If ``fs`` is not specified, ``Wn`` is
     interpreted as a normalized frequency in half-cycles/sample.
 
+.. _response-types:
 
 Filter response types
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 .. function:: Lowpass(Wn[; fs])
 
@@ -174,9 +183,13 @@ Filter response types
     ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
     normalized frequencies in half-cycles/sample.
 
+.. design-methods:
 
-IIR filter types
-----------------
+Filter design methods
+~~~~~~~~~~~~~~~~~~~~~
+
+IIR filter design methods
+:::::::::::::::::::::::::
 
 .. function:: Butterworth(n)
 
@@ -198,8 +211,8 @@ IIR filter types
     passband and ``rs`` dB attentuation in the stopband.
 
 
-FIR filter types
-----------------
+FIR filter design methods
+:::::::::::::::::::::::::
 
 .. function:: FIRWindow(window; scale=true)
 
@@ -284,8 +297,8 @@ the stopband and extract the coefficients of the numerator and
 denominator of the transfer function::
 
   responsetype = Lowpass(0.2)
-  prototype = Elliptic(4, 0.5, 30)
-  tf = convert(PolynomialRatio, digitalfilter(responsetype, prototype))
+  designmethod = Elliptic(4, 0.5, 30)
+  tf = convert(PolynomialRatio, digitalfilter(responsetype, designmethod))
   numerator_coefs = coefb(tf)
   denominator_coefs = coefa(tf)
 
@@ -293,12 +306,12 @@ Filter the data in ``x``, sampled at 1000 Hz, with a 4th order
 Butterworth bandpass filter between 10 and 40 Hz::
 
   responsetype = Bandpass(10, 40; fs=1000)
-  prototype = Butterworth(4)
-  filt(digitalfilter(responsetype, prototype), x)
+  designmethod = Butterworth(4)
+  filt(digitalfilter(responsetype, designmethod), x)
 
 Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
 window FIR lowpass filter at 5 Hz::
 
   responsetype = Lowpass(5; fs=50)
-  prototype = FIRWindow(hanning(64))
-  filt(digitalfilter(responsetype, prototype), x)
+  designmethod = FIRWindow(hanning(64))
+  filt(digitalfilter(responsetype, designmethod), x)
