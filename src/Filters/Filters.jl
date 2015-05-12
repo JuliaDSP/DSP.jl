@@ -45,6 +45,7 @@ export  FIRFilter,
         inputlength,
         reset!,
         resample,
-        setphase!
+        setphase!,
+        timedelay
 
 end
