@@ -300,7 +300,7 @@ function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
     interpolation = num(ratio)
     decimation    = den(ratio)
     inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
-    ceil(Int, inLen)
+    floor(Int, inLen)
 end
 
 function inputlength(kernel::FIRStandard, outputlength::Integer)
@@ -323,7 +323,7 @@ end
 
 # TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
 function inputlength(kernel::FIRArbitrary, outputlength::Integer)
-    inLen  = ifloor(outputlength/kernel.rate)
+    inLen  = floor(Int, outputlength/kernel.rate)
     inLen += kernel.inputDeficit - 1
 end
 
