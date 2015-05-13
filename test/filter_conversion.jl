@@ -1,5 +1,5 @@
 require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
-using DSP, Base.Test, FilterTestHelpers
+using DSP, Base.Test, FilterTestHelpers, Polynomials
 
 # Test conversion to SOS against MATLAB
 # Test poles/zeros generated with:
@@ -131,23 +131,72 @@ for proto in (Butterworth(3), Chebyshev1(3, 1), Chebyshev2(3, 1))
     end
 end
 
+# Test setting filter gain
+x = randn(100)
+f1 = digitalfilter(Lowpass(0.3), Butterworth(2))
+y = filt(f1, x)
+for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    @test_approx_eq filt(3*convert(ty, f1), x) 3*y
+    @test_approx_eq filt(convert(ty, f1)*3, x) 3*y
+end
+
+# Test composing filters
+f2 = digitalfilter(Highpass(0.5), Butterworth(1))
+y = filt(f2, y)
+for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    @test_approx_eq filt(convert(ty, f1)*convert(ty, f2), x) y
+end
+
+f3 = digitalfilter(Bandstop(0.35, 0.4), Butterworth(1))
+y = filt(f3, y)
+for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    @test_approx_eq filt(convert(ty, f1)*convert(ty, f2)*convert(ty, f3), x) y
+end
+@test_approx_eq filt(convert(Biquad, f1)*(convert(Biquad, f2)*convert(Biquad, f3)), x) y
+@test_approx_eq filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) y
+
 # Test some otherwise untested code paths
+@test promote_type(ZeroPoleGain{Complex64,Complex128,Float32}, ZeroPoleGain{Complex128,Complex64,Float64}) == ZeroPoleGain{Complex128,Complex128,Float64}
+@test convert(ZeroPoleGain{Float64,Complex128,Float64}, f1) === f1
+f1f = convert(ZeroPoleGain{Complex64,Complex64,Float32}, f1)
+@test f1f.z == convert(Vector{Complex64}, f1.z)
+@test f1f.p == convert(Vector{Complex64}, f1.p)
+@test f1f.k == convert(Float32, f1.k)
+
+@test_throws ArgumentError PolynomialRatio(Float64[], Float64[])
+@test promote_type(PolynomialRatio{Float32}, PolynomialRatio{Int}) == PolynomialRatio{Float32}
+f1f = convert(PolynomialRatio{Float32}, f1)
+f1p = convert(PolynomialRatio, f1)
+@test f1f.b == convert(Poly{Float32}, f1p.b)
+@test f1f.a == convert(Poly{Float32}, f1p.a)
+
 b = Biquad(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 2)
 @test b.b0 === 0.0
 @test b.b1 === 2*1/3
 @test b.b2 === 2*2/3
 @test b.a1 === 4/3
 @test b.a2 === 5/3
+@test promote_type(Biquad{Float32}, Biquad{Int}) == Biquad{Float32}
+@test convert(Biquad{Float32}, b) == Biquad{Float32}(0.0, 2*1/3, 2*2/3, 4/3, 5/3)
+zpkfilter_eq(convert(ZeroPoleGain{Complex128,Complex128,Float64}, b), convert(ZeroPoleGain, b), 0.0)
 f = convert(PolynomialRatio, Biquad(2.0, 0.0, 0.0, 0.0, 0.0))
 @test coefb(f) == [2.0]
 @test coefa(f) == [1.0]
 @test convert(Biquad, PolynomialRatio([4.0], [2.0])) == Biquad(2.0, 0.0, 0.0, 0.0, 0.0)
 @test Biquad(2.0, 0.0, 0.0, 0.0, 0.0)*2 == Biquad(4.0, 0.0, 0.0, 0.0, 0.0)
-
-@test_throws ArgumentError PolynomialRatio(Float64[], Float64[])
+@test convert(Biquad{Float64}, f1) == convert(Biquad, f1)
 f = PolynomialRatio(Float64[1.0], Float64[1.0])
 empty!(f.b.a)
 empty!(f.a.a)
 @test_throws ArgumentError convert(Biquad, f)
 @test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
 @test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
+
+@test promote_type(SecondOrderSections{Float64,Float32}, SecondOrderSections{Float32,Float64}) == SecondOrderSections{Float64,Float64}
+@test convert(SecondOrderSections{Float32,Float32}, convert(SecondOrderSections, b)).biquads == convert(SecondOrderSections, convert(Biquad{Float32}, b)).biquads
+@test convert(Biquad, convert(SecondOrderSections, b)) == b
+@test_throws ArgumentError convert(Biquad, convert(SecondOrderSections, f1*f2))
+f1p = convert(PolynomialRatio{Float32}, convert(PolynomialRatio, convert(SecondOrderSections, f1)))
+f1f = convert(PolynomialRatio{Float32}, convert(SecondOrderSections, f1))
+@test f1p.b == f1f.b
+@test f1p.a == f1f.a
