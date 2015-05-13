@@ -8,8 +8,8 @@ coefficient objects specify the response of the filter in one of
 several standard forms. Stateful filter objects carry the state of the
 filter together with filter coefficients in an implementable form
 (``PolynomialRatio``, ``Biquad``, or ``SecondOrderSections``).
-When invoked on a filter coefficient object, ``filt`` preserves state
-between invocations.
+When invoked on a filter coefficient object, ``filt`` does not preserve
+state.
 
 .. _coefficient-objects:
 
