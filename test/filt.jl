@@ -14,7 +14,7 @@ for n = 1:6
         if n <= 2
             bq = convert(Biquad, zpk)
         else
-            @test_throws ErrorException convert(Biquad, zpk)
+            @test_throws ArgumentError convert(Biquad, zpk)
         end
         sos = convert(SecondOrderSections, zpk)
 

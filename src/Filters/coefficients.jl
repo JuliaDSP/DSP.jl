@@ -29,7 +29,7 @@ PolynomialRatio{T<:Number}(b::Poly{T}, a::Poly{T}) = PolynomialRatio{T}(b, a)
 # convention is lowest power first.
 function PolynomialRatio{T<:Number,S<:Number}(b::Union(T,Vector{T}), a::Union(S,Vector{S}))
     if findfirst(b) == 0 || findfirst(a) == 0
-        error("filter must have non-zero numerator and denominator")
+        throw(ArgumentError("filter must have non-zero numerator and denominator"))
     end
     PolynomialRatio{promote_type(T,S)}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
 end
@@ -98,9 +98,9 @@ function Base.convert{T}(::Type{Biquad}, f::PolynomialRatio{T})
     elseif xs == 1
         Biquad(b[0], zero(T), zero(T), zero(T), zero(T))
     elseif xs == 0
-        error("cannot convert an empty PolynomialRatio to Biquad")
+        throw(ArgumentError("cannot convert an empty PolynomialRatio to Biquad"))
     else
-        error("cannot convert a filter of length > 3 to Biquad")
+        throw(ArgumentError("cannot convert a filter of length > 3 to Biquad"))
     end
 end
 
@@ -199,13 +199,13 @@ function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
     p = f.p
     nz = length(z)
     n = length(p)
-    nz > n && error("ZeroPoleGain must not have more zeros than poles")
+    nz > n && throw(ArgumentError("ZeroPoleGain must not have more zeros than poles"))
 
     # Split real and complex poles
     (complexz, realz, matched) = split_real_complex(z)
-    matched || error("complex zeros could not be matched to their conjugates")
+    matched || throw(ArgumentError("complex zeros could not be matched to their conjugates"))
     (complexp, realp, matched) = split_real_complex(p)
-    matched || error("complex poles could not be matched to their conjugates")
+    matched || throw(ArgumentError("complex poles could not be matched to their conjugates"))
 
     # Sort poles according to distance to unit circle (nearest first)
     sort!(complexp, by=x->abs(abs(x) - 1))

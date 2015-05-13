@@ -130,3 +130,24 @@ for proto in (Butterworth(3), Chebyshev1(3, 1), Chebyshev2(3, 1))
         end
     end
 end
+
+# Test some otherwise untested code paths
+b = Biquad(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 2)
+@test b.b0 === 0.0
+@test b.b1 === 2*1/3
+@test b.b2 === 2*2/3
+@test b.a1 === 4/3
+@test b.a2 === 5/3
+f = convert(PolynomialRatio, Biquad(2.0, 0.0, 0.0, 0.0, 0.0))
+@test coefb(f) == [2.0]
+@test coefa(f) == [1.0]
+@test convert(Biquad, PolynomialRatio([4.0], [2.0])) == Biquad(2.0, 0.0, 0.0, 0.0, 0.0)
+@test Biquad(2.0, 0.0, 0.0, 0.0, 0.0)*2 == Biquad(4.0, 0.0, 0.0, 0.0, 0.0)
+
+@test_throws ArgumentError PolynomialRatio(Float64[], Float64[])
+f = PolynomialRatio(Float64[1.0], Float64[1.0])
+empty!(f.b.a)
+empty!(f.a.a)
+@test_throws ArgumentError convert(Biquad, f)
+@test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
+@test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
