@@ -168,13 +168,17 @@ end
 #
 
 function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
-    @assert zero(ϕ) <= ϕ <= one(ϕ)
+    @assert zero(ϕ) <= ϕ
+    (ϕ, xThrowaway) = modf(ϕ)
+    kernel.inputDeficit += int(xThrowaway)
     kernel.ϕIdx = int(ϕ*(kernel.Nϕ-1.0) + 1.0)
     nothing
 end
 
 function setphase!(kernel::FIRArbitrary, ϕ::Real)
-    @assert zero(ϕ) <= ϕ <= one(ϕ)
+    @assert zero(ϕ) <= ϕ
+    (ϕ, xThrowaway) = modf(ϕ)
+    kernel.inputDeficit += int(xThrowaway)
     kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
     kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
@@ -627,17 +631,10 @@ function resample(x::AbstractVector, rate::Real)
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
-    # Convert τ (possibly a non-integer number), into whole and fractional parts
-    (ϕInitial, xThrowaway) = modf(τ)
-
-    # Do not use the xThrowaway input samples to create outputs
-    # However, they will still be shifted into the delay line and used in the filtering process
-    self.kernel.inputDeficit += xThrowaway
-
-    # To account for the fractional part of τ, set the phase of the polyphase filter bank
-    # Adding an initial phase of 0 imparts no delay.
-    # An initial phase of 1 represents a delay of 1 input sample
-    setphase!(self, ϕInitial)
+    # Use setphase! to
+    #   a) adjust the input samples to skip over before producing and output (integer part of τ)
+    #   b) set the ϕ index of the PFB (fractional part of τ)
+    setphase!(self, τ)
 
     # Calculate the number of 0's required so that w
     outLen      = ceil(Int, length(x)*rate)
