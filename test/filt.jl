@@ -112,35 +112,6 @@ a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.0723156
 
 ##############
 #
-# Filter initial conditions
-# Matlab - Butterworth filter coefficients as SOS
-#
-#=
-  [z, p, k] = butter(5, 0.2)
-  [sos, g] = zpk2sos(z, p, k)
-  filtfilt(sos, g, x)
-=#
-#
-# Then used breakpoints to extract zi
-#
-##############
-
-sos = [
-   1.0000000000000000e+00   1.0000000000000000e+00   0.0000000000000000e+00   1.0000000000000000e+00  -5.0952544949442879e-01   0.0000000000000000e+00
-   1.0000000000000000e+00   2.0000000000000000e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.0965794655679613e+00   3.5544676217239030e-01
-   1.0000000000000000e+00   2.0000000000000000e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.3693171946832927e+00   6.9256913538786335e-01
-]
-g = 1.2825810789606842e-03
-
-sosfilter = matrix_to_sosfilter(sos, g)
-zi_matlab = [0.003947378671810  14.451932524765136  11.374248987589889
-             0  -4.492339385234015  -7.570022922409273];
-
-@test_approx_eq zi_matlab DSP.Filters.filt_stepstate(sosfilter)
-
-
-##############
-#
 # Filter in place check (with initial conditions)
 #
 # x = '/Users/rluke/.julia/v0.3/DSP/test/data/spectrogram_x.txt';
@@ -233,19 +204,21 @@ f = PolynomialRatio(b, a)
 #
 # Test 2d filtfilt with SecondOrderSections
 #
-
-#=
-  x = '/home/simon/.julia/DSP/test/data/spectrogram_x.txt'; x = textread(x);
-  x2 = filtfilt(sos, g, x)
-  dlmwrite('filtfilt_output_2d_sos.txt', x2, 'delimiter', '\t', 'precision', '%.12f')
-=#
-#
+# Our implementation differs from MATLAB, but should match the
+# PolynomialRatio provided the filter order is even. (Otherwise
+# the extrapolation will differ slightly.)
 #######################################
 
 x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-x2_output = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d_sos.txt"),'\t')
 
-@test_approx_eq x2_output filtfilt(sosfilter, x)
+f = DSP.digitalfilter(DSP.Lowpass(0.2), DSP.Butterworth(4))
+@test_approx_eq filtfilt(convert(SecondOrderSections, f), x) filtfilt(convert(PolynomialRatio, f), x)
+
+f = DSP.digitalfilter(DSP.Highpass(0.1), DSP.Butterworth(6))
+@test_approx_eq filtfilt(convert(SecondOrderSections, f), x) filtfilt(convert(PolynomialRatio, f), x)
+
+f = DSP.digitalfilter(DSP.Bandpass(0.1, 0.3), DSP.Butterworth(2))
+@test_approx_eq filtfilt(convert(SecondOrderSections, f), x) filtfilt(convert(PolynomialRatio, f), x)
 
 #
 # fftfilt/filt
