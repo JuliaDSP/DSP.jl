@@ -1,12 +1,16 @@
 using DSP
+# MATLAB
+# t = [0:100]
+# x = (1 + sin(2*pi*0.005*t)) .* sin(2*pi*.05*t)
 
-rerate = 11//3      # Input sample rate
-xƒ1    = 0.125      # First singal frequency
-xƒ2    = 0.3        # Second signal frequency
-xLen   = 80         # Number of signal samples
-xTime  = [0:xLen-1] # Time vector
-x      = cos(2*pi*0.125*xTime) + 0.5sin(2*pi*0.3*xTime*pi) + cos(0.1*xTime)
+# AM Modulator
 
+sig(t) = [(1 + sin(2π*0.005*t)) * sin(2π*.05*t) for t in t]
+
+rerate = 3//2       # Input sample rate
+xLen   = 100        # Number of signal samples
+xTime  = [0:100]    # Create time vector    
+x      = sig(xTime) # Cretae signal vector
 
 # Resample with arbitrary factor
 yArb    = resample(x, float64(rerate))
