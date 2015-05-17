@@ -134,7 +134,7 @@ function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
         kernel     = FIRDecimator(h, decimation)
         historyLen = kernel.hLen - 1
     elseif decimation == 1                                    # interpolate
-        kernel     = FIRRational(h, interpolation//1)
+        kernel     = FIRInterpolator(h, interpolation)
         historyLen = kernel.tapsPerϕ - 1
     else                                                      # rational
         kernel     = FIRRational(h, resampleRatio)
@@ -404,7 +404,6 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInt
     interpolation       = kernel.interpolation
     xLen                = length(x)
     bufLen              = length(buffer)
-    inputIdx            = 1
     bufIdx              = 0
 
     if xLen < kernel.inputDeficit
@@ -413,6 +412,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInt
         return bufIdx
     end
 
+    inputIdx = kernel.inputDeficit
     bufLen >= outputlength(self, xLen) || error("length(buffer) must be >= interpolation * length(x)")
 
     while inputIdx <= xLen
