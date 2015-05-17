@@ -498,10 +498,10 @@ function digitalfilter(ftype::FilterType, proto::FIRWindow)
 end
 
 # Compute FIR coefficients necessary for arbitrary rate resampling
-function resample_filter(rate::FloatingPoint, Nϕ::Integer, rel_bw = 0.8, attenuation = 60)
-    f_nyq        = rate >= 1.0 ? 1.0/Nϕ : rate/Nϕ
+function resample_filter(rate::FloatingPoint, Nϕ = 32, rel_bw = 0.9, attenuation = 60)
+    f_nyq       = rate >= 1.0 ? 1.0/Nϕ : rate/Nϕ
     cutoff      = f_nyq * rel_bw
-    trans_width = (1.0-rel_bw) * f_nyq
+    trans_width = cutoff * 0.1
 
     # Determine resampling filter order
     hLen, β = kaiserord(trans_width, attenuation)
@@ -516,12 +516,12 @@ function resample_filter(rate::FloatingPoint, Nϕ::Integer, rel_bw = 0.8, attenu
 end
 
 # Compute FIR coefficients necessary for rational rate resampling
-function resample_filter(rate::Rational, rel_bw = 0.8, attenuation = 60)
+function resample_filter(rate::Rational, rel_bw = 0.9, attenuation = 60)
     Nϕ          = num(rate)
     decimation  = den(rate)
     f_nyq       = min(1/Nϕ, 1/decimation)
     cutoff      = f_nyq * rel_bw
-    trans_width = (1.0-rel_bw) * f_nyq
+    trans_width = cutoff * 0.1
 
     # Determine resampling filter order
     hLen, β = kaiserord(trans_width, attenuation)
