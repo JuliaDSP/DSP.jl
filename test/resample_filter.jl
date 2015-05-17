@@ -6,6 +6,7 @@ using PyPlot
 # AM Modulator
 sig(t) = [(1 + sin(2π*0.005*t)) * sin(2π*.05*t) for t in t]
 
+
 mlData = matread(joinpath(dirname(@__FILE__), "data","resample.mat"))
 tx_jl  = [0:100]
 x_jl   = sig(tx_jl) # Cretae signal vector
