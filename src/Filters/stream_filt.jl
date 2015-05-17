@@ -170,6 +170,12 @@ end
 #
 # setphase! set's filter kernel phase index
 #
+function setphase!(kernel::FIRDecimator, ϕ::Real)
+    @assert zero(ϕ) <= ϕ
+    xThrowaway = int(ϕ)
+    kernel.inputDeficit += int(xThrowaway)
+    nothing
+end
 
 function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
     @assert zero(ϕ) <= ϕ
@@ -342,7 +348,7 @@ end
 
 
 #
-# Calculates the delay in # samples, at the output sample rate, caused by the filter process
+# Calculates the delay in # samples, at the input sample rate, caused by the filter process
 #
 
 function timedelay(kernel::Union(FIRRational, FIRInterpolator, FIRArbitrary))
