@@ -173,7 +173,7 @@ end
 function setphase!(kernel::FIRDecimator, ϕ::Real)
     @assert zero(ϕ) <= ϕ
     xThrowaway = int(ϕ)
-    kernel.inputDeficit += int(xThrowaway)
+    kernel.inputDeficit += xThrowaway
     nothing
 end
 
