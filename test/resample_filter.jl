@@ -29,9 +29,9 @@ h1_ml  = vec(mlData["b1"])
 h1_jl  = resample_filter(rate)
 y1_ml  = vec(mlData["y1"])
 ty1_ml = [0:length(y1_ml)-1] / float64(rate)
-y1_jl  = resample(x_ml, rate, h1_jl)
+y1_jl  = resample(x_ml, rate, h1_ml)
 ty1_jl = [0:length(y1_jl)-1] / float64(rate)
-# @test_approx_eq y1_jl y1_ml
+@test_approx_eq y1_jl y1_ml
 
 
 #
