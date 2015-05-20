@@ -1,5 +1,4 @@
 using DSP
-using MAT
 using Base.Test
 
 # AM Modulator
