@@ -268,41 +268,23 @@ function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     end
 end
 
-# Extract si for a biquad, multiplied by a scaling factor
-function biquad_si!(zitmp, zi, i, scal)
-    zitmp[1] = zi[1, i]*scal
-    zitmp[2] = zi[2, i]*scal
-    zitmp
-end
-
 # Zero phase digital filtering for second order sections
 function filtfilt{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S})
     zi = filt_stepstate(f)
-    zi2 = zeros(2)
-    zitmp = zeros(2)
-    pad_length = 3*size(zi, 1)
+    zitmp = similar(zi)
+    pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
     extrapolated = Array(t, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
-    for i = 1:size(x, 2)
-        # First biquad
+    for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        f2 = f.biquads[1]*f.g
-        reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
-        reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, 1, extrapolated[1])))
-
-        # Subsequent biquads
-        for j = 2:length(f.biquads)
-            f2 = f.biquads[j]
-            extrapolate_signal!(extrapolated, 1, extrapolated, pad_length+1, size(x, 1), pad_length)
-            reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
-            reverse!(filt!(extrapolated, f2, extrapolated, biquad_si!(zitmp, zi, j, extrapolated[1])))
+        reverse!(filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        for j = 1:size(x, 1)
+            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
-
-        # Copy to output
-        copy!(out, istart, extrapolated, pad_length+1, size(x, 1))
         istart += size(x, 1)
     end
 
@@ -345,16 +327,22 @@ function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(Abst
 function filt_stepstate{T}(f::SecondOrderSections{T})
     biquads = f.biquads
     si = Array(T, 2, length(biquads))
+    y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
-        A = [one(T)+biquad.a1 -one(T)
-                   +biquad.a2  one(T)]
-        B = [biquad.b1 - biquad.a1*biquad.b0,
-             biquad.b2 - biquad.a2*biquad.b0]
-        si[:, i] = A \ B
+
+        # At steady state, we have:
+        #  y = s1 + b0*x
+        # s1 = s2 + b1*x - a1*y
+        # s2 = b2*x - a2*y
+        # where x is the input and y is the output. Solving these
+        # equations yields the following.
+        si[1, i] = (-(biquad.a1 + biquad.a2)*biquad.b0 + biquad.b1 + biquad.b2)/
+                   (1 + biquad.a1 + biquad.a2)*y
+        si[2, i] = (biquad.a1*biquad.b2 - biquad.a2*(biquad.b0 + biquad.b1) + biquad.b2)/
+                   (1 + biquad.a1 + biquad.a2)*y
+        y *= (biquad.b0 + biquad.b1 + biquad.b2)/(1 + biquad.a1 + biquad.a2)
     end
-    si[1, 1] *= f.g
-    si[2, 1] *= f.g
     si
 end
 

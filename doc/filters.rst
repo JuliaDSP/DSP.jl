@@ -1,16 +1,20 @@
 :mod:`Filters` - filter design and filtering
 ============================================
 
-DSP.jl differentiates between filter coefficients and filters. Filter
+DSP.jl differentiates between
+:ref:`filter coefficients <coefficient-objects>` and
+:ref:`stateful filters <stateful-filter-objects>`. Filter
 coefficient objects specify the response of the filter in one of
-several standard forms. Filter objects carry the state of the filter
-together with filter coefficients in an implementable form
+several standard forms. Stateful filter objects carry the state of the
+filter together with filter coefficients in an implementable form
 (``PolynomialRatio``, ``Biquad``, or ``SecondOrderSections``).
-When invoked on a filter coefficient object, ``filt`` preserves state
-between invocations.
+When invoked on a filter coefficient object, ``filt`` does not preserve
+state.
 
-Linear time-invariant filter coefficient objects
-------------------------------------------------
+.. _coefficient-objects:
+
+Filter coefficient objects
+--------------------------
 
 DSP.jl supports common filter representations. Filter coefficients can
 be converted from one type to another using ``convert``.
@@ -53,8 +57,10 @@ be converted from one type to another using ``convert``.
     sections and gain. ``biquads`` must be specified as a vector of
     ``Biquads``.
 
-Filter objects
-----------------------------------
+.. _stateful-filter-objects:
+
+Stateful filter objects
+-----------------------
 
 .. function:: DF2TFilter(coef[, si])
 
@@ -130,15 +136,23 @@ Filter application
 Filter design
 -------------
 
-.. function:: analogfilter(responsetype, filtertype)
+Most analog and digital filters are constructed by composing
+:ref:`response types <response-types>`, which determine the frequency
+response of the filter, with :ref:`design methods <design-methods>`,
+which determine how the filter is constructed.
+
+.. function:: analogfilter(responsetype, designmethod)
 
     Construct an analog filter. See below for possible response and
     filter types.
 
-.. function:: digitalfilter(responsetype, filtertype)
+.. function:: digitalfilter(responsetype, designmethod)
 
     Construct a digital filter. See below for possible response and
     filter types.
+
+For some filters, the design method inherently implies a response type.
+Such filters are documented below.
 
 .. function:: iirnotch(Wn, bandwidth[; fs])
 
@@ -146,9 +160,10 @@ Filter design
     bandwidth ``bandwidth``. If ``fs`` is not specified, ``Wn`` is
     interpreted as a normalized frequency in half-cycles/sample.
 
+.. _response-types:
 
 Filter response types
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 .. function:: Lowpass(Wn[; fs])
 
@@ -174,9 +189,13 @@ Filter response types
     ``fs`` is not specified, ``Wn1`` and ``Wn2`` are interpreted as
     normalized frequencies in half-cycles/sample.
 
+.. _design-methods:
 
-IIR filter types
-----------------
+Filter design methods
+~~~~~~~~~~~~~~~~~~~~~
+
+IIR filter design methods
+:::::::::::::::::::::::::
 
 .. function:: Butterworth(n)
 
@@ -198,8 +217,8 @@ IIR filter types
     passband and ``rs`` dB attentuation in the stopband.
 
 
-FIR filter types
-----------------
+FIR filter design methods
+:::::::::::::::::::::::::
 
 .. function:: FIRWindow(window; scale=true)
 
@@ -284,8 +303,8 @@ the stopband and extract the coefficients of the numerator and
 denominator of the transfer function::
 
   responsetype = Lowpass(0.2)
-  prototype = Elliptic(4, 0.5, 30)
-  tf = convert(PolynomialRatio, digitalfilter(responsetype, prototype))
+  designmethod = Elliptic(4, 0.5, 30)
+  tf = convert(PolynomialRatio, digitalfilter(responsetype, designmethod))
   numerator_coefs = coefb(tf)
   denominator_coefs = coefa(tf)
 
@@ -293,12 +312,12 @@ Filter the data in ``x``, sampled at 1000 Hz, with a 4th order
 Butterworth bandpass filter between 10 and 40 Hz::
 
   responsetype = Bandpass(10, 40; fs=1000)
-  prototype = Butterworth(4)
-  filt(digitalfilter(responsetype, prototype), x)
+  designmethod = Butterworth(4)
+  filt(digitalfilter(responsetype, designmethod), x)
 
 Filter the data in ``x``, sampled at 50 Hz, with a 64 tap Hanning
 window FIR lowpass filter at 5 Hz::
 
   responsetype = Lowpass(5; fs=50)
-  prototype = FIRWindow(hanning(64))
-  filt(digitalfilter(responsetype, prototype), x)
+  designmethod = FIRWindow(hanning(64))
+  filt(digitalfilter(responsetype, designmethod), x)
