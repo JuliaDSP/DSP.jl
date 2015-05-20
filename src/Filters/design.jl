@@ -472,6 +472,34 @@ function firprototype(n::Integer, ftype::Bandstop)
     out
 end
 
+
+#
+# http://cnx.org/contents/eb1ecb35-03a9-4610-ba87-41cd771c95f2@7/Linear-Phase_Fir_Filter_Design
+#
+function firls(n::Integer, bands::AbstractVector)
+    isodd(n) || throw(ArgumentError("Number of taps must be odd"))
+
+    m = int((n-1)/2)
+    Q = zeros(m+1,m+1)
+    b = zeros(m+1,m+1)
+
+    for (ƒl, ƒh, amplitude) in bands
+        for j in 0:m
+
+            b[j+1] += amplitude*2π*(ƒh*sinc(ƒh*j) - ƒl*sinc(ƒl*j))
+
+            for i in 0:m
+                Q[i+1,j+1] += π*( ƒh*sinc(ƒh*(i-j)) - ƒl*sinc(ƒl*(i-j)) ) # Q₁, Toeplitz
+                Q[i+1,j+1] += π*( ƒh*sinc(ƒh*(i+j)) - ƒl*sinc(ƒl*(i+j)) ) # Q₂, Hankel
+            end
+        end
+    end
+
+    a = Q \ b
+    h = [a[m+1:-1:2]./2, a[1], a[2:m+1]./2]
+end
+
+
 scalefactor(coefs::Vector, ::Union(Lowpass, Bandstop)) = sum(coefs)
 function scalefactor(coefs::Vector, ::Highpass)
     c = zero(coefs[1])

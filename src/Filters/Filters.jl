@@ -29,7 +29,8 @@ export  FilterType,
         digitalfilter,
         iirnotch,
         kaiserord,
-        FIRWindow
+        FIRWindow,
+        firls
 
 include("response.jl")
 export  freqs,
