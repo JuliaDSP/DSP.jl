@@ -416,16 +416,16 @@ function kaiserord(transitionwidth::Real, attenuation::Real=60)
     n = ceil(Int, (attenuation - 7.95)/(π*2.285*transitionwidth))+1
 
     if attenuation > 50
-        β = 0.1102*(attenuation - 8.7)
+        α = 0.1102*(attenuation - 8.7)
     elseif attenuation >= 21
-        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
+        α = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
     else
-        β = 0.0
+        α = 0.0
     end
 
-    α = π*β
+    β = α*π
 
-    return n, α
+    return n, β
 end
 
 immutable FIRWindow{T}
@@ -495,4 +495,42 @@ function digitalfilter(ftype::FilterType, proto::FIRWindow)
     @assert length(proto.window) == length(coefs)
     out = coefs .* proto.window
     proto.scale ? scale!(out, 1/scalefactor(out, ftype)) : out
+end
+
+# Compute FIR coefficients necessary for arbitrary rate resampling
+function resample_filter(rate::FloatingPoint, Nϕ = 32, rel_bw = 0.9, attenuation = 60)
+    f_nyq       = rate >= 1.0 ? 1.0/Nϕ : rate/Nϕ
+    cutoff      = f_nyq * rel_bw
+    trans_width = cutoff * 0.1
+
+    # Determine resampling filter order
+    hLen, β = kaiserord(trans_width, attenuation)
+
+    # Round the number of taps up to a multiple of Nϕ.
+    # Otherwise the missing taps will be filled with 0.
+    hLen = Nϕ * ceil(Int, hLen/Nϕ)
+
+    # Design filter
+    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β/π)))
+    scale!(h, Nϕ)
+end
+
+# Compute FIR coefficients necessary for rational rate resampling
+function resample_filter(rate::Rational, rel_bw = 0.9, attenuation = 60)
+    Nϕ          = num(rate)
+    decimation  = den(rate)
+    f_nyq       = min(1/Nϕ, 1/decimation)
+    cutoff      = f_nyq * rel_bw
+    trans_width = cutoff * 0.1
+
+    # Determine resampling filter order
+    hLen, β = kaiserord(trans_width, attenuation)
+
+    # Round the number of taps up to a multiple of Nϕ (same as interpolation factor).
+    # Otherwise the missing taps will be filled with 0.
+    hLen = Nϕ * ceil(Int, hLen/Nϕ)
+
+    # Design filter
+    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, β/π)))
+    scale!(h, Nϕ)
 end

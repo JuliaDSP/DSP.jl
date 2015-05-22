@@ -29,7 +29,8 @@ export  FilterType,
         digitalfilter,
         iirnotch,
         kaiserord,
-        FIRWindow
+        FIRWindow,
+        resample_filter
 
 include("response.jl")
 export  freqs,
@@ -42,6 +43,9 @@ include("stream_filt.jl")
 export  FIRFilter,
         outputlength,
         inputlength,
-        reset!
+        reset!,
+        resample,
+        setphase!,
+        timedelay
 
 end
