@@ -171,24 +171,24 @@ end
 # setphase! set's filter kernel phase index
 #
 function setphase!(kernel::FIRDecimator, ϕ::Real)
-    @assert zero(ϕ) <= ϕ
-    xThrowaway = int(ϕ)
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    xThrowaway = round(Int, ϕ)
     kernel.inputDeficit += xThrowaway
     nothing
 end
 
 function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
-    @assert zero(ϕ) <= ϕ
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
-    kernel.inputDeficit += int(xThrowaway)
+    kernel.inputDeficit += round(Int, xThrowaway)
     kernel.ϕIdx = floor(ϕ*(kernel.Nϕ-1.0) + 1.0)
     nothing
 end
 
 function setphase!(kernel::FIRArbitrary, ϕ::Real)
-    @assert zero(ϕ) <= ϕ
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
-    kernel.inputDeficit += int(xThrowaway)
+    kernel.inputDeficit += round(Int, xThrowaway)
     kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
     kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
@@ -657,7 +657,7 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     outLen      = ceil(Int, length(x)*rate)
     reqInlen    = inputlength(self, outLen)
     reqZerosLen = reqInlen - length(x)
-    xPadded     = [x, zeros(eltype(x), reqZerosLen)]
+    xPadded     = [x; zeros(eltype(x), reqZerosLen)]
 
     filt(self, xPadded)
 end
