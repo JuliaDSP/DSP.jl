@@ -43,3 +43,48 @@ h4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_2_3.txt"
 y4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_2_3.txt"),'\t'))
 y4_jl = resample(x_ml, rate, h4_ml)
 @test_approx_eq y4_jl y4_ml
+
+#
+# Test response of resample_filter
+#
+
+# Decimation
+ratio = 1//2
+h     = resample_filter(ratio)
+r0    = abs(freqz(PolynomialRatio(h, [1]), 0))
+rc    = abs(freqz(PolynomialRatio(h, [1]), Float64(ratio)*pi))
+@test isapprox(r0, 1.0)
+@test isapprox(rc, num(ratio)/2, rtol=0.001)
+
+ratio = 1//32
+h     = resample_filter(ratio)
+r0    = abs(freqz(PolynomialRatio(h, [1]), 0))
+rc    = abs(freqz(PolynomialRatio(h, [1]), Float64(ratio)*pi))
+@test isapprox(r0, num(ratio))
+@test isapprox(rc, num(ratio)/2, rtol=0.001)
+
+
+# Interpolation
+ratio = 2//1
+h     = resample_filter(ratio)
+r0    = abs(freqz(PolynomialRatio(h, [1]), 0))
+rc    = abs(freqz(PolynomialRatio(h, [1]), Float64(1/ratio)*pi))
+@test isapprox(r0, num(ratio))
+@test isapprox(rc, num(ratio)/2, rtol=0.001)
+
+ratio = 32//1
+h     = resample_filter(ratio)
+r0    = abs(freqz(PolynomialRatio(h, [1]), 0))
+rc    = abs(freqz(PolynomialRatio(h, [1]), Float64(1/ratio)*pi))
+@test isapprox(r0, num(ratio))
+@test isapprox(rc, num(ratio)/2, rtol=0.001)
+
+# Arbitrary rate resampling
+ratio = Float64(π)
+Nϕ    = 32
+fc    = 1/Nϕ
+h     = resample_filter(ratio, Nϕ)
+r0    = abs(freqz(PolynomialRatio(h, [1]), 0))
+rc    = abs(freqz(PolynomialRatio(h, [1]), Float64(fc)*pi))
+@test isapprox(r0, Nϕ)
+@test isapprox(rc, Nϕ/2, rtol=0.001)
