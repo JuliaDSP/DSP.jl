@@ -132,6 +132,13 @@ Filter application
     Apply FIR filter ``b`` along the first dimension of array ``x``
     using an FFT-based overlap-save algorithm.
 
+.. function:: resample(x, rate[, coef])
+
+    Resample ``x`` at rational or aribitray ``rate``.
+    ``coef`` is an optional vector of FIR filter taps. If ``coef``
+    is not provided, the taps will be computed using a Kaiser window.
+    ``resample`` compensates for the time delay of the filtering process.
+
 
 Filter design
 -------------

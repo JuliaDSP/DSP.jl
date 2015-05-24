@@ -433,17 +433,17 @@ notch = iirnotch(60, 1, fs=1000)
 #
 
 kaiserord_jl    = kaiserord(0.1, 60)
-kaiserord_scipy = (74, 17.760240084833036)          # (n,beta)=kaiserord(60,.1); (n,beta*math.pi)
+kaiserord_scipy = (74, 1.7994885471673767)    # (n,beta)=kaiserord(60,.1); (n,beta/pi)
 @test kaiserord_jl[1] == kaiserord_scipy[1]
 @test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
 
 kaiserord_jl    = kaiserord(0.1, 21.0 + eps(21.0))
-kaiserord_scipy = (20, 3.0474424209258472e-06)      # (n,beta)=kaiserord(21.000000000000004,.1); (n,beta*math.pi)
+kaiserord_scipy = (20, 3.087704731700782e-07) # (n,beta)=kaiserord(21.000000000000004,.1); (n,beta/pi)
 @test kaiserord_jl[1] == kaiserord_scipy[1]
 @test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
 
 kaiserord_jl    = kaiserord(0.1, 15)
-kaiserord_scipy = (11, 0.0)                         # (n,beta)=kaiserord(15,.1); (n,beta*math.pi)
+kaiserord_scipy = (11, 0.0)                   # (n,beta)=kaiserord(15,.1); (n,beta/pi)
 @test kaiserord_jl[1] == kaiserord_scipy[1]
 @test_approx_eq kaiserord_jl[2] kaiserord_scipy[2]
 

@@ -22,13 +22,17 @@ type FIRInterpolator{T} <: FIRKernel{T}
     interpolation::Int
     Nϕ::Int
     tapsPerϕ::Int
+    inputDeficit::Int
+    ϕIdx::Int
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
     pfb           = taps2pfb(h, interpolation)
     tapsPerϕ, Nϕ  = size(pfb)
     interpolation = interpolation
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ)
+    inputDeficit  = 1
+    ϕIdx          = 1
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx)
 end
 
 
@@ -151,6 +155,47 @@ function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
     FIRFilter(kernel, history, historyLen, h)
 end
 
+# Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
+function FIRFilter(rate::FloatingPoint, Nϕ::Integer=32)
+    h = resample_filter(rate, Nϕ)
+    FIRFilter(h, rate)
+end
+
+function FIRFilter(rate::Rational)
+    h = resample_filter(rate)
+    FIRFilter(h, rate)
+end
+
+
+#
+# setphase! set's filter kernel phase index
+#
+function setphase!(kernel::FIRDecimator, ϕ::Real)
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    xThrowaway = round(Int, ϕ)
+    kernel.inputDeficit += xThrowaway
+    nothing
+end
+
+function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    (ϕ, xThrowaway) = modf(ϕ)
+    kernel.inputDeficit += round(Int, xThrowaway)
+    kernel.ϕIdx = floor(ϕ*(kernel.Nϕ-1.0) + 1.0)
+    nothing
+end
+
+function setphase!(kernel::FIRArbitrary, ϕ::Real)
+    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    (ϕ, xThrowaway) = modf(ϕ)
+    kernel.inputDeficit += round(Int, xThrowaway)
+    kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
+    kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
+    kernel.α            = modf(kernel.ϕAccumulator)[1]
+    nothing
+end
+
+setphase!(self::FIRFilter, ϕ::Real) = setphase!(self.kernel, ϕ)
 
 #
 # reset! filter and its kernel to an initial state
@@ -240,7 +285,7 @@ function outputlength(kernel::FIRStandard, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRInterpolator, inputlength::Integer)
-    kernel.interpolation * inputlength
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.interpolation//1, kernel.ϕIdx)
 end
 
 function outputlength(kernel::FIRDecimator, inputlength::Integer)
@@ -248,7 +293,7 @@ function outputlength(kernel::FIRDecimator, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRRational, inputlength::Integer)
-    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, 1)
 end
 
 function outputlength(kernel::FIRArbitrary, inputlength::Integer)
@@ -269,7 +314,7 @@ function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
     interpolation = num(ratio)
     decimation    = den(ratio)
     inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
-    ceil(Int, inLen)
+    floor(Int, inLen)
 end
 
 function inputlength(kernel::FIRStandard, outputlength::Integer)
@@ -277,7 +322,8 @@ function inputlength(kernel::FIRStandard, outputlength::Integer)
 end
 
 function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    inputlength(outputlength, kernel.interpolation//1, 1)
+    inLen = inputlength(outputlength, kernel.interpolation//1, kernel.ϕIdx)
+    inLen += kernel.inputDeficit - 1
 end
 
 function inputlength(kernel::FIRDecimator, outputlength::Integer)
@@ -292,7 +338,7 @@ end
 
 # TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
 function inputlength(kernel::FIRArbitrary, outputlength::Integer)
-    inLen  = ifloor(outputlength/kernel.rate)
+    inLen  = floor(Int, outputlength/kernel.rate)
     inLen += kernel.inputDeficit - 1
 end
 
@@ -302,10 +348,27 @@ end
 
 
 #
+# Calculates the delay in # samples, at the input sample rate, caused by the filter process
+#
+
+function timedelay(kernel::Union(FIRRational, FIRInterpolator, FIRArbitrary))
+    (kernel.tapsPerϕ - 1/kernel.Nϕ)/2
+end
+
+function timedelay(kernel::Union(FIRStandard, FIRDecimator))
+    (kernel.hLen - 1)/2
+end
+
+function timedelay(self::FIRFilter)
+    timedelay(self.kernel)
+end
+
+
+#
 # Single rate filtering
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     bufLen              = length(buffer)
@@ -326,7 +389,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRStandard{Th
     return xLen
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -341,37 +404,43 @@ end
 # Interpolation
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     interpolation       = kernel.interpolation
     xLen                = length(x)
     bufLen              = length(buffer)
-    inputIdx            = 1
     bufIdx              = 0
-    ϕIdx                = 1
 
+    if xLen < kernel.inputDeficit
+        self.history = shiftin!(history, x)
+        kernel.inputDeficit -= xLen
+        return bufIdx
+    end
+
+    inputIdx = kernel.inputDeficit
     bufLen >= outputlength(self, xLen) || error("length(buffer) must be >= interpolation * length(x)")
 
     while inputIdx <= xLen
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
         end
 
-        buffer[bufIdx]   = accumulator
-        (ϕIdx, inputIdx) = ϕIdx == kernel.Nϕ ? (1, inputIdx+1) : (ϕIdx+1, inputIdx)
+        buffer[bufIdx]          = accumulator
+        (kernel.ϕIdx, inputIdx) = kernel.ϕIdx == kernel.Nϕ ? (1, inputIdx+1) : (kernel.ϕIdx+1, inputIdx)
     end
 
-    self.history = shiftin!(history, x)
+    kernel.inputDeficit = 1
+    self.history        = shiftin!(history, x)
 
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -386,7 +455,7 @@ end
 # Rational resampling
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     history::Vector{Tx} = self.history
     xLen                = length(x)
@@ -427,13 +496,12 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRRational{Th
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
     return buffer
 end
 
@@ -442,7 +510,7 @@ end
 # Decimation
 #
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     xLen                = length(x)
     history::Vector{Tx} = self.history
@@ -476,7 +544,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRDecimator{T
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -505,7 +573,7 @@ function update(kernel::FIRArbitrary)
     kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
 end
 
-function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx})
+function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
@@ -547,7 +615,7 @@ function Base.filt!{Tb,Th,Tx}(buffer::Vector{Tb}, self::FIRFilter{FIRArbitrary{T
     return bufIdx
 end
 
-function Base.filt{Th,Tx}(self::FIRFilter{FIRArbitrary{Th}}, x::Vector{Tx})
+function Base.filt{Th,Tx}(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
     buffer         = Array(promote_type(Th,Tx), bufLen)
     samplesWritten = filt!(buffer, self, x)
@@ -562,18 +630,42 @@ end
 # Stateless filt implementations
 #
 
-# Decimation, interpolation, and rational resampling.
-function Base.filt(h::Vector, x::Vector, ratio::Rational)
+# Single-rate, decimation, interpolation, and rational resampling.
+function Base.filt(h::Vector, x::AbstractVector, ratio::Rational=1//1)
     self = FIRFilter(h, ratio)
     filt(self, x)
 end
 
 # Arbitrary resampling with polyphase interpolation and two neighbor lnear interpolation.
-function Base.filt(h::Vector, x::Vector, rate::FloatingPoint, Nϕ::Integer=32)
+function Base.filt(h::Vector, x::AbstractVector, rate::FloatingPoint, Nϕ::Integer=32)
     self = FIRFilter(h, rate, Nϕ)
     filt(self, x)
 end
 
+function resample(x::AbstractVector, rate::Real, h::Vector)
+    self = FIRFilter(h, rate)
+
+    # Get delay, in # of samples at the output rate, caused by filtering processes
+    τ = timedelay(self)
+
+    # Use setphase! to
+    #   a) adjust the input samples to skip over before producing and output (integer part of τ)
+    #   b) set the ϕ index of the PFB (fractional part of τ)
+    setphase!(self, τ)
+
+    # Calculate the number of 0's required so that w
+    outLen      = ceil(Int, length(x)*rate)
+    reqInlen    = inputlength(self, outLen)
+    reqZerosLen = reqInlen - length(x)
+    xPadded     = [x; zeros(eltype(x), reqZerosLen)]
+
+    filt(self, xPadded)
+end
+
+function resample(x::AbstractVector, rate::Real)
+    h = resample_filter(rate)
+    resample(x, rate, h)
+end
 
 #
 # References
