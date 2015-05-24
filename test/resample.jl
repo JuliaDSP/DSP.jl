@@ -45,6 +45,24 @@ y4_jl = resample(x_ml, rate, h4_ml)
 @test_approx_eq y4_jl y4_ml
 
 #
+# Test resample with a rational factor
+#
+
+ratio    = 3.141592653589793
+cycles   = 2
+tx       = linspace(0, cycles, 1000)
+x        = sinpi(2*tx)
+y        = resample(x, ratio, 32)
+yLen     = length(y)
+ty       = linspace(0, cycles, yLen)
+yy       = sinpi(2*ty)
+idxLower = round(Int, yLen/3)
+idxUpper = idxLower*2
+yDelta   = abs(y[idxLower:idxUpper].-yy[idxLower:idxUpper])
+@test all(map(delta -> abs(delta) < 0.005, yDelta))
+
+
+#
 # Test response of resample_filter
 #
 
