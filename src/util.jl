@@ -21,7 +21,8 @@ export  unwrap!,
         rmsfft,
         unsafe_dot,
         polyfit,
-        shiftin!
+        shiftin!,
+        istft
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -95,6 +96,57 @@ function hilbert{T<:Real}(x::AbstractArray{T})
         off += N
     end
 
+    out
+end
+
+# Evaluate a window function at n points, returning both the window
+# (or nothing if no window) and the squared L2 norm of the window
+compute_window(::Nothing, n::Int) = (nothing, n)
+function compute_window(window::Function, n::Int)
+    win = window(n)::Vector{Float64}
+    norm2 = sumabs2(win)
+    (win, norm2)
+end
+function compute_window(window::AbstractVector, n::Int)
+    length(window) == n || error("length of window must match input")
+    (window, sumabs2(window))
+end
+
+backward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{Complex{T}}, Y::AbstractArray{T}) =
+    FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT).plan
+
+function istft{T<:Union(Float32, Float64)}(S::AbstractMatrix{Complex{T}}, wlen::Int, overlap::Int; nfft=nextfastfft(wlen), window::Union(Function,AbstractVector,Nothing)=nothing)
+    winc = wlen-overlap
+    win, norm2 = compute_window(window, wlen)
+    if win != nothing
+      win² = win.^2
+    end
+    nframes = size(S,2)-1
+    outlen = nfft + nframes*winc
+    out = zeros(T, outlen)
+    tmp1 = Array(eltype(S), size(S, 1))
+    tmp2 = zeros(T, nfft)
+    p = backward_plan(tmp1, tmp2)
+    wsum = zeros(outlen)
+    for k = 1:size(S,2)
+        copy!(tmp1, 1, S, 1+(k-1)*size(S,1), length(tmp1))
+        FFTW.execute(p, tmp1, tmp2)
+        scale!(tmp2, FFTW.normalization(tmp2))
+        if win != nothing
+            ix = (k-1)*winc
+            for n=1:nfft
+                @inbounds out[ix+n] += tmp2[n]*win[n]
+                @inbounds wsum[ix+n] += win²[n]
+            end
+        else
+            copy!(out, 1+(k-1)*winc, tmp2, 1, nfft)
+        end
+    end
+    if win != nothing
+        for i=1:length(wsum)
+            @inbounds wsum[i] != 0 && (out[i] /= wsum[i])
+        end
+    end
     out
 end
 
