@@ -162,19 +162,6 @@ function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}
     out
 end
 
-# Evaluate a window function at n points, returning both the window
-# (or nothing if no window) and the squared L2 norm of the window
-compute_window(::Nothing, n::Int) = (nothing, n)
-function compute_window(window::Function, n::Int)
-    win = window(n)::Vector{Float64}
-    norm2 = sumabs2(win)
-    (win, norm2)
-end
-function compute_window(window::AbstractVector, n::Int)
-    length(window) == n || error("length of window must match input")
-    (window, sumabs2(window))
-end
-
 ## PERIODOGRAMS
 abstract TFR{T}
 immutable Periodogram{T,F<:Union(Frequencies,Range)} <: TFR{T}
@@ -207,7 +194,7 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
-    win, norm2 = compute_window(window, length(s))
+    win, norm2 = Util.compute_window(window, length(s))
     if nfft == length(s) && win == nothing && isa(s, StridedArray)
         input = s # no need to pad
     else
@@ -286,7 +273,7 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= n || error("nfft must be >= n")
 
-    win, norm2 = compute_window(window, n)
+    win, norm2 = Util.compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
@@ -369,7 +356,7 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
                  window::Union(Function,AbstractVector,Nothing)=nothing)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
-    win, norm2 = compute_window(window, n)
+    win, norm2 = Util.compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))

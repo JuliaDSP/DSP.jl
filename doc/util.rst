@@ -22,6 +22,15 @@
     \hat{x}`, where :math:`\hat{x}` is the Hilbert transform of x,
     along the first dimension of x.
 
+.. function:: istft(S, wlen, overlap; nfft=nextfastfft(wlen), window=nothing)
+
+    Computes the inverse short-time Fourier transform (STFT) of S (a complex
+    matrix, as computed by `stft`). `wlen` and `overlap` are respectively the
+    window length and overlap used for computing the STFT. `nfft` is the used
+    FFT size (defaults to `nextfastfft(wlen)`) and `window` can be either a
+    function or a vector with the window elements (defaults to a rectangular
+    window).
+
 .. function:: fftfreq(n, fs=1)
 
     Return discrete fourier transform sample frequencies. The returned

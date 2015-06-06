@@ -74,6 +74,41 @@ r = round(Int, rand(128)*20)
 # Test hilbert with 2D input
 @test_approx_eq h hilbert(a)
 
+## ISTFT 
+
+# rectangular window with 50% overlap and regular sizes
+x1 = rand(128)
+X1 = stft(x1, 16, 8)
+y1 = istft(X1, 16, 8)
+@test_approx_eq x1 y1
+
+# rectangular window with 50% overlap and irregular size: y will have less 
+# elements than x unless x is zero-padded to a FFT-friendly size
+x2 = rand(171)
+X2 = stft(x2, 16, 8)
+y2 = istft(X2, 16, 8)
+@test_approx_eq x2[1:length(y2)] y2
+
+# Hanning window with 25% overlap
+# First sample will be wrong since the first element in the window is zero
+function hann(M, sym=true)
+  odd = mod(M,2) == 1
+  if !sym && !odd
+    M = M+1
+  end
+  w = [0.5-0.5*cos(2*pi*n/(M-1)) for n=0:(M-1)]
+  if !sym && !odd
+    return w[1:end-1]
+  else
+    return w
+  end
+end
+
+hann_periodic(M::Int) = hann(M, false)
+X1w = stft(x1, 16, 12; window=hann_periodic)
+y1w = istft(X1w, 16, 12; window=hann_periodic)
+@test_approx_eq x1[2:end] y1w[2:end]
+
 ## FFTFREQ
 
 @test_approx_eq fftfreq(1) [0.]
