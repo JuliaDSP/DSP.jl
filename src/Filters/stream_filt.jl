@@ -1,4 +1,46 @@
-typealias PFB{T} Matrix{T}          # polyphase filter bank
+immutable PFB{T} <: AbstractMatrix{T}
+    H::Array{Array{T,1}}  # Primary filter bank
+    HΔ::Array{Array{T,1}} # Derivitive filter bank
+    ϕΔ::Array{T,1}        # Buffer for interphase taps
+    Nϕ::Int               # Number of sub filters, or phases
+    tapsPerϕ::Int         # Number of taps per sub filter
+end
+
+Base.size(A::PFB) = (A.tapsPerϕ, A.Nϕ)
+
+Base.getindex(A::PFB, ::Colon,      col::Integer) = A.H[col]
+Base.getindex(A::PFB, row::Integer, col::Integer) = A.H[col][row]
+
+function Base.getindex(A::PFB, ::Colon, col::FloatingPoint)
+    (delta, idx) = modf(col)
+    base         = A.H[Int(idx)]
+    deriv        = A.HΔ[Int(idx)]
+
+    for i in 1:length(base)
+        A.ϕΔ[i] = base[i] + deriv[i] * delta
+    end
+
+    A.ϕΔ
+end
+
+function PFB{T}( h::AbstractVector{T}, Nϕ::Integer )
+    hLen     = length(h)
+    tapsPerϕ = ceil(Int, hLen/Nϕ)
+    pfbSize  = tapsPerϕ * Nϕ
+    H        = [Array(T, tapsPerϕ) for i in 1:Nϕ]
+    HΔ       = [Array(T, tapsPerϕ) for i in 1:Nϕ]
+    hΔ       = [diff(h); zero(T)]
+    ϕΔ       = Array(T, tapsPerϕ)
+    hIdx     = 1
+
+    for ϕ_n in tapsPerϕ:-1:1, ϕ in 1:Nϕ
+        @inbounds H[ϕ][ϕ_n]  = hIdx > hLen ? zero(T) : h[hIdx]
+        @inbounds HΔ[ϕ][ϕ_n] = hIdx > hLen ? zero(T) : hΔ[hIdx]
+        hIdx += 1
+    end
+    PFB(H, HΔ, ϕΔ, Nϕ, tapsPerϕ)
+end
+
 
 abstract Filter
 abstract FIRKernel{T}
@@ -27,7 +69,7 @@ type FIRInterpolator{T} <: FIRKernel{T}
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
-    pfb           = taps2pfb(h, interpolation)
+    pfb           = PFB(h, interpolation)
     tapsPerϕ, Nϕ  = size(pfb)
     interpolation = interpolation
     inputDeficit  = 1
@@ -64,7 +106,7 @@ type FIRRational{T}  <: FIRKernel{T}
 end
 
 function FIRRational(h::Vector, ratio::Rational)
-    pfb          = taps2pfb(h, num(ratio))
+    pfb          = PFB(h, num(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(den(ratio), num(ratio))
     ϕIdx         = 1
@@ -87,7 +129,6 @@ end
 type FIRArbitrary{T} <: FIRKernel{T}
     rate::Float64
     pfb::PFB{T}
-    dpfb::PFB{T}
     Nϕ::Int
     tapsPerϕ::Int
     ϕAccumulator::Float64
@@ -100,8 +141,7 @@ end
 
 function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     dh           = [diff(h); zero(eltype(h))]
-    pfb          = taps2pfb(h,  Nϕ)
-    dpfb         = taps2pfb(dh, Nϕ)
+    pfb          = PFB(h,  Nϕ)
     tapsPerϕ     = size(pfb, 1)
     ϕAccumulator = 1.0
     ϕIdx         = 1
@@ -109,7 +149,7 @@ function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     Δ            = Nϕ/rate
     inputDeficit = 1
     xIdx         = 1
-    FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx)
+    FIRArbitrary(rate, pfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx)
 end
 
 
@@ -197,6 +237,7 @@ end
 
 setphase!(self::FIRFilter, ϕ::Real) = setphase!(self.kernel, ϕ)
 
+
 #
 # reset! filter and its kernel to an initial state
 #
@@ -231,38 +272,6 @@ function reset!(self::FIRFilter)
     self.history = zeros(eltype(self.history), self.historyLen)
     reset!(self.kernel)
     self
-end
-
-#
-# taps2 pfb
-#
-# Converts a vector of coefficients to a matrix. Each column is a filter.
-# NOTE: also flips the matrix up/down so computing the dot product of a
-#       column with a signal vector is more efficient (since filter is convolution)
-# Appends zeros if necessary.
-# Example:
-#   julia> taps2pfb( [1:9], 4 )
-#   3x4 Array{Int64,2}:
-#    9  0  0  0
-#    5  6  7  8
-#    1  2  3  4
-#
-#  In this example, the first phase, or ϕ, is [9, 5, 1].
-
-function taps2pfb{T}(h::Vector{T}, Nϕ::Integer)
-    hLen     = length(h)
-    tapsPerϕ = ceil(Int, hLen/Nϕ)
-    pfbSize  = tapsPerϕ * Nϕ
-    pfb      = Array(T, tapsPerϕ, Nϕ)
-    hIdx     = 1
-
-    for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
-        tap = hIdx > hLen ? zero(T) : h[hIdx]
-        @inbounds pfb[rowIdx,colIdx] = tap
-        hIdx += 1
-    end
-
-    return pfb
 end
 
 
@@ -425,9 +434,9 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInt
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb[:,kernel.ϕIdx], history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb[:,kernel.ϕIdx], x, inputIdx)
         end
 
         buffer[bufIdx]          = accumulator
@@ -479,9 +488,9 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRat
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb[:,kernel.ϕIdx], history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb[:,kernel.ϕIdx], x, inputIdx)
         end
 
         buffer[bufIdx]  = accumulator
@@ -575,8 +584,6 @@ end
 
 function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     kernel              = self.kernel
-    pfb                 = kernel.pfb
-    dpfb                = kernel.dpfb
     xLen                = length(x)
     bufIdx              = 0
     history::Vector{Tx} = self.history
@@ -598,14 +605,12 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArb
         bufIdx += 1
 
         if kernel.xIdx < kernel.tapsPerϕ
-            yLower = unsafe_dot(pfb,  kernel.ϕIdx, history, x, kernel.xIdx)
-            yUpper = unsafe_dot(dpfb, kernel.ϕIdx, history, x, kernel.xIdx)
+            y = unsafe_dot(kernel.pfb[:,kernel.ϕAccumulator], history, x, kernel.xIdx)
         else
-            yLower = unsafe_dot(pfb,  kernel.ϕIdx, x, kernel.xIdx)
-            yUpper = unsafe_dot(dpfb, kernel.ϕIdx, x, kernel.xIdx)
+            y = unsafe_dot(kernel.pfb[:,kernel.ϕAccumulator], x, kernel.xIdx)
         end
 
-        @inbounds buffer[bufIdx] = yLower + yUpper * kernel.α
+        @inbounds buffer[bufIdx] = y
         update(kernel)
     end
 
