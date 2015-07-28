@@ -1,20 +1,21 @@
 module Windows
 using Compat, ..Util
+import ..Util.@julia_newer_than
 export  rect,
-        hanning, 
-        hamming, 
-        tukey, 
-        cosine, 
-        lanczos, 
-        triang, 
-        bartlett, 
-        gaussian, 
-        bartlett_hann, 
-        blackman, 
-        kaiser, 
-        dpss, 
+        hanning,
+        hamming,
+        tukey,
+        cosine,
+        lanczos,
+        triang,
+        bartlett,
+        gaussian,
+        bartlett_hann,
+        blackman,
+        kaiser,
+        dpss,
         dpsseig
-# 
+#
 # Window functions
 #
 
@@ -53,7 +54,7 @@ function tukey(n::Integer, alpha::Real)
                 t[k+1] = 0.5*(1 + cos(pi*(k/m - 1)))
             elseif k <= n-1-m
                 t[k+1] = 1
-            else 
+            else
                 t[k+1] = 0.5*(1 + cos(pi*(k/m - 2/alpha + 1)))
             end
         end
@@ -161,18 +162,27 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
     nfft = nextfastfft(2*size(A, 1)-1)
 
     tmp1 = Array(Float64, nfft)
-    tmp2 = Array(Complex{Float64}, nfft << 1 + 1)
-    p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    tmp2 = Array(Complex{Float64}, nfft >> 1 + 1)
+    @julia_newer_than v"0.4.0-dev+6068" begin
+        p1 = plan_rfft(tmp1)
+        p2 = plan_brfft(tmp2, nfft)
+    end begin
+        p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+        p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    end
 
     for i = 1:size(A, 2)
         fill!(tmp1, 0)
         copy!(tmp1, 1, A, (i-1)*size(A, 1)+1, size(A, 1))
-        FFTW.execute(Float64, p1.plan)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(tmp2, p1, tmp1),
+                          FFTW.execute(Float64, p1.plan))
         for j = 1:length(tmp2)
             @inbounds tmp2[j] = abs2(tmp2[j])
         end
-        FFTW.execute(Float64, p2.plan)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(tmp1, p2, tmp2),
+                          FFTW.execute(Float64, p2.plan))
 
         eig = 0.0
         for j = 1:size(A, 1)
@@ -190,7 +200,7 @@ for func in (:tukey, :gaussian, :kaiser)
 		$func(n::NTuple{2,Integer}, a::Real) = $func(n[1], a) * $func(n[2], a)'
 	end
 end
-for func in (:rect, :hanning, :hamming, :cosine, :lanczos, 
+for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
        :triang, :bartlett, :bartlett_hann, :blackman)
 	@eval begin
 		$func(n::NTuple{2,Integer}) = $func(n[1]) * $func(n[2])'

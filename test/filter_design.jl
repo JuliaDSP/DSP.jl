@@ -1,4 +1,6 @@
-require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
+if VERSION < v"0.4.0-dev+6112"
+    require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
+end
 using DSP, Base.Test, FilterTestHelpers, Compat
 
 #

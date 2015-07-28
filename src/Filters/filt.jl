@@ -468,17 +468,24 @@ function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
 
     L = min(nx, nfft - (nb - 1))
     tmp1 = Array(T, nfft)
-    tmp2 = Array(Complex{T}, nfft << 1 + 1)
+    tmp2 = Array(Complex{T}, nfft >> 1 + 1)
     out = Array(T, size(x))
 
-    p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    @julia_newer_than v"0.4.0-dev+6068" begin
+        p1 = plan_rfft(tmp1)
+        p2 = plan_brfft(tmp2, nfft)
+    end begin
+        p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+        p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    end
 
     # FFT of filter
     filterft = similar(tmp2)
     copy!(tmp1, b)
     tmp1[nb+1:end] = zero(T)
-    FFTW.execute(p1.plan, tmp1, filterft)
+    @julia_newer_than(v"0.4.0-dev+6068",
+                      A_mul_B!(filterft, p1, tmp1),
+                      FFTW.execute(p1.plan, tmp1, filterft))
 
     # FFT of chunks
     for colstart = 0:nx:length(x)-1
@@ -492,9 +499,13 @@ function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
             tmp1[npadbefore+n+1:end] = zero(T)
 
             copy!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            FFTW.execute(T, p1.plan)
+            @julia_newer_than(v"0.4.0-dev+6068",
+                              A_mul_B!(tmp2, p1, tmp1),
+                              FFTW.execute(T, p1.plan))
             broadcast!(*, tmp2, tmp2, filterft)
-            FFTW.execute(T, p2.plan)
+            @julia_newer_than(v"0.4.0-dev+6068",
+                              A_mul_B!(tmp1, p2, tmp2),
+                              FFTW.execute(T, p2.plan))
 
             # Copy to output
             for j = 0:min(L - 1, nx - off)

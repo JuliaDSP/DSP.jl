@@ -1,9 +1,10 @@
 # The periodogram module contains functions which compute non-parametric
-# estimates of the periodogram P[s] of a signal s.  An overview of some 
+# estimates of the periodogram P[s] of a signal s.  An overview of some
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
 using Compat, ..Util, ..Windows
+import ..Util.@julia_newer_than
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 
@@ -114,12 +115,12 @@ function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n
         c1 = n2/n1
         c2 = 1
     end
-    
+
     @inbounds begin
         for j = 1:n2
             kj2 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
             kj2 = (kj2*c2)^2
-            
+
             wavenum = round(Int, sqrt( (c1*(1-1))^2 + kj2 )) + 1
             if wavenum<=kmax
                 out[wavenum] += abs2(s_fft[1,j])*m1
@@ -228,9 +229,9 @@ function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:
 end
 
 # Compute the periodogram of a 2-d signal S. Returns 1/N*X[s(n)]^2, where X is the 2-d
-# DTFT of the signal S if radialsum and radialavg are both false (default), 
+# DTFT of the signal S if radialsum and radialavg are both false (default),
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
-function periodogram{T<:Real}(s::AbstractMatrix{T}; 
+function periodogram{T<:Real}(s::AbstractMatrix{T};
                               nfft::NTuple{2,Int}=nextfastfft(size(s)),
                               fs::Real=1,
                               radialsum::Bool=false, radialavg::Bool=false)
@@ -247,14 +248,14 @@ function periodogram{T<:Real}(s::AbstractMatrix{T};
     end
     norm2 = length(s)
     nmin = minimum(nfft)
-    
+
     if prod(nfft) == length(s) && isa(s, StridedArray)
         input = s # no need to pad
     else
         input = zeros(fftintype(T), nfft)
         input[1:size(s,1), 1:size(s,2)] = s
     end
-    
+
     if ptype == 0
         s_fft = fft(input)
         out = zeros(fftabs2type(T), nfft)
@@ -268,10 +269,17 @@ function periodogram{T<:Real}(s::AbstractMatrix{T};
     end
 end
 
-forward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
-    FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-forward_plan{T<:Union(Complex64, Complex128)}(X::AbstractArray{T}, Y::AbstractArray{T}) =
-    FFTW.Plan(X, Y, 1, FFTW.FORWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+@julia_newer_than v"0.4.0-dev+6068" begin
+    forward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
+        plan_rfft(X)
+    forward_plan{T<:Union(Complex64, Complex128)}(X::AbstractArray{T}, Y::AbstractArray{T}) =
+        plan_fft(X)
+end begin
+    forward_plan{T<:Union(Float32, Float64)}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
+        FFTW.Plan(X, Y, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    forward_plan{T<:Union(Complex64, Complex128)}(X::AbstractArray{T}, Y::AbstractArray{T}) =
+        FFTW.Plan(X, Y, 1, FFTW.FORWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+end
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
@@ -294,7 +302,9 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
-        FFTW.execute(plan.plan, sig, tmp)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(tmp, plan, sig),
+                          FFTW.execute(plan.plan, sig, tmp))
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -326,7 +336,9 @@ function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Rea
         for i = 1:size(window, 1)
             @inbounds input[i] = window[i, j]*s[i]
         end
-        FFTW.execute(plan.plan, input, tmp)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(tmp, plan, input),
+                          FFTW.execute(plan.plan, input, tmp))
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -348,7 +360,7 @@ Base.fftshift{T,F<:Frequencies}(p::Spectrogram{T,F}) =
 Base.fftshift{T,F<:Range}(p::Spectrogram{T,F}) = p
 Base.time(p::Spectrogram) = p.time
 
-function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1; 
+function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                         onesided::Bool=eltype(s)<:Real,
                         nfft::Int=nextfastfft(n), fs::Real=1,
                         window::Union(Function,AbstractVector,Nothing)=nothing)
@@ -378,8 +390,10 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
 
     plan = forward_plan(sig_split.buf, tmp)
     offset = 0
-    for k = 1:length(sig_split)
-        FFTW.execute(plan.plan, sig_split[k], tmp)
+    for sig in sig_split
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(tmp, plan, sig),
+                          FFTW.execute(plan.plan, sig, tmp))
         if isa(psdonly, PSDOnly)
             fft2pow!(out, tmp, nfft, r, onesided, offset)
         else

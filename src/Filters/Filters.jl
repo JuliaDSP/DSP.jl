@@ -1,5 +1,6 @@
 module Filters
 using Polynomials, Compat, ..Util
+import ..Util.@julia_newer_than
 
 include("coefficients.jl")
 export FilterCoefficients,

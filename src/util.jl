@@ -21,7 +21,12 @@ export  unwrap!,
         rmsfft,
         unsafe_dot,
         polyfit,
-        shiftin!
+        shiftin!,
+        @julia_newer_than
+
+macro julia_newer_than(version, iftrue, iffalse)
+    VERSION >= eval(version) ? esc(iftrue) : esc(iffalse)
+end
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
@@ -52,8 +57,13 @@ function hilbert{T<:FFTW.fftwReal}(x::StridedVector{T})
 # Code inspired by Scipy's implementation, which is under BSD license.
     N = length(x)
     X = zeros(Complex{T}, N)
-    p = FFTW.Plan(x, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    FFTW.execute(T, p.plan)
+    @julia_newer_than v"0.4.0-dev+6068" begin
+        p = plan_rfft(x)
+        A_mul_B!(sub(X, 1:(N >> 1)+1), p, x)
+    end begin
+        p = FFTW.Plan(x, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+        FFTW.execute(T, p.plan)
+    end
     for i = 2:div(N, 2)+isodd(N)
         @inbounds X[i] *= 2.0
     end
@@ -67,8 +77,14 @@ function hilbert{T<:Real}(x::AbstractArray{T})
     X = Array(fftouttype(T), N)
     out = similar(x, fftouttype(T))
 
-    p1 = FFTW.Plan(xc, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    p2 = FFTW.Plan(X, X, 1, FFTW.BACKWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    @julia_newer_than v"0.4.0-dev+6068" begin
+        p1 = plan_rfft(xc)
+        Xsub = sub(X, 1:(N >> 1)+1)
+        p2 = plan_bfft!(X)
+    end begin
+        p1 = FFTW.Plan(xc, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+        p2 = FFTW.Plan(X, X, 1, FFTW.BACKWARD, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
+    end
 
     normalization = 1/N
     off = 1
@@ -77,7 +93,9 @@ function hilbert{T<:Real}(x::AbstractArray{T})
 
         # fft
         fill!(X, 0)
-        FFTW.execute(T, p1.plan)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(Xsub, p1, xc),
+                          FFTW.execute(T, p1.plan))
 
         # scale real part
         for i = 2:div(N, 2)+isodd(N)
@@ -85,10 +103,12 @@ function hilbert{T<:Real}(x::AbstractArray{T})
         end
 
         # ifft
-        FFTW.execute(T, p2.plan)
+        @julia_newer_than(v"0.4.0-dev+6068",
+                          A_mul_B!(X, p2, X),
+                          FFTW.execute(T, p2.plan))
 
         # scale and copy to output
-        for j = 1:N
+        @simd for j = 1:N
             @inbounds out[off+j-1] = X[j]*normalization
         end
 

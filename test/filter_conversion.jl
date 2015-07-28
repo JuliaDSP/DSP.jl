@@ -1,4 +1,6 @@
-require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
+if VERSION < v"0.4.0-dev+6112"
+    require(joinpath(dirname(@__FILE__), "FilterTestHelpers.jl"))
+end
 using DSP, Base.Test, FilterTestHelpers, Polynomials
 
 # Test conversion to SOS against MATLAB
@@ -85,7 +87,7 @@ m_sos_only_poles[:, 3] = 1
 
 # Test that a filter with repeated zeros is handled properly
 # MATLAB:
-#= 
+#=
  [z,p,k] = butter(2, [49.5 50.5]/500, 'stop')
  [sos,g] = zp2sos(z, p, k)
 =#
