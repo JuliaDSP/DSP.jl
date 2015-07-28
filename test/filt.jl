@@ -72,7 +72,7 @@ zi_python = [ 0.99672078, -1.49409147,  1.28412268, -0.45244173,  0.07559489]
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-@test_approx_eq_eps zi_python DSP.Filters.filt_stepstate(b, a) 1e-7
+@test_approx_eq_eps zi_python DSP.Filters.filt_stepstate(PolynomialRatio(b, a)) 1e-7
 
 
 ##############
@@ -90,7 +90,7 @@ zi_matlab = [0.6580, 0.5184]
 b = [0.222, 0.43, 0.712]
 a = [1, 0.33, 0.22]
 
-@test_approx_eq zi_matlab DSP.Filters.filt_stepstate(b, a)
+@test_approx_eq zi_matlab DSP.Filters.filt_stepstate(PolynomialRatio(b, a))
 
 
 ##############
@@ -109,7 +109,7 @@ zi_python = [0.55996501, -0.72343165,  0.68312446, -0.2220676 ,  0.04030775]
 b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
 a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-@test_approx_eq_eps zi_python DSP.Filters.filt_stepstate(b, a) 1e-7
+@test_approx_eq_eps zi_python 1.1 * DSP.Filters.filt_stepstate(PolynomialRatio(b, a)) 1e-7
 
 
 ##############
@@ -241,6 +241,6 @@ end
 
 b = randn(10)
 for x in (randn(100), randn(100, 2))
-    @test_approx_eq DSP.Filters.fir_filtfilt(b, x) DSP.Filters.iir_filtfilt(b, [1.0], x)
-    @test_approx_eq DSP.Filters.filtfilt(b, [2.0], x) DSP.Filters.iir_filtfilt(b, [2.0], x)
+    @test_approx_eq DSP.Filters.fir_filtfilt(b, x) DSP.Filters.filtfilt(PolynomialRatio(b, [1.0; zeros(9)]), x)
+    @test_approx_eq DSP.Filters.filtfilt(b, [2.0], x) DSP.Filters.filtfilt(PolynomialRatio(b, [2.0; zeros(9)]), x)
 end
