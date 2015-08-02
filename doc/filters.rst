@@ -117,19 +117,19 @@ Filter application
 .. function:: filtfilt(coef, x)
 
     Filter ``x`` in the forward and reverse directions using filter
-    coefficients ``f``. The initial state of the filter is computed so
+    coefficients ``coef``. The initial state of the filter is computed so
     that its response to a step function is steady state. Before
     filtering, the data is extrapolated at both ends with an
     odd-symmetric extension of length
     ``3*(max(length(b), length(a))-1)``.
 
     Because ``filtfilt`` applies the given filter twice, the effective
-    filter order is twice the order of ``f``. The resulting signal has
+    filter order is twice the order of ``coef``. The resulting signal has
     zero phase distortion.
 
-.. function:: fftfilt(b, x)
+.. function:: fftfilt(h, x)
 
-    Apply FIR filter ``b`` along the first dimension of array ``x``
+    Apply FIR filter taps ``h`` along the first dimension of array ``x`
     using an FFT-based overlap-save algorithm.
 
 .. function:: resample(x, rate[, coef])
