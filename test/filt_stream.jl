@@ -1,5 +1,4 @@
-using DSP
-using Base.Test
+using DSP, Base.Test, Compat
 
 # Naive rational resampler
 function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
@@ -157,8 +156,7 @@ function test_decimation(h, x, decimation)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-
-    @test all(map(isapprox, naiveResult, piecewiseResult))
+    @test_approx_eq_eps naiveResult piecewiseResult sqrt(eps(real(one(eltype(x)))))
     
     DSP.reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
@@ -217,7 +215,7 @@ function test_interpolation(h, x, interpolation)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    @test all(map(isapprox, naiveResult, piecewiseResult))    
+    @test_approx_eq_eps naiveResult piecewiseResult sqrt(eps(real(one(eltype(x)))))
 end
 
 
