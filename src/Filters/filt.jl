@@ -230,7 +230,7 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
 end
 
 # Zero phase digital filtering with an FIR filter in a single pass
-function fir_filtfilt(b::AbstractVector, x::AbstractArray)
+function filtfilt(b::AbstractVector, x::AbstractArray)
     nb = length(b)
     # Only need as much padding as the order of the filter
     t = Base.promote_eltype(b, x)
@@ -255,14 +255,14 @@ function fir_filtfilt(b::AbstractVector, x::AbstractArray)
     reshape(out[2nb-1:end, :], size(x))
 end
 
-# Choose whether to use fir_filtfilt or iir_filtfilt depending on
+# Choose whether to use FIR or iir_filtfilt depending on
 # length of a
 function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     if length(a) == 1
         if a[1] != 1
             b /= a[1]
         end
-        fir_filtfilt(b, x)
+        filtfilt(b, x)
     else
         iir_filtfilt(b, a, x)
     end

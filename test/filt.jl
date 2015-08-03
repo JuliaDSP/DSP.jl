@@ -241,6 +241,6 @@ end
 
 b = randn(10)
 for x in (randn(100), randn(100, 2))
-    @test_approx_eq DSP.Filters.fir_filtfilt(b, x) DSP.Filters.iir_filtfilt(b, [1.0], x)
+    @test_approx_eq DSP.Filters.filtfilt(b, x) DSP.Filters.iir_filtfilt(b, [1.0], x)
     @test_approx_eq DSP.Filters.filtfilt(b, [2.0], x) DSP.Filters.iir_filtfilt(b, [2.0], x)
 end
