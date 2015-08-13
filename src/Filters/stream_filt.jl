@@ -631,7 +631,7 @@ end
 #
 
 # Single-rate, decimation, interpolation, and rational resampling.
-function Base.filt(h::Vector, x::AbstractVector, ratio::Rational=1//1)
+function Base.filt(h::Vector, x::AbstractVector, ratio::Rational)
     self = FIRFilter(h, ratio)
     filt(self, x)
 end

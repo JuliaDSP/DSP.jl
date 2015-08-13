@@ -26,7 +26,9 @@ export  unwrap!,
         @julia_newer_than
 
 macro julia_newer_than(version, iftrue, iffalse)
-    VERSION >= eval(version) ? esc(iftrue) : esc(iffalse)
+    isa(version, Expr) && version.head === :macrocall && length(version.args) == 2 && version.args[1] === symbol("@v_str") ||
+        throw(ArgumentError("invalid syntax"))
+    VERSION >= convert(VersionNumber, version.args[2]) ? esc(iftrue) : esc(iffalse)
 end
 
 function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
