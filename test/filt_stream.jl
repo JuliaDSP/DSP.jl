@@ -18,7 +18,7 @@ end
 
 
 # Naive arbitrary resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::FloatingPoint, numfilters::Integer=32)
+function naivefilt(h::Vector, x::Vector, resamplerate::AbstractFloat, numfilters::Integer=32)
     xLen          = length(x)
     xInterpolated = naivefilt(h, x, numfilters//1)
     xLen          = length(xInterpolated)

@@ -147,7 +147,7 @@ function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
 end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
-function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
+function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     rate > 0.0 || error("rate must be greater than 0")
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
@@ -156,7 +156,7 @@ function FIRFilter(h::Vector, rate::FloatingPoint, Nϕ::Integer=32)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
-function FIRFilter(rate::FloatingPoint, Nϕ::Integer=32)
+function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32)
     h = resample_filter(rate, Nϕ)
     FIRFilter(h, rate)
 end
@@ -177,7 +177,7 @@ function setphase!(kernel::FIRDecimator, ϕ::Real)
     nothing
 end
 
-function setphase!(kernel::Union(FIRInterpolator, FIRRational), ϕ::Real)
+function setphase!(kernel::@compat(Union{FIRInterpolator, FIRRational}), ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
@@ -351,11 +351,11 @@ end
 # Calculates the delay in # samples, at the input sample rate, caused by the filter process
 #
 
-function timedelay(kernel::Union(FIRRational, FIRInterpolator, FIRArbitrary))
+function timedelay(kernel::@compat(Union{FIRRational, FIRInterpolator, FIRArbitrary}))
     (kernel.tapsPerϕ - 1/kernel.Nϕ)/2
 end
 
-function timedelay(kernel::Union(FIRStandard, FIRDecimator))
+function timedelay(kernel::@compat(Union{FIRStandard, FIRDecimator}))
     (kernel.hLen - 1)/2
 end
 
@@ -637,7 +637,7 @@ function Base.filt(h::Vector, x::AbstractVector, ratio::Rational)
 end
 
 # Arbitrary resampling with polyphase interpolation and two neighbor lnear interpolation.
-function Base.filt(h::Vector, x::AbstractVector, rate::FloatingPoint, Nϕ::Integer=32)
+function Base.filt(h::Vector, x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32)
     self = FIRFilter(h, rate, Nϕ)
     filt(self, x)
 end

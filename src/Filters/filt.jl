@@ -299,7 +299,7 @@ filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
 
 # Compute an initial state for filt with coefficients (b,a) such that its
 # response to a step function is steady state.
-function filt_stepstate{T<:Number}(b::Union(AbstractVector{T}, T), a::Union(AbstractVector{T}, T))
+function filt_stepstate{T<:Number}(b::@compat(Union{AbstractVector{T}, T}), a::@compat(Union{AbstractVector{T}, T}))
     scale_factor = a[1]
     if scale_factor != 1.0
         a = a ./ scale_factor

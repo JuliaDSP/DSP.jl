@@ -36,7 +36,7 @@ end
 end
 
 loss(x::Real, y::Real) = abs(float(x) - float(y))/eps(float(x))
-loss(x::Union(Real,Complex), y::Union(Real,Complex)) = loss(real(x), real(y)) + loss(imag(x), imag(y))
+loss(x::@compat(Union{Real,Complex}), y::@compat(Union{Real,Complex})) = loss(real(x), real(y)) + loss(imag(x), imag(y))
 loss(x::AbstractVector, y::AbstractVector) = sum(map(loss, x, y))
 
 @compat function accuracy_check(err1, err2, part, relerr=1)

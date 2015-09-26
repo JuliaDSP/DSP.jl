@@ -31,7 +31,7 @@ macro julia_newer_than(version, iftrue, iffalse)
     VERSION >= convert(VersionNumber, version.args[2]) ? esc(iftrue) : esc(iffalse)
 end
 
-function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
+function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
                                      range::Number=2pi)
     thresh = range / 2
     if size(m, dim) < 2
@@ -51,7 +51,7 @@ function unwrap!{T <: FloatingPoint}(m::Array{T}, dim::Integer=ndims(m);
     return m
 end
 
-function unwrap{T <: FloatingPoint}(m::Array{T}, args...; kwargs...)
+function unwrap{T <: AbstractFloat}(m::Array{T}, args...; kwargs...)
     unwrap!(copy(m), args...; kwargs...)
 end
 
@@ -131,12 +131,12 @@ fftintype{T<:Complex}(::Type{T}) = Complex128
 # Get the return element type of FFT for a given type
 fftouttype{T<:Base.FFTW.fftwComplex}(::Type{T}) = T
 fftouttype{T<:Base.FFTW.fftwReal}(::Type{T}) = Complex{T}
-fftouttype{T<:Union(Real,Complex)}(::Type{T}) = Complex128
+fftouttype{T<:@compat(Union{Real,Complex})}(::Type{T}) = Complex128
 
 # Get the real part of the return element type of FFT for a given type
 fftabs2type{T<:Base.FFTW.fftwReal}(::Type{Complex{T}}) = T
 fftabs2type{T<:Base.FFTW.fftwReal}(::Type{T}) = T
-fftabs2type{T<:Union(Real,Complex)}(::Type{T}) = Float64
+fftabs2type{T<:@compat(Union{Real,Complex})}(::Type{T}) = Float64
 
 ## FREQUENCY VECTOR
 
