@@ -3,8 +3,8 @@ DSP.jl
 
 [![Build Status](https://travis-ci.org/JuliaDSP/DSP.jl.svg?branch=master)](https://travis-ci.org/JuliaDSP/DSP.jl)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/DSP.jl/badge.svg?branch=master)](https://coveralls.io/r/JuliaDSP/DSP.jl?branch=master)
-[![Package Evaluator](http://iainnz.github.io/packages.julialang.org/badges/DSP_release.svg)](http://iainnz.github.io/packages.julialang.org/?pkg=DSP&ver=release)
-[![Package Evaluator](http://iainnz.github.io/packages.julialang.org/badges/DSP_nightly.svg)](http://iainnz.github.io/packages.julialang.org/?pkg=DSP&ver=nightly)
+[![Package Evaluator](http://iainnz.github.io/packages.julialang.org/badges/DSP_0.3.svg)](http://iainnz.github.io/packages.julialang.org/?pkg=DSP&ver=0.3)
+[![Package Evaluator](http://iainnz.github.io/packages.julialang.org/badges/DSP_0.4.svg)](http://iainnz.github.io/packages.julialang.org/?pkg=DSP&ver=0.4)
 
 DSP.jl provides a number of common DSP routines in Julia.  So far, the following are implemented:
 
