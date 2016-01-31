@@ -30,6 +30,7 @@ export  FilterType,
         analogfilter,
         digitalfilter,
         iirnotch,
+        iirEQ,
         kaiserord,
         FIRWindow,
         resample_filter

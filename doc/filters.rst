@@ -174,6 +174,15 @@ Such filters are documented below.
     bandwidth ``bandwidth``. If ``fs`` is not specified, ``Wn`` is
     interpreted as a normalized frequency in half-cycles/sample.
 
+.. function:: iirEQ(response, Wn, gain[, Q, fs])
+
+    Design typical IIR equalizer biquad filters. Available response types
+    are 'lowpass', 'highpass, 'bandpass', 'bandstop', 'peak', 'highshelf',
+    'lowshelf'. Optional parameter ``Q`` does not have any effect on shelving
+    filter designs and causes a resonance on low/highpass filters. If ``fs``
+    is not specified, ``Wn`` is interpreted as a normalized frequency in
+    half-cycles/sample.
+
 .. _response-types:
 
 Filter response types
