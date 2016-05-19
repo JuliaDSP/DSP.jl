@@ -49,7 +49,7 @@ for n = 1:6
 end
 
 # Test simple scaling with DF2TFilter
-@test filt(DF2TFilter(PolynomialRatio([3.7], [4.2])), x) == scale(x, 3.7/4.2)
+@test filt(DF2TFilter(PolynomialRatio([3.7], [4.2])), x) == x * (3.7/4.2)
 
 #
 # filtfilt
