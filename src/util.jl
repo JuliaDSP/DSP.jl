@@ -26,7 +26,7 @@ export  unwrap!,
         @julia_newer_than
 
 macro julia_newer_than(version, iftrue, iffalse)
-    isa(version, Expr) && version.head === :macrocall && length(version.args) == 2 && version.args[1] === symbol("@v_str") ||
+    isa(version, Expr) && version.head === :macrocall && length(version.args) == 2 && version.args[1] === @compat(Symbol("@v_str")) ||
         throw(ArgumentError("invalid syntax"))
     VERSION >= convert(VersionNumber, version.args[2]) ? esc(iftrue) : esc(iffalse)
 end
