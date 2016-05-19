@@ -156,7 +156,6 @@ Base.start(x::Frequencies) = 1
 Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
 Base.done(x::Frequencies, i::Int) = i > x.n
 Base.size(x::Frequencies) = (x.n,)
-Base.similar(x::Frequencies, T::Type, args::@compat Tuple{Vararg{Integer}}) = Array(T, args)
 Base.step(x::Frequencies) = x.multiplier
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
