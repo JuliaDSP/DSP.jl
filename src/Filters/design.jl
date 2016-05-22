@@ -386,8 +386,6 @@ prewarp(ftype::@compat(Union{Bandpass, Bandstop})) = (typeof(ftype))(4*tan(pi*ft
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
-digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
-    bilinear(transform_prototype(prewarp(ftype), proto), 2)
 
 #
 # Special filter types

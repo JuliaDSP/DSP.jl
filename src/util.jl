@@ -26,7 +26,7 @@ export  unwrap!,
         @julia_newer_than
 
 macro julia_newer_than(version, iftrue, iffalse)
-    isa(version, Expr) && version.head === :macrocall && length(version.args) == 2 && version.args[1] === symbol("@v_str") ||
+    isa(version, Expr) && version.head === :macrocall && length(version.args) == 2 && version.args[1] === @compat(Symbol("@v_str")) ||
         throw(ArgumentError("invalid syntax"))
     VERSION >= convert(VersionNumber, version.args[2]) ? esc(iftrue) : esc(iffalse)
 end
@@ -156,7 +156,6 @@ Base.start(x::Frequencies) = 1
 Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
 Base.done(x::Frequencies, i::Int) = i > x.n
 Base.size(x::Frequencies) = (x.n,)
-Base.similar(x::Frequencies, T::Type, args::@compat Tuple{Vararg{Integer}}) = Array(T, args)
 Base.step(x::Frequencies) = x.multiplier
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)

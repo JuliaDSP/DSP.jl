@@ -352,7 +352,7 @@ end
 
 for n = 2:15
     silen = n-1
-    si = [symbol("si$i") for i = 1:silen]
+    si = [@compat(Symbol("si$i")) for i = 1:silen]
     @eval function Base.filt!{T}(out, b::NTuple{$n,T}, x)
         size(x) != size(out) && error("out size must match x")
         ncols = Base.trailingsize(x, 2)
