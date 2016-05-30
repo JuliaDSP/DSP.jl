@@ -291,3 +291,7 @@ mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
 @test_throws ArgumentError periodogram([1 2 3])
 @test_throws ArgumentError periodogram(rand(2,3), nfft=(3,2))
 @test_throws ArgumentError periodogram([1 2;3 4],radialsum=true, radialavg=true)
+
+# #124
+q = arraysplit(ones(Float64, 1000),100,10);
+@test map(mean, q) == ones(Float64, 11)

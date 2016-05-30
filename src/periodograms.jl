@@ -45,7 +45,6 @@ Base.start(x::ArraySplit) = 1
 Base.next(x::ArraySplit, i::Int) = (x[i], i+1)
 Base.done(x::ArraySplit, i::Int) = i > x.k
 Base.size(x::ArraySplit) = (x.k,)
-Base.similar(x::ArraySplit, T::Type, args...) = Array(T, args...)
 
 # Split an array into subarrays of length N, with overlapping regions
 # of length noverlap. To avoid allocation, the returned AbstractVector
