@@ -291,3 +291,14 @@ mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
 @test_throws ArgumentError periodogram([1 2 3])
 @test_throws ArgumentError periodogram(rand(2,3), nfft=(3,2))
 @test_throws ArgumentError periodogram([1 2;3 4],radialsum=true, radialavg=true)
+
+# #124
+q = arraysplit(ones(Float64, 1000),100,10);
+@test map(mean, q) == ones(Float64, 11)
+
+# test that iterating ArraySplit always yields the same Vector
+q = arraysplit(-10:10,4,2)
+for x in q
+    @assert isa(x, Vector)
+    @test pointer(x) == pointer(q.buf)
+end
