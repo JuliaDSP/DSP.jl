@@ -14,7 +14,7 @@
 
     For real signals, the two-sided periodogram is symmetric and this
     function returns a one-sided (real only) periodogram by default. A
-    two-sided periodogram can be obtained by setting ``onesided=true``.
+    two-sided periodogram can be obtained by setting ``onesided=false``.
 
     ``nfft`` specifies the number of points to use for the Fourier
     transform. If ``length(s)`` < ``nfft``, then the input is padded
