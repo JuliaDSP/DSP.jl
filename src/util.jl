@@ -24,6 +24,11 @@ export  unwrap!,
         unsafe_dot,
         polyfit,
         shiftin!,
+        finddelay(),
+        shiftsignals(),
+        shiftsignals!(),
+        alignsignals(),
+        alignsignals!(),
         @julia_newer_than
 
 macro julia_newer_than(version, iftrue, iffalse)
@@ -288,5 +293,93 @@ function shiftin!{T}(a::AbstractVector{T}, b::AbstractVector{T})
     return a
 end
 
+
+
+# Delay Utility Functions:
+
+# finddelay(): use peak of cross correlation from origin of time to calculate
+# time lag between two Arrays (signals)
+
+function finddelay{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+
+sₓᵤ = xcorr(x, u)
+
+ct_idx = cld(length(sₓᵤ), 2)
+
+_, pk_idx = findmax(sₓᵤ, 1)
+
+δ = ct_idx - pk_idx[1]
+
+return δ
+
+end
+
+# shiftsignals(): shift elements of an Array (signal) of a given amount of
+# samples
+
+function shiftsignals{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
+
+lᵤ = length(u)
+
+y = zeros(T, lᵤ)
+
+if δ > 0
+    y[1:(lᵤ - δ)] = u[(δ + 1):lᵤ]
+else
+    y[(-δ + 1):lᵤ] = u[1:(lᵤ - -δ)]
+end
+
+return y
+
+end
+
+function shiftsignals!{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
+
+lᵤ = length(u)
+
+if δ > 0
+
+    deleteat!(u, 1:δ)
+    
+    # append!() could be used, but this is faster and prevents allocation.
+    for d = 1:δ
+        insert!(u, lᵤ - δ + d, 0)
+    end
+    
+elseif δ < 0
+
+    deleteat!(u, (lᵤ - -δ + 1):lᵤ)
+    
+    # prepend!() could be used, but this is faster and prevents allocation.
+    for d = 1:(-δ)
+        insert!(u, d, 0)
+    end
+
+end
+
+end
+
+# alignsignals(): use finddelay() and shiftsignals() to time align Arrays
+# (signals)
+
+function alignsignals{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+
+δ = finddelay(x, u)
+
+y = shiftsignals(u, δ)
+
+return y, δ
+
+end
+
+function alignsignals!{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+
+δ = finddelay(x, u)
+
+shiftsignals!(u, δ)
+
+return δ
+
+end
 
 end # end module definition
