@@ -24,11 +24,11 @@ export  unwrap!,
         unsafe_dot,
         polyfit,
         shiftin!,
-        finddelay(),
-        shiftsignals(),
-        shiftsignals!(),
-        alignsignals(),
-        alignsignals!(),
+        finddelay,
+        shiftsignals,
+        shiftsignals!,
+        alignsignals,
+        alignsignals!,
         @julia_newer_than
 
 macro julia_newer_than(version, iftrue, iffalse)
