@@ -128,3 +128,88 @@ for x in ( randn(n), randn(n)+randn(n)im )
 end # for
 
 @test_approx_eq shiftin!([1,2,3,4],[5,6]) [3,4,5,6]
+
+## DELAY TOOLS
+
+# Test Variables
+max_delay = 1025    # Maximum delay for copied shifted signals
+max_order = 1025    # Maximum order for FIR shifting filters
+
+# Test delays that do not require to erase data to align the signals (delay
+# shorter than 0-pads around data)
+x = [zeros(max_delay); 2 * (rand(4 * max_delay) - (1 / 2)); zeros(max_delay)]
+delays = 1:(max_delay - 1)
+x_delay = zeros(x)
+x_advance = zeros(x)
+
+for d in delays
+
+    fill!(x_delay, 0)
+    fill!(x_advance, 0)
+
+    x_delay[(d + 1):end] = x[1:(end - d)]
+    x_advance[1:(end - d)] = x[(d + 1):end]
+
+    @test shiftsignals(x, d) == x_advance
+    @test d == finddelay(x, x_delay)
+    @test (x, d) == alignsignals(x, x_delay)
+    @test shiftsignals(x, -d) == x_delay
+    @test -d == finddelay(x, x_advance)
+    @test (x, -d) == alignsignals(x, x_advance)
+    shiftsignals!(x_advance, -d)
+    @test x == x_advance
+    shiftsignals!(x_delay, d)
+    @test x == x_delay
+
+end
+
+# Test data erasing delays (when the delay is longer than the 0-pads): 
+x = [zeros(fld(max_delay, 2)); 2 * (rand(4 * max_delay) - (1 / 2)); 
+    zeros(fld(max_delay, 2))]
+delays = (fld(max_delay, 2)):(max_delay - 1)
+x_delay = zeros(x)
+x_advance = zeros(x)
+
+for d in delays
+
+    fill!(x_delay, 0)
+    fill!(x_advance, 0)
+
+    x_delay[(d + 1):end] = x[1:(end - d)]
+    x_advance[1:(end - d)] = x[(d + 1):end]
+
+    @test shiftsignals(x, d) == x_advance
+    @test d == finddelay(x, x_delay)
+    @test ([x[1:(end - d)]; zeros(d)], d) == alignsignals(x, x_delay)
+    @test shiftsignals(x, -d) == x_delay
+    @test -d == finddelay(x, x_advance)
+    @test ([zeros(d); x[(d + 1):end]], -d) == alignsignals(x, x_advance)
+    shiftsignals!(x_advance, -d)
+    @test [zeros(d); x[(d + 1):end]] == x_advance
+    shiftsignals!(x_delay, d)
+    @test [x[1:(end - d)]; zeros(d)] == x_delay
+
+end
+
+# Test delay calculation for not identical signals. A FIR filter will supply
+# a known delay easily:
+orders = 2 * (4:(fld(max_order, 2)))    # Make even to remove delay ambiguity
+fir_delays = round(Int, orders / 2)
+fir_taps = orders + 1
+
+x = [zeros(maximum(fir_delays)); 2 * (rand(4 * maximum(fir_delays)) - (1 / 2)); 
+    zeros(maximum(fir_delays))]
+y = zeros(x)
+
+for n = 1:length(orders)
+
+    w = hamming(fir_taps[n])
+    dsm = FIRWindow(w)
+    rty = Lowpass(0.1) # Too small bandwidth can create errors of few samples
+    fir = digitalfilter(rty, dsm)
+    
+    y = fftfilt(fir, x)
+    
+    @test fir_delays[n] == finddelay(x, y)
+
+end
