@@ -302,15 +302,15 @@ end
 
 function finddelay{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
-sₓᵤ = xcorr(x, u)
+    sₓᵤ = xcorr(x, u)
 
-ct_idx = cld(length(sₓᵤ), 2)
+    ct_idx = cld(length(sₓᵤ), 2)
 
-_, pk_idx = findmax(sₓᵤ, 1)
+    _, pk_idx = findmax(sₓᵤ, 1)
 
-δ = ct_idx - pk_idx[1]
+    δ = ct_idx - pk_idx[1]
 
-return δ
+    return δ
 
 end
 
@@ -319,43 +319,43 @@ end
 
 function shiftsignals{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
-lᵤ = length(u)
+    lᵤ = length(u)
 
-y = zeros(T, lᵤ)
+    y = zeros(T, lᵤ)
 
-if δ > 0
-    y[1:(lᵤ - δ)] = u[(δ + 1):lᵤ]
-else
-    y[(-δ + 1):lᵤ] = u[1:(lᵤ - -δ)]
-end
+    if δ > 0
+        y[1:(lᵤ - δ)] = u[(δ + 1):lᵤ]
+    else
+        y[(-δ + 1):lᵤ] = u[1:(lᵤ - -δ)]
+    end
 
-return y
+    return y
 
 end
 
 function shiftsignals!{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
-lᵤ = length(u)
+    lᵤ = length(u)
 
-if δ > 0
+    if δ > 0
 
-    deleteat!(u, 1:δ)
+        deleteat!(u, 1:δ)
     
-    # append!() could be used, but this is faster and prevents allocation.
-    for d = 1:δ
-        insert!(u, lᵤ - δ + d, 0)
+        # append!() could be used, but this is faster and prevents allocation.
+        for d = 1:δ
+            insert!(u, lᵤ - δ + d, 0)
+        end
+    
+    elseif δ < 0
+
+        deleteat!(u, (lᵤ - -δ + 1):lᵤ)
+    
+        # prepend!() could be used, but this is faster and prevents allocation.
+        for d = 1:(-δ)
+            insert!(u, d, 0)
+        end
+
     end
-    
-elseif δ < 0
-
-    deleteat!(u, (lᵤ - -δ + 1):lᵤ)
-    
-    # prepend!() could be used, but this is faster and prevents allocation.
-    for d = 1:(-δ)
-        insert!(u, d, 0)
-    end
-
-end
 
 end
 
@@ -364,21 +364,21 @@ end
 
 function alignsignals{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
-δ = finddelay(x, u)
+    δ = finddelay(x, u)
 
-y = shiftsignals(u, δ)
+    y = shiftsignals(u, δ)
 
-return y, δ
+    return y, δ
 
 end
 
 function alignsignals!{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
-δ = finddelay(x, u)
+    δ = finddelay(x, u)
 
-shiftsignals!(u, δ)
+    shiftsignals!(u, δ)
 
-return δ
+    return δ
 
 end
 
