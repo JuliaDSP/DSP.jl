@@ -297,9 +297,14 @@ end
 
 # Delay Utility Functions:
 
-# finddelay(): use peak of cross correlation from origin of time to calculate
-# time lag between two Arrays (signals)
+@doc """
+    finddelay{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+Estimate the delay of u with respect x by locating the peak of their 
+cross-correlation.
 
+The output delay will be positive when u is delayed with respect x, negative if 
+advanced, 0 otherwise.
+""" ->
 function finddelay{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
     sₓᵤ = xcorr(x, u)
@@ -314,9 +319,12 @@ function finddelay{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
 end
 
-# shiftsignals(): shift elements of an Array (signal) of a given amount of
-# samples
+@doc """
+    shiftsignals{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
+Shift elements of u by a given amount δ of samples.
 
+The shift is operated as follows: ``u[n] ⟼  y[n] = u[n + δ]``
+""" ->
 function shiftsignals{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
     lᵤ = length(u)
@@ -333,6 +341,10 @@ function shiftsignals{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
 end
 
+@doc """
+    shiftsignals!{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
+Mutating version of shiftsignals(): shift u of δ samples in-place.
+""" ->
 function shiftsignals!{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
     lᵤ = length(u)
@@ -359,9 +371,10 @@ function shiftsignals!{T <: Real}(u::AbstractArray{T, 1}, δ::Int)
 
 end
 
-# alignsignals(): use finddelay() and shiftsignals() to time align Arrays
-# (signals)
-
+@doc """
+    alignsignals{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+Use finddelay() and shiftsignals() to align u to x.
+""" ->
 function alignsignals{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
     δ = finddelay(x, u)
@@ -372,6 +385,10 @@ function alignsignals{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
 end
 
+@doc """
+    alignsignals!{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
+Mutating version of alignsignals(): align u to x in-place.
+""" ->
 function alignsignals!{T <: Real}(x::AbstractArray{T, 1}, u::AbstractArray{T, 1})
 
     δ = finddelay(x, u)
