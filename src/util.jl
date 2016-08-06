@@ -38,7 +38,7 @@ function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
         return m
     end
     for i = 2:size(m, dim)
-        d = slicedim(m, dim, i) - slicedim(m, dim, i-1)
+        d = slicedim(m, dim, i:i) - slicedim(m, dim, i-1:i-1)
         slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
         offset = floor((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
