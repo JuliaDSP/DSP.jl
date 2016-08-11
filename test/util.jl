@@ -141,6 +141,8 @@ x = [zeros(max_delay); 2 * (rand(4 * max_delay) - (1 / 2)); zeros(max_delay)]
 delays = 1:(max_delay - 1)
 x_delay = zeros(x)
 x_advance = zeros(x)
+temp_delay = zeros(x)
+temp_advance = zeros(x)
 
 for d in delays
 
@@ -148,18 +150,26 @@ for d in delays
     fill!(x_advance, 0)
 
     x_delay[(d + 1):end] = x[1:(end - d)]
+    temp_delay = copy(x_delay)
+    
     x_advance[1:(end - d)] = x[(d + 1):end]
+    temp_advance = copy(x_advance)
+    
+    @test shiftsignals(x, -d) == x_delay 
+    @test d == finddelay(x, x_delay)
+    @test (x, d) == alignsignals(x, x_delay)   
+    shiftsignals!(x_delay, d)
+    @test x == x_delay
+    g = alignsignals!(x, temp_delay)
+    @test (x, d) == (temp_delay, g)
 
     @test shiftsignals(x, d) == x_advance
-    @test d == finddelay(x, x_delay)
-    @test (x, d) == alignsignals(x, x_delay)
-    @test shiftsignals(x, -d) == x_delay
     @test -d == finddelay(x, x_advance)
     @test (x, -d) == alignsignals(x, x_advance)
     shiftsignals!(x_advance, -d)
     @test x == x_advance
-    shiftsignals!(x_delay, d)
-    @test x == x_delay
+    g = alignsignals!(x, temp_advance)
+    @test (x, -d) == (temp_advance, g)
 
 end
 
@@ -176,19 +186,27 @@ for d in delays
     fill!(x_advance, 0)
 
     x_delay[(d + 1):end] = x[1:(end - d)]
+    temp_delay = copy(x_delay)
+    
     x_advance[1:(end - d)] = x[(d + 1):end]
-
-    @test shiftsignals(x, d) == x_advance
+    temp_advance = copy(x_advance)
+    
+    @test shiftsignals(x, -d) == x_delay
     @test d == finddelay(x, x_delay)
     @test ([x[1:(end - d)]; zeros(d)], d) == alignsignals(x, x_delay)
-    @test shiftsignals(x, -d) == x_delay
+    shiftsignals!(x_delay, d)
+    @test [x[1:(end - d)]; zeros(d)] == x_delay
+    g = alignsignals!(x, temp_delay)
+    @test ([x[1:(end - d)]; zeros(d)], d) == (temp_delay, g)
+
+    @test shiftsignals(x, d) == x_advance
     @test -d == finddelay(x, x_advance)
     @test ([zeros(d); x[(d + 1):end]], -d) == alignsignals(x, x_advance)
     shiftsignals!(x_advance, -d)
     @test [zeros(d); x[(d + 1):end]] == x_advance
-    shiftsignals!(x_delay, d)
-    @test [x[1:(end - d)]; zeros(d)] == x_delay
-
+    g = alignsignals!(x, temp_advance)
+    @test ([zeros(d); x[(d + 1):end]], -d) == (temp_advance, g)
+    
 end
 
 # Test delay calculation for not identical signals. A FIR filter will supply
