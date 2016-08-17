@@ -1,5 +1,6 @@
 module Util
 using Compat
+import Compat.view
 import Base.Operators: *
 
 export  unwrap!,
@@ -38,7 +39,7 @@ function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
         return m
     end
     for i = 2:size(m, dim)
-        d = slicedim(m, dim, i) - slicedim(m, dim, i-1)
+        d = slicedim(m, dim, i:i) - slicedim(m, dim, i-1:i-1)
         slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
         offset = floor((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
@@ -62,7 +63,7 @@ function hilbert{T<:FFTW.fftwReal}(x::StridedVector{T})
     X = zeros(Complex{T}, N)
     @julia_newer_than v"0.4.0-dev+6068" begin
         p = plan_rfft(x)
-        A_mul_B!(sub(X, 1:(N >> 1)+1), p, x)
+        A_mul_B!(view(X, 1:(N >> 1)+1), p, x)
     end begin
         p = FFTW.Plan(x, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
         FFTW.execute(T, p.plan)
@@ -82,7 +83,7 @@ function hilbert{T<:Real}(x::AbstractArray{T})
 
     @julia_newer_than v"0.4.0-dev+6068" begin
         p1 = plan_rfft(xc)
-        Xsub = sub(X, 1:(N >> 1)+1)
+        Xsub = view(X, 1:(N >> 1)+1)
         p2 = plan_bfft!(X)
     end begin
         p1 = FFTW.Plan(xc, X, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
