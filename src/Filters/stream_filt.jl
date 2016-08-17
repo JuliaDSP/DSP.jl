@@ -662,6 +662,30 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     filt(self, xPadded)
 end
 
+function resample(ndx::AbstractArray, rate::Real, h::Vector, dim::Int)
+    # Get range for all other dims
+    Rpre = CartesianRange(size(ndx)[1:dim-1])
+    Rpost = CartesianRange(size(ndx)[dim+1:end])
+    
+    # Create output array
+    szout = collect(size(ndx))
+    szout[dim] = floor(Int, szout[dim] * rate)
+    out = zeros(szout...)
+    
+    # Resample over chosen dim
+    for Ipost in Rpost
+       for Ipre in Rpre
+            out[Ipre, :, Ipost] = resample(vec(ndx[Ipre, :, Ipost]), rate, h)
+       end
+    end
+    out
+end
+
+function resample(ndx::AbstractArray, rate::Real, dim::Int)
+    h = resample_filter(rate)
+    resample(x, rate, h, dim)
+end
+
 function resample(x::AbstractVector, rate::Real)
     h = resample_filter(rate)
     resample(x, rate, h)
