@@ -267,7 +267,7 @@ end
 #  4
 #  5
 #  6
-function shiftin!{T}(a::Vector{T}, b::Vector{T})
+function shiftin!{T}(a::AbstractVector{T}, b::AbstractVector{T})
     aLen = length(a)
     bLen = length(b)
 
