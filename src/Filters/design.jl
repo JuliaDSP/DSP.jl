@@ -404,6 +404,103 @@ function iirnotch(w::Real, bandwidth::Real; fs=2)
     Biquad(b, -2b*cosw0, b, -2b*cosw0, 2b-1)
 end
 
+# Design of biquad EQ filters based on formula from the book
+# DAFx, Udo Zoelzer, Wiley 2011
+# Available filter types are: 'lowpass', 'highpass, 'bandpass', 'bandstop',
+#                             'peak', 'highshelf', 'lowshelf'
+function iirEQ(filttype::AbstractString, w::Real, gain::Real, Q::Real=1.0/sqrt(2.0), fs::Real=2)
+    w = normalize_freq(w, fs)
+
+    K = tan(pi * w);
+    N = K*K*Q + K + Q;
+    V0 = 10^(gain/20)
+    a1 = (2*Q*(K*K-1)) / N;
+    a2 = (K*K*Q-K+Q) / N;
+
+    if filttype == "lowpass"
+        b0 = K*K*Q / N * V0
+        b1 = 2*K*K*Q / N * V0
+        b2 = b0
+    elseif filttype == "highpass"
+        b0 = Q / N * V0
+        b1 = -2*Q / N * V0
+        b2 = b0
+    elseif filttype == "bandpass"
+        b0 = K / N * V0
+        b1 = 0
+        b2 = -b0
+    elseif filttype == "bandstop"
+        b0 = param*(1+K*K) / N
+        b1 = 2*param*(K*K-1) / N
+        b2 = b0
+    elseif filttype == "peak"
+        K2 = K*K
+
+        if gain<=0
+            denom = 1 + 1/(V0*Q)*K + K2
+            b0 = (1 + 1/Q*K + K2) / denom
+            b1 = 2*(K2-1) / denom
+            b2 = (1 - 1/Q*K + K2) / denom
+
+            a1 = 2*(K2 - 1) / denom
+            a2 = (1 - 1/(V0*Q)*K + K2) / denom
+        else
+            denom = (1 + 1/Q*K + K2)
+            b0 = (1 + V0/Q*K + K2) / denom
+            b1 = 2*(K2-1) / denom
+            b2 = (1 - V0/Q*K + K2) / denom
+
+            a1 = 2*(K2 - 1) / denom
+            a2 = (1 - 1/Q*K + K2) / denom
+        end
+    elseif filttype == "highshelf"
+        K2 = K*K
+
+        if gain<=0
+            denom = (1 + sqrt(2*V0)*K + V0*K2);
+            b0 = V0*(1 + sqrt(2)*K + K2) / denom;
+            b1 = 2*V0*(K2-1) / denom;
+            b2 = V0*(1 - sqrt(2)*K + K2) / denom;
+
+            a1 = 2*(V0*K2 - 1) / denom;
+            a2 = (1 - sqrt(2*V0)*K + V0*K2) / denom;
+        else
+            denom = (1 + sqrt(2)*K + K2);
+            b0 = (V0 + sqrt(2*V0)*K + K2) / denom;
+            b1 = 2*(K2-V0) / denom;
+            b2 = (V0 - sqrt(2*V0)*K + K2) / denom;
+
+            a1 = 2*(K2 - 1) / denom;
+            a2 = (1 - sqrt(2)*K + K2) / denom;
+        end
+    elseif filttype == "lowshelf"
+        K2 = K*K;
+        V0 = 10^(gain/20);
+
+        if gain<=0
+            denom = (V0 + sqrt(2*V0)*K + K2);
+            b0 = V0*(1 + sqrt(2)*K + K2) / denom;
+            b1 = 2*V0*(K2-1) / denom;
+            b2 = V0*(1 - sqrt(2)*K + K2) / denom;
+
+            a1 = 2*(K2 - V0) / denom;
+            a2 = (V0 - sqrt(2*V0)*K + K2) / denom;
+        else
+            denom = (1 + sqrt(2)*K + K2);
+            b0 = (1 + sqrt(2*V0)*K + V0*K2) / denom;
+            b1 = 2*(V0*K2-1) / denom;
+            b2 = (1 - sqrt(2*V0)*K + V0*K2) / denom;
+
+            a1 = 2*(K2 - 1) / denom;
+            a2 = (1 - sqrt(2)*K + K2) / denom;
+        end
+    else
+        throw(ArgumentError("Unknown filter type: $filttype"))
+    end
+
+    Biquad(b0, b1, b2, a1, a2)
+end
+
 #
 # FIR filter design
 #
