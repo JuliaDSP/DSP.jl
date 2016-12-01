@@ -24,6 +24,7 @@ type FIRInterpolator{T} <: FIRKernel{T}
     tapsPerϕ::Int
     inputDeficit::Int
     ϕIdx::Int
+	hLen::Int														# added this
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
@@ -32,7 +33,9 @@ function FIRInterpolator(h::Vector, interpolation::Integer)
     interpolation = interpolation
     inputDeficit  = 1
     ϕIdx          = 1
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx)
+	hLen		  = length(h)									# added this
+	
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx, 	hLen)
 end
 
 
@@ -61,6 +64,7 @@ type FIRRational{T}  <: FIRKernel{T}
     tapsPerϕ::Int
     ϕIdx::Int
     inputDeficit::Int
+	hLen::Int														#### added this
 end
 
 function FIRRational(h::Vector, ratio::Rational)
@@ -69,7 +73,8 @@ function FIRRational(h::Vector, ratio::Rational)
     ϕIdxStepSize = mod(den(ratio), num(ratio))
     ϕIdx         = 1
     inputDeficit = 1
-    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit)
+	hLen 		 = length(h)										#### added this
+    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
 end
 
 
@@ -180,8 +185,8 @@ end
 function setphase!(kernel::@compat(Union{FIRInterpolator, FIRRational}), ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
-    kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕIdx = floor(ϕ*(kernel.Nϕ-1.0) + 1.0)
+	kernel.inputDeficit += round(Int, xThrowaway)
+	kernel.ϕIdx = round(ϕ*(kernel.Nϕ) + 1.0)						#removed the -1 and changed floor to round
     nothing
 end
 
@@ -189,8 +194,8 @@ function setphase!(kernel::FIRArbitrary, ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
-    kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
+    kernel.ϕAccumulator = ϕ*(kernel.Nϕ) + 1.0
+    kernel.ϕIdx         = round(kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
@@ -334,6 +339,7 @@ end
 function inputlength(kernel::FIRRational, outputlength::Integer)
     inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
     inLen += kernel.inputDeficit - 1
+
 end
 
 # TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
@@ -352,12 +358,13 @@ end
 #
 
 function timedelay(kernel::@compat(Union{FIRRational, FIRInterpolator, FIRArbitrary}))
-    (kernel.tapsPerϕ - 1/kernel.Nϕ)/2
+    (kernel.hLen - 1)/(2.0*kernel.Nϕ)													# added this
 end
 
 function timedelay(kernel::@compat(Union{FIRStandard, FIRDecimator}))
-    (kernel.hLen - 1)/2
+    (kernel.hLen - 1)/2.0					
 end
+
 
 function timedelay(self::FIRFilter)
     timedelay(self.kernel)
@@ -644,7 +651,7 @@ end
 
 function resample(x::AbstractVector, rate::Real, h::Vector)
     self = FIRFilter(h, rate)
-
+			
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
@@ -652,8 +659,8 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     #   a) adjust the input samples to skip over before producing and output (integer part of τ)
     #   b) set the ϕ index of the PFB (fractional part of τ)
     setphase!(self, τ)
-
-    # Calculate the number of 0's required so that w
+	
+    # Calculate the number of 0's required
     outLen      = ceil(Int, length(x)*rate)
     reqInlen    = inputlength(self, outLen)
     reqZerosLen = reqInlen - length(x)
