@@ -507,7 +507,7 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
     # Otherwise the missing taps will be filled with 0.
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 	
-	# ensure that the filter is an odd length
+	# Ensure that the filter is an odd length
 	if (rem(hLen,2.0) == 0) 
 		hLen += 1
 	end
@@ -519,8 +519,8 @@ end
 
 # Compute FIR coefficients necessary for rational rate resampling
 function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
-    Nϕ          = num(rate) 															# interpolation
-    decimation  = den(rate)																# decimation
+    Nϕ          = num(rate)
+    decimation  = den(rate)
     f_nyq       = min(1/Nϕ, 1/decimation)
     cutoff      = f_nyq * rel_bw
     trans_width = cutoff * 0.2
@@ -532,7 +532,7 @@ function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
     # Otherwise the missing taps will be filled with 0.
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
-	# ensure that the filter is an odd length
+	# Ensure that the filter is an odd length
 	if (rem(hLen,2.0) == 0) 
 		hLen += 1
 	end
