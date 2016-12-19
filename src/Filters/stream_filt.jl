@@ -24,7 +24,7 @@ type FIRInterpolator{T} <: FIRKernel{T}
     tapsPerϕ::Int
     inputDeficit::Int
     ϕIdx::Int
-	hLen::Int
+    hLen::Int
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
@@ -33,9 +33,9 @@ function FIRInterpolator(h::Vector, interpolation::Integer)
     interpolation = interpolation
     inputDeficit  = 1
     ϕIdx          = 1
-	hLen		  = length(h)
-	
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx, 	hLen)
+    hLen          = length(h)
+    
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx,   hLen)
 end
 
 
@@ -64,7 +64,7 @@ type FIRRational{T}  <: FIRKernel{T}
     tapsPerϕ::Int
     ϕIdx::Int
     inputDeficit::Int
-	hLen::Int
+    hLen::Int
 end
 
 function FIRRational(h::Vector, ratio::Rational)
@@ -73,7 +73,7 @@ function FIRRational(h::Vector, ratio::Rational)
     ϕIdxStepSize = mod(den(ratio), num(ratio))
     ϕIdx         = 1
     inputDeficit = 1
-	hLen 		 = length(h)
+    hLen         = length(h)
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
 end
 
@@ -101,7 +101,7 @@ type FIRArbitrary{T} <: FIRKernel{T}
     Δ::Float64
     inputDeficit::Int
     xIdx::Int
-	hLen::Int
+    hLen::Int
 end
 
 function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
@@ -115,7 +115,7 @@ function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     Δ            = Nϕ/rate
     inputDeficit = 1
     xIdx         = 1
-	hLen		 = length(h)
+    hLen         = length(h)
     FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx, hLen)
 end
 
@@ -187,8 +187,8 @@ end
 function setphase!(kernel::@compat(Union{FIRInterpolator, FIRRational}), ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
-	kernel.inputDeficit += round(Int, xThrowaway)
-	kernel.ϕIdx = round(ϕ*(kernel.Nϕ) + 1.0)
+    kernel.inputDeficit += round(Int, xThrowaway)
+    kernel.ϕIdx = round(ϕ*(kernel.Nϕ) + 1.0)
     nothing
 end
 
@@ -364,7 +364,7 @@ function timedelay(kernel::@compat(Union{FIRRational, FIRInterpolator, FIRArbitr
 end
 
 function timedelay(kernel::@compat(Union{FIRStandard, FIRDecimator}))
-    (kernel.hLen - 1)/2.0					
+    (kernel.hLen - 1)/2
 end
 
 
@@ -653,7 +653,7 @@ end
 
 function resample(x::AbstractVector, rate::Real, h::Vector)
     self = FIRFilter(h, rate)
-			
+
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
@@ -661,7 +661,7 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     #   a) adjust the input samples to skip over before producing and output (integer part of τ)
     #   b) set the ϕ index of the PFB (fractional part of τ)
     setphase!(self, τ)
-	
+
     # Calculate the number of 0's required
     outLen      = ceil(Int, length(x)*rate)
     reqInlen    = inputlength(self, outLen)

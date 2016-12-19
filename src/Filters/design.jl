@@ -506,12 +506,12 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
     # Round the number of taps up to a multiple of Nϕ.
     # Otherwise the missing taps will be filled with 0.
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
-	
-	# Ensure that the filter is an odd length
-	if (rem(hLen,2.0) == 0) 
-		hLen += 1
-	end
-	
+
+    # Ensure that the filter is an odd length
+    if (iseven(hLen)) 
+        hLen += 1
+    end
+
     # Design filter
     h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
     scale!(h, Nϕ)
@@ -532,11 +532,11 @@ function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
     # Otherwise the missing taps will be filled with 0.
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
-	# Ensure that the filter is an odd length
-	if (rem(hLen,2.0) == 0) 
-		hLen += 1
-	end
-		
+    # Ensure that the filter is an odd length
+    if (iseven(hLen)) 
+        hLen += 1
+    end
+        
     # Design filter
     h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
     scale!(h, Nϕ)
