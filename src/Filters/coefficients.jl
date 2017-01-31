@@ -285,7 +285,7 @@ function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
 
     # Allocate memory for biquads
     T = promote_type(realtype(Z), realtype(P))
-    biquads = Array(Biquad{T}, (n >> 1)+(n & 1))
+    biquads = Array{Biquad{T}}((n >> 1)+(n & 1))
 
     # Build second-order sections in reverse
     # First do complete pairs

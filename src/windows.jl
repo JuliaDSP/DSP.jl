@@ -152,17 +152,17 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
     w = nw/size(A, 1)
 
     # Compute coefficients
-    seq = Array(Float64, size(A, 1))
+    seq = Array{Float64}(size(A, 1))
     seq[1] = 1.0
     for i = 1:size(A, 1)-1
         seq[i+1] = 2 * sinc(2w*i)
     end
 
-    q = Array(Float64, size(A, 2))
+    q = Array{Float64}(size(A, 2))
     nfft = nextfastfft(2*size(A, 1)-1)
 
-    tmp1 = Array(Float64, nfft)
-    tmp2 = Array(Complex{Float64}, nfft >> 1 + 1)
+    tmp1 = Array{Float64}(nfft)
+    tmp2 = Array{Complex{Float64}}(nfft >> 1 + 1)
     @julia_newer_than v"0.4.0-dev+6068" begin
         p1 = plan_rfft(tmp1)
         p2 = plan_brfft(tmp2, nfft)

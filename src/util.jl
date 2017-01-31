@@ -41,7 +41,7 @@ function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
     for i = 2:size(m, dim)
         d = slicedim(m, dim, i:i) - slicedim(m, dim, i-1:i-1)
         slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
-        offset = floor((d.+thresh) / (range)) * range
+        offset = floor.((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
 #        println("typeof(offset): ", typeof(offset))
 #        println("typeof(m[slice_tuple...]): ", typeof(m[slice_tuple...]))
@@ -77,8 +77,8 @@ hilbert{T<:Real}(x::AbstractVector{T}) = hilbert(convert(Vector{fftintype(T)}, x
 
 function hilbert{T<:Real}(x::AbstractArray{T})
     N = size(x, 1)
-    xc = Array(fftintype(T), N)
-    X = Array(fftouttype(T), N)
+    xc = Array{fftintype(T)}(N)
+    X = Array{fftouttype(T)}(N)
     out = similar(x, fftouttype(T))
 
     @julia_newer_than v"0.4.0-dev+6068" begin
@@ -189,9 +189,9 @@ pow2db(a::Real) = 10*log10(a)
 amp2db(a::Real) = 20*log10(a)
 
 # root mean square
-rms{T<:Number}(s::AbstractArray{T}) = sqrt(sumabs2(s)/length(s))
+rms{T<:Number}(s::AbstractArray{T}) = sqrt(sum(abs2, s)/length(s))
 # root mean square of fft of signal
-rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sumabs2(f))/length(f)
+rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sum(abs2, f))/length(f)
 
 
 

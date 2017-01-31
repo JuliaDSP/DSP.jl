@@ -27,7 +27,7 @@ end
 
 function phasez(filter::FilterCoefficients, w = linspace(0, π, 250))
     h = freqz(filter, w)
-    unwrap(-atan2(imag(h), real(h)))
+    unwrap(-atan2.(imag(h), real(h)))
 end
 
 

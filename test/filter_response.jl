@@ -26,10 +26,10 @@ a = conv(a1, a2)
 
 #=w     = linspace(0, 2*pi, 200)=#        # Does not produce same values as matlab
 h     = freqz(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
-h_abs = convert(Array{Float64}, abs(h))
+h_abs = convert(Array{Float64}, abs.(h))
 
 # Test
-@test_approx_eq h_abs matlab_abs
+@test h_abs ≈ matlab_abs
 
 #=using Winston=#
 #=figure = plot(matlab_w/pi, 20*log10(h_abs))=#
@@ -60,23 +60,23 @@ w = matlab_resp[:,1]
 
 #Impulse response
 impz_matlab = matlab_resp[:,2]
-@test_approx_eq impz(df, 512) impz_matlab
+@test impz(df, 512) ≈ impz_matlab
 
 #Step response
 stepz_matlab = matlab_resp[:,3]
-@test_approx_eq stepz(df, 512) stepz_matlab
+@test stepz(df, 512) ≈ stepz_matlab
 
 h_matlab = matlab_resp[:,4]
-@test_approx_eq abs(freqz(df, w)) h_matlab
+@test abs.(freqz(df, w)) ≈ h_matlab
 
 phi_matlab = matlab_resp[:,5]
-@test_approx_eq phasez(df, w) phi_matlab
+@test phasez(df, w) ≈ phi_matlab
 
 
 # Test diffent versions of the functions
 @test freqz(df) == freqz(df, linspace(0, pi, 250))
 @test phasez(df) == phasez(df, linspace(0, pi, 250))
-@test_approx_eq(cumsum(impz(df)), stepz(df))
+@test cumsum(impz(df)) ≈ stepz(df)
 
 #######################################
 #
@@ -99,7 +99,7 @@ a = conv(a1, a2)
 fs    = 8192
 hz    = linspace(0, fs, 200)
 h     = freqz(PolynomialRatio(b, a), hz, fs)
-h_abs = convert(Array{Float64}, abs(h))
+h_abs = convert(Array{Float64}, abs.(h))
 
 #=using Winston=#
 #=figure = plot(hz, 20*log10(h_abs))=#
@@ -124,8 +124,8 @@ b = [0.2, 0.3, 1.0]
 w = logspace(-1, 1, 50)
 
 h        = freqs(PolynomialRatio(b, a), w)
-mag      = convert(Array{Float64}, abs(h))
-phasedeg = (180/pi)*convert(Array{Float64}, angle(h))
+mag      = convert(Array{Float64}, abs.(h))
+phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
 # Matlab
 freqs_eg1_w_mag_phasedeg = readdlm(joinpath(dirname(@__FILE__), "data", "freqs-eg1.txt"),'\t')
@@ -134,9 +134,9 @@ matlab_mag      = freqs_eg1_w_mag_phasedeg[:,2]
 matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 
 # Test
-@test_approx_eq w matlab_w
-@test_approx_eq mag matlab_mag
-@test_approx_eq phasedeg matlab_phasedeg
+@test w ≈ matlab_w
+@test mag ≈ matlab_mag
+@test phasedeg ≈ matlab_phasedeg
 
 #=using Winston=#
 #=figure = loglog(w, mag)=#
@@ -171,8 +171,8 @@ fs = 8192
 hz = linspace(0, fs, 50)
 
 h        = freqs(PolynomialRatio(b, a), hz, fs)
-mag      = convert(Array{Float64}, abs(h))
-phasedeg = (180/pi)*convert(Array{Float64}, angle(h))
+mag      = convert(Array{Float64}, abs.(h))
+phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
 #=using Winston=#
 #=figure = semilogx(hz, mag)=#

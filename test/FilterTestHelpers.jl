@@ -15,24 +15,24 @@ end
 @compat function tffilter_eq(f1, f2)
     b1, a1 = (coefb(f1), coefa(f1))
     b2, a2 = (coefb(f2), coefa(f2))
-    @test_approx_eq map(Float64, b1) map(Float64, b2)
-    @test_approx_eq map(Float64, a1) map(Float64, a2)
+    @test map(Float64, b1) ≈ map(Float64, b2)
+    @test map(Float64, a1) ≈ map(Float64, a2)
 end
 
 @compat function zpkfilter_eq(f1, f2)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test_approx_eq map(Complex128, sort(f1.z, lt=lt)) map(Complex128, sort(f2.z, lt=lt))
+        @test map(Complex128, sort(f1.z, lt=lt)) ≈ map(Complex128, sort(f2.z, lt=lt))
     end
-    @test_approx_eq map(Complex128, sort(f1.p, lt=lt)) map(Complex128, sort(f2.p, lt=lt))
-    @test_approx_eq map(Float64, f1.k) map(Float64, f2.k)
+    @test map(Complex128, sort(f1.p, lt=lt)) ≈ map(Complex128, sort(f2.p, lt=lt))
+    @test map(Float64, f1.k) ≈ map(Float64, f2.k)
 end
 
 @compat function zpkfilter_eq(f1, f2, eps)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test_approx_eq_eps map(Complex128, sort(f1.z, lt=lt)) map(Complex128, sort(f2.z, lt=lt)) eps
+        @test ≈(map(Complex128, sort(f1.z, lt=lt)), map(Complex128, sort(f2.z, lt=lt)), atol=eps)
     end
-    @test_approx_eq_eps map(Complex128, sort(f1.p, lt=lt)) map(Complex128, sort(f2.p, lt=lt)) eps
-    @test_approx_eq_eps map(Float64, f1.k) map(Float64, f2.k) eps
+    @test ≈(map(Complex128, sort(f1.p, lt=lt)), map(Complex128, sort(f2.p, lt=lt)), atol=eps)
+    @test ≈(map(Float64, f1.k), map(Float64, f2.k), atol=eps)
 end
 
 loss(x::Real, y::Real) = abs(float(x) - float(y))/eps(float(x))
@@ -64,24 +64,24 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
     accurate_z, accurate_p = sort(accurate_f.z, lt=lt), sort(accurate_f.p, lt=lt)
     if !isempty(z1) || !isempty(z2) || !isempty(accurate_z)
         if eps != nothing
-            @test_approx_eq_eps z1 accurate_z eps
-            @test_approx_eq_eps z2 accurate_z eps
+            @test ≈(z1, accurate_z, atol=eps)
+            @test ≈(z2, accurate_z, atol=eps)
         else
-            @test_approx_eq z1 accurate_z
-            @test_approx_eq z2 accurate_z
+            @test z1 ≈ accurate_z
+            @test z2 ≈ accurate_z
         end
         accuracy_check(loss(z1, accurate_z), loss(z2, accurate_z), "z", relerr)
     end
     if eps != nothing
-        @test_approx_eq_eps p1 accurate_p eps
-        @test_approx_eq_eps p2 accurate_p eps
-        @test_approx_eq_eps f1.k accurate_f.k eps
-        @test_approx_eq_eps f2.k accurate_f.k eps
+        @test ≈(p1, accurate_p, atol=eps)
+        @test ≈(p2, accurate_p, atol=eps)
+        @test ≈(f1.k, accurate_f.k, atol=eps)
+        @test ≈(f2.k, accurate_f.k, atol=eps)
     else
-        @test_approx_eq p1 accurate_p
-        @test_approx_eq p2 accurate_p
-        @test_approx_eq f1.k accurate_f.k
-        @test_approx_eq f2.k accurate_f.k
+        @test p1 ≈ accurate_p
+        @test p2 ≈ accurate_p
+        @test f1.k ≈ accurate_f.k
+        @test f2.k ≈ accurate_f.k
     end
     accuracy_check(loss(p1, accurate_p), loss(p2, accurate_p), "p", relerr)
     accuracy_check(loss(f1.k, accurate_f.k), loss(f2.k, accurate_f.k), "k", relerr)
