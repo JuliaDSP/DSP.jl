@@ -3,40 +3,40 @@ using DSP, Base.Test
 # Test dpss against dpss computed with MATLAB
 d1 = dpss(128, 4)
 d2 = readdlm(joinpath(dirname(@__FILE__), "data", "dpss128,4.txt"), '\t')
-@test_approx_eq d1 d2
+@test d1 ≈ d2
 
 # Test dpsseig against dpss from MATLAB
 lambda = [0.9999999997159923,0.9999999731146645,0.9999988168667646,0.9999680890685374,0.9994167543397652,0.9925560207018469,0.9368556668429153]
-@test_approx_eq dpsseig(d1, 4) lambda
+@test dpsseig(d1, 4) ≈ lambda
 
 # Checking Hanning, Hamming, Triangular, Bartlett, Bartlett-Hann, and Blackman windows against values computed with MATLAB. Lanczos and cosine are not checked since there's no standard MATLAB implementation.
 hanning_jl = hanning(128)
 hanning_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hanning128.txt"), '\t')
-@test_approx_eq hanning_jl hanning_ml
+@test hanning_jl ≈ hanning_ml
 
 hamming_jl = hamming(128)
 hamming_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hamming128.txt"), '\t')
-@test_approx_eq hamming_jl hamming_ml
+@test hamming_jl ≈ hamming_ml
 
 triang_jl = triang(128)
 triang_ml = readdlm(joinpath(dirname(@__FILE__), "data", "triang128.txt"), '\t')
-@test_approx_eq triang_jl triang_ml
+@test triang_jl ≈ triang_ml
 
 bartlett_jl = bartlett(128)
 bartlett_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett128.txt"), '\t')
-@test_approx_eq bartlett_jl bartlett_ml
+@test bartlett_jl ≈ bartlett_ml
 
 barthann_jl = bartlett_hann(128)
 barthann_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett_hann128.txt"), '\t')
-@test_approx_eq bartlett_jl bartlett_ml
+@test bartlett_jl ≈ bartlett_ml
 
 blackman_jl = blackman(128)
 blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
-@test_approx_eq blackman_jl blackman_ml
+@test blackman_jl ≈ blackman_ml
 
 kaiser_jl = kaiser(128, 0.4/π)
 kaiser_ml = readdlm(joinpath(dirname(@__FILE__), "data", "kaiser128,0.4.txt"), '\t')
-@test_approx_eq kaiser_jl kaiser_ml
+@test kaiser_jl ≈ kaiser_ml
 
 
 # make sure return types are correct
@@ -54,8 +54,7 @@ end
 # tensor product windows
 w = hamming(15)
 w2 = hamming(20)
-@test_approx_eq w*w2' hamming((15,20))
+@test w*w2' ≈ hamming((15,20))
 w = tukey(10, 0.4)
 w2 = tukey(4, 0.4)
-@test_approx_eq w*w2' tukey((10,4), 0.4)
-
+@test w*w2' ≈ tukey((10,4), 0.4)

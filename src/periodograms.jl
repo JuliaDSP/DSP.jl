@@ -167,12 +167,12 @@ end
 compute_window(::@compat(Void), n::Int) = (nothing, n)
 function compute_window(window::Function, n::Int)
     win = window(n)::Vector{Float64}
-    norm2 = sumabs2(win)
+    norm2 = sum(abs2, win)
     (win, norm2)
 end
 function compute_window(window::AbstractVector, n::Int)
     length(window) == n || error("length of window must match input")
-    (window, sumabs2(window))
+    (window, sum(abs2, window))
 end
 
 ## PERIODOGRAMS
@@ -298,7 +298,7 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
-    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         @julia_newer_than(v"0.4.0-dev+6068",
@@ -323,12 +323,12 @@ function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Rea
     else
         size(window, 1) == length(s) ||
             error(DimensionMismatch("length of signal $(length(s)) must match first dimension of window $(size(window,1))"))
-        r = fs*sumabs2(window)
+        r = fs*sum(abs2, window)
     end
 
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     input = zeros(fftintype(T), nfft)
-    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
@@ -348,6 +348,9 @@ end
 
 if !isdefined(Base, :FloatRange)
     typealias FloatRange{T} Range{T}
+end
+if isdefined(Base, :StepRangeLen)
+    typealias FloatRange{T} StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
 end
 immutable Spectrogram{T,F<:@compat(Union{Frequencies,Range})} <: TFR{T}
     power::Matrix{T}
@@ -384,7 +387,7 @@ function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))
-    tmp = Array(fftouttype(T), T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)

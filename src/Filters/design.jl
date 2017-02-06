@@ -101,7 +101,7 @@ Chebyshev2(n::Integer, ripple::Real) = Chebyshev2(Float64, n, ripple)
 # Compute Landen sequence for evaluation of elliptic functions
 function landen(k::Real)
     niter = 7
-    kn = Array(typeof(k), niter)
+    kn = Array{typeof(k)}(niter)
     # Eq. (50)
     for i = 1:niter
         kn[i] = k = abs2(k/(1+sqrt(1-abs2(k))))
@@ -171,8 +171,8 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
     # Eq. (65)
     v0 = -im/n*asne(im/εp, k1)
 
-    z = Array(Complex{T}, 2*div(n, 2))
-    p = Array(Complex{T}, n)
+    z = Array{Complex{T}}(2*div(n, 2))
+    p = Array{Complex{T}}(n)
     gain = one(T)
     for i = 1:div(n, 2)
         # Eq. (43)
@@ -314,8 +314,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
     nz = length(z)
     np = length(p)
     npairs = nz+np-min(nz, np)
-    newz = Array(Base.promote_eltype(z, p), 2*npairs)
-    newp = Array(Base.promote_eltype(z, p), 2*npairs)
+    newz = Array{Base.promote_eltype(z, p)}(2*npairs)
+    newp = Array{Base.promote_eltype(z, p)}(2*npairs)
 
     num = one(eltype(z))
     for i = 1:nz
@@ -362,7 +362,7 @@ function bilinear{Z,P,K}(f::ZeroPoleGain{Z,P,K}, fs::Real)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
 
     ptype = typeof(0 + zero(P)/fs)
-    p = Array(typeof(zero(P)/fs), length(f.p))
+    p = Array{typeof(zero(P)/fs)}(length(f.p))
 
     num = one(one(fs) - one(Z))
     for i = 1:length(f.z)
@@ -514,8 +514,8 @@ end
 
 # Compute FIR coefficients necessary for rational rate resampling
 function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
-    Nϕ          = num(rate)
-    decimation  = den(rate)
+    Nϕ          = numerator(rate)
+    decimation  = denominator(rate)
     f_nyq       = min(1/Nϕ, 1/decimation)
     cutoff      = f_nyq * rel_bw
     trans_width = cutoff * 0.2

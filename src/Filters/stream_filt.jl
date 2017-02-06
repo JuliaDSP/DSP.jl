@@ -64,9 +64,9 @@ type FIRRational{T}  <: FIRKernel{T}
 end
 
 function FIRRational(h::Vector, ratio::Rational)
-    pfb          = taps2pfb(h, num(ratio))
+    pfb          = taps2pfb(h, numerator(ratio))
     tapsPerϕ, Nϕ = size(pfb)
-    ϕIdxStepSize = mod(den(ratio), num(ratio))
+    ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
     ϕIdx         = 1
     inputDeficit = 1
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit)
@@ -123,8 +123,8 @@ end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
 function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
-    interpolation = num(resampleRatio)
-    decimation    = den(resampleRatio)
+    interpolation = numerator(resampleRatio)
+    decimation    = denominator(resampleRatio)
     historyLen    = 0
 
     if resampleRatio == 1                                     # single-rate
@@ -253,7 +253,7 @@ function taps2pfb{T}(h::Vector{T}, Nϕ::Integer)
     hLen     = length(h)
     tapsPerϕ = ceil(Int, hLen/Nϕ)
     pfbSize  = tapsPerϕ * Nϕ
-    pfb      = Array(T, tapsPerϕ, Nϕ)
+    pfb      = Array{T}(tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
@@ -274,8 +274,8 @@ end
 #
 
 function outputlength(inputlength::Integer, ratio::Rational, initialϕ::Integer)
-    interpolation = num(ratio)
-    decimation    = den(ratio)
+    interpolation = numerator(ratio)
+    decimation    = denominator(ratio)
     outLen        = ((inputlength * interpolation) - initialϕ + 1) / decimation
     ceil(Int, outLen)
 end
@@ -311,8 +311,8 @@ end
 #
 
 function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
-    interpolation = num(ratio)
-    decimation    = den(ratio)
+    interpolation = numerator(ratio)
+    decimation    = denominator(ratio)
     inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
     floor(Int, inLen)
 end
@@ -391,7 +391,7 @@ end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
-    buffer         = Array(promote_type(Th,Tx), bufLen)
+    buffer         = Array{promote_type(Th,Tx)}(bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -442,7 +442,7 @@ end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
-    buffer         = Array(promote_type(Th,Tx), bufLen)
+    buffer         = Array{promote_type(Th,Tx)}(bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -471,8 +471,8 @@ function Base.filt!{Tb,Th,Tx}(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRat
     outLen = outputlength(xLen-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
     bufLen >= outLen || error("buffer is too small")
 
-    interpolation       = num(kernel.ratio)
-    decimation          = den(kernel.ratio)
+    interpolation       = numerator(kernel.ratio)
+    decimation          = denominator(kernel.ratio)
     inputIdx            = kernel.inputDeficit
 
     while inputIdx <= xLen
@@ -498,7 +498,7 @@ end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
-    buffer         = Array(promote_type(Th,Tx), bufLen)
+    buffer         = Array{promote_type(Th,Tx)}(bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -546,7 +546,7 @@ end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
-    buffer         = Array(promote_type(Th,Tx), bufLen)
+    buffer         = Array{promote_type(Th,Tx)}(bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -617,7 +617,7 @@ end
 
 function Base.filt{Th,Tx}(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx})
     bufLen         = outputlength(self, length(x))
-    buffer         = Array(promote_type(Th,Tx), bufLen)
+    buffer         = Array{promote_type(Th,Tx)}(bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)

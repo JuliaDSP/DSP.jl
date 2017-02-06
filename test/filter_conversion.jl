@@ -35,7 +35,7 @@ m_sos_full = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   7.1961394067477846e-01   1.7609890829003397e-01   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_full sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, p, k)))
+@test m_sos_full ≈ sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, p, k)))
 
 # And with half of the zeros removed
 # MATLAB:
@@ -53,7 +53,7 @@ m_sos_half = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   2.1275529126166826e-01   1.1404343849064294e-02   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_half sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(zp, p, k)))
+@test m_sos_half ≈ sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(zp, p, k)))
 
 # And with an extra real pole
 pp = [p; 0.7]
@@ -75,13 +75,13 @@ m_sos_extra = [
    1.0000000000000000e+00  -1.5349884628162233e-01   3.2015548658469395e-01   1.0000000000000000e+00   3.0103979752048204e-01   9.0127546185805940e-01
    1.0000000000000000e+00   7.1961394067477846e-01   1.7609890829003397e-01   1.0000000000000000e+00   1.8923598009282561e+00   9.4902172971582510e-01
 ]
-@test_approx_eq m_sos_extra sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, pp, k)))
+@test m_sos_extra ≈ sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(z, pp, k)))
 
 # And with only poles (no zeros)
 m_sos_only_poles = copy(m_sos_full)
 m_sos_only_poles[:, 1:2] = 0
 m_sos_only_poles[:, 3] = 1
-@test_approx_eq m_sos_only_poles sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(Float64[], p, k)))
+@test m_sos_only_poles ≈ sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(Float64[], p, k)))
 
 # Test that a filter with repeated zeros is handled properly
 # MATLAB:
@@ -94,8 +94,8 @@ m_sos_butterworth_bs = [
    1.0000000000000000e+00  -1.9021224191804869e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.8992956433548462e+00   9.9559721515078736e-01
 ]
 f = convert(SecondOrderSections, digitalfilter(Bandstop(49.5, 50.5; fs=1000), DSP.Butterworth(2)))
-@test_approx_eq m_sos_butterworth_bs sosfilter_to_matrix(f)
-@test_approx_eq f.g 0.995566972017647
+@test m_sos_butterworth_bs ≈ sosfilter_to_matrix(f)
+@test f.g ≈ 0.995566972017647
 
 # Test that a numerically challenging filter (high order, clustered
 # roots) has acceptable errors in its coefficients after conversion to
@@ -136,24 +136,24 @@ x = randn(100)
 f1 = digitalfilter(Lowpass(0.3), Butterworth(2))
 y = filt(f1, x)
 for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
-    @test_approx_eq filt(3*convert(ty, f1), x) 3*y
-    @test_approx_eq filt(convert(ty, f1)*3, x) 3*y
+    @test filt(3*convert(ty, f1), x) ≈ 3*y
+    @test filt(convert(ty, f1)*3, x) ≈ 3*y
 end
 
 # Test composing filters
 f2 = digitalfilter(Highpass(0.5), Butterworth(1))
 y = filt(f2, y)
 for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
-    @test_approx_eq filt(convert(ty, f1)*convert(ty, f2), x) y
+    @test filt(convert(ty, f1)*convert(ty, f2), x) ≈ y
 end
 
 f3 = digitalfilter(Bandstop(0.35, 0.4), Butterworth(1))
 y = filt(f3, y)
 for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
-    @test_approx_eq filt(convert(ty, f1)*convert(ty, f2)*convert(ty, f3), x) y
+    @test filt(convert(ty, f1)*convert(ty, f2)*convert(ty, f3), x) ≈ y
 end
-@test_approx_eq filt(convert(Biquad, f1)*(convert(Biquad, f2)*convert(Biquad, f3)), x) y
-@test_approx_eq filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) y
+@test filt(convert(Biquad, f1)*(convert(Biquad, f2)*convert(Biquad, f3)), x) ≈ y
+@test filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) ≈ y
 
 # Test some otherwise untested code paths
 @test promote_type(ZeroPoleGain{Complex64,Complex128,Float32}, ZeroPoleGain{Complex128,Complex64,Float64}) == ZeroPoleGain{Complex128,Complex128,Float64}

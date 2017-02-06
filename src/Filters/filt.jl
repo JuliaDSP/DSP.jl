@@ -55,7 +55,7 @@ function Base.filt!{S,N}(out::AbstractArray, f::SecondOrderSections, x::Abstract
 end
 
 Base.filt{T,G,S<:Number}(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) =
-    filt!(Array(promote_type(T, G, S), size(x)), f, x, si)
+    filt!(Array{promote_type(T, G, S)}(size(x)), f, x, si)
 
 ## Biquad
 _zerosi{T,S}(f::Biquad{T}, x::AbstractArray{S}) =
@@ -91,7 +91,7 @@ function Base.filt!{S,N}(out::AbstractArray, f::Biquad, x::AbstractArray,
 end
 
 Base.filt{T,S<:Number}(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) =
-    filt!(Array(promote_type(T, S), size(x)), f, x, si)
+    filt!(Array{promote_type(T, S)}(size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
 Base.filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
@@ -174,7 +174,7 @@ end
 
 # Variant that allocates the output
 Base.filt{T,S<:Array}(f::DF2TFilter{T,S}, x::AbstractVector) =
-    filt!(Array(eltype(S), length(x)), f, x)
+    filt!(Array{eltype(S)}(length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, coef))
@@ -212,7 +212,7 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
     t = Base.promote_eltype(b, a, x)
-    extrapolated = Array(t, size(x, 1)+pad_length*2)
+    extrapolated = Array{t}(size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
@@ -274,7 +274,7 @@ function filtfilt{T,G,S}(f::SecondOrderSections{T,G}, x::AbstractArray{S})
     zitmp = similar(zi)
     pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
-    extrapolated = Array(t, size(x, 1)+pad_length*2)
+    extrapolated = Array{t}(size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
@@ -326,7 +326,7 @@ function filt_stepstate{T<:Number}(b::@compat(Union{AbstractVector{T}, T}), a::@
 
 function filt_stepstate{T}(f::SecondOrderSections{T})
     biquads = f.biquads
-    si = Array(T, 2, length(biquads))
+    si = Array{T}(2, length(biquads))
     y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
@@ -416,7 +416,7 @@ function Base.filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 end
 
 Base.filt(h::AbstractArray, x::AbstractArray) =
-    Base.filt!(Array(eltype(x), size(x)), h, x)
+    Base.filt!(Array{eltype(x)}(size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -467,9 +467,9 @@ function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
     normfactor = 1/nfft
 
     L = min(nx, nfft - (nb - 1))
-    tmp1 = Array(T, nfft)
-    tmp2 = Array(Complex{T}, nfft >> 1 + 1)
-    out = Array(T, size(x))
+    tmp1 = Array{T}(nfft)
+    tmp2 = Array{Complex{T}}(nfft >> 1 + 1)
+    out = Array{T}(size(x))
 
     @julia_newer_than v"0.4.0-dev+6068" begin
         p1 = plan_rfft(tmp1)
@@ -531,7 +531,7 @@ function Base.filt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt!(Array(eltype(x), size(x)), b, x)
+        filt!(Array{eltype(x)}(size(x)), b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -540,6 +540,6 @@ function Base.filt{T<:Number}(b::AbstractVector{T}, x::AbstractArray{T})
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array(eltype(x), size(x)), b, x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(size(x)), b, x)
     end
 end

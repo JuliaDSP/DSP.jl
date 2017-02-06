@@ -24,9 +24,9 @@ spec = spectrogram(x0, 256, 128; fs=10)
 p, f, t = power(spec), freq(spec), time(spec)
 
 # with real input matlab outputs a 1-sided PSD
-@test_approx_eq p0 p
-@test_approx_eq f0 f
-@test_approx_eq t0 t
+@test p0 ≈ p
+@test f0 ≈ f
+@test t0 ≈ t
 
 #Matlab: p = pwelch(0:7, [1, 1, 1, 1, 1, 1, 1, 1], 0, 8, 1, 'twosided')
 data = 0:7
@@ -38,33 +38,33 @@ data0 = Float64[98.0,
                  2.343145750507620,
                  4.0,
                 13.656854249492380]
-@test_approx_eq power(periodogram(data, onesided=false)) data0
-@test_approx_eq power(welch_pgram(data, length(data), 0, onesided=false)) data0
-@test_approx_eq power(spectrogram(data, length(data), 0, onesided=false)) data0
-@test_approx_eq power(periodogram(complex([data;], [data;]), onesided=false)) data0*2
-@test_approx_eq power(welch_pgram(complex([data;], [data;]), length(data), 0, onesided=false)) data0*2
-@test_approx_eq power(spectrogram(complex([data;], [data;]), length(data), 0, onesided=false)) data0*2
+@test power(periodogram(data, onesided=false)) ≈ data0
+@test power(welch_pgram(data, length(data), 0, onesided=false)) ≈ data0
+@test power(spectrogram(data, length(data), 0, onesided=false)) ≈ data0
+@test power(periodogram(complex.([data;], [data;]), onesided=false)) ≈ data0*2
+@test power(welch_pgram(complex.([data;], [data;]), length(data), 0, onesided=false)) ≈ data0*2
+@test power(spectrogram(complex.([data;], [data;]), length(data), 0, onesided=false)) ≈ data0*2
 
 # # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
 # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
 expected = Float64[34.5, 0.5]
-@test_approx_eq power(welch_pgram(data, 2, 0; onesided=false)) expected
-@test_approx_eq mean(power(spectrogram(data, 2, 0; onesided=false)), 2) expected
+@test power(welch_pgram(data, 2, 0; onesided=false)) ≈ expected
+@test mean(power(spectrogram(data, 2, 0; onesided=false)), 2) ≈ expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 0, 3, 1, 'twosided')
 expected = Float64[25.5, 1.0, 1.0]
-@test_approx_eq power(welch_pgram(data, 3, 0; onesided=false)) expected
-@test_approx_eq mean(power(spectrogram(data, 3, 0; onesided=false)), 2) expected
+@test power(welch_pgram(data, 3, 0; onesided=false)) ≈ expected
+@test mean(power(spectrogram(data, 3, 0; onesided=false)), 2) ≈ expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1], 1, 3, 1, 'twosided')
 expected = Float64[35.0, 1.0, 1.0]
-@test_approx_eq power(welch_pgram(data, 3, 1; onesided=false)) expected
-@test_approx_eq mean(power(spectrogram(data, 3, 1; onesided=false)), 2) expected
+@test power(welch_pgram(data, 3, 1; onesided=false)) ≈ expected
+@test mean(power(spectrogram(data, 3, 1; onesided=false)), 2) ≈ expected
 
 # Matlab: p = pwelch(0:7, [1, 1, 1, 1], 1, 4, 1, 'twosided')
 expected = Float64[45, 2, 1, 2]
-@test_approx_eq power(welch_pgram(data, 4, 1; onesided=false)) expected
-@test_approx_eq mean(power(spectrogram(data, 4, 1; onesided=false)), 2) expected
+@test power(welch_pgram(data, 4, 1; onesided=false)) ≈ expected
+@test mean(power(spectrogram(data, 4, 1; onesided=false)), 2) ≈ expected
 
 # ~~~~~~~~~~~ This one tests periodogram ~~~~~~~~~~~~
 # ~ If functionality of the other arguments has been
@@ -92,12 +92,12 @@ cases = (
 )
 
 for (window1, expected) in cases
-    @test_approx_eq power(periodogram(data; window=window1, onesided=false)) expected
-    @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1, onesided=false)) expected
-    @test_approx_eq power(spectrogram(data, length(data), 0; window=window1, onesided=false)) expected
-    @test_approx_eq power(periodogram(data; window=window1(length(data)), onesided=false)) expected
-    @test_approx_eq power(welch_pgram(data, length(data), 0; window=window1(length(data)), onesided=false)) expected
-    @test_approx_eq power(spectrogram(data, length(data), 0; window=window1(length(data)), onesided=false)) expected
+    @test power(periodogram(data; window=window1, onesided=false)) ≈ expected
+    @test power(welch_pgram(data, length(data), 0; window=window1, onesided=false)) ≈ expected
+    @test power(spectrogram(data, length(data), 0; window=window1, onesided=false)) ≈ expected
+    @test power(periodogram(data; window=window1(length(data)), onesided=false)) ≈ expected
+    @test power(welch_pgram(data, length(data), 0; window=window1(length(data)), onesided=false)) ≈ expected
+    @test power(spectrogram(data, length(data), 0; window=window1(length(data)), onesided=false)) ≈ expected
 end
 
 # Padded periodogram
@@ -121,9 +121,9 @@ expected = [
     3.61553458569862
                    2
 ]
-@test_approx_eq power(periodogram(data; nfft=32)) expected
-@test_approx_eq power(welch_pgram(data, length(data), 0; nfft=32)) expected
-@test_approx_eq power(spectrogram(data, length(data), 0; nfft=32)) expected
+@test power(periodogram(data; nfft=32)) ≈ expected
+@test power(welch_pgram(data, length(data), 0; nfft=32)) ≈ expected
+@test power(spectrogram(data, length(data), 0; nfft=32)) ≈ expected
 
 # Padded periodogram with window
 # MATLAB: a = periodogram(0:7, hamming(8), 32, 1)
@@ -146,14 +146,14 @@ expected = [
     0.0526025934871384
     0.0255029855641069
 ]
-@test_approx_eq power(periodogram(data; window=hamming, nfft=32)) expected
-@test_approx_eq power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) expected
-@test_approx_eq power(spectrogram(data, length(data), 0; window=hamming, nfft=32)) expected
+@test power(periodogram(data; window=hamming, nfft=32)) ≈ expected
+@test power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) ≈ expected
+@test power(spectrogram(data, length(data), 0; window=hamming, nfft=32)) ≈ expected
 
 # Test fftshift
 p = periodogram(data)
 @test power(p) == power(fftshift(p))
-@test_approx_eq freq(p) freq(fftshift(p))
+@test freq(p) ≈ freq(fftshift(p))
 
 p = periodogram(data; onesided=false)
 @test fftshift(power(p)) == power(fftshift(p))
@@ -163,7 +163,7 @@ data = 1:100
 
 p = spectrogram(data)
 @test power(p) == power(fftshift(p))
-@test_approx_eq freq(p) freq(fftshift(p))
+@test freq(p) ≈ freq(fftshift(p))
 
 p = spectrogram(data; onesided=false)
 @test fftshift(power(p), 1) == power(fftshift(p))
@@ -176,29 +176,29 @@ expectedmean = vec(readdlm(joinpath(dirname(@__FILE__), "data", "per2dmean.txt")
 # 2-d periodgram (radialsum)
 # computed in octave with raPsd2d ((C) E. Ruzanski) replacing nanmean with nansum
 # P = raPsd2d(x,1)'*n^2
-@test_approx_eq power(periodogram(data2d,fs=1, radialsum=true)) expectedsum
+@test power(periodogram(data2d,fs=1, radialsum=true)) ≈ expectedsum
 
 # 2-d periodgram (radialavg)
 # computed in octave with raPsd2d ((C) E. Ruzanski)
 # P = raPsd2d(x,1)'*n^2
-@test_approx_eq power(periodogram(data2d, fs=1, radialavg=true)) expectedmean
+@test power(periodogram(data2d, fs=1, radialavg=true)) ≈ expectedmean
 
 # 2-d periodgram 2-d PSD
-@test_approx_eq power(periodogram(data2d, fs=1)) abs2(fft(data2d))*1/prod(size(data2d))
+@test power(periodogram(data2d, fs=1)) ≈ abs2.(fft(data2d))*1/prod(size(data2d))
 # 2-d periodgram 2-d PSD with padding
 pads = (size(data2d,1)+4,size(data2d,1)+7)
 data2dpad = zeros(Float64,pads...)
 data2dpad[1:size(data2d,1),1:size(data2d,2)] = data2d
-@test_approx_eq power(periodogram(data2d, fs=1, nfft=pads)) abs2(fft(data2dpad))*1/prod(size(data2d))
+@test power(periodogram(data2d, fs=1, nfft=pads)) ≈ abs2.(fft(data2dpad))*1/prod(size(data2d))
 # 2-d periodgram radial freq
-@test_approx_eq freq(periodogram(data2d, fs=3.3, radialsum=true)) freq(periodogram(vec(data2d[1,:]), fs=3.3))
+@test freq(periodogram(data2d, fs=3.3, radialsum=true)) ≈ freq(periodogram(vec(data2d[1,:]), fs=3.3))
 # 2-d periodgram 2-d freq
 f1,f2 = freq(periodogram(data2d, fs=3.3))
 f1d = freq(periodogram(vec(data2d[1,:]), fs=3.3, onesided=false))
 @assert size(data2d,1)==size(data2d,2)
 for j=1:size(data2d,2)
     for i=1:size(data2d,1)
-        @test_approx_eq [f1[i],f2[j]] [f1d[i],f1d[j]]
+        @test  [f1[i],f2[j]] ≈ [f1d[i],f1d[j]]
     end
 end
 # Test fftshift
@@ -214,7 +214,7 @@ n2 = 46  # assuming n1>n2
 nf = (22,7) # the non-zero location
 F = (fftfreq(n1,1),fftfreq(n2,1))
 a = [F[1][nf[1]],F[2][nf[2]]]
-FB = Array(Bool,n1,n2)
+FB = Array{Bool}(n1,n2)
 for j = 1:n2
     for i = 1:n1
         FB[i,j] = [F[1][i], F[2][j]]==a || [F[1][i], F[2][j]]==-a
@@ -230,8 +230,8 @@ fwn = round(Int, sqrt((a[1])^2+(a[2])^2)*n2)
 pe = zeros(n2>>1 + 1)
 pe[fwn+1] = 2*abs2(x[nf...])/n1/n2
 P = periodogram(y,nfft=(n1,n2),radialsum=true)
-@test_approx_eq power(P) pe
-@test_approx_eq freq(P)[fwn+1] fwn/n2
+@test power(P) ≈ pe
+@test freq(P)[fwn+1] ≈ fwn/n2
 
 # Testing STFT function and comparing results with MATLAB
 
@@ -244,8 +244,8 @@ s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
 Sjl = stft(s, nwin, nwin-nhop; nfft=nfft, fs=fs, window=hanning)
 Sml_re = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_real.txt"),'\t')
 Sml_im = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_imag.txt"),'\t')
-Sml = complex(Sml_re, Sml_im)
-@test_approx_eq Sjl Sml
+Sml = complex.(Sml_re, Sml_im)
+@test Sjl ≈ Sml
 
 # fft2oneortwosided!
 n = 10
@@ -268,14 +268,14 @@ for onesided in (true, false),
         outft = DSP.Periodograms.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
     end
     if onesided == true && atype <: Real
-        @test_approx_eq out[:,2] xrcfft
-        @test_approx_eq out[:,[1,3]] xrcfft*[0 0]
+        @test out[:,2] ≈ xrcfft
+        @test out[:,[1,3]] ≈ xrcfft.*[0 0]
     elseif onesided == false && atype <: Real
-        @test_approx_eq out[:,2] xfft
-        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+        @test out[:,2] ≈ xfft
+        @test out[:,[1,3]] ≈ xfft.*[0 0]
     elseif onesided == false && atype <: Complex
-        @test_approx_eq out[:,2] xfft
-        @test_approx_eq out[:,[1,3]] xfft*[0 0]
+        @test out[:,2] ≈ xfft
+        @test out[:,[1,3]] ≈ xfft.*[0 0]
     else
         #onesided complex
     end
@@ -284,8 +284,8 @@ end
 # Testing mt_pgram
 # MATLAB: x = pmtm(stft_x, 4, 5000, 16000, 'unity')
 mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
-@test_approx_eq power(mt_pgram(s; fs=16000)) mtdata
-@test_approx_eq power(mt_pgram(s; fs=16000, window=dpss(length(s), 4))) mtdata
+@test power(mt_pgram(s; fs=16000)) ≈ mtdata
+@test power(mt_pgram(s; fs=16000, window=dpss(length(s), 4))) ≈ mtdata
 
 # error tests
 @test_throws ArgumentError periodogram([1 2 3])
