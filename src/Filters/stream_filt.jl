@@ -184,7 +184,7 @@ function setphase!(kernel::FIRDecimator, ϕ::Real)
     nothing
 end
 
-function setphase!(kernel::@compat(Union{FIRInterpolator, FIRRational}), ϕ::Real)
+function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
@@ -359,11 +359,11 @@ end
 # Calculates the delay caused by the FIR filter in # samples, at the input sample rate, caused by the filter process
 #
 
-function timedelay(kernel::@compat(Union{FIRRational, FIRInterpolator, FIRArbitrary}))
+function timedelay(kernel::Union{FIRRational, FIRInterpolator, FIRArbitrary})
     (kernel.hLen - 1)/(2.0*kernel.Nϕ)
 end
 
-function timedelay(kernel::@compat(Union{FIRStandard, FIRDecimator}))
+function timedelay(kernel::Union{FIRStandard, FIRDecimator})
     (kernel.hLen - 1)/2
 end
 
