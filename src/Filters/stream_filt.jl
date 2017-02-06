@@ -24,6 +24,7 @@ type FIRInterpolator{T} <: FIRKernel{T}
     tapsPerϕ::Int
     inputDeficit::Int
     ϕIdx::Int
+    hLen::Int
 end
 
 function FIRInterpolator(h::Vector, interpolation::Integer)
@@ -32,7 +33,9 @@ function FIRInterpolator(h::Vector, interpolation::Integer)
     interpolation = interpolation
     inputDeficit  = 1
     ϕIdx          = 1
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx)
+    hLen          = length(h)
+    
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx,   hLen)
 end
 
 
@@ -61,6 +64,7 @@ type FIRRational{T}  <: FIRKernel{T}
     tapsPerϕ::Int
     ϕIdx::Int
     inputDeficit::Int
+    hLen::Int
 end
 
 function FIRRational(h::Vector, ratio::Rational)
@@ -69,7 +73,8 @@ function FIRRational(h::Vector, ratio::Rational)
     ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
     ϕIdx         = 1
     inputDeficit = 1
-    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit)
+    hLen         = length(h)
+    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
 end
 
 
@@ -96,6 +101,7 @@ type FIRArbitrary{T} <: FIRKernel{T}
     Δ::Float64
     inputDeficit::Int
     xIdx::Int
+    hLen::Int
 end
 
 function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
@@ -109,7 +115,8 @@ function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     Δ            = Nϕ/rate
     inputDeficit = 1
     xIdx         = 1
-    FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx)
+    hLen         = length(h)
+    FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx, hLen)
 end
 
 
@@ -181,7 +188,7 @@ function setphase!(kernel::@compat(Union{FIRInterpolator, FIRRational}), ϕ::Rea
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕIdx = floor(ϕ*(kernel.Nϕ-1.0) + 1.0)
+    kernel.ϕIdx = round(ϕ*(kernel.Nϕ) + 1.0)
     nothing
 end
 
@@ -189,8 +196,8 @@ function setphase!(kernel::FIRArbitrary, ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕAccumulator = ϕ*(kernel.Nϕ-1.0) + 1.0
-    kernel.ϕIdx         = floor(Int, kernel.ϕAccumulator)
+    kernel.ϕAccumulator = ϕ*(kernel.Nϕ) + 1.0
+    kernel.ϕIdx         = round(kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
@@ -234,7 +241,7 @@ function reset!(self::FIRFilter)
 end
 
 #
-# taps2 pfb
+# taps2pfb
 #
 # Converts a vector of coefficients to a matrix. Each column is a filter.
 # NOTE: also flips the matrix up/down so computing the dot product of a
@@ -334,6 +341,7 @@ end
 function inputlength(kernel::FIRRational, outputlength::Integer)
     inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
     inLen += kernel.inputDeficit - 1
+
 end
 
 # TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
@@ -348,16 +356,17 @@ end
 
 
 #
-# Calculates the delay in # samples, at the input sample rate, caused by the filter process
+# Calculates the delay caused by the FIR filter in # samples, at the input sample rate, caused by the filter process
 #
 
 function timedelay(kernel::@compat(Union{FIRRational, FIRInterpolator, FIRArbitrary}))
-    (kernel.tapsPerϕ - 1/kernel.Nϕ)/2
+    (kernel.hLen - 1)/(2.0*kernel.Nϕ)
 end
 
 function timedelay(kernel::@compat(Union{FIRStandard, FIRDecimator}))
     (kernel.hLen - 1)/2
 end
+
 
 function timedelay(self::FIRFilter)
     timedelay(self.kernel)
@@ -636,7 +645,7 @@ function Base.filt(h::Vector, x::AbstractVector, ratio::Rational)
     filt(self, x)
 end
 
-# Arbitrary resampling with polyphase interpolation and two neighbor lnear interpolation.
+# Arbitrary resampling with polyphase interpolation and two neighbor linear interpolation.
 function Base.filt(h::Vector, x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32)
     self = FIRFilter(h, rate, Nϕ)
     filt(self, x)
@@ -653,7 +662,7 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     #   b) set the ϕ index of the PFB (fractional part of τ)
     setphase!(self, τ)
 
-    # Calculate the number of 0's required so that w
+    # Calculate the number of 0's required
     outLen      = ceil(Int, length(x)*rate)
     reqInlen    = inputlength(self, outLen)
     reqZerosLen = reqInlen - length(x)
