@@ -15,7 +15,7 @@ function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
     [freqz(filter, i) for i = w]
 end
 
-function freqz(filter::FilterCoefficients, hz::@compat(Union{Number, AbstractVector}), fs::Number)
+function freqz(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     filter = convert(PolynomialRatio, filter)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
@@ -65,7 +65,7 @@ function freqs(filter::FilterCoefficients, w::AbstractVector)
     [freqs(filter, i) for i = w]
 end
 
-function freqs(filter::FilterCoefficients, hz::@compat(Union{Number, AbstractVector}), fs::Number)
+function freqs(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     filter = convert(PolynomialRatio, filter)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end

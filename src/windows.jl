@@ -1,6 +1,5 @@
 module Windows
 using Compat, ..Util
-import ..Util.@julia_newer_than
 export  rect,
         hanning,
         hamming,
@@ -163,26 +162,17 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
 
     tmp1 = Array{Float64}(nfft)
     tmp2 = Array{Complex{Float64}}(nfft >> 1 + 1)
-    @julia_newer_than v"0.4.0-dev+6068" begin
-        p1 = plan_rfft(tmp1)
-        p2 = plan_brfft(tmp2, nfft)
-    end begin
-        p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-        p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    end
+    p1 = plan_rfft(tmp1)
+    p2 = plan_brfft(tmp2, nfft)
 
     for i = 1:size(A, 2)
         fill!(tmp1, 0)
         copy!(tmp1, 1, A, (i-1)*size(A, 1)+1, size(A, 1))
-        @julia_newer_than(v"0.4.0-dev+6068",
-                          A_mul_B!(tmp2, p1, tmp1),
-                          FFTW.execute(Float64, p1.plan))
+        A_mul_B!(tmp2, p1, tmp1)
         for j = 1:length(tmp2)
             @inbounds tmp2[j] = abs2(tmp2[j])
         end
-        @julia_newer_than(v"0.4.0-dev+6068",
-                          A_mul_B!(tmp1, p2, tmp2),
-                          FFTW.execute(Float64, p2.plan))
+        A_mul_B!(tmp1, p2, tmp2)
 
         eig = 0.0
         for j = 1:size(A, 1)

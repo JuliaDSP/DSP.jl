@@ -45,7 +45,7 @@ PolynomialRatio{T<:Number}(b::Poly{T}, a::Poly{T}) = PolynomialRatio{T}(b, a)
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
-function PolynomialRatio{T<:Number,S<:Number}(b::@compat(Union{T,Vector{T}}), a::@compat(Union{S,Vector{S}}))
+function PolynomialRatio{T<:Number,S<:Number}(b::Union{T,Vector{T}}, a::Union{S,Vector{S}})
     if findfirst(b) == 0 || findfirst(a) == 0
         throw(ArgumentError("filter must have non-zero numerator and denominator"))
     end

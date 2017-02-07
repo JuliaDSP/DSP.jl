@@ -299,7 +299,7 @@ filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
 
 # Compute an initial state for filt with coefficients (b,a) such that its
 # response to a step function is steady state.
-function filt_stepstate{T<:Number}(b::@compat(Union{AbstractVector{T}, T}), a::@compat(Union{AbstractVector{T}, T}))
+function filt_stepstate{T<:Number}(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{T}, T})
     scale_factor = a[1]
     if scale_factor != 1.0
         a = a ./ scale_factor
@@ -352,7 +352,7 @@ end
 
 for n = 2:15
     silen = n-1
-    si = [@compat(Symbol("si$i")) for i = 1:silen]
+    si = [Symbol("si$i") for i = 1:silen]
     @eval function Base.filt!{T}(out, b::NTuple{$n,T}, x)
         size(x) != size(out) && error("out size must match x")
         ncols = Base.trailingsize(x, 2)
@@ -471,21 +471,14 @@ function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
     tmp2 = Array{Complex{T}}(nfft >> 1 + 1)
     out = Array{T}(size(x))
 
-    @julia_newer_than v"0.4.0-dev+6068" begin
-        p1 = plan_rfft(tmp1)
-        p2 = plan_brfft(tmp2, nfft)
-    end begin
-        p1 = FFTW.Plan(tmp1, tmp2, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-        p2 = FFTW.Plan(tmp2, tmp1, 1, FFTW.ESTIMATE, FFTW.NO_TIMELIMIT)
-    end
+    p1 = plan_rfft(tmp1)
+    p2 = plan_brfft(tmp2, nfft)
 
     # FFT of filter
     filterft = similar(tmp2)
     copy!(tmp1, b)
     tmp1[nb+1:end] = zero(T)
-    @julia_newer_than(v"0.4.0-dev+6068",
-                      A_mul_B!(filterft, p1, tmp1),
-                      FFTW.execute(p1.plan, tmp1, filterft))
+    A_mul_B!(filterft, p1, tmp1)
 
     # FFT of chunks
     for colstart = 0:nx:length(x)-1
@@ -499,13 +492,9 @@ function fftfilt{T<:Real}(b::AbstractVector{T}, x::AbstractArray{T},
             tmp1[npadbefore+n+1:end] = zero(T)
 
             copy!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            @julia_newer_than(v"0.4.0-dev+6068",
-                              A_mul_B!(tmp2, p1, tmp1),
-                              FFTW.execute(T, p1.plan))
+            A_mul_B!(tmp2, p1, tmp1)
             broadcast!(*, tmp2, tmp2, filterft)
-            @julia_newer_than(v"0.4.0-dev+6068",
-                              A_mul_B!(tmp1, p2, tmp2),
-                              FFTW.execute(T, p2.plan))
+            A_mul_B!(tmp1, p2, tmp2)
 
             # Copy to output
             for j = 0:min(L - 1, nx - off)

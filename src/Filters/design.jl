@@ -380,8 +380,8 @@ function bilinear{Z,P,K}(f::ZeroPoleGain{Z,P,K}, fs::Real)
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::@compat(Union{Lowpass, Highpass})) = (typeof(ftype))(4*tan(pi*ftype.w/2))
-prewarp(ftype::@compat(Union{Bandpass, Bandstop})) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
+prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(4*tan(pi*ftype.w/2))
+prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
 
 # Digital filter design
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
@@ -468,7 +468,7 @@ function firprototype(n::Integer, ftype::Bandstop)
     out
 end
 
-scalefactor(coefs::Vector, ::@compat(Union{Lowpass, Bandstop})) = sum(coefs)
+scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}) = sum(coefs)
 function scalefactor(coefs::Vector, ::Highpass)
     c = zero(coefs[1])
     for k = 1:length(coefs)
