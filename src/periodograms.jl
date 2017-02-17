@@ -281,7 +281,7 @@ forward_plan{T<:Union{Complex64, Complex128}}(X::AbstractArray{T}, Y::AbstractAr
 function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                                 onesided::Bool=eltype(s)<:Real,
                                 nfft::Int=nextfastfft(n), fs::Real=1,
-                                window::Union{Function,AbstractVector,Void}=nothing)
+                                window::Union{Function,AbstractVector,Void}=hanning)
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= n || error("nfft must be >= n")
 

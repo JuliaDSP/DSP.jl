@@ -28,12 +28,27 @@
     equal to the uncentered variance (or average power) of the original
     signal.
 
-.. function:: welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+.. function:: welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=hanning)
 
-    Computes the Welch periodogram of a signal ``s`` based on segments with ``n`` samples
-    with overlap of ``noverlap`` samples, and returns a Periodogram
-    object. For a Bartlett periodogram, set ``noverlap=0``. See
-    :func:`periodogram` for description of optional keyword arguments.
+    Computes the Welch periodogram of a signal ``s`` by dividing the signal
+    into overlapping segments of length ``n``, averaging the periodograms of
+    each segment, and returning a ``Periodogram`` object.  ``noverlap`` is the
+    number of samples of overlap, with a new segment starting every
+    ``n-noverlap`` samples of ``s``.  Each segment is padded with zeros to a
+    length of ``nfft`` for efficiency.
+
+    By default, the signal is windowed using the hanning window as a moderate
+    tradeoff between high spectral resolution (the square window) and
+    sensitivity to signals near the noise floor.  A window which falls to zero
+    also reduces the spurious ringing which occurs when ``n!=nfft`` for signals
+    with large mean.
+
+    Compared to ``periodogram()``, ``welch_pgram()`` reduces noise in the
+    estimated power spectral density as ``length(s)`` increases. In the basic
+    periodogram, we increase the frequency resolution instead.  For a Bartlett
+    periodogram, set ``noverlap=0``.
+
+    See :func:`periodogram` for a description of the other keyword arguments.
 
 .. function:: mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1, window=dpss(length(s), nw, ntapers))
 
