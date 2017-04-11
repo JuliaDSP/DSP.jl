@@ -1,7 +1,7 @@
-typealias PFB{T} Matrix{T}          # polyphase filter bank
+@compat const PFB{T} = Matrix{T}          # polyphase filter bank
 
-abstract Filter
-abstract FIRKernel{T}
+@compat abstract type Filter end
+@compat abstract type FIRKernel{T} end
 
 # Single rate FIR kernel
 type FIRStandard{T} <: FIRKernel{T}
@@ -34,7 +34,7 @@ function FIRInterpolator(h::Vector, interpolation::Integer)
     inputDeficit  = 1
     ϕIdx          = 1
     hLen          = length(h)
-    
+
     FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx,   hLen)
 end
 

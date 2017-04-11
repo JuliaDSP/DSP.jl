@@ -1,5 +1,6 @@
 module Windows
 using Compat, ..Util
+import SpecialFunctions: besseli
 export  rect,
         hanning,
         hamming,

@@ -1,6 +1,6 @@
 # Filter types and conversions
 
-abstract FilterCoefficients
+@compat abstract type FilterCoefficients end
 
 realtype(x::DataType) = x
 realtype{T}(::Type{Complex{T}}) = T
@@ -38,8 +38,8 @@ immutable PolynomialRatio{T<:Number} <: FilterCoefficients
     b::Poly{T}
     a::Poly{T}
 
-    PolynomialRatio(b::Poly, a::Poly) =
-        new(convert(Poly{T}, b/a[end]), convert(Poly{T}, a/a[end]))
+    (::Type{PolynomialRatio{Ti}}){Ti<:Number}(b::Poly, a::Poly) =
+        new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
 end
 PolynomialRatio{T<:Number}(b::Poly{T}, a::Poly{T}) = PolynomialRatio{T}(b, a)
 
