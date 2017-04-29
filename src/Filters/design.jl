@@ -2,7 +2,7 @@
 
 using ..Windows
 
-abstract FilterType
+@compat abstract type FilterType end
 
 #
 # Butterworth prototype
@@ -216,23 +216,17 @@ end
 
 immutable Lowpass{T} <: FilterType
     w::T
-
-    Lowpass(w) = new(convert(T, w))
 end
 Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
 
 immutable Highpass{T} <: FilterType
     w::T
-
-    Highpass(w) = new(convert(T, w))
 end
 Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
 
 immutable Bandpass{T} <: FilterType
     w1::T
     w2::T
-
-    Bandpass(w1, w2) = new(convert(T, w1), convert(T, w2))
 end
 function Bandpass(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
@@ -242,8 +236,6 @@ end
 immutable Bandstop{T} <: FilterType
     w1::T
     w2::T
-
-    Bandstop(w1, w2) = new(convert(T, w1), convert(T, w2))
 end
 function Bandstop(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
@@ -508,7 +500,7 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
     # Ensure that the filter is an odd length
-    if (iseven(hLen)) 
+    if (iseven(hLen))
         hLen += 1
     end
 
@@ -533,10 +525,10 @@ function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
     hLen = Nϕ * ceil(Int, hLen/Nϕ)
 
     # Ensure that the filter is an odd length
-    if (iseven(hLen)) 
+    if (iseven(hLen))
         hLen += 1
     end
-        
+
     # Design filter
     h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
     scale!(h, Nϕ)

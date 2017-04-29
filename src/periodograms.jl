@@ -17,11 +17,11 @@ immutable ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     window::W
     k::Int
 
-    function ArraySplit(s, n, noverlap, nfft, window)
+    function (::Type{ArraySplit{Ti,Si,Wi}}){Ti<:AbstractVector,Si,Wi}(s, n, noverlap, nfft, window)
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 <= noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
-        new(s, zeros(S, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
+        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
     end
 end
 ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
@@ -175,7 +175,7 @@ function compute_window(window::AbstractVector, n::Int)
 end
 
 ## PERIODOGRAMS
-abstract TFR{T}
+@compat abstract type TFR{T} end
 immutable Periodogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
     power::Vector{T}
     freq::F
@@ -334,12 +334,10 @@ end
 
 ## SPECTROGRAM
 
-if !isdefined(Base, :FloatRange)
-    typealias FloatRange{T} Range{T}
+@static if isdefined(Base, :StepRangeLen)
+    @compat const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
 end
-if isdefined(Base, :StepRangeLen)
-    typealias FloatRange{T} StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
-end
+
 immutable Spectrogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
     power::Matrix{T}
     freq::F

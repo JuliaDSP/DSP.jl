@@ -105,19 +105,19 @@ immutable DF2TFilter{T<:FilterCoefficients,S<:Array}
     coef::T
     state::S
 
-    function DF2TFilter(coef::PolynomialRatio, state::Vector)
+    function (::Type{DF2TFilter{Ti,Si}}){Ti,Si}(coef::PolynomialRatio, state::Vector)
         length(state) == length(coef.a)-1 == length(coef.b)-1 ||
             throw(ArgumentError("length of state vector must match filter order"))
-        new(coef, state)
+        new{Ti,Si}(coef, state)
     end
-    function DF2TFilter(coef::SecondOrderSections, state::Matrix)
+    function (::Type{DF2TFilter{Ti,Si}}){Ti,Si}(coef::SecondOrderSections, state::Matrix)
         (size(state, 1) == 2 && size(state, 2) == length(coef.biquads)) ||
             throw(ArgumentError("state must be 2 x nbiquads"))
-        new(coef, state)
+        new{Ti,Si}(coef, state)
     end
-    function DF2TFilter(coef::Biquad, state::Vector)
+    function (::Type{DF2TFilter{Ti,Si}}){Ti,Si}(coef::Biquad, state::Vector)
         length(state) == 2 || throw(ArgumentError("length of state must be 2"))
-        new(coef, state)
+        new{Ti,Si}(coef, state)
     end
 end
 
