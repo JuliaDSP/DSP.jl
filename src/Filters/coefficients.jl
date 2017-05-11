@@ -221,7 +221,10 @@ function split_real_complex{T}(x::Vector{T})
     # Get counts and store in a Dict
     d = Dict{T,Int}()
     for v in x
-        d[v] = get(d, v, 0)+1
+        # needs to be in normal form since 0.0 !== -0.0
+        tonormal(x) = x == 0 ? abs(x) : x
+        vn = complex(tonormal(real(v)), tonormal(imag(v)))
+        d[vn] = get(d, vn, 0)+1
     end
 
     c = T[]
