@@ -2,8 +2,8 @@ module LPC
 export lpc, LPCBurg, LPCLevinson
 
 # Dispatch types for lpc()
-type LPCBurg; end
-type LPCLevinson; end
+mutable struct LPCBurg; end
+mutable struct LPCLevinson; end
 
 """
 `lpc_burg(x::AbstractVector, p::Int)`

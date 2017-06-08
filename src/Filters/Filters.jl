@@ -1,6 +1,6 @@
 module Filters
-using Polynomials, Compat, ..Util
-import Base.Operators: *
+using Polynomials, ..Util
+import Base: *
 
 include("coefficients.jl")
 export FilterCoefficients,

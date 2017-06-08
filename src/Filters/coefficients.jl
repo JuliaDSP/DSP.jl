@@ -1,26 +1,26 @@
 # Filter types and conversions
 
-@compat abstract type FilterCoefficients end
+abstract type FilterCoefficients end
 
 realtype(x::DataType) = x
-realtype{T}(::Type{Complex{T}}) = T
+realtype(::Type{Complex{T}}) where {T} = T
 complextype(T::DataType) = Complex{T}
-complextype{T}(::Type{Complex{T}}) = Complex{T}
+complextype(::Type{Complex{T}}) where {T} = Complex{T}
 
 #
 # Zero-pole gain form
 #
 
-immutable ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: FilterCoefficients
+struct ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: FilterCoefficients
     z::Vector{Z}
     p::Vector{P}
     k::K
 end
 
-Base.promote_rule{Z1,P1,K1,Z2,P2,K2}(::Type{ZeroPoleGain{Z1,P1,K1}}, ::Type{ZeroPoleGain{Z2,P2,K2}}) =
+Base.promote_rule(::Type{ZeroPoleGain{Z1,P1,K1}}, ::Type{ZeroPoleGain{Z2,P2,K2}}) where {Z1,P1,K1,Z2,P2,K2} =
     ZeroPoleGain{promote_type(Z1,Z2),promote_type(P1,P2),promote_type(K1,K2)}
-Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::ZeroPoleGain{Z,P,K}) = f
-Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::ZeroPoleGain) =
+Base.convert(::Type{ZeroPoleGain{Z,P,K}}, f::ZeroPoleGain{Z,P,K}) where {Z,P,K} = f
+Base.convert(::Type{ZeroPoleGain{Z,P,K}}, f::ZeroPoleGain) where {Z,P,K} =
     ZeroPoleGain{Z,P,K}(f.z, f.p, f.k)
 
 *(f::ZeroPoleGain, g::Number) = ZeroPoleGain(f.z, f.p, f.k*g)
@@ -34,41 +34,41 @@ Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::ZeroPoleGain) =
 # Transfer function form
 #
 
-immutable PolynomialRatio{T<:Number} <: FilterCoefficients
+struct PolynomialRatio{T<:Number} <: FilterCoefficients
     b::Poly{T}
     a::Poly{T}
 
-    (::Type{PolynomialRatio{Ti}}){Ti<:Number}(b::Poly, a::Poly) =
+    PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number} =
         new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
 end
-PolynomialRatio{T<:Number}(b::Poly{T}, a::Poly{T}) = PolynomialRatio{T}(b, a)
+PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
-function PolynomialRatio{T<:Number,S<:Number}(b::Union{T,Vector{T}}, a::Union{S,Vector{S}})
+function PolynomialRatio(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {T<:Number,S<:Number}
     if findfirst(b) == 0 || findfirst(a) == 0
         throw(ArgumentError("filter must have non-zero numerator and denominator"))
     end
     PolynomialRatio{promote_type(T,S)}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
 end
 
-Base.promote_rule{T,S}(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) = PolynomialRatio{promote_type(T,S)}
-Base.convert{T}(::Type{PolynomialRatio{T}}, f::PolynomialRatio{T}) = f
-Base.convert{T}(::Type{PolynomialRatio{T}}, f::PolynomialRatio) = PolynomialRatio{T}(f.b, f.a)
+Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
+Base.convert(::Type{PolynomialRatio{T}}, f::PolynomialRatio{T}) where {T} = f
+Base.convert(::Type{PolynomialRatio{T}}, f::PolynomialRatio) where {T} = PolynomialRatio{T}(f.b, f.a)
 
-function Base.convert{T<:Real}(::Type{PolynomialRatio{T}}, f::ZeroPoleGain)
+function Base.convert(::Type{PolynomialRatio{T}}, f::ZeroPoleGain) where T<:Real
     b = f.k*poly(f.z)
     a = poly(f.p)
     PolynomialRatio{T}(Poly(real(b.a)), Poly(real(a.a)))
 end
-Base.convert{Z,P,K}(::Type{PolynomialRatio}, f::ZeroPoleGain{Z,P,K}) =
+Base.convert(::Type{PolynomialRatio}, f::ZeroPoleGain{Z,P,K}) where {Z,P,K} =
     convert(PolynomialRatio{promote_type(realtype(Z),realtype(P),K)}, f)
 
-function Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::PolynomialRatio)
+function Base.convert(::Type{ZeroPoleGain{Z,P,K}}, f::PolynomialRatio) where {Z,P,K}
     k = real(f.b[end])
     ZeroPoleGain{Z,P,K}(roots(f.b / k), roots(f.a), k)
 end
-Base.convert{T}(::Type{ZeroPoleGain}, f::PolynomialRatio{T}) =
+Base.convert(::Type{ZeroPoleGain}, f::PolynomialRatio{T}) where {T} =
     convert(ZeroPoleGain{complextype(T),complextype(T),T}, f)
 
 *(f::PolynomialRatio, g::Number) = PolynomialRatio(g*f.b, f.a)
@@ -86,26 +86,26 @@ coefa(f::PolynomialRatio) = reverse(f.a.a)
 # A separate immutable to improve efficiency of filtering using SecondOrderSections
 #
 
-immutable Biquad{T<:Number} <: FilterCoefficients
+struct Biquad{T<:Number} <: FilterCoefficients
     b0::T
     b1::T
     b2::T
     a1::T
     a2::T
 end
-Biquad{T}(b0::T, b1::T, b2::T, a0::T, a1::T, a2::T, g::Number=1) =
-    Biquad(g*b0/a0, g*b1/a0, g*b2/a0, a1/a0, a2/a0)
+Biquad(b0::T, b1::T, b2::T, a0::T, a1::T, a2::T, g::Number=1) where {T} =
+    (x = g*b0/a0; Biquad{typeof(x)}(x, g*b1/a0, g*b2/a0, a1/a0, a2/a0))
 
-Base.promote_rule{T,S}(::Type{Biquad{T}}, ::Type{Biquad{S}}) = Biquad{promote_type(T,S)}
-Base.convert{T}(::Type{Biquad{T}}, f::Biquad{T}) = f
-Base.convert{T}(::Type{Biquad{T}}, f::Biquad) = Biquad{T}(f.b0, f.b1, f.b2, f.a1, f.a2)
+Base.promote_rule(::Type{Biquad{T}}, ::Type{Biquad{S}}) where {T,S} = Biquad{promote_type(T,S)}
+Base.convert(::Type{Biquad{T}}, f::Biquad{T}) where {T} = f
+Base.convert(::Type{Biquad{T}}, f::Biquad) where {T} = Biquad{T}(f.b0, f.b1, f.b2, f.a1, f.a2)
 
-Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::Biquad) =
+Base.convert(::Type{ZeroPoleGain{Z,P,K}}, f::Biquad) where {Z,P,K} =
     convert(ZeroPoleGain{Z,P,K}, convert(PolynomialRatio, f))
 Base.convert(::Type{ZeroPoleGain}, f::Biquad) =
     convert(ZeroPoleGain, convert(PolynomialRatio, f))
 
-function Base.convert{T}(::Type{PolynomialRatio{T}}, f::Biquad)
+function Base.convert(::Type{PolynomialRatio{T}}, f::Biquad) where T
     if f.b2 == zero(T) && f.a2 == zero(T)
         if f.b1 == zero(T) && f.a1 == zero(T)
             b = T[f.b0]
@@ -121,9 +121,9 @@ function Base.convert{T}(::Type{PolynomialRatio{T}}, f::Biquad)
 
     PolynomialRatio(b, a)
 end
-Base.convert{T}(::Type{PolynomialRatio}, f::Biquad{T}) = convert(PolynomialRatio{T}, f)
+Base.convert(::Type{PolynomialRatio}, f::Biquad{T}) where {T} = convert(PolynomialRatio{T}, f)
 
-function Base.convert{T}(::Type{Biquad{T}}, f::PolynomialRatio)
+function Base.convert(::Type{Biquad{T}}, f::PolynomialRatio) where T
     a, b = f.a, f.b
     xs = max(length(b), length(a))
 
@@ -139,9 +139,9 @@ function Base.convert{T}(::Type{Biquad{T}}, f::PolynomialRatio)
         throw(ArgumentError("cannot convert a filter of length > 3 to Biquad"))
     end
 end
-Base.convert{T}(::Type{Biquad}, f::PolynomialRatio{T}) = convert(Biquad{T}, f)
+Base.convert(::Type{Biquad}, f::PolynomialRatio{T}) where {T} = convert(Biquad{T}, f)
 
-Base.convert{T}(::Type{Biquad{T}}, f::ZeroPoleGain) = convert(Biquad{T}, convert(PolynomialRatio, f))
+Base.convert(::Type{Biquad{T}}, f::ZeroPoleGain) where {T} = convert(Biquad{T}, convert(PolynomialRatio, f))
 Base.convert(::Type{Biquad}, f::ZeroPoleGain) = convert(Biquad, convert(PolynomialRatio, f))
 
 *(f::Biquad, g::Number) = Biquad(f.b0*g, f.b1*g, f.b2*g, f.a1, f.a2)
@@ -151,18 +151,18 @@ Base.convert(::Type{Biquad}, f::ZeroPoleGain) = convert(Biquad, convert(Polynomi
 # Second-order sections (array of biquads)
 #
 
-immutable SecondOrderSections{T,G} <: FilterCoefficients
+struct SecondOrderSections{T,G} <: FilterCoefficients
     biquads::Vector{Biquad{T}}
     g::G
 end
 
-Base.promote_rule{T1,G1,T2,G2}(::Type{SecondOrderSections{T1,G1}}, ::Type{SecondOrderSections{T2,G2}}) =
+Base.promote_rule(::Type{SecondOrderSections{T1,G1}}, ::Type{SecondOrderSections{T2,G2}}) where {T1,G1,T2,G2} =
     SecondOrderSections{promote_type(T1,T2),promote_type(G1,G2)}
-Base.convert{T,G}(::Type{SecondOrderSections{T,G}}, f::SecondOrderSections{T,G}) = f
-Base.convert{T,G}(::Type{SecondOrderSections{T,G}}, f::SecondOrderSections) =
+Base.convert(::Type{SecondOrderSections{T,G}}, f::SecondOrderSections{T,G}) where {T,G} = f
+Base.convert(::Type{SecondOrderSections{T,G}}, f::SecondOrderSections) where {T,G} =
     SecondOrderSections{T,G}(f.biquads, f.g)
 
-function Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::SecondOrderSections)
+function Base.convert(::Type{ZeroPoleGain{Z,P,K}}, f::SecondOrderSections) where {Z,P,K}
     z = Z[]
     p = P[]
     k = f.g
@@ -174,19 +174,19 @@ function Base.convert{Z,P,K}(::Type{ZeroPoleGain{Z,P,K}}, f::SecondOrderSections
     end
     ZeroPoleGain{Z,P,K}(z, p, k)
 end
-Base.convert{T,G}(::Type{ZeroPoleGain}, f::SecondOrderSections{T,G}) =
+Base.convert(::Type{ZeroPoleGain}, f::SecondOrderSections{T,G}) where {T,G} =
     convert(ZeroPoleGain{complextype(T),complextype(T),G}, f)
 
-function Base.convert{T}(::Type{Biquad{T}}, f::SecondOrderSections)
+function Base.convert(::Type{Biquad{T}}, f::SecondOrderSections) where T
     if length(f.biquads) != 1
         throw(ArgumentError("only a single second order section may be converted to a biquad"))
     end
     convert(Biquad{T}, f.biquads[1]*f.g)
 end
-Base.convert{T,G}(::Type{Biquad}, f::SecondOrderSections{T,G}) =
+Base.convert(::Type{Biquad}, f::SecondOrderSections{T,G}) where {T,G} =
     convert(Biquad{promote_type(T,G)}, f)
 
-Base.convert{T}(::Type{PolynomialRatio{T}}, f::SecondOrderSections) =
+Base.convert(::Type{PolynomialRatio{T}}, f::SecondOrderSections) where {T} =
     convert(PolynomialRatio{T}, convert(ZeroPoleGain, f))
 Base.convert(::Type{PolynomialRatio}, f::SecondOrderSections) =
     convert(PolynomialRatio, convert(ZeroPoleGain, f))
@@ -217,7 +217,7 @@ end
 # Sort zeros or poles lexicographically (so that poles are adjacent to
 # their conjugates). Handle repeated values. Split real and complex
 # values into separate vectors. Ensure that each value has a conjugate.
-function split_real_complex{T}(x::Vector{T})
+function split_real_complex(x::Vector{T}) where T
     # Get counts and store in a Dict
     d = Dict{T,Int}()
     for v in x
@@ -251,7 +251,7 @@ end
 
 # Convert a filter to second-order sections
 # The returned sections are in ZPK form
-function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
+function Base.convert(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P}) where {Z,P}
     z = f.z
     p = f.p
     nz = length(z)
@@ -309,8 +309,8 @@ function Base.convert{Z,P}(::Type{SecondOrderSections}, f::ZeroPoleGain{Z,P})
     SecondOrderSections(biquads, f.k)
 end
 
-Base.convert{T,G}(::Type{SecondOrderSections{T,G}}, f::Biquad) = SecondOrderSections{T,G}([f], one(G))
-Base.convert{T}(::Type{SecondOrderSections}, f::Biquad{T}) = convert(SecondOrderSections{T,Int}, f)
+Base.convert(::Type{SecondOrderSections{T,G}}, f::Biquad) where {T,G} = SecondOrderSections{T,G}([f], one(G))
+Base.convert(::Type{SecondOrderSections}, f::Biquad{T}) where {T} = convert(SecondOrderSections{T,Int}, f)
 Base.convert(::Type{SecondOrderSections}, f::FilterCoefficients) = convert(SecondOrderSections, convert(ZeroPoleGain, f))
 
 *(f::SecondOrderSections, g::Number) = SecondOrderSections(f.biquads, f.g*g)
