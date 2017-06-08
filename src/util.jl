@@ -1,5 +1,4 @@
 module Util
-using Compat
 import Base.Operators: *
 
 export  unwrap!,

@@ -1,5 +1,5 @@
 module Filters
-using Polynomials, Compat, ..Util
+using Polynomials, ..Util
 import Base.Operators: *
 
 include("coefficients.jl")

@@ -14,7 +14,7 @@
 #  close(fid)
 #end
 
-using DSP, Base.Test, Compat
+using DSP, Base.Test
 
 x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
 f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
