@@ -2,8 +2,6 @@
 # estimates of the periodogram P[s] of a signal s.  An overview of some
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
-module Periodograms
-using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 
@@ -389,5 +387,3 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     end
     out
 end
-
-end # end module definition
