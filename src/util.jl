@@ -1,4 +1,3 @@
-module Util
 import Base: *
 
 export  unwrap!,
@@ -263,6 +262,3 @@ function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
 
     return a
 end
-
-
-end # end module definition

@@ -1,7 +1,5 @@
 # Filter prototypes, transformations, and transforms
 
-using ..Windows
-
 abstract type FilterType end
 
 #

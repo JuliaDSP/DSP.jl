@@ -1,5 +1,3 @@
-module Windows
-using ..Util
 import SpecialFunctions: besseli
 export  rect,
         hanning,
@@ -197,6 +195,3 @@ for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
         $func(n::NTuple{2,Integer}) = $func(n[1]) * $func(n[2])'
     end
 end
-
-
-end # end module definition

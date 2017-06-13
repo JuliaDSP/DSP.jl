@@ -1,5 +1,4 @@
-module Filters
-using Polynomials, ..Util
+using Polynomials
 import Base: *
 
 include("coefficients.jl")
@@ -48,5 +47,3 @@ export  FIRFilter,
         resample,
         setphase!,
         timedelay
-
-end

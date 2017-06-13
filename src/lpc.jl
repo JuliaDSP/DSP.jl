@@ -1,4 +1,3 @@
-module LPC
 export lpc, LPCBurg, LPCLevinson
 
 # Dispatch types for lpc()
@@ -80,5 +79,3 @@ end
 
 # Default users to using Burg estimation as it is in general more stable
 lpc(x, p) = lpc(x, p, LPCBurg())
-
-end # module LPC

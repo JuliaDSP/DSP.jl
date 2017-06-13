@@ -265,7 +265,7 @@ for onesided in (true, false),
     xfft = fft(x)
     out = zeros(fftouttype(atype),nout,3)
     if !(onesided == true && atype <: Complex)
-        outft = DSP.Periodograms.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
+        outft = DSP.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
     end
     if onesided == true && atype <: Real
         @test out[:,2] ≈ xrcfft
