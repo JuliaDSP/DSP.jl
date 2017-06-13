@@ -1,10 +1,6 @@
-# This file is a part of Julia. License is MIT: https://julialang.org/license
-
-module DSP
+# This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base.trailingsize
-
-export filt, filt!, deconv, conv, conv2, xcorr
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -203,5 +199,3 @@ function xcorr(u, v)
     end
     flipdim(conv(flipdim(u, 1), v), 1)
 end
-
-end # module

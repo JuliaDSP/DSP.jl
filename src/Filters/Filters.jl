@@ -1,6 +1,8 @@
 module Filters
+import ..DSP: @importffts, filt, filt!
 using Polynomials, ..Util
 import Base: *
+@importffts
 
 include("coefficients.jl")
 export FilterCoefficients,

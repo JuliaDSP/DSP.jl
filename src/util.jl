@@ -1,5 +1,8 @@
 module Util
+using ..DSP: @importffts
+import FFTW: fftwReal, fftwComplex, fftwNumber
 import Base: *
+@importffts
 
 export  unwrap!,
         unwrap,
@@ -46,7 +49,7 @@ function unwrap(m::Array{T}, args...; kwargs...) where T<:AbstractFloat
     unwrap!(copy(m), args...; kwargs...)
 end
 
-function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
+function hilbert(x::StridedVector{T}) where T<:fftwReal
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
     N = length(x)
@@ -101,18 +104,18 @@ end
 ## FFT TYPES
 
 # Get the input element type of FFT for a given type
-fftintype(::Type{T}) where {T<:Base.FFTW.fftwNumber} = T
+fftintype(::Type{T}) where {T<:fftwNumber} = T
 fftintype(::Type{T}) where {T<:Real} = Float64
 fftintype(::Type{T}) where {T<:Complex} = Complex128
 
 # Get the return element type of FFT for a given type
-fftouttype(::Type{T}) where {T<:Base.FFTW.fftwComplex} = T
-fftouttype(::Type{T}) where {T<:Base.FFTW.fftwReal} = Complex{T}
+fftouttype(::Type{T}) where {T<:fftwComplex} = T
+fftouttype(::Type{T}) where {T<:fftwReal} = Complex{T}
 fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = Complex128
 
 # Get the real part of the return element type of FFT for a given type
-fftabs2type(::Type{Complex{T}}) where {T<:Base.FFTW.fftwReal} = T
-fftabs2type(::Type{T}) where {T<:Base.FFTW.fftwReal} = T
+fftabs2type(::Type{Complex{T}}) where {T<:fftwReal} = T
+fftabs2type(::Type{T}) where {T<:fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 ## FREQUENCY VECTOR
@@ -137,7 +140,7 @@ Base.step(x::Frequencies) = x.multiplier
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
-Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
+fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
