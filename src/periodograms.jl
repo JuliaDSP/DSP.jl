@@ -3,9 +3,11 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
+using ..DSP: @importffts
 using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
+@importffts
 
 ## ARRAY SPLITTER
 
@@ -188,15 +190,15 @@ end
 power(p::TFR) = p.power
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-Base.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-Base.fftshift(p::Periodogram{T,F}) where {T,F<:Range} = p
+fftshift(p::Periodogram{T,F}) where {T,F<:Range} = p
 # 2-d
-Base.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-Base.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Frequencies} =
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-Base.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Range} = p
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Range} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -343,9 +345,9 @@ struct Spectrogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
     freq::F
     time::FloatRange{Float64}
 end
-Base.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-Base.fftshift(p::Spectrogram{T,F}) where {T,F<:Range} = p
+fftshift(p::Spectrogram{T,F}) where {T,F<:Range} = p
 Base.time(p::Spectrogram) = p.time
 
 function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;

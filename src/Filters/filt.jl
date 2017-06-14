@@ -8,9 +8,9 @@
 _zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
 
-Base.filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
+filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
     filt!(out, coefb(f), coefa(f), x, si)
-Base.filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections
 _zerosi(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S} =
@@ -36,7 +36,7 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     si
 end
 
-function Base.filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
+function filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     biquads = f.biquads
     ncols = Base.trailingsize(x, 2)
@@ -54,7 +54,7 @@ function Base.filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray
     out
 end
 
-Base.filt(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
+filt(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
     filt!(Array{promote_type(T, G, S)}(size(x)), f, x, si)
 
 ## Biquad
@@ -75,7 +75,7 @@ function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad,
 end
 
 # filt! variant that preserves si
-function Base.filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
+function filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     ncols = Base.trailingsize(x, 2)
 
@@ -90,12 +90,12 @@ function Base.filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
     out
 end
 
-Base.filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
+filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
     filt!(Array{promote_type(T, S)}(size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
-Base.filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
-Base.filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
+filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
+filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 #
 # Direct form II transposed filter with state
@@ -126,7 +126,7 @@ DF2TFilter(coef::PolynomialRatio{T},
            state::Vector{S}=zeros(T, max(length(coef.a), length(coef.b))-1)) where {T,S} =
     DF2TFilter{PolynomialRatio{T}, Vector{S}}(coef, state)
 
-function Base.filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}}, x::AbstractVector) where {T,S}
+function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}}, x::AbstractVector) where {T,S}
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
@@ -156,7 +156,7 @@ DF2TFilter(coef::SecondOrderSections{T,G},
            state::Matrix{S}=zeros(promote_type(T, G), 2, length(coef.biquads))) where {T,G,S} =
     DF2TFilter{SecondOrderSections{T,G}, Matrix{S}}(coef, state)
 
-function Base.filt!(out::AbstractVector, f::DF2TFilter{SecondOrderSections{T,G},Matrix{S}}, x::AbstractVector) where {T,G,S}
+function filt!(out::AbstractVector, f::DF2TFilter{SecondOrderSections{T,G},Matrix{S}}, x::AbstractVector) where {T,G,S}
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     _filt!(out, f.state, f.coef, x, 1)
     out
@@ -165,7 +165,7 @@ end
 ## Biquad
 DF2TFilter(coef::Biquad{T}, state::Vector{S}=zeros(T, 2)) where {T,S} =
     DF2TFilter{Biquad{T}, Vector{S}}(coef, state)
-function Base.filt!(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::AbstractVector) where {T,S}
+function filt!(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::AbstractVector) where {T,S}
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     si = f.state
     (si[1], si[2]) =_filt!(out, si[1], si[2], f.coef, x, 1)
@@ -173,7 +173,7 @@ function Base.filt!(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::
 end
 
 # Variant that allocates the output
-Base.filt(f::DF2TFilter{T,S}, x::AbstractVector) where {T,S<:Array} =
+filt(f::DF2TFilter{T,S}, x::AbstractVector) where {T,S<:Array} =
     filt!(Array{eltype(S)}(length(x)), f, x)
 
 # Fall back to SecondOrderSections
@@ -353,7 +353,7 @@ end
 for n = 2:15
     silen = n-1
     si = [Symbol("si$i") for i = 1:silen]
-    @eval function Base.filt!(out, b::NTuple{$n,T}, x) where T
+    @eval function filt!(out, b::NTuple{$n,T}, x) where T
         size(x) != size(out) && error("out size must match x")
         ncols = Base.trailingsize(x, 2)
         for col = 0:ncols-1
@@ -386,7 +386,7 @@ end
     $chain
 end
 
-function Base.filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return scale!(out, h[1], x)
     elseif length(h) <= 15
@@ -415,8 +415,8 @@ function Base.filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     out
 end
 
-Base.filt(h::AbstractArray, x::AbstractArray) =
-    Base.filt!(Array{eltype(x)}(size(x)), h, x)
+filt(h::AbstractArray, x::AbstractArray) =
+    filt!(Array{eltype(x)}(size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -511,7 +511,7 @@ end
 # Filter x using FIR filter b, heuristically choosing to perform
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
-function Base.filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
+function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
     nb = length(b)
     nx = size(x, 1)
 

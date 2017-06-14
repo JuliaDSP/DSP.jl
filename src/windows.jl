@@ -1,6 +1,9 @@
 module Windows
+using ..DSP: @importffts
 using ..Util
 import SpecialFunctions: besseli
+@importffts
+
 export  rect,
         hanning,
         hamming,
