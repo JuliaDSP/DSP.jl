@@ -8,7 +8,7 @@ macro importffts()
     quote
         using AbstractFFTs, FFTW
         importall AbstractFFTs, FFTW
-        if VERSION >= v"0.7.0-DEV.585"
+        if VERSION >= v"1.0.0" # TODO: Lower this back to 0.7.0-DEV.xxx once Base PR #21956 is merged
             import AbstractFFTs: fftshift, ifftshift
             import FFTW: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
                          fft, fft!, ifft, ifft!, irfft, bfft, bfft!
