@@ -12,9 +12,6 @@ macro importffts()
             import AbstractFFTs: fftshift, ifftshift
             import FFTW: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
                          fft, fft!, ifft, ifft!, irfft, bfft, bfft!
-            if isdefined(Base, :DSP)
-                import Base: conv, conv2, deconv, filt, filt!, xcorr
-            end
         else
             import Base: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
                          fft, fft!, ifft, ifft!, irfft, bfft, bfft!, fftshift, ifftshift
@@ -24,7 +21,15 @@ end
 
 @importffts
 
-include("dspbase.jl")
+if VERSION >= v"0.7.0-DEV.602"
+    include("dspbase.jl")
+    if isdefined(Base, :DSP)
+        import Base: conv, conv2, deconv, filt, filt!, xcorr
+    else
+        export conv, conv2, deconv, filt, filt!, xcorr
+    end
+end
+
 include("util.jl")
 include("windows.jl")
 include("periodograms.jl")
