@@ -1,4 +1,4 @@
-using DSP, Base.Test, Compat
+using DSP, Base.Test
 
 @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
 @test unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]

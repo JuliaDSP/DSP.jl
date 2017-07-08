@@ -1,5 +1,5 @@
 module FilterTestHelpers
-using DSP, Base.Test, Compat
+using DSP, Base.Test
 
 export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy,
        matrix_to_sosfilter, sosfilter_to_matrix
@@ -12,14 +12,14 @@ function lt(a, b)
     end
 end
 
-@compat function tffilter_eq(f1, f2)
+function tffilter_eq(f1, f2)
     b1, a1 = (coefb(f1), coefa(f1))
     b2, a2 = (coefb(f2), coefa(f2))
     @test map(Float64, b1) ≈ map(Float64, b2)
     @test map(Float64, a1) ≈ map(Float64, a2)
 end
 
-@compat function zpkfilter_eq(f1, f2)
+function zpkfilter_eq(f1, f2)
     if !isempty(f1.z) || !isempty(f2.z)
         @test map(Complex128, sort(f1.z, lt=lt)) ≈ map(Complex128, sort(f2.z, lt=lt))
     end
@@ -27,7 +27,7 @@ end
     @test map(Float64, f1.k) ≈ map(Float64, f2.k)
 end
 
-@compat function zpkfilter_eq(f1, f2, eps)
+function zpkfilter_eq(f1, f2, eps)
     if !isempty(f1.z) || !isempty(f2.z)
         @test ≈(map(Complex128, sort(f1.z, lt=lt)), map(Complex128, sort(f2.z, lt=lt)), atol=eps)
     end
@@ -36,10 +36,10 @@ end
 end
 
 loss(x::Real, y::Real) = abs(float(x) - float(y))/eps(float(x))
-loss(x::@compat(Union{Real,Complex}), y::@compat(Union{Real,Complex})) = loss(real(x), real(y)) + loss(imag(x), imag(y))
+loss(x::Union{Real,Complex}, y::Union{Real,Complex}) = loss(real(x), real(y)) + loss(imag(x), imag(y))
 loss(x::AbstractVector, y::AbstractVector) = sum(map(loss, x, y))
 
-@compat function accuracy_check(err1, err2, part, relerr=1)
+function accuracy_check(err1, err2, part, relerr=1)
     try
         @test err1 <= relerr*err2
     catch e

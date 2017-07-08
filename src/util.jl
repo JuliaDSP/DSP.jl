@@ -1,6 +1,8 @@
 module Util
-using Compat
-import Base.Operators: *
+using ..DSP: @importffts
+import FFTW: fftwReal, fftwComplex, fftwNumber
+import Base: *
+@importffts
 
 export  unwrap!,
         unwrap,
@@ -24,8 +26,7 @@ export  unwrap!,
         polyfit,
         shiftin!
 
-function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
-                                     range::Number=2pi)
+function unwrap!(m::Array{T}, dim::Integer=ndims(m); range::Number=2pi) where T<:AbstractFloat
     thresh = range / 2
     if size(m, dim) < 2
         return m
@@ -44,11 +45,11 @@ function unwrap!{T <: AbstractFloat}(m::Array{T}, dim::Integer=ndims(m);
     return m
 end
 
-function unwrap{T <: AbstractFloat}(m::Array{T}, args...; kwargs...)
+function unwrap(m::Array{T}, args...; kwargs...) where T<:AbstractFloat
     unwrap!(copy(m), args...; kwargs...)
 end
 
-function hilbert{T<:FFTW.fftwReal}(x::StridedVector{T})
+function hilbert(x::StridedVector{T}) where T<:fftwReal
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
     N = length(x)
@@ -60,9 +61,9 @@ function hilbert{T<:FFTW.fftwReal}(x::StridedVector{T})
     end
     return ifft!(X)
 end
-hilbert{T<:Real}(x::AbstractVector{T}) = hilbert(convert(Vector{fftintype(T)}, x))
+hilbert(x::AbstractVector{T}) where {T<:Real} = hilbert(convert(Vector{fftintype(T)}, x))
 
-function hilbert{T<:Real}(x::AbstractArray{T})
+function hilbert(x::AbstractArray{T}) where T<:Real
     N = size(x, 1)
     xc = Array{fftintype(T)}(N)
     X = Array{fftouttype(T)}(N)
@@ -103,23 +104,23 @@ end
 ## FFT TYPES
 
 # Get the input element type of FFT for a given type
-fftintype{T<:Base.FFTW.fftwNumber}(::Type{T}) = T
-fftintype{T<:Real}(::Type{T}) = Float64
-fftintype{T<:Complex}(::Type{T}) = Complex128
+fftintype(::Type{T}) where {T<:fftwNumber} = T
+fftintype(::Type{T}) where {T<:Real} = Float64
+fftintype(::Type{T}) where {T<:Complex} = Complex128
 
 # Get the return element type of FFT for a given type
-fftouttype{T<:Base.FFTW.fftwComplex}(::Type{T}) = T
-fftouttype{T<:Base.FFTW.fftwReal}(::Type{T}) = Complex{T}
-fftouttype{T<:Union{Real,Complex}}(::Type{T}) = Complex128
+fftouttype(::Type{T}) where {T<:fftwComplex} = T
+fftouttype(::Type{T}) where {T<:fftwReal} = Complex{T}
+fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = Complex128
 
 # Get the real part of the return element type of FFT for a given type
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{Complex{T}}) = T
-fftabs2type{T<:Base.FFTW.fftwReal}(::Type{T}) = T
-fftabs2type{T<:Union{Real,Complex}}(::Type{T}) = Float64
+fftabs2type(::Type{Complex{T}}) where {T<:fftwReal} = T
+fftabs2type(::Type{T}) where {T<:fftwReal} = T
+fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 ## FREQUENCY VECTOR
 
-immutable Frequencies <: AbstractVector{Float64}
+struct Frequencies <: AbstractVector{Float64}
     nreal::Int
     n::Int
     multiplier::Float64
@@ -139,7 +140,7 @@ Base.step(x::Frequencies) = x.multiplier
 
 fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
-Base.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
+fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
@@ -150,8 +151,8 @@ nextfastfft(n::Tuple) = nextfastfft(n...)
 
 ## COMMON DSP TOOLS
 
-immutable dBconvert end
-immutable dBaconvert end
+struct dBconvert end
+struct dBaconvert end
 const dB = dBconvert()
 const dBa = dBaconvert()
 # for using e.g. 3dB or -3dBa
@@ -167,9 +168,9 @@ pow2db(a::Real) = 10*log10(a)
 amp2db(a::Real) = 20*log10(a)
 
 # root mean square
-rms{T<:Number}(s::AbstractArray{T}) = sqrt(sum(abs2, s)/length(s))
+rms(s::AbstractArray{T}) where {T<:Number} = sqrt(sum(abs2, s)/length(s))
 # root mean square of fft of signal
-rmsfft{T<:Complex}(f::AbstractArray{T}) = sqrt(sum(abs2, f))/length(f)
+rmsfft(f::AbstractArray{T}) where {T<:Complex} = sqrt(sum(abs2, f))/length(f)
 
 
 
@@ -187,11 +188,11 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLas
     return dotprod
 end
 
-@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer)
+@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
     BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
 end
 
-function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen = size(a, 1)
     bLen = length(b)
     bLen == aLen-1  || error( "length(b) must equal to length(a)[1] - 1" )
@@ -208,7 +209,7 @@ function unsafe_dot{T}(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}
     return dotprod
 end
 
-function unsafe_dot{T}(a::T, b::AbstractArray, bLastIdx::Integer)
+function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
     @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
@@ -219,11 +220,11 @@ function unsafe_dot{T}(a::T, b::AbstractArray, bLastIdx::Integer)
     return dotprod
 end
 
-@inline function unsafe_dot{T<:Base.LinAlg.BlasReal}(a::Vector{T}, b::Array{T}, bLastIdx::Integer)
+@inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
     BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
-function unsafe_dot{T}(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer)
+function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen    = length(a)
     dotprod = zero(a[1]*b[1])
     @simd for i in 1:aLen-cLastIdx
@@ -245,7 +246,7 @@ end
 #  4
 #  5
 #  6
-function shiftin!{T}(a::AbstractVector{T}, b::AbstractVector{T})
+function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     aLen = length(a)
     bLen = length(b)
 

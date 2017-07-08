@@ -3,13 +3,15 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using Compat, ..Util, ..Windows
+using ..DSP: @importffts
+using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
+@importffts
 
 ## ARRAY SPLITTER
 
-immutable ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
+struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     s::T
     buf::Vector{S}
     n::Int
@@ -17,7 +19,7 @@ immutable ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     window::W
     k::Int
 
-    function (::Type{ArraySplit{Ti,Si,Wi}}){Ti<:AbstractVector,Si,Wi}(s, n, noverlap, nfft, window)
+    function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window) where {Ti<:AbstractVector,Si,Wi}
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 <= noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
@@ -27,11 +29,11 @@ end
 ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
     ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
 
-function Base.getindex{T,S}(x::ArraySplit{T,S,Void}, i::Int)
+function Base.getindex(x::ArraySplit{T,S,Void}, i::Int) where {T,S}
     (i >= 1 && i <= x.k) || throw(BoundsError())
     copy!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
 end
-function Base.getindex{T,S,W}(x::ArraySplit{T,S,W}, i::Int)
+function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     (i >= 1 && i <= x.k) || throw(BoundsError())
     offset = (i-1)*(x.n-x.noverlap)
     window = x.window
@@ -54,7 +56,7 @@ arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, 
 ## UTILITY FUNCTIONS
 
 # Convert the output of an FFT to a PSD and add it to out
-function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Real, onesided::Bool, offset::Int=0)
+function fft2pow!(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Real, onesided::Bool, offset::Int=0) where T
     m1 = convert(T, 1/r)
     n = length(s_fft)
     if onesided
@@ -87,7 +89,7 @@ function fft2pow!{T}(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Rea
 end
 
 # Convert the output of a 2-d FFT to a 2-d PSD and add it to out
-function fft2pow2!{T}(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real)
+function fft2pow2!(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real) where T
     m1 = convert(T, 1/r)
     for j = 1:n2
         for i = 1:n1
@@ -97,7 +99,7 @@ function fft2pow2!{T}(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::In
     out
 end
 # Convert the output of a 2-d FFT to a radial PSD and add it to out
-function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real, ptype::Int)
+function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real, ptype::Int) where T
     nmin = min(n1,n2)
     n1max = n1>>1 + 1    # since rfft is used
     n1max != size(s_fft,1) && error("fft size incorrect")
@@ -146,7 +148,7 @@ function fft2pow2radial!{T}(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n
     out
 end
 
-function fft2oneortwosided!{T}(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0)
+function fft2oneortwosided!(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0) where T
     n = length(s_fft)
     copy!(out, offset+1, s_fft, 1, n)
     if !onesided && n != nfft
@@ -175,12 +177,12 @@ function compute_window(window::AbstractVector, n::Int)
 end
 
 ## PERIODOGRAMS
-@compat abstract type TFR{T} end
-immutable Periodogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
+abstract type TFR{T} end
+struct Periodogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
     power::Vector{T}
     freq::F
 end
-immutable Periodogram2{T,F1<:Union{Frequencies,Range},F2<:Union{Frequencies,Range}} <: TFR{T}
+struct Periodogram2{T,F1<:Union{Frequencies,Range},F2<:Union{Frequencies,Range}} <: TFR{T}
     power::Matrix{T}
     freq1::F1
     freq2::F2
@@ -188,21 +190,21 @@ end
 power(p::TFR) = p.power
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-Base.fftshift{T,F<:Frequencies}(p::Periodogram{T,F}) =
+fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-Base.fftshift{T,F<:Range}(p::Periodogram{T,F}) = p
+fftshift(p::Periodogram{T,F}) where {T,F<:Range} = p
 # 2-d
-Base.fftshift{T,F1<:Frequencies,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-Base.fftshift{T,F1<:Range,F2<:Frequencies}(p::Periodogram2{T,F1,F2}) =
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-Base.fftshift{T,F1<:Range,F2<:Range}(p::Periodogram2{T,F1,F2}) = p
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Range} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
-function periodogram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
-                                nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                                window::Union{Function,AbstractVector,Void}=nothing)
+function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
+                     nfft::Int=nextfastfft(length(s)), fs::Real=1,
+                     window::Union{Function,AbstractVector,Void}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
@@ -229,10 +231,10 @@ end
 # Compute the periodogram of a 2-d signal S. Returns 1/N*X[s(n)]^2, where X is the 2-d
 # DTFT of the signal S if radialsum and radialavg are both false (default),
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
-function periodogram{T<:Real}(s::AbstractMatrix{T};
-                              nfft::NTuple{2,Int}=nextfastfft(size(s)),
-                              fs::Real=1,
-                              radialsum::Bool=false, radialavg::Bool=false)
+function periodogram(s::AbstractMatrix{T};
+                     nfft::NTuple{2,Int}=nextfastfft(size(s)),
+                     fs::Real=1,
+                     radialsum::Bool=false, radialavg::Bool=false) where T<:Real
     size(s,1)<=nfft[1] && size(s,2)<=nfft[2] || throw(ArgumentError("nfft must be >= size(s)"))
     size(s,1)>1 && size(s,2)>1 || throw(ArgumentError("dimensions of s must be > 1"))
     if radialsum && radialavg
@@ -267,9 +269,9 @@ function periodogram{T<:Real}(s::AbstractMatrix{T};
     end
 end
 
-forward_plan{T<:Union{Float32, Float64}}(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) =
+forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
     plan_rfft(X)
-forward_plan{T<:Union{Complex64, Complex128}}(X::AbstractArray{T}, Y::AbstractArray{T}) =
+forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{Complex64, Complex128}} =
     plan_fft(X)
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
@@ -278,10 +280,10 @@ forward_plan{T<:Union{Complex64, Complex128}}(X::AbstractArray{T}, Y::AbstractAr
 # for the Estimation of Power Spectra: A Method based on Time Averaging over Short,
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
-function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
-                                onesided::Bool=eltype(s)<:Real,
-                                nfft::Int=nextfastfft(n), fs::Real=1,
-                                window::Union{Function,AbstractVector,Void}=nothing)
+function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
+                     onesided::Bool=eltype(s)<:Real,
+                     nfft::Int=nextfastfft(n), fs::Real=1,
+                     window::Union{Function,AbstractVector,Void}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= n || error("nfft must be >= n")
 
@@ -300,10 +302,10 @@ function welch_pgram{T<:Number}(s::AbstractVector{T}, n::Int=length(s)>>3, nover
     Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
 end
 
-function mt_pgram{T<:Number}(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
-                             nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                             nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
-                             window::Union{AbstractMatrix,Void}=nothing)
+function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
+                  nfft::Int=nextfastfft(length(s)), fs::Real=1,
+                  nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
+                  window::Union{AbstractMatrix,Void}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
@@ -335,23 +337,23 @@ end
 ## SPECTROGRAM
 
 @static if isdefined(Base, :StepRangeLen)
-    @compat const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
+    const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
 end
 
-immutable Spectrogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
+struct Spectrogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
     power::Matrix{T}
     freq::F
     time::FloatRange{Float64}
 end
-Base.fftshift{T,F<:Frequencies}(p::Spectrogram{T,F}) =
+fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-Base.fftshift{T,F<:Range}(p::Spectrogram{T,F}) = p
+fftshift(p::Spectrogram{T,F}) where {T,F<:Range} = p
 Base.time(p::Spectrogram) = p.time
 
-function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
-                        onesided::Bool=eltype(s)<:Real,
-                        nfft::Int=nextfastfft(n), fs::Real=1,
-                        window::Union{Function,AbstractVector,Void}=nothing)
+function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
+                     onesided::Bool=eltype(s)<:Real,
+                     nfft::Int=nextfastfft(n), fs::Real=1,
+                     window::Union{Function,AbstractVector,Void}=nothing) where T
 
     out = stft(s, n, noverlap, PSDOnly(); onesided=onesided, nfft=nfft, fs=fs, window=window)
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
@@ -359,14 +361,14 @@ function spectrogram{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int
 
 end
 
-immutable PSDOnly end
+struct PSDOnly end
 stfttype(T::Type, psdonly::PSDOnly) = fftabs2type(T)
 stfttype(T::Type, psdonly::Void) = fftouttype(T)
 
-function stft{T}(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
-                 psdonly::Union{Void,PSDOnly}=nothing;
-                 onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
-                 window::Union{Function,AbstractVector,Void}=nothing)
+function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
+              psdonly::Union{Void,PSDOnly}=nothing;
+              onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
+              window::Union{Function,AbstractVector,Void}=nothing) where T
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)

@@ -1,6 +1,13 @@
 module Filters
-using Polynomials, Compat, ..Util
-import Base.Operators: *
+import ..DSP: @importffts
+using Polynomials, ..Util
+import Base: *
+@importffts
+if VERSION >= v"0.7.0-DEV.602"
+    import ..DSP: filt, filt!
+else
+    import Base: filt, filt!
+end
 
 include("coefficients.jl")
 export FilterCoefficients,
