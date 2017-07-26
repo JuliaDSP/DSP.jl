@@ -161,6 +161,9 @@ matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 @test mag ≈ matlab_mag
 @test phasedeg ≈ matlab_phasedeg
 
+@test h ≈ freqs(ZeroPoleGain(PolynomialRatio(b, a)), w)
+@test h ≈ freqs(SecondOrderSections(PolynomialRatio(b, a)), w)
+
 #=using Winston=#
 #=figure = loglog(w, mag)=#
 #=ylabel("Magnitude")=#

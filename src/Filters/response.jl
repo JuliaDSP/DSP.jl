@@ -73,13 +73,26 @@ function freqs(filter::FilterCoefficients, w::Number)
     polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
+function freqs(filter::ZeroPoleGain, w::Number)
+    s = im * w
+    filter.k * prod([s - z for z in filter.z]) / prod([s - p for p in filter.p])
+end
+
+function freqs(filter::Biquad, w::Number)
+    s = im * w
+    s2 = s*s
+    (filter.b0*s2 + filter.b1*s + filter.b2) / (s2 + filter.a1*s  + filter.a2)
+end
+
+function freqs(filter::SecondOrderSections, w::Number)
+    filter.g * prod([freqs(b, w) for b in filter.biquads])
+end
+
 function freqs(filter::FilterCoefficients, w::AbstractVector)
-    filter = convert(PolynomialRatio, filter)
     [freqs(filter, i) for i = w]
 end
 
 function freqs(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
-    filter = convert(PolynomialRatio, filter)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end
 
