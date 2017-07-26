@@ -10,13 +10,26 @@ function freqz(filter::FilterCoefficients, w::Number)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
+function freqz(filter::ZeroPoleGain, w::Number)
+    ejw = exp(im * w)
+    filter.k * prod([ejw - z for z in filter.z]) / prod([ejw - p for p in filter.p])
+end
+
+function freqz(filter::Biquad, w::Number)
+    ejw = exp(-im * w)
+    ejw2 = ejw*ejw
+    (filter.b0 + filter.b1*ejw + filter.b2*ejw2) / (1 + filter.a1*ejw  + filter.a2*ejw2)
+end
+
+function freqz(filter::SecondOrderSections, w::Number)
+    filter.g * prod([freqz(b, w) for b in filter.biquads])
+end
+
 function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
-    filter = convert(PolynomialRatio, filter)
     [freqz(filter, i) for i = w]
 end
 
 function freqz(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
-    filter = convert(PolynomialRatio, filter)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
