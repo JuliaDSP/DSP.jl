@@ -1,6 +1,6 @@
 module LPC
 export lpc, LPCBurg, LPCLevinson
-export ar_burg
+export arburg
 
 # Dispatch types for lpc()
 mutable struct LPCBurg; end
@@ -22,7 +22,7 @@ function implements the mathematics published in [1].
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
 """
-function ar_burg{T <: Number}(x::AbstractVector{T}, p::Int)
+function arburg{T <: Number}(x::AbstractVector{T}, p::Int)
     ef = x                      # forward error
     eb = x                      # backwards error
     a = [1; zeros(T, p)]        # prediction coefficients
@@ -45,7 +45,7 @@ function ar_burg{T <: Number}(x::AbstractVector{T}, p::Int)
 end
 
 function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
-    a, prediction_err = ar_burg(x, p)
+    a, prediction_err = arburg(x, p)
     return a[2:end], prediction_err
 end
 
@@ -66,7 +66,7 @@ function implements the mathematics described in [1].
 """
 function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCLevinson)
     R_xx = xcorr(x,x)[length(x):end]
-    a = zeros(p,p)
+    a = zeros(T,p,p)
     prediction_err = zeros(1,p)
 
     # for m = 1
