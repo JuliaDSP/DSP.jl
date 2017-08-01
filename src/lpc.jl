@@ -1,12 +1,13 @@
 module LPC
 export lpc, LPCBurg, LPCLevinson
+export ar_burg
 
 # Dispatch types for lpc()
 mutable struct LPCBurg; end
 mutable struct LPCLevinson; end
 
 """
-`lpc_burg(x::AbstractVector, p::Int)`
+`ar_burg(x::AbstractVector, p::Int)`
 
 LPC (Linear-Predictive-Code) estimation, using the Burg method.
 
@@ -21,13 +22,13 @@ function implements the mathematics published in [1].
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
 """
-function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
+function ar_burg{T <: Number}(x::AbstractVector{T}, p::Int)
     ef = x                      # forward error
     eb = x                      # backwards error
     a = [1; zeros(T, p)]        # prediction coefficients
-
     # Initialize prediction error wtih the variance of the signal
-    prediction_err = (sum(abs2, x) ./ length(x))[1]
+    prediction_err :: T = sum(abs2, x) ./ length(x)
+    reflection_coeffs = zeros(T, p)
 
     for m in 1:p
         efp = ef[1:end-1]
@@ -37,8 +38,14 @@ function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
         eb = ebp + k .* efp
         a[1:m+1] = [a[1:m]; 0] + k .* [0; a[m:-1:1]]
         prediction_err *= (1 - k*k)
+        reflection_coeffs[m] = k
     end
 
+    return a, prediction_err, reflection_coeffs
+end
+
+function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
+    a, prediction_err = ar_burg(x, p)
     return a[2:end], prediction_err
 end
 
