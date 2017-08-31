@@ -39,6 +39,27 @@ h_abs = convert(Array{Float64}, abs.(h))
 #=xlabel("Normalised Frequency (x pi rad/s)")=#
 #=file(figure, "MATLAB-freqz.png", width=1200, height=800)=#
 
+#######################################
+#
+# freqz with conversion to PolynomialRatio may lead to undesirable roundoff errors
+# check by using the same poles and zeros such that they should cancel
+#
+#######################################
+
+rs = [1-10.0^-n for n in 1:15]
+@test freqz(ZeroPoleGain(rs, reverse(rs), 42.0), linspace(0, 2π, 50)) ≈ fill(42., 50)
+
+biq = Biquad(42.0, 84.0*real(.999999*exp(im)), 42.0*.999999^2, 2.0*real(.999999*exp(im)), .999999^2)
+@test freqz(biq, linspace(0, 2π, 50)) ≈ fill(42.0, 50)
+
+pr = [1-10.0^-n for n in 1:10]
+zr = reverse(pr)
+bs = [Biquad(42.0, 84.0*real(r[1]*exp(im)), 42.0*r[1]^2, 2.0*real(r[2]*exp(im)), r[2]^2) for r in zip(zr, pr)]
+sos = SecondOrderSections(bs, 42.0^-9)
+@test freqz(sos, linspace(0, 2π, 50)) ≈ fill(42.0, 50)
+
+@test freqz(ZeroPoleGain(Complex128[], Complex128[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
+@test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
 
 #######################################
 #
@@ -68,6 +89,8 @@ stepz_matlab = matlab_resp[:,3]
 
 h_matlab = matlab_resp[:,4]
 @test abs.(freqz(df, w)) ≈ h_matlab
+@test abs.(freqz(SecondOrderSections(df), w)) ≈ h_matlab
+@test abs.(freqz(ZeroPoleGain(df), w)) ≈ h_matlab
 
 phi_matlab = matlab_resp[:,5]
 @test phasez(df, w) ≈ phi_matlab
@@ -137,6 +160,9 @@ matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
 @test w ≈ matlab_w
 @test mag ≈ matlab_mag
 @test phasedeg ≈ matlab_phasedeg
+
+@test h ≈ freqs(ZeroPoleGain(PolynomialRatio(b, a)), w)
+@test h ≈ freqs(SecondOrderSections(PolynomialRatio(b, a)), w)
 
 #=using Winston=#
 #=figure = loglog(w, mag)=#
