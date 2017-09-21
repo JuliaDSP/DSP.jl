@@ -197,5 +197,5 @@ function xcorr(u, v)
     elseif sv < su
         v = [v;zeros(eltype(v),su-sv)]
     end
-    flipdim(conv(flipdim(u, 1), v), 1)
+    conv(u, flipdim(conj(v), 1))
 end
