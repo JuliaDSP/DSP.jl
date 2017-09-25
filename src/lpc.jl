@@ -1,4 +1,9 @@
 module LPC
+
+if VERSION >= v"0.7.0-DEV.602"
+    using ..DSP: xcorr
+end
+
 export lpc, LPCBurg, LPCLevinson
 
 # Dispatch types for lpc()

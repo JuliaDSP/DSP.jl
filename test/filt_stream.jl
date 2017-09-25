@@ -12,7 +12,7 @@ function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
         xZeroStuffed[n*upfactor+1] = x[n+1]
     end
 
-    y = Base.filt(h, one(eltype(x)), xZeroStuffed)
+    y = filt(h, one(eltype(x)), xZeroStuffed)
     y = [y[n] for n = 1:downfactor:length(y)]
 end
 
@@ -82,7 +82,7 @@ function test_singlerate(h, x)
     @printfifinteractive( "\nTesting single-rate fitering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
 
     @printfifinteractive( "\n\tBase.filt\n\t\t")
-    @timeifinteractive naiveResult = Base.filt(h, 1.0, x)
+    @timeifinteractive naiveResult = filt(h, 1.0, x)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, 1//1 )\n\t\t" )
     @timeifinteractive statelesResult = DSP.filt( h, x )
@@ -186,7 +186,7 @@ function test_interpolation(h, x, interpolation)
         for n = 0:xLen-1;
             xZeroStuffed[n*interpolation+1] = x[n+1]
         end
-        naiveResult = Base.filt(h, one(eltype(h)), xZeroStuffed)
+        naiveResult = filt(h, one(eltype(h)), xZeroStuffed)
     end
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//1 )\n\t\t", interpolation )

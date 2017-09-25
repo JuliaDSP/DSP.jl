@@ -22,12 +22,12 @@ end
 @importffts
 
 if VERSION >= v"0.7.0-DEV.602"
-    include("dspbase.jl")
-    if isdefined(Base, :DSP)
+    if VERSION < v"0.7.0-DEV.986" # JuliaLang/julia#22763
         import Base: conv, conv2, deconv, filt, filt!, xcorr
     else
         export conv, conv2, deconv, filt, filt!, xcorr
     end
+    include("dspbase.jl")
 end
 
 include("util.jl")
