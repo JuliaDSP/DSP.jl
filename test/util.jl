@@ -95,6 +95,8 @@ for n = 1:7
     @test fftshift(fftfreq(n)) ≈ fftshift([fftfreq(n);])
 end
 
+@test isapprox(meanfreq(sin.(2*pi*10*(0:1e-3:10*pi)),1e-3),10.0,rtol=0.1)
+
 # nextfastfft
 @test nextfastfft(64) == 64
 @test nextfastfft(65) == 70
