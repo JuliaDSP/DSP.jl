@@ -108,7 +108,7 @@ end
 
 # Show the poles and zeros in each biquad
 # This is not currently used for testing, but is useful for debugging
-function sosfilter_poles_zeros{T}(sos::SecondOrderSections{T})
+function sosfilter_poles_zeros(sos::SecondOrderSections)
     z = fill(complex(nan(T)), 2, length(sos.biquads))
     p = fill(complex(nan(T)), 2, length(sos.biquads))
     for (i, biquad) in enumerate(sos.biquads)

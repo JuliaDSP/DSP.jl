@@ -26,7 +26,7 @@ function implements the mathematics published in [1].
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
 """
-function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
+function lpc(x::AbstractVector{T}, p::Int, ::LPCBurg) where T <: Number
     ef = x                      # forward error
     eb = x                      # backwards error
     a = [1; zeros(T, p)]        # prediction coefficients
@@ -62,7 +62,7 @@ function implements the mathematics described in [1].
 [1] - The Wiener (RMS) Error Criterion in Filter Design and Prediction
 (Studies in Applied Mathematics 1947 article, N. Levison)
 """
-function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCLevinson)
+function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCLevinson)
     R_xx = xcorr(x,x)[length(x):end]
     a = zeros(p,p)
     prediction_err = zeros(1,p)
