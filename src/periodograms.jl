@@ -5,6 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
+using Compat: AbstractRange
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -178,11 +179,11 @@ end
 
 ## PERIODOGRAMS
 abstract type TFR{T} end
-struct Periodogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
+struct Periodogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     power::Vector{T}
     freq::F
 end
-struct Periodogram2{T,F1<:Union{Frequencies,Range},F2<:Union{Frequencies,Range}} <: TFR{T}
+struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies,AbstractRange}} <: TFR{T}
     power::Matrix{T}
     freq1::F1
     freq2::F2
@@ -192,13 +193,13 @@ freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
 fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-fftshift(p::Periodogram{T,F}) where {T,F<:Range} = p
+fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
 fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Frequencies} =
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Range,F2<:Range} = p
+fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -340,14 +341,14 @@ end
     const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
 end
 
-struct Spectrogram{T,F<:Union{Frequencies,Range}} <: TFR{T}
+struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     power::Matrix{T}
     freq::F
     time::FloatRange{Float64}
 end
 fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-fftshift(p::Spectrogram{T,F}) where {T,F<:Range} = p
+fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
 Base.time(p::Spectrogram) = p.time
 
 function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
@@ -357,7 +358,7 @@ function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
 
     out = stft(s, n, noverlap, PSDOnly(); onesided=onesided, nfft=nfft, fs=fs, window=window)
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
-                ((0:size(out,2)-1)*(n-noverlap)+n/2)/fs)
+                (n/2 : n-noverlap : (size(out,2)-1)*(n-noverlap)+n/2) / fs)
 
 end
 

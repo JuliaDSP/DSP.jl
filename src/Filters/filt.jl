@@ -422,7 +422,7 @@ filt(h::AbstractArray, x::AbstractArray) =
 # fftfilt and filt
 #
 
-const FFT_LENGTHS = 2.^(1:28)
+const FFT_LENGTHS = 2 .^ (1:28)
 # FFT times computed on a Core i7-3930K @4.4GHz
 # The real time doesn't matter, just the relative difference
 const FFT_TIMES = [6.36383e-7, 6.3779e-7 , 6.52212e-7, 6.65282e-7, 7.12794e-7, 7.63172e-7,
