@@ -6,9 +6,11 @@ module DSP
 # This macro will be called in each submodule herein to do the appropriate imports
 macro importffts()
     quote
-        using AbstractFFTs, FFTW
-        importall AbstractFFTs, FFTW
+        using AbstractFFTs
+        importall AbstractFFTs
         if VERSION >= v"0.7.0-DEV.602"
+            using FFTW
+            importall FFTW
             import AbstractFFTs: fftshift, ifftshift
             import FFTW: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
                          fft, fft!, ifft, ifft!, irfft, bfft, bfft!

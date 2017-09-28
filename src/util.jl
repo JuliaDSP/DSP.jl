@@ -1,6 +1,5 @@
 module Util
 using ..DSP: @importffts
-import FFTW: fftwReal, fftwComplex, fftwNumber
 import Base: *
 @importffts
 
@@ -49,7 +48,7 @@ function unwrap(m::Array{T}, args...; kwargs...) where T<:AbstractFloat
     unwrap!(copy(m), args...; kwargs...)
 end
 
-function hilbert(x::StridedVector{T}) where T<:fftwReal
+function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
     N = length(x)
@@ -104,18 +103,18 @@ end
 ## FFT TYPES
 
 # Get the input element type of FFT for a given type
-fftintype(::Type{T}) where {T<:fftwNumber} = T
+fftintype(::Type{T}) where {T<:FFTW.fftwNumber} = T
 fftintype(::Type{T}) where {T<:Real} = Float64
 fftintype(::Type{T}) where {T<:Complex} = Complex128
 
 # Get the return element type of FFT for a given type
-fftouttype(::Type{T}) where {T<:fftwComplex} = T
-fftouttype(::Type{T}) where {T<:fftwReal} = Complex{T}
+fftouttype(::Type{T}) where {T<:FFTW.fftwComplex} = T
+fftouttype(::Type{T}) where {T<:FFTW.fftwReal} = Complex{T}
 fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = Complex128
 
 # Get the real part of the return element type of FFT for a given type
-fftabs2type(::Type{Complex{T}}) where {T<:fftwReal} = T
-fftabs2type(::Type{T}) where {T<:fftwReal} = T
+fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
+fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 ## FREQUENCY VECTOR
