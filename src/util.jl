@@ -173,10 +173,10 @@ rms(s::AbstractArray{T}) where {T<:Number} = sqrt(sum(abs2, s)/length(s))
 # root mean square of fft of signal
 rmsfft(f::AbstractArray{T}) where {T<:Complex} = sqrt(sum(abs2, f))/length(f)
 
-function meanfreq{T<:Real}(f::AbstractVector{T},fs=2*π)
-    pxx = abs2.(rfft(f))
+function meanfreq(x::AbstractVector{<:Real}, fs=2*π)
+    pxx = abs2.(rfft(x))
 
-    len = length(f)
+    len = length(x)
     npoints = fld(len,2)
     freqrg = fs/len.*(0:(npoints))
 
