@@ -21,6 +21,7 @@ export  unwrap!,
         db2amp,
         rms,
         rmsfft,
+        meanfreq,
         unsafe_dot,
         polyfit,
         shiftin!
@@ -171,7 +172,16 @@ rms(s::AbstractArray{T}) where {T<:Number} = sqrt(sum(abs2, s)/length(s))
 # root mean square of fft of signal
 rmsfft(f::AbstractArray{T}) where {T<:Complex} = sqrt(sum(abs2, f))/length(f)
 
+function meanfreq(x::AbstractVector{<:Real}, fs=2*π)
+    pxx = abs2.(rfft(x))
 
+    len = length(x)
+    npoints = fld(len,2)
+    freqrg = fs/len.*(0:(npoints))
+
+    mf = sum(pxx.*freqrg)./sum(pxx)
+    return mf
+end
 
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].

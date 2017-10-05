@@ -95,6 +95,8 @@ for n = 1:7
     @test fftshift(fftfreq(n)) ≈ fftshift([fftfreq(n);])
 end
 
+@test meanfreq(sin.(2*π*10*(0:1e-3:10*π)),1e3) ≈ 10.0 rtol=1e-3
+
 # nextfastfft
 @test nextfastfft(64) == 64
 @test nextfastfft(65) == 70
