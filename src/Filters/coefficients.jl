@@ -46,10 +46,10 @@ PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
 function PolynomialRatio(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {T<:Number,S<:Number}
-    if findfirst(b) == 0 || findfirst(a) == 0
+    if all(iszero, b) || all(iszero, a)
         throw(ArgumentError("filter must have non-zero numerator and denominator"))
     end
-    PolynomialRatio{promote_type(T,S)}(Poly(b[end:-1:findfirst(b)]), Poly(a[end:-1:findfirst(a)]))
+    PolynomialRatio{promote_type(T,S)}(Poly(reverse(b)), Poly(reverse(a)))
 end
 
 Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
