@@ -11,6 +11,15 @@ complextype(::Type{Complex{T}}) where {T} = Complex{T}
 # Zero-pole gain form
 #
 
+"""
+    ZeroPoleGain(z, p, k)
+
+Filter representation in terms of zeros `z`, poles `p`, and
+gain `k`:
+```math
+H(x) = k\\frac{(x - \\verb!z[1]!) \\ldots (x - \\verb!z[end]!)}{(x - \\verb!p[1]!) \\ldots (x - \\verb!p[end]!)}
+```
+"""
 struct ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: FilterCoefficients
     z::Vector{Z}
     p::Vector{P}
@@ -41,6 +50,21 @@ struct PolynomialRatio{T<:Number} <: FilterCoefficients
     PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number} =
         new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
 end
+"""
+    PolynomialRatio(b, a)
+
+Filter representation in terms of the coefficients of the numerator
+`b` and denominator `a` of the transfer function:
+```math
+H(s) = \\frac{\\verb!b[1]! s^{n-1} + \\ldots + \\verb!b[n]!}{\\verb!a[1]! s^{n-1} + \\ldots + \\verb!a[n]!}
+```
+or equivalently:
+```math
+H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
+```
+`b` and `a` may be specified as `Polynomial` objects or
+vectors ordered from highest power to lowest.
+"""
 PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
 
 # The DSP convention is highest power first. The Polynomials.jl
@@ -78,14 +102,39 @@ Base.convert(::Type{ZeroPoleGain}, f::PolynomialRatio{T}) where {T} =
 *(f1::PolynomialRatio, fs::PolynomialRatio...) =
     PolynomialRatio(f1.b*prod([f.b for f in fs]), f1.a*prod([f.a for f in fs]))
 
+"""
+    coefb(f)
+
+Coefficients of the numerator of a PolynomialRatio object, highest power
+first, i.e., the `b` passed to `filt()`
+"""
 coefb(f::PolynomialRatio) = reverse(f.b.a)
+
+"""
+    coefa(f)
+
+Coefficients of the denominator of a PolynomialRatio object, highest power
+first, i.e., the `a` passed to `filt()`
+"""
 coefa(f::PolynomialRatio) = reverse(f.a.a)
 
 #
 # Biquad filter in transfer function form
 # A separate immutable to improve efficiency of filtering using SecondOrderSections
 #
+"""
+    Biquad(b0, b1, b2, a1, a2)
 
+Filter representation in terms of the transfer function of a single
+second-order section given by:
+```math
+H(s) = \\frac{\\verb!b0! s^2+\\verb!b1! s+\\verb!b2!}{s^2+\\verb!a1! s + \\verb!a2!}
+```
+or equivalently:
+```math
+H(z) = \\frac{\\verb!b0!+\\verb!b1! z^{-1}+\\verb!b2! z^{-2}}{1+\\verb!a1! z^{-1} + \\verb!a2! z^{-2}}
+```
+"""
 struct Biquad{T<:Number} <: FilterCoefficients
     b0::T
     b1::T
@@ -150,7 +199,13 @@ Base.convert(::Type{Biquad}, f::ZeroPoleGain) = convert(Biquad, convert(Polynomi
 #
 # Second-order sections (array of biquads)
 #
+"""
+    SecondOrderSections(biquads, gain)
 
+Filter representation in terms of a cascade of second-order
+sections and gain. `biquads` must be specified as a vector of
+`Biquads`.
+"""
 struct SecondOrderSections{T,G} <: FilterCoefficients
     biquads::Vector{Biquad{T}}
     g::G

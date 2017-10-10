@@ -22,24 +22,40 @@ export  rect,
 # Window functions
 #
 
-# Rectangular window function of length N.
+"""
+    rect(n)
+
+Rectangular window function of length `n`.
+"""
 function rect(n::Integer)
     ones(n)
 end
 
-# Hanning window of length N.
+"""
+    hanning(n)
+
+Hanning window of length `n`.
+"""
 function hanning(n::Integer)
     [0.5*(1 - cos(2*pi*k/(n-1))) for k=0:(n-1)]
 end
 
-# Hamming window of length N.
+"""
+    hamming(n)
+
+Hamming window of length `n`.
+"""
 function hamming(n::Integer)
     [0.54 - 0.46*cos(2*pi*k/(n-1)) for k=0:(n-1)]
 end
 
-# Tukey window of length N, parameterized by alpha.  For
-# alpha = 0, the window is equivalent to a rectangular window.
-# For alpha = 1, the window is a hann window.
+"""
+    tukey(n, alpha)
+
+Tukey window of length `n`, parameterized by `alpha`. For
+`alpha` = 0, the window is equivalent to a rectangular window.
+For `alpha` = 1, the window is a Hann window.
+"""
 function tukey(n::Integer, alpha::Real)
     # check that alpha is reasonable
     !(0 <= alpha <= 1) && error("tukey window alpha parameter must be 0 <= alpha <= 1.")
@@ -66,28 +82,49 @@ function tukey(n::Integer, alpha::Real)
     return t
 end
 
-# Cosine window of length N.  Also called the sine window for obvious reasons.
+"""
+    cosine(n)
+
+Cosine window of length `n`. Also called the sine window for
+obvious reasons.
+"""
 function cosine(n::Integer)
     [sin(pi*k/(n-1)) for k=0:(n-1)]
 end
 
-# Lanczos window of length N.
+"""
+    lanczos(n)
+
+Lanczos window of length `n`.
+"""
 function lanczos(n::Integer)
     [sinc(2*k/(n-1) - 1) for k=0:(n-1)]
 end
 
-# triangular window of length N.
+"""
+    triang(n)
+
+Triangular window of length `n`.
+"""
 function triang(n::Integer)
     [1 - abs((k - (n-1)/2))/(n/2) for k=0:(n-1)]
 end
 
-# bartlett window of length N.
+"""
+    bartlett(n)
+
+Bartlett window of length `n`.
+"""
 function bartlett(n::Integer)
     [2/(n-1)*((n-1)/2 - abs(k - (n-1)/2)) for k=0:(n-1)]
 end
 
-# gaussian window of length N parameterized by the standard deviation
-# sigma
+"""
+    gaussian(n, sigma)
+
+Gaussian window of length `n` parameterized by the standard
+deviation `sigma`.
+"""
 function gaussian(n::Integer, sigma::Real)
     if !(0 < sigma <= 0.5)
         error("sigma must be greater than 0 and less than or equal to 0.5.")
@@ -95,21 +132,33 @@ function gaussian(n::Integer, sigma::Real)
     [exp(-0.5*((k-(n-1)/2)/(sigma*(n-1/2)))^2) for k=0:(n-1)]
 end
 
-# bartlett-hann window of length n
+"""
+    bartlett_hann(n)
+
+Bartlett-Hann window of length `n`.
+"""
 function bartlett_hann(n::Integer)
     a0, a1, a2 = 0.62, 0.48, 0.38
     t = 2*pi/(n-1)
     [a0 - a1*abs(k/(n-1) - 0.5) - a2*cos(t*k) for k=0:(n-1)]
 end
 
-# "exact" blackman window, alpha=0.16
+"""
+    blackman(n)
+
+"Exact" Blackman window, alpha = 0.16.
+"""
 function blackman(n::Integer)
     a0, a1, a2 = 0.42, 0.5, 0.08
     t = 2*pi/(n-1)
     [a0 - a1*cos(t*k) + a2*cos(t*k*2) for k=0:(n-1)]
 end
 
-# kaiser window parameterized by alpha
+"""
+    kaiser(n, alpha)
+
+Kaiser window of length `n` parameterized by `alpha`.
+"""
 function kaiser(n::Integer, alpha::Real)
     pf = 1.0/besseli(0,pi*alpha)
     [pf*besseli(0, pi*alpha*(sqrt(1 - (2*k/(n-1) - 1)^2))) for k=0:(n-1)]
@@ -120,6 +169,15 @@ end
 # See Gruenbacher, D. M., & Hummels, D. R. (1994). A simple algorithm
 # for generating discrete prolate spheroidal sequences. IEEE
 # Transactions on Signal Processing, 42(11), 3276-3278.
+"""
+    dpss(n, nw, ntapers=iceil(2*nw)-1)
+
+The first `ntapers` discrete prolate spheroid sequences (Slepian
+tapers) as an `n` × `ntapers` matrix. The signs of the tapers
+follow the convention that the first element of the skew-symmetric
+(odd) tapers is positive. The time-bandwidth product is given by
+`nw`.
+"""
 function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
     0 < ntapers <= n || error("ntapers must be in interval (0, n]")
     0 <= nw < n/2 || error("nw must be in interval [0, n/2)")
@@ -149,6 +207,14 @@ end
 # Eigenvalues of DPSS, following Percival & Walden p. 390, exercise 8.1
 # See also implementation in MNE:
 # https://github.com/mne-tools/mne-python/blob/d7082cf909ccab581667bc1f1ed3c23e6a24b567/mne/time_frequency/multitaper.py#L226
+"""
+    dpsseig(A, nw)
+
+Eigenvalues of the DPSS matrix, representing the ratios of the
+power within the main lobe to the total power (main and sidelobes).
+`A` is the output of [`dpss`](@ref), and `nw` is the
+time-bandwidth product provided to [`dpss`](@ref) as input.
+"""
 function dpsseig(A::Matrix{Float64}, nw::Real)
     0 <= nw < size(A, 1)/2 || error("nw must be in interval [0, n/2)")
 

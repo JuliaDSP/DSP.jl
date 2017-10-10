@@ -8,8 +8,28 @@
 _zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
 
+"""
+    filt!(out, f, x[, si])
+
+Same as [`filt()`](@ref) but writes the result into the `out`
+argument, which may alias the input `x` to modify it in-place.
+"""
 filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
     filt!(out, coefb(f), coefa(f), x, si)
+
+"""
+    filt(f, x[, si])
+
+Apply filter or filter coefficients `f` along the first dimension
+of array `x`. If `f` is a filter coefficient object, `si`
+is an optional array representing the initial filter state (defaults
+to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
+`SecondOrderSections`, filtering is implemented directly. If
+`f` is a `ZeroPoleGain` object, it is first converted to a
+`SecondOrderSections` object.  If `f` is a Vector, it is
+interpreted as an FIR filter, and a naïve or FFT-based algorithm is
+selected based on the data and filter length.
+"""
 filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections
@@ -97,10 +117,16 @@ filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
 filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
 filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
 
-#
-# Direct form II transposed filter with state
-#
+"""
+    DF2TFilter(coef[, si])
 
+Construct a stateful direct form II transposed filter with
+coefficients `coef`. `si` is an optional array representing the
+initial filter state (defaults to zeros). If `f` is a
+`PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
+filtering is implemented directly. If `f` is a `ZeroPoleGain`
+object, it is first converted to a `SecondOrderSections` object.
+"""
 struct DF2TFilter{T<:FilterCoefficients,S<:Array}
     coef::T
     state::S
@@ -229,7 +255,20 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     out
 end
 
-# Zero phase digital filtering with an FIR filter in a single pass
+"""
+    filtfilt(coef, x)
+
+Filter `x` in the forward and reverse directions using filter
+coefficients `coef`. The initial state of the filter is computed so
+that its response to a step function is steady state. Before
+filtering, the data is extrapolated at both ends with an
+odd-symmetric extension of length
+`3*(max(length(b), length(a))-1)`.
+
+Because `filtfilt` applies the given filter twice, the effective
+filter order is twice the order of `coef`. The resulting signal has
+zero phase distortion.
+"""
 function filtfilt(b::AbstractVector, x::AbstractArray)
     nb = length(b)
     # Only need as much padding as the order of the filter
@@ -459,7 +498,12 @@ function optimalfftfiltlength(nb, nx)
     nfft
 end
 
-# Filter x using FIR filter b by overlap-save method
+"""
+    fftfilt(h, x)
+
+Apply FIR filter taps `h` along the first dimension of array `x`
+using an FFT-based overlap-save algorithm.
+"""
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
                  nfft=optimalfftfiltlength(length(b), length(x))) where T<:Real
     nb = length(b)

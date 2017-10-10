@@ -25,48 +25,66 @@ function freqz(filter::SecondOrderSections, w::Number)
     filter.g * prod([freqz(b, w) for b in filter.biquads])
 end
 
+"""
+    freqz(filter, w = linspace(0, π, 250))
+
+Frequency response of a digital `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
 function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
     [freqz(filter, i) for i = w]
 end
 
+"""
+    freqz(filter, hz, fs)
+
+Frequency response of a digital `filter` at frequency or
+frequencies `hz` with sampling rate `fs`.
+"""
 function freqz(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
 
-#
-# Phase response of a digital filter
-#
+"""
+    phasez(filter, w = linspace(0, π, 250))
 
+Phase response of a digital `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
 function phasez(filter::FilterCoefficients, w = linspace(0, π, 250))
     h = freqz(filter, w)
     unwrap(-atan2.(imag(h), real(h)))
 end
 
 
-#
-# Impulse response of a digital filter
-#
+"""
+    impz(filter, n=100)
 
+Impulse response of a digital `filter` with `n` points.
+"""
 function impz(filter::FilterCoefficients, n=100)
   i = [1; zeros(n-1)]
   filt(filter, i)
 end
 
-#
-# Step response of a digital filter
-#
+"""
+    stepz(filter, n=100)
 
+Step response of a digital `filter` with `n` points.
+"""
 function stepz(filter::FilterCoefficients, n=100)
   i = ones(n)
   filt(filter, i)
 end
 
 
-#
-# Frequency response of an analog filter
-#
+"""
+    freqs(filter, w)
 
+Frequency response of an analog `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
 function freqs(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     s = im * w
@@ -92,6 +110,12 @@ function freqs(filter::FilterCoefficients, w::AbstractVector)
     [freqs(filter, i) for i = w]
 end
 
+"""
+    freqs(filter, hz, fs)
+
+Frequency response of an analog `filter` at frequency or
+frequencies `hz` with sampling rate `fs`.
+"""
 function freqs(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end

@@ -23,6 +23,12 @@ function Butterworth(T::Type, n::Integer)
     end
     ZeroPoleGain(T[], poles, 1)
 end
+
+"""
+    Butterworth(n)
+
+``n`` pole Butterworth filter.
+"""
 Butterworth(n::Integer) = Butterworth(Float64, n)
 
 #
@@ -65,6 +71,13 @@ function Chebyshev1(T::Type, n::Integer, ripple::Real)
     end
     ZeroPoleGain(Float64[], p, k)
 end
+
+"""
+    Chebyshev1(n, ripple)
+
+`n` pole Chebyshev type I filter with `ripple` dB ripple in
+the passband.
+"""
 Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
 function Chebyshev2(T::Type, n::Integer, ripple::Real)
@@ -90,6 +103,13 @@ function Chebyshev2(T::Type, n::Integer, ripple::Real)
 
     ZeroPoleGain(z, p, k)
 end
+
+"""
+    Chebyshev2(n, ripple)
+
+`n` pole Chebyshev type II filter with `ripple` dB ripple in
+the stopband.
+"""
 Chebyshev2(n::Integer, ripple::Real) = Chebyshev2(Float64, n, ripple)
 
 #
@@ -201,6 +221,13 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
 
     ZeroPoleGain(z, p, gain)
 end
+
+"""
+    Elliptic(n, rp, rs)
+
+`n` pole elliptic (Cauer) filter with `rp` dB ripple in the
+passband and `rs` dB attentuation in the stopband.
+"""
 Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 
 #
@@ -217,17 +244,41 @@ end
 struct Lowpass{T} <: FilterType
     w::T
 end
+
+"""
+    Lowpass(Wn[; fs])
+
+Low pass filter with cutoff frequency `Wn`. If `fs` is not
+specified, `Wn` is interpreted as a normalized frequency in
+half-cycles/sample.
+"""
 Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
 
 struct Highpass{T} <: FilterType
     w::T
 end
+
+"""
+    Highpass(Wn[; fs])
+
+High pass filter with cutoff frequency `Wn`. If `fs` is not
+specified, `Wn` is interpreted as a normalized frequency in
+half-cycles/sample.
+"""
 Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
 
 struct Bandpass{T} <: FilterType
     w1::T
     w2::T
 end
+
+"""
+    Bandpass(Wn1, Wn2[; fs])
+
+Band pass filter with normalized pass band (`Wn1`, `Wn2`). If
+`fs` is not specified, `Wn1` and `Wn2` are interpreted as
+normalized frequencies in half-cycles/sample.
+"""
 function Bandpass(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
     Bandpass{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
@@ -237,6 +288,14 @@ struct Bandstop{T} <: FilterType
     w1::T
     w2::T
 end
+
+"""
+Bandstop(Wn1, Wn2[; fs])
+
+Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
+`fs` is not specified, `Wn1` and `Wn2` are interpreted as
+normalized frequencies in half-cycles/sample.
+"""
 function Bandstop(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
     Bandstop{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
@@ -344,6 +403,12 @@ end
 transform_prototype(ftype, proto::FilterCoefficients) =
     transform_prototype(ftype, convert(ZeroPoleGain, proto))
 
+"""
+    analogfilter(responsetype, designmethod)
+
+Construct an analog filter. See below for possible response and
+filter types.
+"""
 analogfilter(ftype::FilterType, proto::FilterCoefficients) =
     transform_prototype(ftype, proto)
 
@@ -376,6 +441,12 @@ prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(4*tan(pi*ftype.w/2))
 prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
 
 # Digital filter design
+"""
+    digitalfilter(responsetype, designmethod)
+
+Construct a digital filter. See below for possible response and
+filter types.
+"""
 digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
     bilinear(transform_prototype(prewarp(ftype), proto), 2)
 
@@ -385,6 +456,13 @@ digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
 
 # See Orfanidis, S. J. (1996). Introduction to signal processing.
 # Englewood Cliffs, N.J: Prentice Hall, p. 370
+"""
+    iirnotch(Wn, bandwidth[; fs])
+
+Second-order digital IIR notch filter at frequency `Wn` with
+bandwidth `bandwidth`. If `fs` is not specified, `Wn` is
+interpreted as a normalized frequency in half-cycles/sample.
+"""
 function iirnotch(w::Real, bandwidth::Real; fs=2)
     w = normalize_freq(w, fs)
     bandwidth = normalize_freq(bandwidth, fs)
@@ -420,9 +498,34 @@ struct FIRWindow{T}
     window::Vector{T}
     scale::Bool
 end
+
+"""
+    FIRWindow(window; scale=true)
+
+FIR filter design using window `window`, a vector whose length
+matches the number of taps in the resulting filter.
+
+If `scale` is `true` (default), the designed FIR filter is
+scaled so that the following holds:
+
+- For [`Lowpass`](@ref) and [`Bandstop`](@ref) filters, the frequency
+  response is unity at 0 (DC).
+- For [`Highpass`](@ref) filters, the frequency response is unity
+  at the Nyquist frequency.
+- For [`Bandpass`](@ref) filters, the frequency response is unity
+  in the center of the passband.
+"""
 FIRWindow(window::Vector; scale::Bool=true) = FIRWindow(window, scale)
 
 # FIRWindow(n::Integer, window::Function, args...) = FIRWindow(window(n, args...))
+"""
+    FIRWindow(; transitionwidth, attenuation=60, scale=true)
+
+Kaiser window FIR filter design. The required number of taps is
+calculated based on `transitionwidth` (in half-cycles/sample)
+and stopband `attenuation` (in dB). `attenuation` defaults to
+60 dB.
+"""
 FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwidth")),
           attenuation::Real=60, scale::Bool=true) =
     FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
