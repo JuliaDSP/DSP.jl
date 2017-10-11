@@ -3,26 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to DSP.jl's documentation!
+DSP.jl's documentation has moved!
 ==================================
 
-Contents:
-
-DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:
-
-.. toctree::
-   :maxdepth: 2
-
-   periodograms.rst
-   windows.rst
-   filters.rst
-   util.rst
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+Please see `the new documentation site
+<https://juliadsp.github.io/DSP.jl/latest/contents.html>`_.
