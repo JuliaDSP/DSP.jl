@@ -1,5 +1,4 @@
 using DSP, AbstractFFTs, FFTW, Base.Test
-importall AbstractFFTs, FFTW
 
 include("dsp.jl")
 include("util.jl")

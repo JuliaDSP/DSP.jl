@@ -7,16 +7,8 @@ module DSP
 macro importffts()
     quote
         using AbstractFFTs
-        importall AbstractFFTs
         if VERSION >= v"0.7.0-DEV.602"
             using FFTW
-            importall FFTW
-            import AbstractFFTs: fftshift, ifftshift
-            import FFTW: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
-                         fft, fft!, ifft, ifft!, irfft, bfft, bfft!
-        else
-            import Base: plan_fft, plan_fft!, plan_rfft, plan_brfft, plan_irfft, plan_bfft, plan_bfft!,
-                         fft, fft!, ifft, ifft!, irfft, bfft, bfft!, fftshift, ifftshift
         end
     end
 end

@@ -182,7 +182,7 @@ containing the frequency bin centers at every sample point. `fs`
 is the sample rate of the input signal.
 """
 rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
-fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
+AbstractFFTs.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
