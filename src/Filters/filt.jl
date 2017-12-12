@@ -356,7 +356,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     as<sz && (a = copy!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
-    A = [-a[2:end] [eye(T, sz-2); zeros(T, 1, sz-2)]]
+    A = [-a[2:end] [I; zeros(T, 1, sz-2)]]
     B = b[2:end] - a[2:end] * b[1]
     # Solve si = A*si + B
     # (I - A)*si = B
