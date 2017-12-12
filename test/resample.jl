@@ -1,5 +1,5 @@
 using DSP
-using Base.Test
+using Compat, Compat.Test
 
 # AM Modulator
 # sig(t) = [(1 + sin(2π*0.005*t)) * sin(2π*.05*t) for t in t]

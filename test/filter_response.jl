@@ -1,4 +1,4 @@
-using DSP, Base.Test
+using DSP, Compat, Compat.Test
 
 
 #######################################

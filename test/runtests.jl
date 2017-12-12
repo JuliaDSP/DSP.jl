@@ -1,4 +1,4 @@
-using DSP, AbstractFFTs, FFTW, Base.Test
+using Compat, DSP, AbstractFFTs, FFTW, Compat.Test
 
 include("dsp.jl")
 include("util.jl")
