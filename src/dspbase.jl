@@ -12,7 +12,7 @@ state vector `si` (defaults to zeros).
 """
 function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
               x::AbstractArray{T}, si::AbstractArray{S} = _zerosi(b,a,T)) where {T,S}
-    filt!(Array{promote_type(eltype(b), eltype(a), T, S)}(size(x)), b, a, x, si)
+    filt!(Array{promote_type(eltype(b), eltype(a), T, S)}(uninitialized, size(x)), b, a, x, si)
 end
 
 # in-place filtering: returns results in the out argument, which may shadow x
