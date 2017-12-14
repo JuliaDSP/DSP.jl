@@ -2,6 +2,7 @@ module Filters
 import ..DSP: @importffts
 using Polynomials, ..Util
 import Base: *
+using Compat: uninitialized
 @importffts
 if VERSION >= v"0.7.0-DEV.602"
     import ..DSP: filt, filt!

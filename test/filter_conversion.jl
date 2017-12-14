@@ -1,5 +1,5 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
-using DSP, Base.Test, FilterTestHelpers, Polynomials
+using DSP, Compat, Compat.Test, FilterTestHelpers, Polynomials
 
 # Test conversion to SOS against MATLAB
 # Test poles/zeros generated with:

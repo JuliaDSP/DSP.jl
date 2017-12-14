@@ -14,7 +14,7 @@
 #  close(fid)
 #end
 
-using DSP, Base.Test
+using DSP, Compat, Compat.Test
 
 x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
 f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
@@ -214,13 +214,7 @@ n2 = 46  # assuming n1>n2
 nf = (22,7) # the non-zero location
 F = (fftfreq(n1,1),fftfreq(n2,1))
 a = [F[1][nf[1]],F[2][nf[2]]]
-FB = Array{Bool}(n1,n2)
-for j = 1:n2
-    for i = 1:n1
-        FB[i,j] = [F[1][i], F[2][j]]==a || [F[1][i], F[2][j]]==-a
-    end
-end
-
+FB = Bool[[F[1][i], F[2][j]]==a || [F[1][i], F[2][j]]==-a for i = 1:n1, j = 1:n2]
 ind = find(FB)
 x = zeros(n1,n2)*0im;
 x[ind] = [1+2im,1-2im]

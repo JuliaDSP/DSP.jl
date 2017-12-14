@@ -5,7 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
-using Compat: AbstractRange
+using Compat: AbstractRange, uninitialized
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -216,15 +216,15 @@ See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -371,7 +371,7 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         A_mul_B!(tmp, plan, sig)
@@ -415,7 +415,7 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
 
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     input = zeros(fftintype(T), nfft)
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
@@ -440,9 +440,9 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     freq::F
     time::FloatRange{Float64}
 end
-fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
 
 """
     time(p)
@@ -491,7 +491,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)
