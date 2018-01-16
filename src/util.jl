@@ -1,7 +1,7 @@
 module Util
 using ..DSP: @importffts
 import Base: *
-using Compat: uninitialized
+using Compat: copyto!, uninitialized
 @importffts
 
 export  unwrap!,
@@ -102,7 +102,7 @@ function hilbert(x::AbstractArray{T}) where T<:Real
     normalization = 1/N
     off = 1
     for i = 1:Base.trailingsize(x, 2)
-        copy!(xc, 1, x, off, N)
+        copyto!(xc, 1, x, off, N)
 
         # fft
         fill!(X, 0)
@@ -354,7 +354,7 @@ function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     bLen = length(b)
 
     if bLen >= aLen
-        copy!(a, 1, b, bLen - aLen + 1, aLen)
+        copyto!(a, 1, b, bLen - aLen + 1, aLen)
     else
 
         for i in 1:aLen-bLen

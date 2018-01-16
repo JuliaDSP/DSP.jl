@@ -56,8 +56,8 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         b ./= norml
     end
     # Pad the coefficients with zeros if needed
-    bs<sz   && (b = copy!(zeros(eltype(b), sz), b))
-    1<as<sz && (a = copy!(zeros(eltype(a), sz), a))
+    bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
+    1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     initial_si = si
     for col = 1:ncols

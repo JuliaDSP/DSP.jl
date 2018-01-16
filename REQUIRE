@@ -1,5 +1,5 @@
 julia 0.6-rc1
-Compat 0.38
+Compat 0.45
 Polynomials 0.1.0
 Reexport
 SpecialFunctions

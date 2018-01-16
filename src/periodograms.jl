@@ -5,7 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
-using Compat: AbstractRange, uninitialized
+using Compat: AbstractRange, copyto!, uninitialized
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -32,7 +32,7 @@ ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
 
 function Base.getindex(x::ArraySplit{T,S,Void}, i::Int) where {T,S}
     (i >= 1 && i <= x.k) || throw(BoundsError())
-    copy!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
+    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
 end
 function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     (i >= 1 && i <= x.k) || throw(BoundsError())
@@ -154,7 +154,7 @@ end
 
 function fft2oneortwosided!(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0) where T
     n = length(s_fft)
-    copy!(out, offset+1, s_fft, 1, n)
+    copyto!(out, offset+1, s_fft, 1, n)
     if !onesided && n != nfft
         # Convert real FFT to two-sided
         @inbounds for i = 2:n-1
@@ -266,7 +266,7 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                 @inbounds input[i] = s[i]*win[i]
             end
         else
-            copy!(input, s)
+            copyto!(input, s)
         end
     end
 

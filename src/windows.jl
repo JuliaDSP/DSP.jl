@@ -2,7 +2,7 @@ module Windows
 using ..DSP: @importffts
 using ..Util
 import SpecialFunctions: besseli
-using Compat: uninitialized
+using Compat: copyto!, uninitialized
 @importffts
 
 export  rect,
@@ -238,7 +238,7 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
 
     for i = 1:size(A, 2)
         fill!(tmp1, 0)
-        copy!(tmp1, 1, A, (i-1)*size(A, 1)+1, size(A, 1))
+        copyto!(tmp1, 1, A, (i-1)*size(A, 1)+1, size(A, 1))
         A_mul_B!(tmp2, p1, tmp1)
         for j = 1:length(tmp2)
             @inbounds tmp2[j] = abs2(tmp2[j])

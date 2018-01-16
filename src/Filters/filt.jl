@@ -224,7 +224,7 @@ function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
     for i = 1:pad_length
         out[ostart+i-1] = x - sig[istart+pad_length+1-i]
     end
-    copy!(out, ostart+pad_length, sig, istart, n)
+    copyto!(out, ostart+pad_length, sig, istart, n)
     x = 2*sig[istart+n-1]
     for i = 1:pad_length
         out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
@@ -352,8 +352,8 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     sz == 1 && return T[]
 
     # Pad the coefficients with zeros if needed
-    bs<sz && (b = copy!(zeros(eltype(b), sz), b))
-    as<sz && (a = copy!(zeros(eltype(a), sz), a))
+    bs<sz && (b = copyto!(zeros(eltype(b), sz), b))
+    as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
     A = [-a[2:end] [I; zeros(T, 1, sz-2)]]
@@ -520,7 +520,7 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
 
     # FFT of filter
     filterft = similar(tmp2)
-    copy!(tmp1, b)
+    copyto!(tmp1, b)
     tmp1[nb+1:end] = zero(T)
     A_mul_B!(filterft, p1, tmp1)
 
@@ -535,7 +535,7 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
             tmp1[1:npadbefore] = zero(T)
             tmp1[npadbefore+n+1:end] = zero(T)
 
-            copy!(tmp1, npadbefore+1, x, colstart+xstart, n)
+            copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
             A_mul_B!(tmp2, p1, tmp1)
             broadcast!(*, tmp2, tmp2, filterft)
             A_mul_B!(tmp1, p2, tmp2)
