@@ -284,7 +284,7 @@ function split_real_complex(x::Vector{T}) where T
 
     c = T[]
     r = typeof(real(zero(T)))[]
-    for k in sort!(collect(keys(d)), order=Base.Order.Lexicographic)
+    for k in sort!(collect(keys(d)), by=x -> (real(x), imag(x)))
         if imag(k) != 0
             if !haskey(d, conj(k))
                 # No match for conjugate
