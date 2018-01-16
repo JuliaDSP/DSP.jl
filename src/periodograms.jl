@@ -5,7 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
-using Compat: AbstractRange, copyto!, Nothing, uninitialized
+using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, uninitialized
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -342,7 +342,7 @@ end
 
 forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
     plan_rfft(X)
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{Complex64, Complex128}} =
+forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
 
 # Compute an estimate of the power spectral density of a signal s via Welch's

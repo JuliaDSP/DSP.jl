@@ -59,7 +59,7 @@ end
     sos = SecondOrderSections(bs, 42.0^-9)
     @test freqz(sos, linspace(0, 2π, 50)) ≈ fill(42.0, 50)
 
-    @test freqz(ZeroPoleGain(Complex128[], Complex128[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
+    @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
     @test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
 end
 

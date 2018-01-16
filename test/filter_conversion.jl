@@ -165,11 +165,11 @@ end
     f1 = digitalfilter(Lowpass(0.3), Butterworth(2))
     f2 = digitalfilter(Highpass(0.5), Butterworth(1))
     # Test some otherwise untested code paths
-    @test promote_type(ZeroPoleGain{Complex64,Complex128,Float32}, ZeroPoleGain{Complex128,Complex64,Float64}) == ZeroPoleGain{Complex128,Complex128,Float64}
-    @test convert(ZeroPoleGain{Float64,Complex128,Float64}, f1) === f1
-    f1f = convert(ZeroPoleGain{Complex64,Complex64,Float32}, f1)
-    @test f1f.z == convert(Vector{Complex64}, f1.z)
-    @test f1f.p == convert(Vector{Complex64}, f1.p)
+    @test promote_type(ZeroPoleGain{ComplexF32,ComplexF64,Float32}, ZeroPoleGain{ComplexF64,ComplexF32,Float64}) == ZeroPoleGain{ComplexF64,ComplexF64,Float64}
+    @test convert(ZeroPoleGain{Float64,ComplexF64,Float64}, f1) === f1
+    f1f = convert(ZeroPoleGain{ComplexF32,ComplexF32,Float32}, f1)
+    @test f1f.z == convert(Vector{ComplexF32}, f1.z)
+    @test f1f.p == convert(Vector{ComplexF32}, f1.p)
     @test f1f.k == convert(Float32, f1.k)
 
     @test_throws ArgumentError PolynomialRatio(Float64[], Float64[])
@@ -187,7 +187,7 @@ end
     @test b.a2 === 5/3
     @test promote_type(Biquad{Float32}, Biquad{Int}) == Biquad{Float32}
     @test convert(Biquad{Float32}, b) == Biquad{Float32}(0.0, 2*1/3, 2*2/3, 4/3, 5/3)
-    zpkfilter_eq(convert(ZeroPoleGain{Complex128,Complex128,Float64}, b), convert(ZeroPoleGain, b), 0.0)
+    zpkfilter_eq(convert(ZeroPoleGain{ComplexF64,ComplexF64,Float64}, b), convert(ZeroPoleGain, b), 0.0)
     f = convert(PolynomialRatio, Biquad(2.0, 0.0, 0.0, 0.0, 0.0))
     @test coefb(f) == [2.0]
     @test coefa(f) == [1.0]

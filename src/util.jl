@@ -1,7 +1,7 @@
 module Util
 using ..DSP: @importffts
 import Base: *
-using Compat: copyto!, uninitialized
+using Compat: copyto!, ComplexF64, uninitialized
 @importffts
 
 export  unwrap!,
@@ -132,12 +132,12 @@ end
 # Get the input element type of FFT for a given type
 fftintype(::Type{T}) where {T<:FFTW.fftwNumber} = T
 fftintype(::Type{T}) where {T<:Real} = Float64
-fftintype(::Type{T}) where {T<:Complex} = Complex128
+fftintype(::Type{T}) where {T<:Complex} = ComplexF64
 
 # Get the return element type of FFT for a given type
 fftouttype(::Type{T}) where {T<:FFTW.fftwComplex} = T
 fftouttype(::Type{T}) where {T<:FFTW.fftwReal} = Complex{T}
-fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = Complex128
+fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = ComplexF64
 
 # Get the real part of the return element type of FFT for a given type
 fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
