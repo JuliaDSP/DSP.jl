@@ -1,4 +1,4 @@
-using DSP, Compat, Compat.Test
+using DSP, Compat, Compat.Test, Compat.DelimitedFiles
 
 # Test dpss against dpss computed with MATLAB
 d1 = dpss(128, 4)
