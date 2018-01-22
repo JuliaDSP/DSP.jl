@@ -1,5 +1,5 @@
 module FilterTestHelpers
-using DSP, Base.Test
+using DSP, Compat, Compat.Test
 
 export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy,
        matrix_to_sosfilter, sosfilter_to_matrix

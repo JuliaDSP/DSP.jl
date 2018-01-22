@@ -1,5 +1,4 @@
-using DSP, AbstractFFTs, FFTW, Base.Test
-importall AbstractFFTs, FFTW
+using Compat, DSP, AbstractFFTs, FFTW, Compat.Test
 
 include("dsp.jl")
 include("util.jl")

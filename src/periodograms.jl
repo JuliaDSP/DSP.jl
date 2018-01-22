@@ -5,7 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
-using Compat: AbstractRange
+using Compat: AbstractRange, uninitialized
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -48,10 +48,13 @@ Base.next(x::ArraySplit, i::Int) = (x[i], i+1)
 Base.done(x::ArraySplit, i::Int) = i > x.k
 Base.size(x::ArraySplit) = (x.k,)
 
-# Split an array into subarrays of length N, with overlapping regions
-# of length noverlap. To avoid allocation, the returned AbstractVector
-# always returns the same vector (with different contents) at all
-# indices.
+"""
+    arraysplit(s, n, m)
+
+Split an array into arrays of length `n` with overlapping regions
+of length `m`. Iterating or indexing the returned AbstractVector
+always yields the same Vector with different contents.
+"""
 arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
 
 ## Make collect() return the correct split arrays rather than repeats of the last computed copy
@@ -191,21 +194,65 @@ struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies
     freq1::F1
     freq2::F2
 end
+
+"""
+    power(p)
+
+For a Periodogram, returns the computed power at each frequency as
+a Vector.
+
+For a Spectrogram, returns the computed power at each frequency and
+time bin as a Matrix. Dimensions are frequency × time.
+"""
 power(p::TFR) = p.power
+
+"""
+    freq(p)
+
+Returns the frequency bin centers for a given Periodogram or
+Spectrogram object.
+
+Returns a tuple of frequency bin centers for a given Periodogram2
+object.
+
+See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
+"""
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
+"""
+    periodogram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+
+Computes periodogram of a signal by FFT and returns a
+Periodogram object.
+
+For real signals, the two-sided periodogram is symmetric and this
+function returns a one-sided (real only) periodogram by default. A
+two-sided periodogram can be obtained by setting `onesided=false`.
+
+`nfft` specifies the number of points to use for the Fourier
+transform. If `length(s)` < `nfft`, then the input is padded
+with zeros. By default, `nfft` is the closest size for which the
+Fourier transform can be computed with maximal efficiency.
+
+`fs` is the sample rate of the original signal, and `window` is
+an optional window function or vector to be applied to the original
+signal before computing the Fourier transform. The computed
+periodogram is normalized so that the area under the periodogram is
+equal to the uncentered variance (or average power) of the original
+signal.
+"""
 function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
                      window::Union{Function,AbstractVector,Void}=nothing) where T<:Number
@@ -235,6 +282,29 @@ end
 # Compute the periodogram of a 2-d signal S. Returns 1/N*X[s(n)]^2, where X is the 2-d
 # DTFT of the signal S if radialsum and radialavg are both false (default),
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
+"""
+    periodogram(s::AbstractMatrix; nfft=nextfastfft(size(s)), fs=1, radialsum=false, radialavg=false)
+
+Computes periodogram of a 2-d signal by FFT and returns a
+Periodogram2 object.
+
+Returns a 2-d periodogram by default. A radially summed or
+averaged periodogram is returned as a Periodogram object
+if `radialsum` or  `radialavg` is true, respectively.
+
+`nfft` specifies the number of points to use for the Fourier
+transform. If `size(s)` < `nfft`, then the input is padded
+with zeros. By default, `nfft` is the closest size for which the
+Fourier transform can be computed with maximal efficiency. `fs`
+is the sample rate of the original signal in both directions.
+
+For `radialsum=true` the value of `power[k]` is proportional to
+``\\frac{1}{N}\\sum_{k\\leq |k'|<k+1} |X[k']|^2``.
+For `radialavg=true` it is proportional to
+``\\frac{1}{N \\#\\{k\\leq |k'|<k+1\\}} \\sum_{k\\leq |k'|<k+1} |X[k']|^2``.
+The computation of `|k'|` takes into account non-square signals
+by scaling the coordinates of the wavevector accordingly.
+"""
 function periodogram(s::AbstractMatrix{T};
                      nfft::NTuple{2,Int}=nextfastfft(size(s)),
                      fs::Real=1,
@@ -284,6 +354,14 @@ forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{Complex64
 # for the Estimation of Power Spectra: A Method based on Time Averaging over Short,
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
+"""
+    welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+
+Computes the Welch periodogram of a signal `s` based on segments with `n` samples
+with overlap of `noverlap` samples, and returns a Periodogram
+object. For a Bartlett periodogram, set `noverlap=0`. See
+[`periodogram`](@ref) for description of optional keyword arguments.
+"""
 function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                      onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
@@ -296,7 +374,7 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         A_mul_B!(tmp, plan, sig)
@@ -306,6 +384,22 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
 end
 
+"""
+    mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1, window=dpss(length(s), nw, ntapers))
+
+Computes the multitaper periodogram of a signal `s`.
+
+If `window` is not specified, the signal is tapered with
+`ntapers` discrete prolate spheroidal sequences with
+time-bandwidth product `nw`. Each sequence is equally weighted;
+adaptive multitaper is not (yet) supported.
+
+If `window` is specified, each column is applied as a taper. The
+sum of periodograms is normalized by the total sum of squares of
+`window`.
+
+See also: [`dpss`](@ref)
+"""
 function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   nfft::Int=nextfastfft(length(s)), fs::Real=1,
                   nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
@@ -324,7 +418,7 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
 
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     input = zeros(fftintype(T), nfft)
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
@@ -349,11 +443,24 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     freq::F
     time::FloatRange{Float64}
 end
-fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
+AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
+
+"""
+    time(p)
+
+Returns the time bin centers for a given Spectrogram object.
+"""
 Base.time(p::Spectrogram) = p.time
 
+"""
+    spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+
+Computes the spectrogram of a signal `s` based on segments with `n` samples
+with overlap of `noverlap` samples, and returns a Spectrogram object. See
+[`periodogram`](@ref) for description of optional keyword arguments.
+"""
 function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                      onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
@@ -369,6 +476,14 @@ struct PSDOnly end
 stfttype(T::Type, psdonly::PSDOnly) = fftabs2type(T)
 stfttype(T::Type, psdonly::Void) = fftouttype(T)
 
+"""
+    stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+
+Computes the STFT of a signal `s` based on segments with `n` samples
+with overlap of `noverlap` samples, and returns a matrix containing the STFT
+coefficients. See [`periodogram`](@ref) for description of optional
+keyword arguments.
+"""
 function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
               psdonly::Union{Void,PSDOnly}=nothing;
               onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
@@ -379,7 +494,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))
-    tmp = Array{fftouttype(T)}(T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)

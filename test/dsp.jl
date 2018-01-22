@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-using Base.Test, DSP
+using Compat, Compat.Test, DSP
 import DSP: filt, filt!, deconv, conv, conv2, xcorr
 
 # Filter
@@ -27,18 +27,34 @@ si = [0.9967207836936347,-1.4940914728163142,1.2841226760316475,-0.4524417279474
 @test filt(b, a, ones(10), si) ≈ ones(10) # Shouldn't affect DC offset
 
 @test_throws ArgumentError filt!([1, 2], [1], [1], [1])
-@test xcorr([1, 2], [3, 4]) == [4, 11, 6]
+if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
+    @testset "xcorr" begin
+        @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
+        @test xcorr([1, 2, 3], [4, 5]) == [0, 5, 14, 23, 12]
+        @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
+        @test xcorr([1.0im], [1.0im]) == [1]
+        @test xcorr([1, 2, 3]*1.0im, Complex128[4, 5]) ≈ [0, 5, 14, 23, 12]*im
+        @test xcorr([1, 2]*1.0im, Complex128[3, 4, 5]) ≈ [5, 14, 11, 6, 0]*im
+        @test xcorr(Complex128[1, 2, 3], [4, 5]*1.0im) ≈ -[0, 5, 14, 23, 12]*im
+        @test xcorr(Complex128[1, 2], [3, 4, 5]*1.0im) ≈ -[5, 14, 11, 6, 0]*im
+        @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [0, 5, 14, 23, 12]
+        @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6, 0]
+
+        # Base Julia issue #17351
+        let
+            x = rand(10)
+            u = rand(10, 3)
+            su = view(u, :, 1)
+            @test size(@inferred(xcorr(su, x))) == (19,)
+            if VERSION >= v"0.7.0-DEV.1996"
+                @test size(@inferred(xcorr(x, su))) == (19,)
+            end
+        end
+    end
+end
 
 # Convolution
 a = [1., 2., 1., 2.]
 b = [1., 2., 3.]
 @test conv(a, b) ≈ [1., 4., 8., 10., 7., 6.]
 @test conv(complex.(a, ones(4)), complex(b)) ≈ complex.([1., 4., 8., 10., 7., 6.], [1., 3., 6., 6., 5., 3.])
-
-# Base Julia issue #17351
-let
-    x = rand(10)
-    u = rand(10, 3)
-    su = view(u, :, 1)
-    @test size(@inferred(xcorr(x, su))) == (19,)
-end

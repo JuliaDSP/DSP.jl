@@ -8,8 +8,28 @@
 _zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
 
+"""
+    filt!(out, f, x[, si])
+
+Same as [`filt()`](@ref) but writes the result into the `out`
+argument, which may alias the input `x` to modify it in-place.
+"""
 filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
     filt!(out, coefb(f), coefa(f), x, si)
+
+"""
+    filt(f, x[, si])
+
+Apply filter or filter coefficients `f` along the first dimension
+of array `x`. If `f` is a filter coefficient object, `si`
+is an optional array representing the initial filter state (defaults
+to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
+`SecondOrderSections`, filtering is implemented directly. If
+`f` is a `ZeroPoleGain` object, it is first converted to a
+`SecondOrderSections` object.  If `f` is a Vector, it is
+interpreted as an FIR filter, and a naïve or FFT-based algorithm is
+selected based on the data and filter length.
+"""
 filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections
@@ -55,7 +75,7 @@ function filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
 end
 
 filt(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(Array{promote_type(T, G, S)}(size(x)), f, x, si)
+    filt!(Array{promote_type(T, G, S)}(uninitialized, size(x)), f, x, si)
 
 ## Biquad
 _zerosi(f::Biquad{T}, x::AbstractArray{S}) where {T,S} =
@@ -91,16 +111,22 @@ function filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
 end
 
 filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(Array{promote_type(T, S)}(size(x)), f, x, si)
+    filt!(Array{promote_type(T, S)}(uninitialized, size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
 filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
 filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
 
-#
-# Direct form II transposed filter with state
-#
+"""
+    DF2TFilter(coef[, si])
 
+Construct a stateful direct form II transposed filter with
+coefficients `coef`. `si` is an optional array representing the
+initial filter state (defaults to zeros). If `f` is a
+`PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
+filtering is implemented directly. If `f` is a `ZeroPoleGain`
+object, it is first converted to a `SecondOrderSections` object.
+"""
 struct DF2TFilter{T<:FilterCoefficients,S<:Array}
     coef::T
     state::S
@@ -174,7 +200,7 @@ end
 
 # Variant that allocates the output
 filt(f::DF2TFilter{T,S}, x::AbstractVector) where {T,S<:Array} =
-    filt!(Array{eltype(S)}(length(x)), f, x)
+    filt!(Vector{eltype(S)}(uninitialized, length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, coef))
@@ -212,7 +238,7 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
     t = Base.promote_eltype(b, a, x)
-    extrapolated = Array{t}(size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(uninitialized, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
@@ -229,7 +255,20 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     out
 end
 
-# Zero phase digital filtering with an FIR filter in a single pass
+"""
+    filtfilt(coef, x)
+
+Filter `x` in the forward and reverse directions using filter
+coefficients `coef`. The initial state of the filter is computed so
+that its response to a step function is steady state. Before
+filtering, the data is extrapolated at both ends with an
+odd-symmetric extension of length
+`3*(max(length(b), length(a))-1)`.
+
+Because `filtfilt` applies the given filter twice, the effective
+filter order is twice the order of `coef`. The resulting signal has
+zero phase distortion.
+"""
 function filtfilt(b::AbstractVector, x::AbstractArray)
     nb = length(b)
     # Only need as much padding as the order of the filter
@@ -274,7 +313,7 @@ function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S
     zitmp = similar(zi)
     pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
-    extrapolated = Array{t}(size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(uninitialized, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
@@ -317,7 +356,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     as<sz && (a = copy!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
-    A = [-a[2:end] [eye(T, sz-2); zeros(T, 1, sz-2)]]
+    A = [-a[2:end] [I; zeros(T, 1, sz-2)]]
     B = b[2:end] - a[2:end] * b[1]
     # Solve si = A*si + B
     # (I - A)*si = B
@@ -326,7 +365,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
 
 function filt_stepstate(f::SecondOrderSections{T}) where T
     biquads = f.biquads
-    si = Array{T}(2, length(biquads))
+    si = Matrix{T}(uninitialized, 2, length(biquads))
     y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
@@ -416,7 +455,7 @@ function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 end
 
 filt(h::AbstractArray, x::AbstractArray) =
-    filt!(Array{eltype(x)}(size(x)), h, x)
+    filt!(Array{eltype(x)}(uninitialized, size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -459,7 +498,12 @@ function optimalfftfiltlength(nb, nx)
     nfft
 end
 
-# Filter x using FIR filter b by overlap-save method
+"""
+    fftfilt(h, x)
+
+Apply FIR filter taps `h` along the first dimension of array `x`
+using an FFT-based overlap-save algorithm.
+"""
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
                  nfft=optimalfftfiltlength(length(b), length(x))) where T<:Real
     nb = length(b)
@@ -467,9 +511,9 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     normfactor = 1/nfft
 
     L = min(nx, nfft - (nb - 1))
-    tmp1 = Array{T}(nfft)
-    tmp2 = Array{Complex{T}}(nfft >> 1 + 1)
-    out = Array{T}(size(x))
+    tmp1 = Vector{T}(uninitialized, nfft)
+    tmp2 = Vector{Complex{T}}(uninitialized, nfft >> 1 + 1)
+    out = Array{T}(uninitialized, size(x))
 
     p1 = plan_rfft(tmp1)
     p2 = plan_brfft(tmp2, nfft)
@@ -520,7 +564,7 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt!(Array{eltype(x)}(size(x)), b, x)
+        filt!(Array{eltype(x)}(uninitialized, size(x)), b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -529,6 +573,6 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(size(x)), b, x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(uninitialized, size(x)), b, x)
     end
 end

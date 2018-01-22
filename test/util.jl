@@ -1,4 +1,4 @@
-using DSP, Base.Test
+using DSP, Compat, Compat.Test
 
 @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
 @test unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
@@ -94,6 +94,8 @@ r = rand(1:20, 128)
 for n = 1:7
     @test fftshift(fftfreq(n)) ≈ fftshift([fftfreq(n);])
 end
+
+@test meanfreq(sin.(2*π*10*(0:1e-3:10*π)),1e3) ≈ 10.0 rtol=1e-3
 
 # nextfastfft
 @test nextfastfft(64) == 64

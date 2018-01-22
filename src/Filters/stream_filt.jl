@@ -129,6 +129,14 @@ mutable struct FIRFilter{Tk<:FIRKernel} <: Filter
 end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
+"""
+    FIRFilter(h[, ratio])
+
+Construct a stateful FIRFilter object from the vector of filter taps `h`.
+`ratio` is an optional rational integer which specifies
+the input to output sample rate relationship (e.g. `147//160` for
+converting recorded audio from 48 KHz to 44.1 KHz).
+"""
 function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
     interpolation = numerator(resampleRatio)
     decimation    = denominator(resampleRatio)
@@ -154,6 +162,15 @@ function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
 end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
+"""
+    FIRFilter(h, rate[, Nϕ])
+
+Returns a polyphase FIRFilter object from the vector of filter taps `h`.
+`rate` is a floating point number that specifies the input to output
+sample-rate relationship ``\\frac{fs_{out}}{fs_{in}}``. `Nϕ` is an
+optional parameter which specifies the number of *phases* created from
+`h`. `Nϕ` defaults to 32.
+"""
 function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     rate > 0.0 || error("rate must be greater than 0")
     kernel     = FIRArbitrary(h, rate, Nϕ)
@@ -260,7 +277,7 @@ function taps2pfb(h::Vector{T}, Nϕ::Integer) where T
     hLen     = length(h)
     tapsPerϕ = ceil(Int, hLen/Nϕ)
     pfbSize  = tapsPerϕ * Nϕ
-    pfb      = Array{T}(tapsPerϕ, Nϕ)
+    pfb      = Matrix{T}(uninitialized, tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
@@ -400,7 +417,7 @@ end
 
 function filt(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Array{promote_type(Th,Tx)}(bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -451,7 +468,7 @@ end
 
 function filt(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Array{promote_type(Th,Tx)}(bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -507,7 +524,7 @@ end
 
 function filt(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Array{promote_type(Th,Tx)}(bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -555,7 +572,7 @@ end
 
 function filt(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Array{promote_type(Th,Tx)}(bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -626,7 +643,7 @@ end
 
 function filt(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Array{promote_type(Th,Tx)}(bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -651,6 +668,20 @@ function filt(h::Vector, x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32
     filt(self, x)
 end
 
+"""
+    resample(x, rate[, coef])
+
+Resample `x` at rational or arbitrary `rate`.
+`coef` is an optional vector of FIR filter taps. If `coef`
+is not provided, the taps will be computed using a Kaiser window.
+
+Internally, `resample` uses a polyphase `FIRFilter` object,
+but performs additional operations to make resampling a signal easier.
+It compensates for for the `FIRFilter`'s delay (ramp-up), and appends
+zeros to `x`. The result is that when the input and output signals
+are plotted on top of each other, they correlate very well, but one
+signal will have more samples that the other.
+"""
 function resample(x::AbstractVector, rate::Real, h::Vector)
     self = FIRFilter(h, rate)
 
