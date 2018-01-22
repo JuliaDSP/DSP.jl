@@ -22,7 +22,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
 
     function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window) where {Ti<:AbstractVector,Si,Wi}
         # n = noverlap is a problem - the algorithm will not terminate.
-        (0 <= noverlap < n) || error("noverlap must be between zero and n")
+        (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
         new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
     end
@@ -31,11 +31,11 @@ ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
     ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
 
 function Base.getindex(x::ArraySplit{T,S,Void}, i::Int) where {T,S}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
+    (1 ≤ i ≤ x.k) || throw(BoundsError())
     copy!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
 end
 function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
+    (1 ≤ i ≤ x.k) || throw(BoundsError())
     offset = (i-1)*(x.n-x.noverlap)
     window = x.window
     for i = 1:x.n
@@ -53,6 +53,9 @@ Base.size(x::ArraySplit) = (x.k,)
 # always returns the same vector (with different contents) at all
 # indices.
 arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
+
+## Make collect() return the correct split arrays rather than repeats of the last computed copy
+Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
 
 ## UTILITY FUNCTIONS
 
