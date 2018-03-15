@@ -2,6 +2,7 @@ module Util
 using ..DSP: @importffts, mul!
 import Base: *
 using Compat: copyto!, ComplexF64, undef
+import Compat.LinearAlgebra.BLAS
 @importffts
 
 export  unwrap!,
@@ -291,7 +292,7 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLas
     return dotprod
 end
 
-@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
+@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
     BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
 end
 
@@ -323,7 +324,7 @@ function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
     return dotprod
 end
 
-@inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
+@inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
     BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 

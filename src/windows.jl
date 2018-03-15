@@ -3,6 +3,7 @@ using ..DSP: @importffts, mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
 using Compat: copyto!, undef
+using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
 @importffts
 
 export  rect,

@@ -1,6 +1,7 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base.trailingsize
+import Compat.LinearAlgebra.BLAS
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -121,7 +122,7 @@ end
 
 Convolution of two vectors. Uses FFT algorithm.
 """
-function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:Base.LinAlg.BlasFloat
+function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     nu = length(u)
     nv = length(v)
     n = nu + nv - 1
@@ -138,8 +139,8 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:Base.LinAlg.Bla
     return y[1:n]
 end
 conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
-conv(u::StridedVector{<:Integer}, v::StridedVector{<:Base.LinAlg.BlasFloat}) = conv(float(u), v)
-conv(u::StridedVector{<:Base.LinAlg.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
+conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
+conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
 
 """
     conv2(u,v,A)
