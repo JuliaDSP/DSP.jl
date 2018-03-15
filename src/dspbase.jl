@@ -47,7 +47,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     end
 
     size(x,1) == 0 && return out
-    sz == 1 && return scale!(out, x, b[1]/a[1]) # Simple scaling without memory
+    sz == 1 && return mul!(out, x, b[1]/a[1]) # Simple scaling without memory
 
     # Filter coefficient normalization
     if a[1] != 1

@@ -585,7 +585,7 @@ function digitalfilter(ftype::FilterType, proto::FIRWindow)
     coefs = firprototype(length(proto.window), ftype)
     @assert length(proto.window) == length(coefs)
     out = coefs .* proto.window
-    proto.scale ? scale!(out, 1/scalefactor(out, ftype)) : out
+    proto.scale ? rmul!(out, 1/scalefactor(out, ftype)) : out
 end
 
 
@@ -609,7 +609,7 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
 
     # Design filter
     h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
-    scale!(h, Nϕ)
+    rmul!(h, Nϕ)
 end
 
 # Compute FIR coefficients necessary for rational rate resampling
@@ -634,5 +634,5 @@ function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
 
     # Design filter
     h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
-    scale!(h, Nϕ)
+    rmul!(h, Nϕ)
 end

@@ -3,7 +3,7 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..DSP: @importffts
+using ..DSP: @importffts, mul!
 using ..Util, ..Windows
 using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, undef
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
@@ -374,7 +374,7 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
-        A_mul_B!(tmp, plan, sig)
+        mul!(tmp, plan, sig)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -422,7 +422,7 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
         for i = 1:size(window, 1)
             @inbounds input[i] = window[i, j]*s[i]
         end
-        A_mul_B!(tmp, plan, input)
+        mul!(tmp, plan, input)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -497,7 +497,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     plan = forward_plan(sig_split.buf, tmp)
     offset = 0
     for sig in sig_split
-        A_mul_B!(tmp, plan, sig)
+        mul!(tmp, plan, sig)
         if isa(psdonly, PSDOnly)
             fft2pow!(out, tmp, nfft, r, onesided, offset)
         else

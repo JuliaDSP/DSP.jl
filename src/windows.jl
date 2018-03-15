@@ -1,5 +1,5 @@
 module Windows
-using ..DSP: @importffts
+using ..DSP: @importffts, mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
 using Compat: copyto!, undef
@@ -202,7 +202,7 @@ function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
         @assert s != 0
         sgn[i] = s
     end
-    scale!(v, sgn)
+    rmul!(v, Diagonal(sgn))
 end
 
 # Eigenvalues of DPSS, following Percival & Walden p. 390, exercise 8.1
@@ -239,11 +239,11 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
     for i = 1:size(A, 2)
         fill!(tmp1, 0)
         copyto!(tmp1, 1, A, (i-1)*size(A, 1)+1, size(A, 1))
-        A_mul_B!(tmp2, p1, tmp1)
+        mul!(tmp2, p1, tmp1)
         for j = 1:length(tmp2)
             @inbounds tmp2[j] = abs2(tmp2[j])
         end
-        A_mul_B!(tmp1, p2, tmp2)
+        mul!(tmp1, p2, tmp2)
 
         eig = 0.0
         for j = 1:size(A, 1)

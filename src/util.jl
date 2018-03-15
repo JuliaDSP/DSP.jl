@@ -1,5 +1,5 @@
 module Util
-using ..DSP: @importffts
+using ..DSP: @importffts, mul!
 import Base: *
 using Compat: copyto!, ComplexF64, undef
 @importffts
@@ -74,7 +74,7 @@ function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
     N = length(x)
     X = zeros(Complex{T}, N)
     p = plan_rfft(x)
-    A_mul_B!(view(X, 1:(N >> 1)+1), p, x)
+    mul!(view(X, 1:(N >> 1)+1), p, x)
     for i = 2:div(N, 2)+isodd(N)
         @inbounds X[i] *= 2.0
     end
@@ -106,7 +106,7 @@ function hilbert(x::AbstractArray{T}) where T<:Real
 
         # fft
         fill!(X, 0)
-        A_mul_B!(Xsub, p1, xc)
+        mul!(Xsub, p1, xc)
 
         # scale real part
         for i = 2:div(N, 2)+isodd(N)
@@ -114,7 +114,7 @@ function hilbert(x::AbstractArray{T}) where T<:Real
         end
 
         # ifft
-        A_mul_B!(X, p2, X)
+        mul!(X, p2, X)
 
         # scale and copy to output
         @simd for j = 1:N

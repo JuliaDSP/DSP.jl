@@ -162,7 +162,7 @@ function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}},
     a = f.coef.a.a
     n = length(b)
     if n == 1
-        scale!(out, x, b[1])
+        mul!(out, x, b[1])
     else
         @inbounds for i=1:length(x)
             xi = x[i]
@@ -244,8 +244,8 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        reverse!(filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
@@ -319,8 +319,8 @@ function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        reverse!(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
@@ -427,7 +427,7 @@ end
 
 function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
-        return scale!(out, h[1], x)
+        return mul!(out, h[1], x)
     elseif length(h) <= 15
         return small_filt!(out, h, x)
     end
@@ -522,7 +522,7 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     filterft = similar(tmp2)
     copyto!(tmp1, b)
     tmp1[nb+1:end] = zero(T)
-    A_mul_B!(filterft, p1, tmp1)
+    mul!(filterft, p1, tmp1)
 
     # FFT of chunks
     for colstart = 0:nx:length(x)-1
@@ -536,9 +536,9 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
             tmp1[npadbefore+n+1:end] = zero(T)
 
             copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            A_mul_B!(tmp2, p1, tmp1)
+            mul!(tmp2, p1, tmp1)
             broadcast!(*, tmp2, tmp2, filterft)
-            A_mul_B!(tmp1, p2, tmp2)
+            mul!(tmp1, p2, tmp2)
 
             # Copy to output
             for j = 0:min(L - 1, nx - off)

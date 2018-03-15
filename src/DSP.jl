@@ -15,6 +15,25 @@ end
 
 @importffts
 
+if VERSION < v"0.7.0-DEV.3204"
+    # N.B. this is not a generally valid replacement, but suffices for DSP, and
+    # doesn't interfere with other packages as it is unexported
+    mul!(Y, A, B) = A_mul_B!(Y, A, B)
+    mul!(Y::AbstractArray, A::AbstractArray, B::Number) = scale!(Y, A, B)
+    mul!(Y::AbstractArray, A::Number, B::AbstractArray) = scale!(Y, A, B)
+else
+    using Compat.LinearAlgebra: mul!
+end
+
+if VERSION < v"0.7.0-DEV.3665"
+    # As above, this is not a generally valid replacement, but suffices for DSP,
+    # and doesn't interfere with other packages as it is unexported
+    rmul!(A::AbstractArray, B::Number) = scale!(A, B)
+    rmul!(A::AbstractArray, B::Diagonal) = scale!(A, diag(B))
+else
+    using Compat.LinearAlgebra: rmul!
+end
+
 if VERSION >= v"0.7.0-DEV.602"
     if VERSION < v"0.7.0-DEV.986" # JuliaLang/julia#22763
         import Base: conv, conv2, deconv, filt, filt!, xcorr
