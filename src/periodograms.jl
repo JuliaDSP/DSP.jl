@@ -5,7 +5,7 @@
 module Periodograms
 using ..DSP: @importffts
 using ..Util, ..Windows
-using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, uninitialized
+using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, undef
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -371,7 +371,7 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
         A_mul_B!(tmp, plan, sig)
@@ -415,7 +415,7 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
 
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     input = zeros(fftintype(T), nfft)
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
@@ -491,7 +491,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)

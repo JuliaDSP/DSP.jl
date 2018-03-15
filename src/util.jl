@@ -1,7 +1,7 @@
 module Util
 using ..DSP: @importffts
 import Base: *
-using Compat: copyto!, ComplexF64, uninitialized
+using Compat: copyto!, ComplexF64, undef
 @importffts
 
 export  unwrap!,
@@ -91,8 +91,8 @@ along the first dimension of x.
 """
 function hilbert(x::AbstractArray{T}) where T<:Real
     N = size(x, 1)
-    xc = Vector{fftintype(T)}(uninitialized, N)
-    X = Vector{fftouttype(T)}(uninitialized, N)
+    xc = Vector{fftintype(T)}(undef, N)
+    X = Vector{fftouttype(T)}(undef, N)
     out = similar(x, fftouttype(T))
 
     p1 = plan_rfft(xc)

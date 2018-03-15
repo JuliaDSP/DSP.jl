@@ -121,7 +121,7 @@ Chebyshev2(n::Integer, ripple::Real) = Chebyshev2(Float64, n, ripple)
 # Compute Landen sequence for evaluation of elliptic functions
 function landen(k::Real)
     niter = 7
-    kn = Vector{typeof(k)}(uninitialized, niter)
+    kn = Vector{typeof(k)}(undef, niter)
     # Eq. (50)
     for i = 1:niter
         kn[i] = k = abs2(k/(1+sqrt(1-abs2(k))))
@@ -191,8 +191,8 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
     # Eq. (65)
     v0 = -im/n*asne(im/εp, k1)
 
-    z = Vector{Complex{T}}(uninitialized, 2*div(n, 2))
-    p = Vector{Complex{T}}(uninitialized, n)
+    z = Vector{Complex{T}}(undef, 2*div(n, 2))
+    p = Vector{Complex{T}}(undef, n)
     gain = one(T)
     for i = 1:div(n, 2)
         # Eq. (43)
@@ -365,8 +365,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
     nz = length(z)
     np = length(p)
     npairs = nz+np-min(nz, np)
-    newz = Vector{Base.promote_eltype(z, p)}(uninitialized, 2*npairs)
-    newp = Vector{Base.promote_eltype(z, p)}(uninitialized, 2*npairs)
+    newz = Vector{Base.promote_eltype(z, p)}(undef, 2*npairs)
+    newp = Vector{Base.promote_eltype(z, p)}(undef, 2*npairs)
 
     num = one(eltype(z))
     for i = 1:nz
@@ -419,7 +419,7 @@ function bilinear(f::ZeroPoleGain{Z,P,K}, fs::Real) where {Z,P,K}
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
 
     ptype = typeof(0 + zero(P)/fs)
-    p = Vector{typeof(zero(P)/fs)}(uninitialized, length(f.p))
+    p = Vector{typeof(zero(P)/fs)}(undef, length(f.p))
 
     num = one(one(fs) - one(Z))
     for i = 1:length(f.z)

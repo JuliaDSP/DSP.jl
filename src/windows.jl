@@ -2,7 +2,7 @@ module Windows
 using ..DSP: @importffts
 using ..Util
 import SpecialFunctions: besseli
-using Compat: copyto!, uninitialized
+using Compat: copyto!, undef
 @importffts
 
 export  rect,
@@ -222,17 +222,17 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
     w = nw/size(A, 1)
 
     # Compute coefficients
-    seq = Vector{Float64}(uninitialized, size(A, 1))
+    seq = Vector{Float64}(undef, size(A, 1))
     seq[1] = 1.0
     for i = 1:size(A, 1)-1
         seq[i+1] = 2 * sinc(2w*i)
     end
 
-    q = Vector{Float64}(uninitialized, size(A, 2))
+    q = Vector{Float64}(undef, size(A, 2))
     nfft = nextfastfft(2*size(A, 1)-1)
 
-    tmp1 = Vector{Float64}(uninitialized, nfft)
-    tmp2 = Vector{Complex{Float64}}(uninitialized, nfft >> 1 + 1)
+    tmp1 = Vector{Float64}(undef, nfft)
+    tmp2 = Vector{Complex{Float64}}(undef, nfft >> 1 + 1)
     p1 = plan_rfft(tmp1)
     p2 = plan_brfft(tmp2, nfft)
 
