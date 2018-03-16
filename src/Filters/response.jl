@@ -26,12 +26,12 @@ function freqz(filter::SecondOrderSections, w::Number)
 end
 
 """
-    freqz(filter, w = linspace(0, π, 250))
+    freqz(filter, w = range(0, stop=π, length=250))
 
 Frequency response of a digital `filter` at normalised frequency
 or frequencies `w` in radians/sample.
 """
-function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
+function freqz(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
     [freqz(filter, i) for i = w]
 end
 
@@ -47,12 +47,12 @@ end
 
 
 """
-    phasez(filter, w = linspace(0, π, 250))
+    phasez(filter, w = range(0, stop=π, length=250))
 
 Phase response of a digital `filter` at normalised frequency
 or frequencies `w` in radians/sample.
 """
-function phasez(filter::FilterCoefficients, w = linspace(0, π, 250))
+function phasez(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
     h = freqz(filter, w)
     unwrap(-atan2.(imag(h), real(h)))
 end

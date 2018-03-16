@@ -49,11 +49,11 @@ end
 @testset "irrational ratio" begin
     ratio    = 3.141592653589793
     cycles   = 2
-    tx       = linspace(0, cycles, 1000)
+    tx       = Compat.range(0, stop=cycles, length=1000)
     x        = sinpi.(2*tx)
     y        = resample(x, ratio)
     yLen     = length(y)
-    ty       = linspace(0, cycles, yLen)
+    ty       = Compat.range(0, stop=cycles, length=yLen)
     yy       = sinpi.(2*ty)
     idxLower = round(Int, yLen/3)
     idxUpper = idxLower*2

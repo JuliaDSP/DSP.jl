@@ -3,6 +3,7 @@ using ..DSP: @importffts, mul!, rmul!
 using Polynomials, ..Util
 import Base: *
 using Compat: copyto!, undef
+import Compat
 using Compat.LinearAlgebra: I
 @importffts
 if VERSION >= v"0.7.0-DEV.602"

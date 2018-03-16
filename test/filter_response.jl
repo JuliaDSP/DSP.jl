@@ -24,7 +24,7 @@ using DSP, Compat, Compat.Test
     b = b0*conv(b1, b2)
     a = conv(a1, a2)
 
-    #=w     = linspace(0, 2*pi, 200)=#        # Does not produce same values as matlab
+    #=w     = range(0, stop=2*pi, length=200)=#        # Does not produce same values as matlab
     h     = freqz(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
     h_abs = convert(Array{Float64}, abs.(h))
 
@@ -48,19 +48,19 @@ end
 #######################################
 @testset "freqz ple/zero cancellation" begin
     rs = [1-10.0^-n for n in 1:15]
-    @test freqz(ZeroPoleGain(rs, reverse(rs), 42.0), linspace(0, 2π, 50)) ≈ fill(42., 50)
+    @test freqz(ZeroPoleGain(rs, reverse(rs), 42.0), Compat.range(0, stop=2π, length=50)) ≈ fill(42., 50)
 
     biq = Biquad(42.0, 84.0*real(.999999*exp(im)), 42.0*.999999^2, 2.0*real(.999999*exp(im)), .999999^2)
-    @test freqz(biq, linspace(0, 2π, 50)) ≈ fill(42.0, 50)
+    @test freqz(biq, Compat.range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
     pr = [1-10.0^-n for n in 1:10]
     zr = reverse(pr)
     bs = [Biquad(42.0, 84.0*real(r[1]*exp(im)), 42.0*r[1]^2, 2.0*real(r[2]*exp(im)), r[2]^2) for r in zip(zr, pr)]
     sos = SecondOrderSections(bs, 42.0^-9)
-    @test freqz(sos, linspace(0, 2π, 50)) ≈ fill(42.0, 50)
+    @test freqz(sos, Compat.range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
-    @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
-    @test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), linspace(0, 2π, 50)) == fill(42.0, 50)
+    @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), Compat.range(0, stop=2π, length=50)) == fill(42.0, 50)
+    @test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), Compat.range(0, stop=2π, length=50)) == fill(42.0, 50)
 end
 
 #######################################
@@ -106,8 +106,8 @@ end
 
 
     # Test diffent versions of the functions
-    @test freqz(df) == freqz(df, linspace(0, pi, 250))
-    @test phasez(df) == phasez(df, linspace(0, pi, 250))
+    @test freqz(df) == freqz(df, Compat.range(0, stop=pi, length=250))
+    @test phasez(df) == phasez(df, Compat.range(0, stop=pi, length=250))
     @test cumsum(impz(df)) ≈ stepz(df)
 end
 
@@ -130,7 +130,7 @@ end
     a = conv(a1, a2)
 
     fs    = 8192
-    hz    = linspace(0, fs, 200)
+    hz    = Compat.range(0, stop=fs, length=200)
     h     = freqz(PolynomialRatio(b, a), hz, fs)
     h_abs = convert(Array{Float64}, abs.(h))
 
@@ -154,7 +154,7 @@ end
     # Julia
     a = [1.0, 0.4, 1.0]
     b = [0.2, 0.3, 1.0]
-    w = logspace(-1, 1, 50)
+    w = 10 .^ Compat.range(-1, stop=1, length=50)
 
     h        = freqs(PolynomialRatio(b, a), w)
     mag      = convert(Array{Float64}, abs.(h))
@@ -201,7 +201,7 @@ end
     a  = [1.0, 0.4, 1.0]
     b  = [0.2, 0.3, 1.0]
     fs = 8192
-    hz = linspace(0, fs, 50)
+    hz = Compat.range(0, stop=fs, length=50)
 
     h        = freqs(PolynomialRatio(b, a), hz, fs)
     mag      = convert(Array{Float64}, abs.(h))
