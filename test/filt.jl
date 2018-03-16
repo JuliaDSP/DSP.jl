@@ -179,7 +179,7 @@ end
     x2_output = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output_2d.txt"),'\t')
 
     x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-    x  = repmat(x, 1, 3)
+    x  = repeat(x, outer=(1, 3))
     x[:,2] = circshift(x[:,2], 64)
     x[:,3] = circshift(x[:,3], 128)
 

@@ -410,19 +410,20 @@ for n = 2:15
     end
 end
 
-chain = :(throw(ArgumentError("invalid tuple size")))
-for n = 15:-1:2
-    chain = quote
-        if length(h) == $n
-            filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
-        else
-            $chain
+let chain = :(throw(ArgumentError("invalid tuple size")))
+    for n = 15:-1:2
+        chain = quote
+            if length(h) == $n
+                filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
+            else
+                $chain
+            end
         end
     end
-end
 
-@eval function small_filt!(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray) where T
-    $chain
+    @eval function small_filt!(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray) where T
+        $chain
+    end
 end
 
 function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
