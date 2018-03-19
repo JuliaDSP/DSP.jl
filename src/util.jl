@@ -25,7 +25,8 @@ export  unwrap!,
         meanfreq,
         unsafe_dot,
         polyfit,
-        shiftin!
+        shiftin!,
+        esprit
 
 """
     unwrap!(m, dim=ndims(m); range=2pi)
@@ -370,5 +371,34 @@ function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     return a
 end
 
+"""
+    esprit(x::Array, M::Int, p::Int, Fs::Float64=1.0)
+
+ESPRIT algorithm for frequency estimation.
+Estimation of Signal Parameters via Rotational Invariance Techniques
+    
+Given length N signal "x" that is the sum of p sinusoids of unknown frequencies,
+estimate and return an array of the p frequencies.
+    
+# Arguments
+- `x::Array`: complex length N signal array
+- `M::Int`: size of correlation matrix, must be <= N.
+      The signal subspace is computed from the SVD of an M x (N-M+1) signal matrix
+      formed from N-M+1 length-M shifts of the signal x in its columns.
+      For best performance for 1 sinusoid, use M = (N+1)/3 (according to van der Veen and Leus)
+      For faster execution (due to smaller SVD), use small M or small N-M
+- `p::Int`: number of sinusoids to estimate.
+- `Fs::Float64`: sampling frequency, in Hz.
+    
+# Returns
+length p real array of frequencies in units of Hz.
+"""
+function esprit(x::Array, M::Int, p::Int, Fs::Float64=1.0)
+    N = length(x)
+    X = x[ (1:M) .+ (0:N-M)' ];  # in julia, likely faster to loop than to allocate huge index array
+    U,s,V = svd(X);
+    D,_ = eig( U[1:end-1,1:p] \ U[2:end,1:p] );
+    angle.(D)*Fs/(2*π)
+end
 
 end # end module definition
