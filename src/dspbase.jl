@@ -198,5 +198,5 @@ function xcorr(u, v)
     elseif sv < su
         v = [v;zeros(eltype(v),su-sv)]
     end
-    conv(u, flipdim(conj(v), 1))
+    conv(u, Compat.reverse(conj(v), dims=1))
 end

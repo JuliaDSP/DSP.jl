@@ -41,6 +41,7 @@ if VERSION >= v"0.7.0-DEV.602"
         export conv, conv2, deconv, filt, filt!, xcorr
     end
     using Compat: copyto!
+    import Compat
     include("dspbase.jl")
 end
 

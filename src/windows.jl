@@ -2,6 +2,7 @@ module Windows
 using ..DSP: @importffts, mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
+import Compat
 using Compat: copyto!, undef
 using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
 @importffts
@@ -195,7 +196,7 @@ function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
     else
         eigvec = eigfact!(mat, n-ntapers+1:n).vectors
     end
-    v = flipdim(eigvec::Matrix{Float64}, 2)
+    v = Compat.reverse(eigvec::Matrix{Float64}, dims=2)
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(v, 2))
