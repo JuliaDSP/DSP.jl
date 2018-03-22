@@ -1,7 +1,7 @@
 module Util
 using ..DSP: @importffts, mul!
 import Base: *
-using Compat: copyto!, ComplexF64, undef
+using Compat: copyto!, ComplexF64, selectdim, undef
 import Compat.LinearAlgebra.BLAS
 @importffts
 
@@ -39,7 +39,7 @@ function unwrap!(m::Array{T}, dim::Integer=ndims(m); range::Number=2pi) where T<
         return m
     end
     for i = 2:size(m, dim)
-        d = slicedim(m, dim, i:i) - slicedim(m, dim, i-1:i-1)
+        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
         slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
         offset = floor.((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
