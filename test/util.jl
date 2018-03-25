@@ -121,7 +121,8 @@ x += noise
 M = 300
 p = 2                  # number of sinusoids to estimate
 frequencies_estimated = esprit(x, M, p, Fs)
-@test frequencies' ≈ frequencies_estimated
+@test isapprox(frequencies', frequencies_estimated; atol = 1e-2)
+
 
 ## COMMON DSP TOOLS
 
