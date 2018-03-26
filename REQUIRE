@@ -1,4 +1,4 @@
-julia 0.6-rc1
+julia 0.6
 Compat 0.63
 Polynomials 0.1.0
 Reexport
