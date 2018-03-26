@@ -1,6 +1,7 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base.trailingsize
+import Compat.LinearAlgebra.BLAS
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -12,7 +13,7 @@ state vector `si` (defaults to zeros).
 """
 function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
               x::AbstractArray{T}, si::AbstractArray{S} = _zerosi(b,a,T)) where {T,S}
-    filt!(Array{promote_type(eltype(b), eltype(a), T, S)}(uninitialized, size(x)), b, a, x, si)
+    filt!(Array{promote_type(eltype(b), eltype(a), T, S)}(undef, size(x)), b, a, x, si)
 end
 
 # in-place filtering: returns results in the out argument, which may shadow x
@@ -47,7 +48,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     end
 
     size(x,1) == 0 && return out
-    sz == 1 && return scale!(out, x, b[1]/a[1]) # Simple scaling without memory
+    sz == 1 && return mul!(out, x, b[1]/a[1]) # Simple scaling without memory
 
     # Filter coefficient normalization
     if a[1] != 1
@@ -56,8 +57,8 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         b ./= norml
     end
     # Pad the coefficients with zeros if needed
-    bs<sz   && (b = copy!(zeros(eltype(b), sz), b))
-    1<as<sz && (a = copy!(zeros(eltype(a), sz), a))
+    bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
+    1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     initial_si = si
     for col = 1:ncols
@@ -121,7 +122,7 @@ end
 
 Convolution of two vectors. Uses FFT algorithm.
 """
-function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:Base.LinAlg.BlasFloat
+function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     nu = length(u)
     nv = length(v)
     n = nu + nv - 1
@@ -138,8 +139,8 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:Base.LinAlg.Bla
     return y[1:n]
 end
 conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
-conv(u::StridedVector{<:Integer}, v::StridedVector{<:Base.LinAlg.BlasFloat}) = conv(float(u), v)
-conv(u::StridedVector{<:Base.LinAlg.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
+conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
+conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
 
 """
     conv2(u,v,A)
@@ -155,7 +156,7 @@ function conv2(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) wh
     B[1:size(A,1),1:size(A,2)] = A
     u = fft([u;zeros(T,m-length(u))])
     v = fft([v;zeros(T,n-length(v))])
-    C = ifft(fft(B) .* (u * v.'))
+    C = ifft(fft(B) .* (u * transpose(v)))
     if T <: Real
         return real(C)
     end
@@ -197,5 +198,5 @@ function xcorr(u, v)
     elseif sv < su
         v = [v;zeros(eltype(v),su-sv)]
     end
-    conv(u, flipdim(conj(v), 1))
+    conv(u, Compat.reverse(conj(v), dims=1))
 end

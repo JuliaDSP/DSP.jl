@@ -75,7 +75,7 @@ function filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
 end
 
 filt(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(Array{promote_type(T, G, S)}(uninitialized, size(x)), f, x, si)
+    filt!(Array{promote_type(T, G, S)}(undef, size(x)), f, x, si)
 
 ## Biquad
 _zerosi(f::Biquad{T}, x::AbstractArray{S}) where {T,S} =
@@ -111,7 +111,7 @@ function filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
 end
 
 filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(Array{promote_type(T, S)}(uninitialized, size(x)), f, x, si)
+    filt!(Array{promote_type(T, S)}(undef, size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
 filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
@@ -162,7 +162,7 @@ function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}},
     a = f.coef.a.a
     n = length(b)
     if n == 1
-        scale!(out, x, b[1])
+        mul!(out, x, b[1])
     else
         @inbounds for i=1:length(x)
             xi = x[i]
@@ -200,7 +200,7 @@ end
 
 # Variant that allocates the output
 filt(f::DF2TFilter{T,S}, x::AbstractVector) where {T,S<:Array} =
-    filt!(Vector{eltype(S)}(uninitialized, length(x)), f, x)
+    filt!(Vector{eltype(S)}(undef, length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, coef))
@@ -224,7 +224,7 @@ function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
     for i = 1:pad_length
         out[ostart+i-1] = x - sig[istart+pad_length+1-i]
     end
-    copy!(out, ostart+pad_length, sig, istart, n)
+    copyto!(out, ostart+pad_length, sig, istart, n)
     x = 2*sig[istart+n-1]
     for i = 1:pad_length
         out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
@@ -238,14 +238,14 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
     t = Base.promote_eltype(b, a, x)
-    extrapolated = Vector{t}(uninitialized, size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, b, a, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        reverse!(filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
@@ -313,14 +313,14 @@ function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S
     zitmp = similar(zi)
     pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
-    extrapolated = Vector{t}(uninitialized, size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, f, extrapolated, scale!(zitmp, zi, extrapolated[1]))
+        reverse!(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1])))
+        filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
@@ -352,8 +352,8 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     sz == 1 && return T[]
 
     # Pad the coefficients with zeros if needed
-    bs<sz && (b = copy!(zeros(eltype(b), sz), b))
-    as<sz && (a = copy!(zeros(eltype(a), sz), a))
+    bs<sz && (b = copyto!(zeros(eltype(b), sz), b))
+    as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
     A = [-a[2:end] [I; zeros(T, 1, sz-2)]]
@@ -365,7 +365,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
 
 function filt_stepstate(f::SecondOrderSections{T}) where T
     biquads = f.biquads
-    si = Matrix{T}(uninitialized, 2, length(biquads))
+    si = Matrix{T}(undef, 2, length(biquads))
     y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
@@ -410,24 +410,25 @@ for n = 2:15
     end
 end
 
-chain = :(throw(ArgumentError("invalid tuple size")))
-for n = 15:-1:2
-    chain = quote
-        if length(h) == $n
-            filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
-        else
-            $chain
+let chain = :(throw(ArgumentError("invalid tuple size")))
+    for n = 15:-1:2
+        chain = quote
+            if length(h) == $n
+                filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
+            else
+                $chain
+            end
         end
     end
-end
 
-@eval function small_filt!(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray) where T
-    $chain
+    @eval function small_filt!(out::AbstractArray, h::AbstractVector{T}, x::AbstractArray) where T
+        $chain
+    end
 end
 
 function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
-        return scale!(out, h[1], x)
+        return mul!(out, h[1], x)
     elseif length(h) <= 15
         return small_filt!(out, h, x)
     end
@@ -455,7 +456,7 @@ function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 end
 
 filt(h::AbstractArray, x::AbstractArray) =
-    filt!(Array{eltype(x)}(uninitialized, size(x)), h, x)
+    filt!(Array{eltype(x)}(undef, size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -511,18 +512,18 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     normfactor = 1/nfft
 
     L = min(nx, nfft - (nb - 1))
-    tmp1 = Vector{T}(uninitialized, nfft)
-    tmp2 = Vector{Complex{T}}(uninitialized, nfft >> 1 + 1)
-    out = Array{T}(uninitialized, size(x))
+    tmp1 = Vector{T}(undef, nfft)
+    tmp2 = Vector{Complex{T}}(undef, nfft >> 1 + 1)
+    out = Array{T}(undef, size(x))
 
     p1 = plan_rfft(tmp1)
     p2 = plan_brfft(tmp2, nfft)
 
     # FFT of filter
     filterft = similar(tmp2)
-    copy!(tmp1, b)
+    copyto!(tmp1, b)
     tmp1[nb+1:end] = zero(T)
-    A_mul_B!(filterft, p1, tmp1)
+    mul!(filterft, p1, tmp1)
 
     # FFT of chunks
     for colstart = 0:nx:length(x)-1
@@ -535,10 +536,10 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
             tmp1[1:npadbefore] = zero(T)
             tmp1[npadbefore+n+1:end] = zero(T)
 
-            copy!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            A_mul_B!(tmp2, p1, tmp1)
+            copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
+            mul!(tmp2, p1, tmp1)
             broadcast!(*, tmp2, tmp2, filterft)
-            A_mul_B!(tmp1, p2, tmp2)
+            mul!(tmp1, p2, tmp2)
 
             # Copy to output
             for j = 0:min(L - 1, nx - off)
@@ -564,7 +565,7 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt!(Array{eltype(x)}(uninitialized, size(x)), b, x)
+        filt!(Array{eltype(x)}(undef, size(x)), b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -573,6 +574,6 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(uninitialized, size(x)), b, x)
+        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(undef, size(x)), b, x)
     end
 end
