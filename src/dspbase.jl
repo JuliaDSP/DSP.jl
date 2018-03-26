@@ -53,8 +53,8 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     # Filter coefficient normalization
     if a[1] != 1
         norml = a[1]
-        a ./= norml
-        b ./= norml
+        a = a ./ norml
+        b = b ./ norml
     end
     # Pad the coefficients with zeros if needed
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))

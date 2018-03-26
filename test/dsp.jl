@@ -63,3 +63,17 @@ end
     @test conv(a, b) ≈ [1., 4., 8., 10., 7., 6.]
     @test conv(complex.(a, ones(4)), complex(b)) ≈ complex.([1., 4., 8., 10., 7., 6.], [1., 3., 6., 6., 5., 3.])
 end
+
+@testset "deconv" begin
+    # Test for issue #188: deconv mutates inputs
+    if VERSION >= v"0.7.0-DEV.602"
+        let b = [4.0, 2.0, 1.0]; a = [2.0, 1.0]
+            bb = b[:]
+            aa = a[:]
+            c = deconv(b,a)
+            @test c == [2.0, 0.0]
+            @test a == aa
+            @test b == bb
+        end
+    end
+end
