@@ -2,7 +2,7 @@
 coeffs = [1, .5, .3, .2]
 x = filt([1], coeffs, randn(50000))
 
-for method in [LPCBurg(), LPCLevinson()]
+@testset "$method" for method in (LPCBurg(), LPCLevinson())
     # Analyze the filtered noise, attempt to reconstruct the coefficients above
     ar, e = lpc(x[1000:end], length(coeffs)-1, method)
 

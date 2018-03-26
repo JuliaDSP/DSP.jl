@@ -1,8 +1,10 @@
 module Filters
-import ..DSP: @importffts
+using ..DSP: @importffts, mul!, rmul!
 using Polynomials, ..Util
 import Base: *
-using Compat: uninitialized
+using Compat: copyto!, undef
+import Compat
+using Compat.LinearAlgebra: I
 @importffts
 if VERSION >= v"0.7.0-DEV.602"
     import ..DSP: filt, filt!
