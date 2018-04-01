@@ -1,7 +1,8 @@
 module Util
-using ..DSP: @importffts
+using ..DSP: @importffts, mul!
 import Base: *
-using Compat: uninitialized
+using Compat: copyto!, ComplexF64, selectdim, undef
+import Compat.LinearAlgebra.BLAS
 @importffts
 
 export  unwrap!,
@@ -38,7 +39,7 @@ function unwrap!(m::Array{T}, dim::Integer=ndims(m); range::Number=2pi) where T<
         return m
     end
     for i = 2:size(m, dim)
-        d = slicedim(m, dim, i:i) - slicedim(m, dim, i-1:i-1)
+        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
         slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
         offset = floor.((d.+thresh) / (range)) * range
 #        println("offset: ", offset)
@@ -74,7 +75,7 @@ function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
     N = length(x)
     X = zeros(Complex{T}, N)
     p = plan_rfft(x)
-    A_mul_B!(view(X, 1:(N >> 1)+1), p, x)
+    mul!(view(X, 1:(N >> 1)+1), p, x)
     for i = 2:div(N, 2)+isodd(N)
         @inbounds X[i] *= 2.0
     end
@@ -91,8 +92,8 @@ along the first dimension of x.
 """
 function hilbert(x::AbstractArray{T}) where T<:Real
     N = size(x, 1)
-    xc = Vector{fftintype(T)}(uninitialized, N)
-    X = Vector{fftouttype(T)}(uninitialized, N)
+    xc = Vector{fftintype(T)}(undef, N)
+    X = Vector{fftouttype(T)}(undef, N)
     out = similar(x, fftouttype(T))
 
     p1 = plan_rfft(xc)
@@ -102,11 +103,11 @@ function hilbert(x::AbstractArray{T}) where T<:Real
     normalization = 1/N
     off = 1
     for i = 1:Base.trailingsize(x, 2)
-        copy!(xc, 1, x, off, N)
+        copyto!(xc, 1, x, off, N)
 
         # fft
         fill!(X, 0)
-        A_mul_B!(Xsub, p1, xc)
+        mul!(Xsub, p1, xc)
 
         # scale real part
         for i = 2:div(N, 2)+isodd(N)
@@ -114,7 +115,7 @@ function hilbert(x::AbstractArray{T}) where T<:Real
         end
 
         # ifft
-        A_mul_B!(X, p2, X)
+        mul!(X, p2, X)
 
         # scale and copy to output
         @simd for j = 1:N
@@ -132,12 +133,12 @@ end
 # Get the input element type of FFT for a given type
 fftintype(::Type{T}) where {T<:FFTW.fftwNumber} = T
 fftintype(::Type{T}) where {T<:Real} = Float64
-fftintype(::Type{T}) where {T<:Complex} = Complex128
+fftintype(::Type{T}) where {T<:Complex} = ComplexF64
 
 # Get the return element type of FFT for a given type
 fftouttype(::Type{T}) where {T<:FFTW.fftwComplex} = T
 fftouttype(::Type{T}) where {T<:FFTW.fftwReal} = Complex{T}
-fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = Complex128
+fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = ComplexF64
 
 # Get the real part of the return element type of FFT for a given type
 fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
@@ -291,7 +292,7 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLas
     return dotprod
 end
 
-@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
+@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
     BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
 end
 
@@ -323,7 +324,7 @@ function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
     return dotprod
 end
 
-@inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:Base.LinAlg.BlasReal
+@inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
     BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
@@ -354,7 +355,7 @@ function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     bLen = length(b)
 
     if bLen >= aLen
-        copy!(a, 1, b, bLen - aLen + 1, aLen)
+        copyto!(a, 1, b, bLen - aLen + 1, aLen)
     else
 
         for i in 1:aLen-bLen
