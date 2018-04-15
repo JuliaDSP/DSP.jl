@@ -5,9 +5,7 @@ using Compat: copyto!, ComplexF64, selectdim, undef
 import Compat.LinearAlgebra.BLAS
 @importffts
 
-export  unwrap!,
-        unwrap,
-        hilbert,
+export  hilbert,
         Frequencies,
         fftintype,
         fftouttype,
@@ -28,46 +26,6 @@ export  unwrap!,
         polyfit,
         shiftin!
 
-"""
-    unwrap!(m, dim=ndims(m); range=2pi)
-
-In-place version of unwrap(m, dim, range)
-"""
-function unwrap!(m::Array{T}, dim::Integer=ndims(m); range::Number=2pi) where T<:AbstractFloat
-    thresh = range / 2
-    if size(m, dim) < 2
-        return m
-    end
-    for i = 2:size(m, dim)
-        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
-        slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
-        offset = floor.((d.+thresh) / (range)) * range
-#        println("offset: ", offset)
-#        println("typeof(offset): ", typeof(offset))
-#        println("typeof(m[slice_tuple...]): ", typeof(m[slice_tuple...]))
-#        println("slice_tuple: ", slice_tuple)
-#        println("m[slice_tuple...]: ", m[slice_tuple...])
-        m[slice_tuple...] = m[slice_tuple...] - offset
-    end
-    return m
-end
-
-"""
-    unwrap(m, dim=ndims(m); range=2pi)
-
-Assumes m (along dimension dim) to be a sequences of values that
-have been wrapped to be inside the given range (centered around
-zero), and undoes the wrapping by identifying discontinuities. If
-dim is not given, the last dimension is used.
-
-A common usage is for a phase measurement over time, such as when
-comparing successive frames of a short-time-fourier-transform, as
-each frame is wrapped to stay within (-pi, pi].
-
-"""
-function unwrap(m::Array{T}, args...; kwargs...) where T<:AbstractFloat
-    unwrap!(copy(m), args...; kwargs...)
-end
 
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).

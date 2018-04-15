@@ -46,13 +46,14 @@ if VERSION >= v"0.7.0-DEV.602"
 end
 
 include("util.jl")
+include("unwrap.jl")
 include("windows.jl")
 include("periodograms.jl")
 include("Filters/Filters.jl")
 include("lpc.jl")
 
 using Reexport
-@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC
+@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap
 
 include("deprecated.jl")
 end
