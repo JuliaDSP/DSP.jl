@@ -1,7 +1,7 @@
 module Estimation
 import Base: *
 
-export  esprit
+export esprit
 
 """
     esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
