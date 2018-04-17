@@ -59,4 +59,7 @@ export  FIRFilter,
         setphase!,
         timedelay
 
+include("remez_fir.jl")
+export  remez
+
 end
