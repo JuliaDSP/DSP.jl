@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contents",
     "title": "Welcome to DSP.jl\'s documentation!",
     "category": "section",
-    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"index.md\",\n]"
+    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"index.md\",\n]"
 },
 
 {
@@ -110,6 +110,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Periodograms - periodogram estimation",
     "category": "section",
     "text": "arraysplit\nperiodogram(s::AbstractVector{T}) where T <: Number\nwelch_pgram\nmt_pgram\nspectrogram\nstft\nperiodogram(s::AbstractMatrix{T}) where T <: Real\nfreq\npower\ntime"
+},
+
+{
+    "location": "estimation.html#",
+    "page": "Estimation - parametric estimation functions",
+    "title": "Estimation - parametric estimation functions",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "estimation.html#DSP.Estimation.esprit",
+    "page": "Estimation - parametric estimation functions",
+    "title": "DSP.Estimation.esprit",
+    "category": "function",
+    "text": "esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)\n\nESPRIT [Roy1986] algorithm for frequency estimation. Estimation of Signal Parameters via Rotational Invariance Techniques\n\nGiven length N signal \"x\" that is the sum of p sinusoids of unknown frequencies, estimate and return an array of the p frequencies.\n\nArguments\n\nx::AbstractArray: complex length N signal array\nM::Integer: size of correlation matrix, must be <= N.     The signal subspace is computed from the SVD of an M x (N-M+1) signal matrix     formed from N-M+1 length-M shifts of the signal x in its columns.     For best performance for 1 sinusoid, use M = (N+1)/3 (according to van der Veen and Leus).     For faster execution (due to smaller SVD), use small M or small N-M\np::Integer: number of sinusoids to estimate.\nFs::Float64: sampling frequency, in Hz.\n\nReturns\n\nlength p real array of frequencies in units of Hz.\n\n[Roy1986]: R Roy, A Paulraj and T Kailath, ESPRIT - A subspace approach to estimation of parameters of cisoids in noise, IEEE Trans. Acoustics, Speech, Signal Process., 34, 1340-1342 (1986). url.\n\n\n\n"
+},
+
+{
+    "location": "estimation.html#Estimation-parametric-estimation-functions-1",
+    "page": "Estimation - parametric estimation functions",
+    "title": "Estimation - parametric estimation functions",
+    "category": "section",
+    "text": "esprit"
 },
 
 {
