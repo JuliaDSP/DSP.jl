@@ -1,5 +1,7 @@
 module Unwrap
 
+using Compat: selectdim
+
 export unwrap, unwrap!
 
 """
@@ -34,6 +36,25 @@ unwrap
 
 function unwrap(m::AbstractArray{T, N}, args...; kwargs...) where {T<:AbstractFloat, N}
     unwrap!(copy(m), args...; kwargs...)
+end
+
+### Deprecated unwrap function
+function unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) where T<:AbstractFloat
+    Base.depwarn(string("`unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) ",
+        " where T<:AbstractFloat` is deprecated, ",
+        "use `unwrap!(m; range)` instead if your data has more than one dimension."),
+         :unwrap!)
+    thresh = range / 2
+    if size(m, dim) < 2
+        return m
+    end
+    for i = 2:size(m, dim)
+        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
+        slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
+        offset = floor.((d.+thresh) / (range)) * range
+        m[slice_tuple...] = m[slice_tuple...] - offset
+    end
+    return m
 end
 
 function unwrap!(A::AbstractVector{T};
