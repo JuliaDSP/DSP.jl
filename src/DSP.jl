@@ -51,9 +51,10 @@ include("windows.jl")
 include("periodograms.jl")
 include("Filters/Filters.jl")
 include("lpc.jl")
+include("estimation.jl")
 
 using Reexport
-@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap
+@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation
 
 include("deprecated.jl")
 end
