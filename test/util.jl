@@ -13,7 +13,6 @@ using DSP, Compat, Compat.Test
     h_abs = abs.(h)
     h_angle = angle.(h)
     h_real = real.(h)
-
     #The real part should be equal to the original signals:
     @test h_real ≈ a
 

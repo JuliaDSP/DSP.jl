@@ -7,6 +7,7 @@ makedocs(
     pages = Any[
         "Contents" => "contents.md",
         "periodograms.md",
+        "estimation.md",
         "windows.md",
         "filters.md",
         "util.md",
