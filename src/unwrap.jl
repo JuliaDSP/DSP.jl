@@ -42,7 +42,9 @@ end
 function unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) where T<:AbstractFloat
     Base.depwarn(string("`unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) ",
         " where T<:AbstractFloat` is deprecated, ",
-        "use `unwrap!(m; range)` instead if your data has more than one dimension."),
+        "use `unwrap!(m; range)` instead if your data has more than one dimension. ",
+        "If your data is one-dimensional but embedded in a larger-dimensional array, ",
+        "pass instead a view of each individual vector you would like to unwrap."),
          :unwrap!)
     thresh = range / 2
     if size(m, dim) < 2
