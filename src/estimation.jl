@@ -1,5 +1,6 @@
 module Estimation
-import Base: *
+
+using Compat.LinearAlgebra: eig, svd
 
 export esprit
 
@@ -8,10 +9,10 @@ export esprit
 
 ESPRIT [^Roy1986] algorithm for frequency estimation.
 Estimation of Signal Parameters via Rotational Invariance Techniques
-    
+
 Given length N signal "x" that is the sum of p sinusoids of unknown frequencies,
 estimate and return an array of the p frequencies.
-    
+
 # Arguments
 - `x::AbstractArray`: complex length N signal array
 - `M::Integer`: size of correlation matrix, must be <= N.
@@ -21,7 +22,7 @@ estimate and return an array of the p frequencies.
       For faster execution (due to smaller SVD), use small M or small N-M
 - `p::Integer`: number of sinusoids to estimate.
 - `Fs::Float64`: sampling frequency, in Hz.
- 
+
 # Returns
 length p real array of frequencies in units of Hz.
 
