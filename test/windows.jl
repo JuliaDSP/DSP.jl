@@ -67,6 +67,23 @@ end
     @test cosine_jl ≈ cosine_ref
 end
 
+@testset "zero-phase windows" begin
+    # TODO add gaussian test
+    # test zero-phase versions
+    for winf in [rect, hanning, hamming, cosine, lanczos,
+                 bartlett, bartlett_hann, blackman]
+        @test winf(128, zerophase=true) ≈ fftshift(winf(129)[1:128])
+    end
+
+    # TODO triang test - the definition has a (n-1)/n term for some reason, which
+    # doesn't match my assumption here about how the zero-phase window is created
+
+    @test gaussian(128, 0.1, zerophase=true) == fftshift(gaussian(129, 0.1)[1:128])
+    @test kaiser(128, pi, zerophase=true) == fftshift(kaiser(129, pi)[1:128])
+    @test tukey(128, 0.5, zerophase=true) == fftshift(tukey(129, 0.5)[1:128])
+
+    # TODO dpss test
+end
 @testset "window return types" begin
     # make sure return types are correct
     n = 12
