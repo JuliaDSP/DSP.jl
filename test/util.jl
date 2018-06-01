@@ -11,6 +11,10 @@ using DSP, Compat, Compat.Test
     test_v = [0.1, 0.2, 0.3 + 2pi, 0.4]
     res_v = unwrap(test_v)
     @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
+    res_v .= 0
+    unwrap!(res_v, test_v)
+    @test res_v ≈ [0.1, 0.2, 0.3, 0.4]
+    @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
     unwrap!(test_v)
     @test test_v ≈ [0.1, 0.2, 0.3, 0.4]
 
@@ -19,8 +23,16 @@ using DSP, Compat, Compat.Test
     unwrapped = [0.1, 0.2, 0.3, 0.4]
     wrapped = hcat(wrapped, wrapped)
     unwrapped = hcat(unwrapped, unwrapped)
-    @test unwrap(wrapped) ≈ wrapped
-    @test unwrap(wrapped, 1) ≈ unwrapped
+    @test unwrap(wrapped, dims=2) ≈ wrapped
+    @test unwrap(wrapped, dims=1) ≈ unwrapped
+    @test unwrap!(copy(wrapped), dims=2) ≈ wrapped
+    @test unwrap!(copy(wrapped), dims=1) ≈ unwrapped
+
+    # these should be implemented as part of #198
+    @test_throws ArgumentError unwrap(wrapped, dims=1:2)
+    @test_throws ArgumentError unwrap!(similar(wrapped), wrapped, dims=1:2)
+    # this should eventually default to the above
+    @test_throws ArgumentError unwrap!(similar(wrapped), wrapped)
 
     # test unwrapping with other ranges
     unwrapped = [1.0:100;]

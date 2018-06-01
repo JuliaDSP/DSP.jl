@@ -1,6 +1,7 @@
 module Util
 using ..DSP: @importffts, mul!
 import Base: *
+import Compat
 using Compat: copyto!, ComplexF64, selectdim, undef
 import Compat.LinearAlgebra.BLAS
 @importffts
@@ -29,45 +30,66 @@ export  unwrap!,
         shiftin!
 
 """
-    unwrap!(m, dim=ndims(m); range=2pi)
+    unwrap!(m; dims=nothing, range=2pi)
 
-In-place version of unwrap(m, dim, range)
+In-place version of [`unwrap`](@ref).
 """
-function unwrap!(m::Array{T}, dim::Integer=ndims(m); range::Number=2pi) where T<:AbstractFloat
-    thresh = range / 2
-    if size(m, dim) < 2
-        return m
+function unwrap!(m::AbstractArray{<:Any,N}; dims=nothing, range=2pi) where N
+    if dims === nothing && N != 1
+        Base.depwarn("`unwrap!(m::AbstractArray)` is deprecated, use `unwrap!(m, dims=ndims(m))` instead", :unwrap!)
+        dims = N
     end
-    for i = 2:size(m, dim)
-        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
-        slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
-        offset = floor.((d.+thresh) / (range)) * range
-#        println("offset: ", offset)
-#        println("typeof(offset): ", typeof(offset))
-#        println("typeof(m[slice_tuple...]): ", typeof(m[slice_tuple...]))
-#        println("slice_tuple: ", slice_tuple)
-#        println("m[slice_tuple...]: ", m[slice_tuple...])
-        m[slice_tuple...] = m[slice_tuple...] - offset
-    end
-    return m
+    unwrap!(m, m; dims=dims, range=range)
 end
 
 """
-    unwrap(m, dim=ndims(m); range=2pi)
+    unwrap!(y, m; dims=nothing, range=2pi)
 
-Assumes m (along dimension dim) to be a sequences of values that
+Unwrap `m` storing the result in `y`, see [`unwrap`](@ref).
+"""
+function unwrap!(y::AbstractArray{<:Any,N}, m::AbstractArray{<:Any,N}; dims=nothing, range::Number=2pi) where {N}
+    if dims === nothing
+        if N != 1
+            throw(ArgumentError("`unwrap!`: required keyword parameter dims missing"))
+        end
+        dims = 1
+    end
+    if dims isa Integer
+        Compat.accumulate!(unwrap_kernel(range), y, m, dims=dims)
+    else
+        # this is where #198 can hook in
+        throw(ArgumentError("`unwrap!`: Invalid dims specified: $dims"))
+    end
+    return y
+end
+
+unwrap_kernel(range=2π) = (x, y) -> y - round((y - x) / range) * range
+
+@deprecate(unwrap!(m::AbstractArray, dim::Integer; range::Number=2pi),
+    unwrap!(m, dims=dim, range=range))
+
+
+"""
+    unwrap(m; dims=nothing, range=2pi)
+
+Assumes m (along the single dimension dims) to be sequences of values that
 have been wrapped to be inside the given range (centered around
-zero), and undoes the wrapping by identifying discontinuities. If
-dim is not given, the last dimension is used.
+zero), and undoes the wrapping by identifying discontinuities.
 
 A common usage is for a phase measurement over time, such as when
 comparing successive frames of a short-time-fourier-transform, as
 each frame is wrapped to stay within (-pi, pi].
-
 """
-function unwrap(m::Array{T}, args...; kwargs...) where T<:AbstractFloat
-    unwrap!(copy(m), args...; kwargs...)
+function unwrap(m::AbstractArray{<:Any,N}; dims=nothing, range=2pi) where {N}
+    if dims === nothing && N != 1
+        Base.depwarn("`unwrap(m::AbstractArray)` is deprecated, use `unwrap(m, dims=ndims(m))` instead", :unwrap)
+        dims = ndims(m)
+    end
+    unwrap!(similar(m), m; dims=dims, range=range)
 end
+
+@deprecate(unwrap(m::AbstractArray, dim::Integer; range::Number=2pi),
+    unwrap(m, dims=dim, range=range))
 
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).
