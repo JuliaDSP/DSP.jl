@@ -621,7 +621,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Util - utility functions",
     "title": "DSP.Util.unwrap",
     "category": "function",
-    "text": "unwrap(m, dim=ndims(m); range=2pi)\n\nAssumes m (along dimension dim) to be a sequences of values that have been wrapped to be inside the given range (centered around zero), and undoes the wrapping by identifying discontinuities. If dim is not given, the last dimension is used.\n\nA common usage is for a phase measurement over time, such as when comparing successive frames of a short-time-fourier-transform, as each frame is wrapped to stay within (-pi, pi].\n\n\n\n"
+    "text": "unwrap(m; dims=nothing, range=2pi)\n\nAssumes m (along the single dimension dims) to be sequences of values that have been wrapped to be inside the given range (centered around zero), and undoes the wrapping by identifying discontinuities.\n\nA common usage is for a phase measurement over time, such as when comparing successive frames of a short-time-fourier-transform, as each frame is wrapped to stay within (-pi, pi].\n\n\n\n"
 },
 
 {
@@ -629,7 +629,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Util - utility functions",
     "title": "DSP.Util.unwrap!",
     "category": "function",
-    "text": "unwrap!(m, dim=ndims(m); range=2pi)\n\nIn-place version of unwrap(m, dim, range)\n\n\n\n"
+    "text": "unwrap!(m; dims=nothing, range=2pi)\n\nIn-place version of unwrap.\n\n\n\nunwrap!(y, m; dims=nothing, range=2pi)\n\nUnwrap m storing the result in y, see unwrap.\n\n\n\n"
 },
 
 {
