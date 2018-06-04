@@ -127,16 +127,15 @@ function bartlett(n::Integer)
 end
 
 """
-    gaussian(n, sigma)
+    gaussian(n, σ)
 
-Gaussian window of length `n` parameterized by the standard
-deviation `sigma`.
+Gives an n-sample gaussian window defined by sampling the function
+\$w(x) = e^{-\\frac 1 2 \\left(\\frac x σ \\right)^2}\$ in the range
+\$[-0.5,0.5]\$. This means that for \$σ=0.5\$ the endpoints of the window will
+correspond to 1 standard deviation away from the center.
 """
-function gaussian(n::Integer, sigma::Real)
-    if !(0 < sigma <= 0.5)
-        error("sigma must be greater than 0 and less than or equal to 0.5.")
-    end
-    [exp(-0.5*((k-(n-1)/2)/(sigma*(n-1/2)))^2) for k=0:(n-1)]
+function gaussian(n::Integer, σ::Real)
+    [exp(-0.5*((k-(n-1)/2)/(σ*(n-1)))^2) for k=0:(n-1)]
 end
 
 """
