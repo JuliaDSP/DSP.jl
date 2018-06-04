@@ -135,6 +135,7 @@ Gives an n-sample gaussian window defined by sampling the function
 correspond to 1 standard deviation away from the center.
 """
 function gaussian(n::Integer, σ::Real)
+    σ > 0.0 || error("σ must be positive")
     [exp(-0.5*((k-(n-1)/2)/(σ*(n-1)))^2) for k=0:(n-1)]
 end
 
