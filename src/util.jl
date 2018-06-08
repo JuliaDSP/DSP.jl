@@ -1,6 +1,7 @@
 module Util
 using ..DSP: @importffts, mul!
 import Base: *
+import Compat
 using Compat: copyto!, ComplexF64, selectdim, undef
 import Compat.LinearAlgebra.BLAS
 @importffts

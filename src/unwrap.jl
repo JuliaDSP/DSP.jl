@@ -1,80 +1,80 @@
 module Unwrap
 
-using Compat: selectdim
+import Compat: selectdim
+import Compat
 
 export unwrap, unwrap!
 
 """
-    unwrap!(m; range=2pi, wrap_around=tuple(fill(false, N)...), seed=-1)
+    unwrap!(m; dims=nothing, range=2pi)
 
-In-place version of unwrap(m; range, wrap_around, seed)
+In-place version of [`unwrap`](@ref).
 """
-unwrap!
+function unwrap!(m::AbstractArray{T,N}; dims=nothing, range=2T(pi), kwargs...) where {T, N}
+    if dims === nothing && N != 1
+        Base.depwarn("`unwrap!(m::AbstractArray)` is deprecated, use `unwrap!(m, dims=ndims(m))` instead", :unwrap!)
+        dims = N
+    end
+    unwrap!(m, m; dims=dims, range=range, kwargs...)
+end
 
 """
-    unwrap(m::AbstractArray{T, N}; range=2pi, wrap_around=tuple(fill(false, N)...), seed=-1)
+    unwrap!(y, m; dims=nothing, range=2pi)
 
-Assumes `m` to be an array of values of arbitrary dimension that
-have been wrapped to be inside the given range (centered around
-zero), and undoes the wrapping by identifying discontinuities. To operate on a
-subset of dimensions of an array, simply pass in the corresponding `view`.
+Unwrap `m` storing the result in `y`, see [`unwrap`](@ref).
+"""
+function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, range::Number=2T(pi), kwargs...) where {T, N}
+    if dims === nothing
+        if N != 1
+            throw(ArgumentError("`unwrap!`: required keyword parameter dims missing"))
+        end
+        dims = 1
+    end
+    if dims isa Integer
+        Compat.accumulate!(unwrap_kernel(range), y, m, dims=dims)
+    elseif dims == 1:N
+        unwrap_nd!(y, m; range=range, kwargs...)
+    else
+        throw(ArgumentError("`unwrap!`: Invalid dims specified: $dims"))
+    end
+    return y
+end
+
+unwrap_kernel(range=2π) = (x, y) -> y - round((y - x) / range) * range
+
+"""
+    unwrap(m; dims=nothing, range=2pi)
+
+Assumes `m` (along the single dimension `dims`) to be sequences of values that
+have been wrapped to be inside the given `range` (centered around
+zero), and undoes the wrapping by identifying discontinuities.
 
 A common usage is for a phase measurement over time, such as when
 comparing successive frames of a short-time-fourier-transform, as
 each frame is wrapped to stay within (-pi, pi].
 
+If `dims` is a `Range`, then the data is unwrapped according to
+the number of dimensions passed to `dims`.
+
 # Arguments
-- `A::AbstractArray{T, N}`: Array to unwrap
-- `range::Number`: Range of wrapped array
-- `wrap_around::NTuple{N, Bool}`:  When an element of this tuple is `true`, the
+- `m::AbstractArray{T, N}`: Array to unwrap
+- `range=2pi`: Range of wrapped array
+- `wrap_around=`:  When an element of this tuple is `true`, the
     unwrapping process will consider the edges along the corresponding axis
     of the image to be connected
-- `seed::Int`: Unwrapping of arrays with dimension > 1 uses a random initialization. This
+- `seed=-1`: Unwrapping of arrays with dimension > 1 uses a random initialization. This
     sets the seed of the RNG.
 """
-unwrap
-
-function unwrap(m::AbstractArray{T, N}, args...; kwargs...) where {T<:AbstractFloat, N}
-    unwrap!(copy(m), args...; kwargs...)
+function unwrap(m::AbstractArray{T,N}; dims=nothing, range=2T(pi), kwargs...) where {T, N}
+    if dims === nothing && N != 1
+        Base.depwarn("`unwrap(m::AbstractArray)` is deprecated, use `unwrap(m, dims=ndims(m))` instead", :unwrap)
+        dims = ndims(m)
+    end
+    unwrap!(similar(m), m; dims=dims, range=range, kwargs...)
 end
 
-### Deprecated unwrap function
-function unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) where T<:AbstractFloat
-    Base.depwarn(string("`unwrap!(m::Array{T}, dim::Integer; range::Number=2pi) ",
-        " where T<:AbstractFloat` is deprecated, ",
-        "use `unwrap!(m; range)` instead if your data has more than one dimension. ",
-        "If your data is one-dimensional but embedded in a larger-dimensional array, ",
-        "pass instead a view of each individual vector you would like to unwrap."),
-         :unwrap!)
-    thresh = range / 2
-    if size(m, dim) < 2
-        return m
-    end
-    for i = 2:size(m, dim)
-        d = selectdim(m, dim, i:i) - selectdim(m, dim, i-1:i-1)
-        slice_tuple = ntuple(n->(n==dim ? (i:i) : (1:size(m,n))), ndims(m))
-        offset = floor.((d.+thresh) / (range)) * range
-        m[slice_tuple...] = m[slice_tuple...] - offset
-    end
-    return m
-end
-
-function unwrap!(A::AbstractVector{T};
-                 range::Number=2*convert(T, pi),
-                 wrap_around::NTuple{1, Bool}=(false,),
-                 seed::Int=-1) where T
-    @inbounds previous_element = A[1]
-    difference = zero(previous_element)
-    periods = 0
-    @inbounds for i in 2:length(A)
-        difference = A[i] - previous_element
-        periods += ifelse(difference >  range/2, -1, 0)
-        periods += ifelse(difference < -range/2,  1, 0)
-        previous_element = A[i]
-        A[i] = previous_element + one(previous_element) * periods * range
-    end
-    return A
-end
+@deprecate(unwrap(m::AbstractArray, dim::Integer; range::Number=2pi),
+    unwrap(m, dims=dim, range=range))
 
 #= Algorithm based off of
  M. A. Herráez, D. R. Burton, M. J. Lalor, and M. A. Gdeisat,
@@ -119,10 +119,11 @@ function Edge{N}(pixel_image::AbstractArray, ind1::CartesianIndex{N}, ind2::Cart
 end
 @inline Base.isless(e1::Edge, e2::Edge) = isless(e1.reliability, e2.reliability)
 
-function unwrap!(wrapped_image::AbstractArray{T, N};
-                 range::Number=2*convert(T, pi),
-                 wrap_around::NTuple{N, Bool}=tuple(fill(false, N)...),
-                 seed::Int=-1) where {T, N}
+function unwrap_nd!(dest::AbstractArray{T, N},
+                    src::AbstractArray{T, N};
+                    range::Number=2*convert(T, pi),
+                    wrap_around::NTuple{N, Bool}=tuple(fill(false, N)...),
+                    seed::Int=-1) where {T, N}
 
     if seed != -1
         srand(seed)
@@ -130,10 +131,10 @@ function unwrap!(wrapped_image::AbstractArray{T, N};
 
     range_T = convert(T, range)
 
-    pixel_image = init_pixels(wrapped_image)
+    pixel_image = init_pixels(src)
     calculate_reliability(pixel_image, wrap_around, range_T)
     edges = Edge{N}[]
-    num_edges = _predict_num_edges(size(wrapped_image), wrap_around)
+    num_edges = _predict_num_edges(size(src), wrap_around)
     sizehint!(edges, num_edges)
     for idx_dim=1:N
         populate_edges!(edges, pixel_image, idx_dim, wrap_around[idx_dim], range_T)
@@ -141,9 +142,9 @@ function unwrap!(wrapped_image::AbstractArray{T, N};
 
     sort!(edges, alg=MergeSort)
     gather_pixels!(pixel_image, edges)
-    unwrap_image!(wrapped_image, pixel_image, range_T)
+    unwrap_image!(dest, pixel_image, range_T)
 
-    return wrapped_image
+    return dest
 end
 
 function _predict_num_edges(size_img, wrap_around)
@@ -171,9 +172,9 @@ function gather_pixels!(pixel_image, edges)
     end
 end
 
-function unwrap_image!(image, pixel_image, range)
-    @Threads.threads for i in eachindex(image)
-        @inbounds image[i] = range * pixel_image[i].periods + pixel_image[i].val
+function unwrap_image!(dest, pixel_image, range)
+    @Threads.threads for i in eachindex(dest)
+        @inbounds dest[i] = range * pixel_image[i].periods + pixel_image[i].val
     end
 end
 
