@@ -79,21 +79,21 @@ end
         d = first(A_unwrapped_range) - first(test_unwrapped_range)
         @test (test_unwrapped_range + d) ≈ A_unwrapped_range
 
-        # Test wrap_around
+        # Test circular_dims
         # after unwrapping, pixels at borders should be equal to corresponding pixels
         # on other side
-        wrap_around = (true, true)
+        circular_dims = (true, true)
         wa_vec = linspace(0, 4convert(T, π), 10)
         wa_uw = wa_vec .+ zeros(10)'
         # make periodic
         wa_uw[end, :] = wa_uw[1, :]
         wa_w = wa_uw .% (2π)
-        wa_test = unwrap(wa_w, dims=1:2, wrap_around=wrap_around, seed=0)
+        wa_test = unwrap(wa_w, dims=1:2, circular_dims=circular_dims, rng=MersenneTwister(0))
         # with wrap-around, the borders should be equal, but for this problem the
         # image may not be recovered exactly
         @test wa_test[:, 1] ≈ wa_test[:, end]
         @test wa_test[end, :] ≈ wa_test[1, :]
-        # In this case, calling unwrap w/o wrap_around does not recover the borders
+        # In this case, calling unwrap w/o circular_dims does not recover the borders
         wa_test_nowa = unwrap(wa_w, dims=1:2)
         @test !(wa_test_nowa[end, :] ≈ wa_test_nowa[1, :])
 
@@ -123,17 +123,17 @@ end
         offset = first(f_uw) - first(uw_test)
         @test (uw_test+offset) ≈ f_uw #oop, 2wrap
         # test in-place version
-        unwrap!(f_wr, dims=1:3, wrap_around=(true, true, false))
+        unwrap!(f_wr, dims=1:3, circular_dims=(true, true, false))
         offset = first(f_uw) - first(f_wr)
         @test (f_wr+offset) ≈ f_uw #ip, 2wrap
 
         f_uw = f_wraparound3.(grid, grid', reshape(grid, 1, 1, :))
         f_wr = f_uw .% (2convert(T, π))
-        uw_test = unwrap(f_wr, dims=1:3, wrap_around=(true, true, true))
+        uw_test = unwrap(f_wr, dims=1:3, circular_dims=(true, true, true))
         offset = first(f_uw) - first(uw_test)
         @test (uw_test+offset) ≈ f_uw #oop, 3wrap
         # test in-place version
-        unwrap!(f_wr, dims=1:3, wrap_around=(true, true, true))
+        unwrap!(f_wr, dims=1:3, circular_dims=(true, true, true))
         offset = first(f_uw) - first(f_wr)
         @test (f_wr+offset) ≈ f_uw #oop, 3wrap
     end

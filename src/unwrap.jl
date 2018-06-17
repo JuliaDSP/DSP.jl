@@ -45,32 +45,38 @@ unwrap_kernel(range=2π) = (x, y) -> y - round((y - x) / range) * range
 """
     unwrap(m; dims=nothing, range=2pi)
 
-Assumes `m` (along the single dimension `dims`) to be sequences of values that
-have been wrapped to be inside the given `range` (centered around
-zero), and undoes the wrapping by identifying discontinuities.
 
-A common usage is for a phase measurement over time, such as when
+Assumes `m` to be a sequence of values that has been wrapped to be inside the
+given `range` (centered around zero), and undoes the wrapping by identifying
+discontinuities. If a single dimension is passed to `dims`, then `m` is assumed
+to have wrapping discontinuities only along that dimension. If a range of
+dimensions, as in `1:ndims(m)`, is passed to `dims`, then `m` is assumed to have
+wrapping discontinuities across all `ndims(m)` dimensions.
+
+A common usage for unwrapping across a singleton dimension is for a phase
+measurement over time, such as when
 comparing successive frames of a short-time-fourier-transform, as
 each frame is wrapped to stay within (-pi, pi].
 
-If `dims` is a `Range`, then the data is unwrapped according to
-the number of dimensions passed to `dims`.
+A common usage for unwrapping across multiple dimensions is for a phase
+measurement of a scene, such as when retrieving the phase information of
+of an image, as each pixel is wrapped to stay within (-pi, pi].
 
 # Arguments
 - `m::AbstractArray{T, N}`: Array to unwrap
 - `range=2pi`: Range of wrapped array
-- `wrap_around=`:  When an element of this tuple is `true`, the
+- `circular_dims=(false, ...)`:  When an element of this tuple is `true`, the
     unwrapping process will consider the edges along the corresponding axis
-    of the image to be connected
-- `seed=-1`: Unwrapping of arrays with dimension > 1 uses a random initialization. This
-    sets the seed of the RNG.
+    of the array to be connected
+- `rng=GLOBAL_RNG`: Unwrapping of arrays with dimension > 1 uses a random
+    initialization. A user can be pass their own RNG through this argument.
 """
-function unwrap(m::AbstractArray{T,N}; dims=nothing, range=2T(pi), kwargs...) where {T, N}
+function unwrap(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
     if dims === nothing && N != 1
         Base.depwarn("`unwrap(m::AbstractArray)` is deprecated, use `unwrap(m, dims=ndims(m))` instead", :unwrap)
         dims = ndims(m)
     end
-    unwrap!(similar(m), m; dims=dims, range=range, kwargs...)
+    unwrap!(similar(m), m; dims=dims, kwargs...)
 end
 
 @deprecate(unwrap(m::AbstractArray, dim::Integer; range::Number=2pi),
@@ -103,7 +109,7 @@ mutable struct Pixel{T}
         return pixel
     end
 end
-Pixel(v) = Pixel{typeof(v)}(0, v, rand(), 1)
+Pixel(v, rng) = Pixel{typeof(v)}(0, v, rand(rng), 1)
 @inline Base.length(p::Pixel) = p.head.groupsize
 
 struct Edge{N}
@@ -122,22 +128,18 @@ end
 function unwrap_nd!(dest::AbstractArray{T, N},
                     src::AbstractArray{T, N};
                     range::Number=2*convert(T, pi),
-                    wrap_around::NTuple{N, Bool}=tuple(fill(false, N)...),
-                    seed::Int=-1) where {T, N}
-
-    if seed != -1
-        srand(seed)
-    end
+                    circular_dims::NTuple{N, Bool}=tuple(fill(false, N)...),
+                    rng::AbstractRNG=Base.Random.GLOBAL_RNG) where {T, N}
 
     range_T = convert(T, range)
 
-    pixel_image = init_pixels(src)
-    calculate_reliability(pixel_image, wrap_around, range_T)
+    pixel_image = init_pixels(src, rng)
+    calculate_reliability(pixel_image, circular_dims, range_T)
     edges = Edge{N}[]
-    num_edges = _predict_num_edges(size(src), wrap_around)
+    num_edges = _predict_num_edges(size(src), circular_dims)
     sizehint!(edges, num_edges)
     for idx_dim=1:N
-        populate_edges!(edges, pixel_image, idx_dim, wrap_around[idx_dim], range_T)
+        populate_edges!(edges, pixel_image, idx_dim, circular_dims[idx_dim], range_T)
     end
 
     sort!(edges, alg=MergeSort)
@@ -147,19 +149,19 @@ function unwrap_nd!(dest::AbstractArray{T, N},
     return dest
 end
 
-function _predict_num_edges(size_img, wrap_around)
+function _predict_num_edges(size_img, circular_dims)
     num_edges = 0
-    for (size_dim, wrap_dim) in zip(size_img, wrap_around)
+    for (size_dim, wrap_dim) in zip(size_img, circular_dims)
         num_edges += prod(size_img) * (size_dim-1) ÷ size_dim + wrap_dim * prod(size_img) ÷ size_dim
     end
     return num_edges
 end
 
 # function to broadcast
-function init_pixels(wrapped_image::AbstractArray{T, N}) where {T, N}
+function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
     pixel_image = similar(wrapped_image, Pixel{T})
     @Threads.threads for i in eachindex(wrapped_image)
-        @inbounds pixel_image[i] = Pixel(wrapped_image[i])
+        @inbounds pixel_image[i] = Pixel(wrapped_image[i], rng)
     end
     return pixel_image
 end
@@ -266,7 +268,7 @@ function populate_edges!(edges, pixel_image::Array{T, N}, dim, connected, range)
     end
 end
 
-function calculate_reliability(pixel_image::AbstractArray{T, N}, wrap_around, range) where {T, N}
+function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, range) where {T, N}
     # get the shifted pixel indices in CartesinanIndex form
     # This gets all the nearest neighbors (CartesionIndex{N}() = one(CartesianIndex{N}))
     pixel_shifts = collect(CartesianRange(-CartesianIndex{N}(),
@@ -277,7 +279,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, wrap_around, ra
         @inbounds pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts, range)
     end
 
-    for (idx_dim, connected) in enumerate(wrap_around)
+    for (idx_dim, connected) in enumerate(circular_dims)
         if connected
             # first border
             pixel_shifts_border = copy(pixel_shifts)
