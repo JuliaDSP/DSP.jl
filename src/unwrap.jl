@@ -293,11 +293,11 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             end
             border_begin          = fill(2, N)
             border_begin[idx_dim] = size_img[idx_dim]
-            border_begin          = CartesianIndex{N}(border_begin...)
+            border_begin_cart     = CartesianIndex{N}(border_begin...)
             border_end            = collect(size_img)-1
             border_end[idx_dim]   = size_img[idx_dim]
-            border_end = CartesianIndex{N}(border_end...)
-            for i in CartesianRange(border_begin, border_end)
+            border_end_cart       = CartesianIndex{N}(border_end...)
+            for i in CartesianRange(border_begin_cart, border_end_cart)
                 @inbounds pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts_border, range)
             end
             # second border
@@ -312,27 +312,27 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             end
             border_begin          = fill(2, N)
             border_begin[idx_dim] = 1
-            border_begin          = CartesianIndex{N}(border_begin...)
+            border_begin_cart     = CartesianIndex{N}(border_begin...)
             border_end            = collect(size_img)-1
             border_end[idx_dim]   = 1
-            border_end = CartesianIndex{N}(border_end...)
-            for i in CartesianRange(border_begin, border_end)
+            border_end_cart       = CartesianIndex{N}(border_end...)
+            for i in CartesianRange(border_begin_cart, border_end_cart)
                 @inbounds pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts_border, range)
             end
         end
     end
 end
 
-function calculate_pixel_reliability(pixel_image::AbstractArray{T, N}, pixel_index, pixel_shifts, range) where {T, N}
-    sum_val = zero(fieldtype(T, :val))
+function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, N}, pixel_index, pixel_shifts, range) where {T, N}
+    sum_val = zero(T)
     for pixel_shift in pixel_shifts
-        @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shift].val - pixel_image[pixel_index].val), range)^2
+        @inbounds sum_val += wrap_val(pixel_image[pixel_index+pixel_shift].val - pixel_image[pixel_index].val, range)^2
     end
     return sum_val
 end
 
 # specialized pixel reliability calculations for different N
-function calculate_pixel_reliability(pixel_image::AbstractArray{T, 2}, pixel_index, pixel_shifts, range) where T
+function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, 2}, pixel_index, pixel_shifts, range) where T
     @inbounds D1 = wrap_val(pixel_image[pixel_index+pixel_shifts[2]].val - pixel_image[pixel_index].val, range)
     @inbounds D2 = wrap_val(pixel_image[pixel_index+pixel_shifts[4]].val - pixel_image[pixel_index].val, range)
     @inbounds H  = wrap_val(pixel_image[pixel_index+pixel_shifts[6]].val - pixel_image[pixel_index].val, range)
@@ -340,8 +340,8 @@ function calculate_pixel_reliability(pixel_image::AbstractArray{T, 2}, pixel_ind
     return H*H + V*V + D1*D1 + D2*D2
 end
 
-function calculate_pixel_reliability(pixel_image::AbstractArray{T, 3}, pixel_index, pixel_shifts, range) where T
-    sum_val = zero(fieldtype(T, :val))
+function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, 3}, pixel_index, pixel_shifts, range) where T
+    sum_val = zero(T)
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[1]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[2]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[3]].val - pixel_image[pixel_index].val, range))^2
