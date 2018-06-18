@@ -355,7 +355,9 @@ function calculate_pixel_reliability(pixel_image::AbstractArray{T, 3}, pixel_ind
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[11]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[12]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[13]].val - pixel_image[pixel_index].val, range))^2
+    # pixel_shifts[14] is null shift
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[15]].val - pixel_image[pixel_index].val, range))^2
+    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[16]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[17]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[18]].val - pixel_image[pixel_index].val, range))^2
     @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[19]].val - pixel_image[pixel_index].val, range))^2
@@ -370,6 +372,4 @@ function calculate_pixel_reliability(pixel_image::AbstractArray{T, 3}, pixel_ind
     return sum_val
 end
 
-A = rand(10)
-unwrap(A; range=10)
 end
