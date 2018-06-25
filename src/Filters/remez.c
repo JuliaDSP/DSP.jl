@@ -242,10 +242,11 @@ static int remez(double *dev, double des[], double grid[], double edge[],
 
 	if (niter > itrmax) break;
 
-	/* printf("ITERATION %2d: ",niter); */
+	printf("ITERATION %2d: ",niter);
 
 	DOloop(j,1,nz) {
 	    x[j] = cos(grid[iext[j]]*TWOPI);
+	    printf("  j=%02d: iext[j]=%d grid[iext[j]]=%g x[j]=%g\n", j, iext[j], grid[iext[j]], x[j]);
 	}
 	jet = (nfcns-1) / 15 + 1;
 
@@ -265,7 +266,7 @@ static int remez(double *dev, double des[], double grid[], double edge[],
 	}
 	*dev = dnum / dden;
 
-	/* printf("DEVIATION = %lg\n",*dev); */
+	printf("DEVIATION = %1.16f\n",*dev);
 
 	nu = 1;
 	if ( (*dev) > 0.0 ) nu = -1;
@@ -578,6 +579,8 @@ int pre_remez(double *h2, int numtaps, int numbands, double *bands,
   wrksize = grid_density * dimsize;
   nfilt = numtaps;
   jtype = type; nbands = numbands;
+  printf("  jtype=%02d\n", jtype);
+
   /* Note:  code assumes these arrays start at 1 */
   edge = bands-1; 
   h = h2 - 1;
@@ -657,6 +660,11 @@ int pre_remez(double *h2, int numtaps, int numbands, double *bands,
 	if (grid[ngrid] > (0.5-delf)) --ngrid;
     }
 
+    // PRINT GRID
+    // DOloop(j,1,ngrid) {
+    //    printf("  j=%02d: grid[j]=%g\n", j, grid[j]);
+    //}
+
     /*
      * SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
      * TO THE ORIGINAL PROBLEM
@@ -694,9 +702,9 @@ int pre_remez(double *h2, int numtaps, int numbands, double *bands,
     nm1 = nfcns - 1;
     nz  = nfcns + 1;
 
-  printf("pre_remez FOO!\n");
-  printf("ngrid = %d\n", ngrid);
-  printf("numbands = %d\n", numbands);
+  //printf("pre_remez FOO!\n");
+  //printf("ngrid = %d\n", ngrid);
+  //printf("numbands = %d\n", numbands);
     if (remez(&dev, des, grid, edge, wt, ngrid, numbands, iext, alpha, nfcns,
               maxiter, work, dimsize) < 0) {
         free(tempstor);
