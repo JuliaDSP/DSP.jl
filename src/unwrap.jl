@@ -10,12 +10,12 @@ export unwrap, unwrap!
 
 In-place version of [`unwrap`](@ref).
 """
-function unwrap!(m::AbstractArray{T,N}; dims=nothing, range=2T(pi), kwargs...) where {T, N}
+function unwrap!(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
     if dims === nothing && N != 1
         Base.depwarn("`unwrap!(m::AbstractArray)` is deprecated, use `unwrap!(m, dims=ndims(m))` instead", :unwrap!)
         dims = N
     end
-    unwrap!(m, m; dims=dims, range=range, kwargs...)
+    unwrap!(m, m; dims=dims, kwargs...)
 end
 
 """
@@ -23,7 +23,7 @@ end
 
 Unwrap `m` storing the result in `y`, see [`unwrap`](@ref).
 """
-function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, range::Number=2T(pi), kwargs...) where {T, N}
+function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, range=2T(pi), kwargs...) where {T, N}
     if dims === nothing
         if N != 1
             throw(ArgumentError("`unwrap!`: required keyword parameter dims missing"))
@@ -40,7 +40,7 @@ function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, ran
     return y
 end
 
-unwrap_kernel(range=2π) = (x, y) -> y - round((y - x) / range) * range
+unwrap_kernel(range) = (x, y) -> y - round((y - x) / range) * range
 
 """
     unwrap(m; dims=nothing, range=2pi)
@@ -64,6 +64,9 @@ of an image, as each pixel is wrapped to stay within (-pi, pi].
 
 # Arguments
 - `m::AbstractArray{T, N}`: Array to unwrap
+- `dims=nothing`: Dimensions along which to unwrap. If `dims` is an integer, then
+    `unwrap` is called that dimension. If `dims=1:ndims(m)`, then `m` is unwrapped
+    across all dimensions.
 - `range=2pi`: Range of wrapped array
 - `circular_dims=(false, ...)`:  When an element of this tuple is `true`, the
     unwrapping process will consider the edges along the corresponding axis
