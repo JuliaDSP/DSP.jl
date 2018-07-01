@@ -529,6 +529,14 @@ function remez_jl2(numtaps::Integer, bands::Array, desired::Array;
     #    printfmtln("  j={}: grid[j]={}", j, grid[j]);
     #end
     
+    # "jtype" is the type of filter, with the following meaning.
+      #define BANDPASS       1
+      #define DIFFERENTIATOR 2
+      #define HILBERT        3
+    # I think the "j" is because it is an int, and FORTRAN assigned
+    # types based on starting letter of variable name LOL.
+    # I am starting with BANDPASS only support. Differentiator and Hilbert
+    # once bandpass works.
     jtype = 1   # should be input, and passed down to remez
     neg = 1;
     if (jtype == 1)
@@ -561,6 +569,7 @@ function remez_jl2(numtaps::Integer, bands::Array, desired::Array;
         #
         # Start next iteration
         #        
+      @label L100
         iext[nzz] = ngrid + 1;
         niter += 1;
         if (niter > maxiter) 
@@ -609,7 +618,127 @@ function remez_jl2(numtaps::Integer, bands::Array, desired::Array;
         #
         # SEARCH FOR THE EXTREMAL FREQUENCIES OF THE BEST APPROXIMATION
         #
+      @label L200
+        if (j == nzz) ynz = comp; end
+        if (j >= nzz) @goto L300; end
+        kup = iext[j+1];
+        l = iext[j]+1;
+        nut = -nut;
+        if (j == 2) y1 = comp; end
+        comp = dev;
+        if (l >= kup) @goto L220; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L220; end
+        comp = nut * err;
+        @label L210
+        l += 1; if (l >= kup) @goto L215; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L215; end
+        comp = nut * err;
+        @goto L210;
 
+      @label L215
+        iext[j] = l - 1; j += 1
+        klow = l - 1;
+        jchnge += 1;
+        @goto L200;
+
+      @label L220
+        l -= 1;
+      @label L225
+        l -= 1; if (l <= klow) @goto L250; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) > 0.0) @goto L230; end
+        if (jchnge <= 0) @goto L225; end
+        @goto L260;
+
+      @label L230
+        comp = nut * err;
+      @label L235
+        l -= 1; if (l <= klow) @goto L240; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L240; end
+        comp = nut * err;
+        @goto L235;
+      @label L240
+        klow = iext[j];
+        iext[j] = l+1;
+        j += 1;
+        jchnge += 1;
+        @goto L200;
+
+      @label L250
+        l = iext[j]+1;
+        if (jchnge > 0) @goto L215; end
+
+      @label L255
+        l += 1; if (l >= kup) @goto L260; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L255; end
+        comp = nut * err;
+
+        @goto L210;
+      @label L260
+        klow = iext[j]; j += 1
+        @goto L200;
+
+      @label L300
+        if (j > nzz) @goto L320; end
+        if (k1 > iext[1] ) k1 = iext[1]; end
+        if (knz < iext[nz]) knz = iext[nz]; end
+        nut1 = nut;
+        nut = -nu;
+        l = 0;
+        kup = k1;
+        comp = ynz*(1.00001);
+        luck = 1;
+      @label L310
+        l += 1; if (l >= kup) @goto L315; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L310; end
+        comp =  nut * err;
+        j = nzz;
+        @goto L210;
+
+      @label L315
+        luck = 6;
+        @goto L325;
+
+      @label L320
+        if (luck > 9) @goto L350; end
+        if (comp > y1) y1 = comp; end
+        k1 = iext[nzz];
+      @label L325
+        l = ngrid+1;
+        klow = knz;
+        nut = -nut1;
+        comp = y1*(1.00001);
+      @label L330
+        l -= 1; if (l <= klow) @goto L340; end
+        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l];
+        if ((nut*err-comp) <= 0.0) @goto L330; end
+        j = nzz;
+        comp =  nut * err;
+        luck = luck + 10;
+        @goto L235;
+      @label L340
+        if (luck == 6) @goto L370; end
+        for j = 1 : nfcns
+            iext[nzz-j] = iext[nz-j];
+        end
+        iext[1] = k1;
+        @goto L100;
+      @label L350
+        kn = iext[nzz];
+        for j = 1 : nfcns
+            iext[j] = iext[j+1];
+        end
+        iext[nz] = kn;
+
+        @goto L100;
+      @label L370
+        ;
+        
         if (jchnge <= 0)  # we are done if none of the extremal indices changed
             break
         end
