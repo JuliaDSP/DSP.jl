@@ -11,7 +11,7 @@ import Compat.Random: GLOBAL_RNG
 export unwrap, unwrap!
 
 """
-    unwrap!(m; dims=nothing, range=2pi)
+    unwrap!(m; kwargs...)
 
 In-place version of [`unwrap`](@ref).
 """
@@ -24,7 +24,7 @@ function unwrap!(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
 end
 
 """
-    unwrap!(y, m; dims=nothing, range=2pi)
+    unwrap!(y, m; kwargs...)
 
 Unwrap `m` storing the result in `y`, see [`unwrap`](@ref).
 """
@@ -48,7 +48,7 @@ end
 unwrap_kernel(range) = (x, y) -> y - round((y - x) / range) * range
 
 """
-    unwrap(m; dims=nothing, range=2pi)
+    unwrap(m; kwargs...)
 
 
 Assumes `m` to be a sequence of values that has been wrapped to be inside the
