@@ -242,11 +242,11 @@ static int remez(double *dev, double des[], double grid[], double edge[],
 
 	if (niter > itrmax) break;
 
-	printf("ITERATION %2d: ",niter);
+	// printf("ITERATION %2d: ",niter);
 
 	DOloop(j,1,nz) {
 	    x[j] = cos(grid[iext[j]]*TWOPI);
-	    printf("  j=%02d: iext[j]=%d grid[iext[j]]=%g x[j]=%g\n", j, iext[j], grid[iext[j]], x[j]);
+	    // printf("  j=%02d: iext[j]=%d grid[iext[j]]=%g x[j]=%g\n", j, iext[j], grid[iext[j]], x[j]);
 	}
 	jet = (nfcns-1) / 15 + 1;
 
@@ -266,7 +266,7 @@ static int remez(double *dev, double des[], double grid[], double edge[],
 	}
 	*dev = dnum / dden;
 
-	printf("DEVIATION = %1.16f\n",*dev);
+	// printf("DEVIATION = %1.16f\n",*dev);
 
 	nu = 1;
 	if ( (*dev) > 0.0 ) nu = -1;
@@ -465,6 +465,9 @@ L420:
 L425:
 	if (l > 1) l = l-1;
     }
+    DOloop(j,1,nfcns) {
+        // printf("  j=%02d: a[j]=%g\n", j, a[j]);
+    }
 
     grid[1] = gtemp;
     dden = TWOPI / cn;
@@ -513,6 +516,11 @@ L425:
     if (nfcns <= 3) {
 	  alpha[nfcns+1] = alpha[nfcns+2] = 0.0;
     }
+    DOloop(j,1,nfcns) {
+        // printf("  j=%02d: alpha[j]=%g\n", j, alpha[j]);
+    }
+
+
     return 0;
 }
 
@@ -579,7 +587,7 @@ int pre_remez(double *h2, int numtaps, int numbands, double *bands,
   wrksize = grid_density * dimsize;
   nfilt = numtaps;
   jtype = type; nbands = numbands;
-  printf("  jtype=%02d\n", jtype);
+  // printf("  jtype=%02d\n", jtype);
 
   /* Note:  code assumes these arrays start at 1 */
   edge = bands-1; 
