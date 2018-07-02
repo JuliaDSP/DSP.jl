@@ -506,7 +506,24 @@ Apply FIR filter taps `h` along the first dimension of array `x`
 using an FFT-based overlap-save algorithm.
 """
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
-                 nfft=optimalfftfiltlength(length(b), length(x))) where T<:Real
+                 nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+    _fftfilt!(Array{T}(undef, size(x)), b, x, nfft)
+end
+
+"""
+    fftfilt!(out, h, x)
+
+Like `fftfilt` but writes result into out array.
+"""
+function fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
+                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+    size(out) == size(x) || throw(ArgumentError("out and x must be the same size"))
+    _fftfilt!(out, b, x, nfft)
+end
+
+# Like fftfilt! but does not check if out and x are the same size
+function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
+                 nfft::Integer) where T<:Real
     nb = length(b)
     nx = size(x, 1)
     normfactor = 1/nfft
@@ -557,6 +574,19 @@ end
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
+    _filt_choose_alg!(Array{T}(undef, size(x)), b, x)
+end
+
+# Like filt but mutates output array
+function filt_choose_alg!(
+    out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
+    size(out) == size(x) || throw(ArgumentError("out must be the same size as x"))
+    _filt_choose_alg!(out, b, x)
+end
+
+# like filt_choose_alg! but does not check if out and x are the same size
+function _filt_choose_alg!(
+    out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
     nb = length(b)
     nx = size(x, 1)
 
@@ -565,7 +595,7 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt!(Array{eltype(x)}(undef, size(x)), b, x)
+        filt!(out, b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -574,6 +604,6 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(undef, size(x)), b, x)
+        filtops > fftops ? _fftfilt!(out, b, x, nfft) : filt!(out, b, x)
     end
 end
