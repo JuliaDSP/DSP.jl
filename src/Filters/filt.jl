@@ -426,7 +426,7 @@ let chain = :(throw(ArgumentError("invalid tuple size")))
     end
 end
 
-function tsfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
     elseif length(h) <= 15
@@ -573,17 +573,19 @@ end
 # convolution in the time domain using filt or in the frequency domain
 # using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
-    filt_choose_alg!(Array{T}(undef, size(x)), b, x)
+    _filt_choose_alg!(Array{T}(undef, size(x)), b, x)
 end
 
 # Like filt but mutates output array
-function filt!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
+function filt_choose_alg!(
+    out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
     size(out) == size(x) || throw(ArgumentError("out must be the same size as x"))
-    filt_choose_alg!(out, b, x)
+    _filt_choose_alg!(out, b, x)
 end
 
 # like filt_choose_alg! but does not check if out and x are the same size
-function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
+function _filt_choose_alg!(
+    out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
     nb = length(b)
     nx = size(x, 1)
 
@@ -592,7 +594,7 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        tsfilt!(out, b, x)
+        filt!(out, b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -601,6 +603,6 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? _fftfilt!(out, b, x, nfft) : tsfilt!(out, b, x)
+        filtops > fftops ? _fftfilt!(out, b, x, nfft) : filt!(out, b, x)
     end
 end

@@ -229,13 +229,11 @@ end
         out = similar(x)
         filtres = filt(b, [1.0], x)
         fftres = fftfilt(b, x)
-        firres = filt(b, x)
         fft_inplace_res = fftfilt!(out, b, x)
-        fft_self_res = fftfilt!(x, b, x) # Check that out can be an alias of x
+        firres = filt(b, x)
         @test filtres ≈ fftres
         @test filtres ≈ firres
         @test filtres ≈ fft_inplace_res
-        @test filtres ≈ fft_self_res
     end
 end
 
