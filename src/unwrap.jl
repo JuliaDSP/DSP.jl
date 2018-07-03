@@ -68,16 +68,16 @@ measurement of a scene, such as when retrieving the phase information of
 of an image, as each pixel is wrapped to stay within (-pi, pi].
 
 # Arguments
-- `m::AbstractArray{T, N}`: Array to unwrap
+- `m::AbstractArray{T, N}`: Array to unwrap.
 - `dims=nothing`: Dimensions along which to unwrap. If `dims` is an integer, then
-    `unwrap` is called that dimension. If `dims=1:ndims(m)`, then `m` is unwrapped
+    `unwrap` is called on that dimension. If `dims=1:ndims(m)`, then `m` is unwrapped
     across all dimensions.
-- `range=2pi`: Range of wrapped array
+- `range=2pi`: Range of wrapped array.
 - `circular_dims=(false, ...)`:  When an element of this tuple is `true`, the
     unwrapping process will consider the edges along the corresponding axis
-    of the array to be connected
+    of the array to be connected.
 - `rng=GLOBAL_RNG`: Unwrapping of arrays with dimension > 1 uses a random
-    initialization. A user can be pass their own RNG through this argument.
+    initialization. A user can pass their own RNG through this argument.
 """
 function unwrap(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
     if dims === nothing && N != 1
