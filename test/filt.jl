@@ -226,11 +226,14 @@ end
 @testset "fftfilt $xlen/$blen" for xlen in 2 .^ (7:18) .- 1, blen in 2 .^ (1:6) .- 1
     b = randn(blen)
     for x in (rand(xlen), rand(xlen, 2))
+        out = similar(x)
         filtres = filt(b, [1.0], x)
         fftres = fftfilt(b, x)
+        fft_inplace_res = fftfilt!(out, b, x)
         firres = filt(b, x)
         @test filtres ≈ fftres
         @test filtres ≈ firres
+        @test filtres ≈ fft_inplace_res
     end
 end
 
