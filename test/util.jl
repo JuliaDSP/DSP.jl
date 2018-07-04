@@ -1,45 +1,5 @@
 using DSP, Compat, Compat.Test
 
-@testset "unwrap" begin
-    @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 - 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 - 2pi, 0.3 - 2pi, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1 + 2pi, 0.2, 0.3, 0.4]) ≈ [0.1 + 2pi, 0.2 + 2pi, 0.3 + 2pi, 0.4 + 2pi]
-    @test unwrap([0.1, 0.2 + 6pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-
-    test_v = [0.1, 0.2, 0.3 + 2pi, 0.4]
-    res_v = unwrap(test_v)
-    @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
-    res_v .= 0
-    unwrap!(res_v, test_v)
-    @test res_v ≈ [0.1, 0.2, 0.3, 0.4]
-    @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
-    unwrap!(test_v)
-    @test test_v ≈ [0.1, 0.2, 0.3, 0.4]
-
-    # test multi-dimensional unwrapping
-    wrapped = [0.1, 0.2 + 2pi, 0.3, 0.4]
-    unwrapped = [0.1, 0.2, 0.3, 0.4]
-    wrapped = hcat(wrapped, wrapped)
-    unwrapped = hcat(unwrapped, unwrapped)
-    @test unwrap(wrapped, dims=2) ≈ wrapped
-    @test unwrap(wrapped, dims=1) ≈ unwrapped
-    @test unwrap!(copy(wrapped), dims=2) ≈ wrapped
-    @test unwrap!(copy(wrapped), dims=1) ≈ unwrapped
-
-    # these should be implemented as part of #198
-    @test_throws ArgumentError unwrap(wrapped, dims=1:2)
-    @test_throws ArgumentError unwrap!(similar(wrapped), wrapped, dims=1:2)
-    # this should eventually default to the above
-    @test_throws ArgumentError unwrap!(similar(wrapped), wrapped)
-
-    # test unwrapping with other ranges
-    unwrapped = [1.0:100;]
-    wrapped = Float64[i % 10 for i in unwrapped]
-    @test unwrap(wrapped, range=10) ≈ unwrapped
-end
-
 @testset "hilbert" begin
     # Testing hilbert transform
     t = (0:1/256:2-1/256)

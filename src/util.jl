@@ -6,9 +6,7 @@ using Compat: copyto!, ComplexF64, selectdim, undef
 import Compat.LinearAlgebra.BLAS
 @importffts
 
-export  unwrap!,
-        unwrap,
-        hilbert,
+export  hilbert,
         Frequencies,
         fftintype,
         fftouttype,
@@ -29,67 +27,6 @@ export  unwrap!,
         polyfit,
         shiftin!
 
-"""
-    unwrap!(m; dims=nothing, range=2pi)
-
-In-place version of [`unwrap`](@ref).
-"""
-function unwrap!(m::AbstractArray{<:Any,N}; dims=nothing, range=2pi) where N
-    if dims === nothing && N != 1
-        Base.depwarn("`unwrap!(m::AbstractArray)` is deprecated, use `unwrap!(m, dims=ndims(m))` instead", :unwrap!)
-        dims = N
-    end
-    unwrap!(m, m; dims=dims, range=range)
-end
-
-"""
-    unwrap!(y, m; dims=nothing, range=2pi)
-
-Unwrap `m` storing the result in `y`, see [`unwrap`](@ref).
-"""
-function unwrap!(y::AbstractArray{<:Any,N}, m::AbstractArray{<:Any,N}; dims=nothing, range::Number=2pi) where {N}
-    if dims === nothing
-        if N != 1
-            throw(ArgumentError("`unwrap!`: required keyword parameter dims missing"))
-        end
-        dims = 1
-    end
-    if dims isa Integer
-        Compat.accumulate!(unwrap_kernel(range), y, m, dims=dims)
-    else
-        # this is where #198 can hook in
-        throw(ArgumentError("`unwrap!`: Invalid dims specified: $dims"))
-    end
-    return y
-end
-
-unwrap_kernel(range=2π) = (x, y) -> y - round((y - x) / range) * range
-
-@deprecate(unwrap!(m::AbstractArray, dim::Integer; range::Number=2pi),
-    unwrap!(m, dims=dim, range=range))
-
-
-"""
-    unwrap(m; dims=nothing, range=2pi)
-
-Assumes m (along the single dimension dims) to be sequences of values that
-have been wrapped to be inside the given range (centered around
-zero), and undoes the wrapping by identifying discontinuities.
-
-A common usage is for a phase measurement over time, such as when
-comparing successive frames of a short-time-fourier-transform, as
-each frame is wrapped to stay within (-pi, pi].
-"""
-function unwrap(m::AbstractArray{<:Any,N}; dims=nothing, range=2pi) where {N}
-    if dims === nothing && N != 1
-        Base.depwarn("`unwrap(m::AbstractArray)` is deprecated, use `unwrap(m, dims=ndims(m))` instead", :unwrap)
-        dims = ndims(m)
-    end
-    unwrap!(similar(m), m; dims=dims, range=range)
-end
-
-@deprecate(unwrap(m::AbstractArray, dim::Integer; range::Number=2pi),
-    unwrap(m, dims=dim, range=range))
 
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).
