@@ -4,7 +4,11 @@ using ..Util
 import SpecialFunctions: besseli
 import Compat
 using Compat: copyto!, undef
-using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
+if VERSION < v"0.7.0-DEV.5211"
+    using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
+else
+    using LinearAlgebra: Diagonal, SymTridiagonal, eigen!
+end
 @importffts
 
 export  rect,
@@ -193,8 +197,10 @@ function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
     # Get tapers
     @static if VERSION < v"0.7.0-DEV.3159"
         eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]
-    else
+    elseif VERSION < v"0.7.0-DEV.5211"
         eigvec = eigfact!(mat, n-ntapers+1:n).vectors
+    else
+        eigvec = eigen!(mat, n-ntapers+1:n).vectors
     end
     v = Compat.reverse(eigvec::Matrix{Float64}, dims=2)
 
