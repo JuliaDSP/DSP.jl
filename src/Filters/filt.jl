@@ -12,7 +12,8 @@ _zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
     filt!(out, f, x[, si])
 
 Same as [`filt()`](@ref) but writes the result into the `out`
-argument, which may alias the input `x` to modify it in-place.
+argument. Output array `out` may not be an alias of `x`, i.e. filtering may
+not be done in place.
 """
 filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
     filt!(out, coefb(f), coefa(f), x, si)
@@ -426,6 +427,15 @@ let chain = :(throw(ArgumentError("invalid tuple size")))
     end
 end
 
+
+"""
+    tdfilt!(out, h, x)
+
+Apply filter or filter coefficients `h` along the first dimension
+of array `x` using a naïve time-domain algorithm, and writes the result into
+array `out`. Output array `out` may not be an alias of `x`, i.e. filtering may
+not be done in place.
+"""
 function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
