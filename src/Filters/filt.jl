@@ -426,7 +426,7 @@ let chain = :(throw(ArgumentError("invalid tuple size")))
     end
 end
 
-function tsfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
     elseif length(h) <= 15
@@ -592,7 +592,7 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        tsfilt!(out, b, x)
+        tdfilt!(out, b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -601,6 +601,6 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? _fftfilt!(out, b, x, nfft) : tsfilt!(out, b, x)
+        filtops > fftops ? _fftfilt!(out, b, x, nfft) : tdfilt!(out, b, x)
     end
 end
