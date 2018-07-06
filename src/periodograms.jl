@@ -38,7 +38,7 @@ function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     (i >= 1 && i <= x.k) || throw(BoundsError())
     offset = (i-1)*(x.n-x.noverlap)
     window = x.window
-    for i = 1:x.n
+    @simd for i = 1:x.n
         @inbounds x.buf[i] = x.s[offset+i]*window[i]
     end
     x.buf
@@ -66,13 +66,13 @@ function fft2pow!(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Real, 
     if onesided
         m2 = convert(T, 2/r)
         out[offset+1] += abs2(s_fft[1])*m1
-        for i = 2:n-1
-            @inbounds out[offset+i] += abs2(s_fft[i])*m2
+        @inbounds @simd for i = 2:n-1
+            out[offset+i] += abs2(s_fft[i]) * m2
         end
         out[offset+n] += abs2(s_fft[end])*ifelse(iseven(nfft), m1, m2)
     else
         if n == nfft
-            for i = 1:length(s_fft)
+            @simd for i = 1:length(s_fft)
                 @inbounds out[offset+i] += abs2(s_fft[i])*m1
             end
         else
@@ -96,7 +96,7 @@ end
 function fft2pow2!(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real) where T
     m1 = convert(T, 1/r)
     for j = 1:n2
-        for i = 1:n1
+        @simd for i = 1:n1
             @inbounds out[i,j] += abs2(s_fft[i,j])*m1
         end
     end
@@ -145,7 +145,7 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
         end
     end
     if ptype == 2
-        for i = 1:kmax
+        @simd for i = 1:kmax
             @inbounds out[i] /= wc[i]
         end
     end
@@ -262,7 +262,7 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     else
         input = zeros(fftintype(T), nfft)
         if win != nothing
-            for i = 1:length(s)
+            @simd for i = 1:length(s)
                 @inbounds input[i] = s[i]*win[i]
             end
         else
@@ -419,8 +419,8 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
-        for i = 1:size(window, 1)
-            @inbounds input[i] = window[i, j]*s[i]
+        @simd for i = 1:size(window, 1)
+            @inbounds input[i] = window[i, j] * s[i]
         end
         mul!(tmp, plan, input)
         fft2pow!(out, tmp, nfft, r, onesided)
