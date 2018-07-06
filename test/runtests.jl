@@ -5,5 +5,5 @@ testfiles = [ "dsp.jl", "util.jl", "windows.jl", "filter_conversion.jl",
     "periodograms.jl", "resample.jl", "lpc.jl", "estimation.jl", "unwrap.jl"]
 
 for testfile in testfiles
-    eval(@__MODULE__, :(@testset $testfile begin include($testfile) end))
+    eval(:(@testset $testfile begin include($testfile) end))
 end

@@ -54,7 +54,7 @@ or frequencies `w` in radians/sample.
 """
 function phasez(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
     h = freqz(filter, w)
-    unwrap(-atan2.(imag(h), real(h)); dims=ndims(h))
+    unwrap(-atan.(imag(h), real(h)); dims=ndims(h))
 end
 
 
