@@ -26,6 +26,19 @@ export  rect,
         dpss,
         dpsseig
 
+# this gets shared between the docstrings of all the window functions because
+# they share these args.
+zerophase_docs = """
+If `zerophase` is `true` the window is centered around index 1 (with the
+negative half wrapped to the end of the vector), and is suitable for FFT
+processing. These are usually even-length.
+
+If `zerophase` is `false` the window is centered around `(len+1)/2`, which is
+commonly used for FIR filter design. These are usually odd-length. Note that
+this corresponds to sampling a continuous window of length `len-1`, including
+the endpoints.
+"""
+
 """
     makewindow(winfunc::Function, len, padding, zerophase)
 
@@ -33,11 +46,17 @@ Generate a discrete window vector of the given length with `padding` zeros.
 `winfunc` should be a function giving the window value in the range of
 [-0.5, 0.5]. The function is assumed to be 0 outside of this range.
 
-If `zerophase` is `true` the window is centered around index 1 (with the
-negative half wrapped to the end of the vector), and is suitable for FFT
-processing. These are usually even-length.
-If `zerophase` is `false` the window is centered around `(n+1)/2`, which is
-commonly used for FIR filter design. These are usually odd-length.
+$zerophase_docs
+
+Example:
+
+```
+function hanning(n::Integer; padding=0, zerophase=false)
+    makewindow(n, padding, zerophase) do x
+        0.5*(1+cos(2pi*x))
+    end
+end
+```
 """
 function makewindow(winfunc::Function, len, padding, zerophase)
     win = zeros(len+padding)
@@ -59,14 +78,10 @@ end
 """
     rect(n; padding=0, zerophase=false)
 
-Rectangular window function of length `n`, padded with `padding` zeros. This
-window is 1 within the window, and 0 outside of it.
+Rectangular window of length `n`, padded with `padding` zeros. This window is 1
+within the window, and 0 outside of it.
 
-If `zerophase` is `true` the window is centered around index 1 (with the
-negative half wrapped to the end of the vector), and is suitable for FFT
-processing. These are usually even-length.
-If `zerophase` is `false` the window is centered around `(n+1)/2`, which is
-commonly used for FIR filter design. These are usually odd-length.
+$zerophase_docs
 """
 function rect(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -76,9 +91,12 @@ end
 
 
 """
-    hanning(n)
+    hanning(n; padding=0, zerophase=false)
 
-Hanning window of length `n`.
+Hanning window of length `n` with `padding` zeros. The Hanning (or Hann) window
+is a raised-cosine window that reaches zero at the endpoints.
+
+$zerophase_docs
 """
 function hanning(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -87,9 +105,13 @@ function hanning(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    hamming(n)
+    hamming(n; padding=0, zerophase=false)
 
-Hamming window of length `n`.
+Hamming window of length `n` with `padding` zeros. The Hamming window does not
+reach zero at the endpoints and so has a shallower frequency roll-off when
+compared to the Hanning window, but is designed to cancel the first side-lobe.
+
+$zerophase_docs
 """
 function hamming(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -98,15 +120,18 @@ function hamming(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    tukey(n, alpha)
+    tukey(n, α::Real; padding=0, zerophase=false)
 
-Tukey window of length `n`, parameterized by `alpha`. For
-`alpha` = 0, the window is equivalent to a rectangular window.
-For `alpha` = 1, the window is a Hann window.
+Tukey window of length `n` with `padding` zeros. The Tukey window has a flat top
+and reaches zero at the endpoints, with a sinusoidal transition area
+parameterized by `α`. For `α == 0`, the window is equivalent to a rectangular
+window. For `α == 1`, the window is a Hann window.
+
+$zerophase_docs
 """
-function tukey(n::Integer, alpha::Real; padding=0, zerophase=false)
+function tukey(n::Integer, α::Real; padding=0, zerophase=false)
     # check that alpha is reasonable
-    !(0 <= alpha <= 1) && error("tukey window alpha parameter must be 0 <= alpha <= 1.")
+    !(0 <= α <= 1) && error("α must be in the range 0 <= α <= 1.")
 
     # if alpha is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
@@ -130,10 +155,13 @@ function tukey(n::Integer, alpha::Real; padding=0, zerophase=false)
 end
 
 """
-    cosine(n)
+    cosine(n; padding=0, zerophase=false)
 
-Cosine window of length `n`. Also called the sine window for
-obvious reasons.
+Cosine window of length `n` with `padding` zeros. The cosine window is the first
+lobe of a cosine function (with the zero crossings at +/- π as endpoints). Also
+called the sine window.
+
+$zerophase_docs
 """
 function cosine(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -142,9 +170,12 @@ function cosine(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    lanczos(n)
+    lanczos(n; padding=0, zerophase=false)
 
-Lanczos window of length `n`.
+Lanczos window of length `n` with `padding` zeros. The Lanczos window is the
+main lobe of a sinc function.
+
+$zerophase_docs
 """
 function lanczos(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -153,9 +184,13 @@ function lanczos(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    triang(n)
+    triang(n; padding=0, zerophase=false)
 
-Triangular window of length `n`.
+Triangular window of length `n` with `padding` zeros. The Triangular window does
+not reach zero at the endpoints. It is equivilent to a `bartlett` window of
+length `n+2` but without including the zero endpoints.
+
+$zerophase_docs
 """
 function triang(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -164,10 +199,14 @@ function triang(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    bartlett(n)
+    bartlett(n; padding=0, zerophase=false)
 
 Bartlett window of length `n`. The Bartlett window is a triangular window that
-reaches 0 at the edges.
+reaches 0 at the edges. This is also equivalent to the convolution of two
+rectangular windows of size `n/2`. See `triang` for a window that does not
+include the zero endpoints. 
+
+$zerophase_docs
 """
 function bartlett(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
@@ -176,12 +215,14 @@ function bartlett(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    gaussian(n, σ)
+    gaussian(n, σ; padding=0, zerophase=false)
 
 Gives an n-sample gaussian window defined by sampling the function
 \$w(x) = e^{-\\frac 1 2 \\left(\\frac x σ \\right)^2}\$ in the range
 \$[-0.5,0.5]\$. This means that for \$σ=0.5\$ the endpoints of the window will
 correspond to 1 standard deviation away from the center.
+
+$zerophase_docs
 """
 function gaussian(n::Integer, σ::Real; padding=0, zerophase=false)
     σ > 0.0 || error("σ must be positive")
@@ -191,9 +232,12 @@ function gaussian(n::Integer, σ::Real; padding=0, zerophase=false)
 end
 
 """
-    bartlett_hann(n)
+    bartlett_hann(n; padding=0, zerophase=false)
 
-Bartlett-Hann window of length `n`.
+Bartlett-Hann window of length `n` with `padding` zeros. The Bartlett-Hann
+window is 
+
+$zerophase_docs
 """
 function bartlett_hann(n::Integer; padding=0, zerophase=false)
     a0, a1, a2 = 0.62, 0.48, 0.38
