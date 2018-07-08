@@ -61,9 +61,6 @@ export  FIRFilter,
 
 include("remez_fir.jl")
 export  remez,
-        remez_jl,
-        alternating_solve,
-        update_extremals,
         remez_jl2
 
 end
