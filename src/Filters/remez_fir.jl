@@ -124,151 +124,19 @@ end
 
 
 
-function alternating_solve(ω_grid, D_grid, extremal_indices)
-    M = length(extremal_indices) - 2
-    extremals = ω_grid[extremal_indices]
-    
-    A = zeros(Float64, M+2, M+2)
-    sign_of_error = 1
-    for row = 1:M+2
-        for col = 1:M+1
-            A[row,col] = cos((col-1)*extremals[row])
-        end
-        A[row,M+2] = sign_of_error
-        sign_of_error *= -1
-    end
-    
-    b = D_grid[extremal_indices]
-    
-    aa = A\b
-    a,delta = aa[1:end-1], abs(aa[end])
-    
-    # inefficient calculation of DFT
-    A_full = zeros(Float64, length(ω_grid), length(a))
-    for row = 1:length(ω_grid)
-        for col = 1:length(a)
-            A_full[row,col] = cos((col-1)*ω_grid[row])
-        end
-    end
-    H = A_full*a
-    
-    a, delta, H
-    
-end
 
 using Formatting
 
-function update_extremals(D, extremal_indices, band_indices_grid, H, D_grid)
-    # modifies extremal_indices in-place
-    for band_index = 1:length(D)   # for each band
-        extremal_set = find( band_indices_grid[extremal_indices] .== band_index )
-        printfmtln("band_index $band_index: {} extremals", length(extremal_set))
-        for index = 2:length(extremal_set)-1  # leave the 1st and last extremal alone
-            extremal_index = extremal_indices[extremal_set[index]]
-            #display(extremal_index)
-            #continue
-            error_current = abs(H[extremal_index] - D_grid[extremal_index])
-            error_left = (extremal_index>1) ? abs(H[extremal_index-1] - D_grid[extremal_index-1]) : error_current
-            error_right = (extremal_index<length(H)) ? abs(H[extremal_index+1] - D_grid[extremal_index+1]) : error_current
-            if error_left > error_current
-                increment = -1
-                error_next = error_left
-            elseif error_right > error_current
-                increment = 1
-                error_next = error_right
-            else
-                increment = 0
-                error_next = error_current
-            end
-            extremal_index += increment
-            while error_next > error_current
-                error_current = error_next
-                extremal_index += increment
-                index_next = extremal_index + increment
-                if (index_next < 1) || (index_next > length(D_grid))
-                    continue
-                end
-                error_next = abs(H[extremal_index+increment] - D_grid[extremal_index+increment])
-            end
-            #display([extremal_indices[extremal_set[index]] extremal_index])
-            extremal_indices[extremal_set[index]] = extremal_index
-        end
-    end
-    #display(extremal_indices)
-end
-
-
-function remez_jl(numtaps::Integer, bands::Array, desired::Array; 
-                  weight::Array=[], 
-                  Hz::Real=1.0, 
-                  maxiter::Integer=25, 
-                  grid_density::Integer=16)
-
-    if (length(weight)==0)
-        weight = ones(desired)
-    end
-
-    bands = copy(bands)/Hz
-
-    
-    L = numtaps
-    M = Int(floor(L / 2))
-    grid_spacing = π / (grid_density * M)
-    ω_pairs = 2π * bands
-    D = desired
-    
-    ω_grid = zeros(Float64, 0)
-    D_grid = zeros(Float64, 0)
-    band_indices_grid = zeros(Int64, 0)
-    band_edge_indices = zeros(Int64, 0)
-    for band_index = 1:length(D)
-        push!(band_edge_indices, length(ω_grid)+1)
-        pair_index = (band_index-1)*2 + 1
-        a, b = ω_pairs[pair_index:pair_index+1]
-        D_band = D[band_index]
-        ω_grid_band = collect(a:grid_spacing:b)
-        if (ω_grid_band[end] < b)
-            push!(ω_grid_band, b)
-        end
-        append!(ω_grid, ω_grid_band)
-        append!(D_grid, D_band*(1+0*ω_grid_band))
-        append!(band_indices_grid, band_index*ones(Int64, length(ω_grid_band)))
-        push!(band_edge_indices, length(ω_grid))
-    end
-
-    # Initial extremal frequencies
-    extremal_indices = Array{Int,1}(round.(collect(linspace(1,length(ω_grid),M+2))))  # evenly spaced
-    extremal_bands = band_indices_grid[extremal_indices]
-    # now add band edges to set
-    for band_index = 1:length(D)
-        extremal_set = find( band_indices_grid[extremal_indices] .== band_index )
-        extremal_indices_in_band = extremal_indices[extremal_set]
-        pair_index = 2*(band_index-1) + 1
-        extremal_indices[extremal_set[1]] = band_edge_indices[pair_index]
-        extremal_indices[extremal_set[end]] = band_edge_indices[pair_index+1]
-    end
-    #extremals = ω_grid[extremal_indices]
-
-    a, delta, H = alternating_solve(ω_grid, D_grid, extremal_indices)
-    println("delta $delta")
-
-    iteration = 0
-    while iteration < maxiter
-        println("iteration $iteration")
-        update_extremals(D, extremal_indices, band_indices_grid, H, D_grid)
-        a, delta, H = alternating_solve(ω_grid, D_grid, extremal_indices)
-        println("delta $delta")
-        iteration += 1
-    end
-    
-    a
-end
 
 
 
-
-
-
+"""/*
+ *-----------------------------------------------------------------------
+ * FUNCTION: lagrange_interp (d)
+ *  FUNCTION TO CALCULATE THE LAGRANGE INTERPOLATION
+ *  COEFFICIENTS FOR USE IN THE FUNCTION gee.
+ *-----------------------------------------------------------------------
+ */"""
 function lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
     retval = 1.0;
     q = x[k];
@@ -463,24 +331,6 @@ function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::Abstr
 end
 
 
-mutable struct ExtremalSet
-    j::Int  # index of the current extremal being updated
-    nz::Int # number of cosines in the approximation (including the constant term).
-            # nz = nfcns + 1 where nfcns = nfilt / 2, and 
-            # nfilt is the filter length or number of taps. 
-            # For example, for a length 15 filter, nfcns = 7 and nz = 8. 
-    jchgne::Int  # number of extremal indices that changed this iteration
-    k1::Int
-    knz::Int
-    klow::Int
-    nu::Int
-    nut::Int
-    l::Int
-    luck::Int
-    iext::Array{Int64}  # the list of extremal indices
-end
-
-
 """
     remez(numtaps::Integer, bands::Array, desired::Array; 
           weight::Array=[], 
@@ -610,11 +460,9 @@ function remez_jl2(numtaps::Integer, bands::Array, desired::Array;
       #define HILBERT        3
     # I think the "j" is because it is an int, and FORTRAN assigned
     # types based on starting letter of variable name LOL.
-    # I am starting with BANDPASS only support. Differentiator and Hilbert
-    # once bandpass works.
-    #jtype = 1   # should be input, and passed down to remez
-    #   Type I and II symmetric linear phase: neg==0   (jtype==1)
-    #   Type III and IV negative symmetric linear phase: neg==1   (jtype==2 or 3)
+    # jtype input:
+    #    Type I and II symmetric linear phase: neg==0   (jtype==1)
+    #    Type III and IV negative symmetric linear phase: neg==1   (jtype==2 or 3)
     neg = 1     # "neg" means negative symmetry.
     if (jtype == 1)
       neg = 0
