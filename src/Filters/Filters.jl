@@ -24,6 +24,8 @@ export FilterCoefficients,
 include("filt.jl")
 export  DF2TFilter,
         filtfilt,
+        tdfilt,
+        tdfilt!,
         fftfilt,
         fftfilt!
 

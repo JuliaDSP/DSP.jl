@@ -427,16 +427,30 @@ let chain = :(throw(ArgumentError("invalid tuple size")))
     end
 end
 
+"""
+    tdfilt(h, x)
+
+Apply filter or filter coefficients `h` along the first dimension
+of array `x` using a naïve time-domain algorithm
+"""
+function tdfilt(h::AbstractVector, x::AbstractArray{T}) where T<:Real
+    _tdfilt!(Array{T}(undef, size(x)), h, x)
+end
 
 """
     tdfilt!(out, h, x)
 
-Apply filter or filter coefficients `h` along the first dimension
-of array `x` using a naïve time-domain algorithm, and writes the result into
-array `out`. Output array `out` may not be an alias of `x`, i.e. filtering may
-not be done in place.
+Like `tdfilt`, but writes the result into array `out`. Output array `out` may
+not be an alias of `x`, i.e. filtering may not be done in place.
 """
 function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+    size(x) != size(out) && error("out size must match x")
+    _tdfilt!(out, h, x)
+end
+
+# Does not check that 'out' and 'x' are the same length
+function _tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+    size(x) != size(out) && error("out size must match x")
     if length(h) == 1
         return mul!(out, h[1], x)
     elseif length(h) <= 15
@@ -446,7 +460,6 @@ function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     h = reverse(h)
     hLen = length(h)
     xLen = size(x, 1)
-    size(x) != size(out) && error("out size must match x")
     ncols = Base.trailingsize(x, 2)
 
     for col = 0:ncols-1
@@ -592,7 +605,8 @@ function filt!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
     filt_choose_alg!(out, b, x)
 end
 
-# like filt_choose_alg! but does not check if out and x are the same size
+# Perform FIR filtering with either time domain or fft based algorithms, writing
+# output to `out` argument. Does not check that x and out are the same size.
 function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
     nb = length(b)
     nx = size(x, 1)
@@ -602,7 +616,7 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        tdfilt!(out, b, x)
+        _tdfilt!(out, b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()

@@ -230,10 +230,17 @@ end
         filtres = filt(b, [1.0], x)
         fftres = fftfilt(b, x)
         firres = filt(b, x)
-        fft_mutate_res = fftfilt!(out, b, x)
+        td_res = tdfilt(b, x)
+
         @test filtres ≈ fftres
         @test filtres ≈ firres
-        @test filtres ≈ fft_mutate_res
+        @test filtres ≈ td_res
+
+        fftfilt!(out, b, x)
+        @test filtres ≈ out # test output of fftfilt!
+
+        tdfilt!(out, b, x)
+        @test filtres ≈ out # test output of tdfilt!
     end
 end
 
