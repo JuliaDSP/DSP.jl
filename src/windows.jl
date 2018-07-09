@@ -185,37 +185,43 @@ follow the convention that the first element of the skew-symmetric
 (odd) tapers is positive. The time-bandwidth product is given by
 `nw`.
 """
-function dpss(n::Int, nw::Real, ntapers::Int=ceil(Int, 2*nw)-1)
+function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1)
     0 < ntapers <= n || error("ntapers must be in interval (0, n]")
     0 <= nw < n/2 || error("nw must be in interval [0, n/2)")
 
     # Construct symmetric tridiagonal matrix
     v = cospi(2*nw/n)
-    mat = SymTridiagonal([v*abs2((n - 1)/2 - i) for i=0:(n-1)],
-                         [0.5.*(i*n - abs2(i)) for i=1:(n-1)])
+    dv = Vector{Float64}(n)
+    ev = Vector{Float64}(n - 1)
+    @inbounds dv[1] = v * abs2((n - 1) / 2)
+    @inbounds @simd for i = 1:(n-1)
+        dv[i + 1] = v * abs2((n - 1) / 2 - i)
+        ev[i] = 0.5 * (i * n - i^2)
+    end
+    mat = SymTridiagonal(dv, ev)
 
     # Get tapers
     @static if VERSION < v"0.7.0-DEV.3159"
-        eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]
+        eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]::Array{Float64, 2}
     elseif VERSION < v"0.7.0-DEV.5211"
-        eigvec = eigfact!(mat, n-ntapers+1:n).vectors
+        eigvec = eigfact!(mat, n-ntapers+1:n).vectors::Array{Float64, 2}
     else
-        eigvec = eigen!(mat, n-ntapers+1:n).vectors
+        eigvec = eigen!(mat, n-ntapers+1:n).vectors::Array{Float64, 2}
     end
-    v = Compat.reverse(eigvec::Matrix{Float64}, dims=2)
+    rv = Compat.reverse(eigvec, dims=2)::Array{Float64, 2}
 
     # Slepian's convention; taper starts with a positive element
-    sgn = ones(size(v, 2))
-    for i = 2:2:size(v, 2)
-        s = 0
+    sgn = ones(size(rv, 2))
+    for i = 2:2:size(rv, 2)
+        s = zero(Float64)
         for j = 1:n
-            s = sign(v[j, i])
+            s = sign(rv[j, i])
             s != 0 && break
         end
         @assert s != 0
         sgn[i] = s
     end
-    rmul!(v, Diagonal(sgn))
+    rmul!(rv, Diagonal(sgn))
 end
 
 # Eigenvalues of DPSS, following Percival & Walden p. 390, exercise 8.1
