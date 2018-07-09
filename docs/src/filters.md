@@ -46,6 +46,9 @@ filt
 filt!
 filtfilt
 fftfilt
+fftfilt!
+tdfilt
+tdfilt!
 resample
 ```
 ## Filter design
