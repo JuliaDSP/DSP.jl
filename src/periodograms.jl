@@ -38,8 +38,8 @@ function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     (i >= 1 && i <= x.k) || throw(BoundsError())
     offset = (i-1)*(x.n-x.noverlap)
     window = x.window
-    @simd for i = 1:x.n
-        @inbounds x.buf[i] = x.s[offset+i]*window[i]
+    @simd for idx = 1:x.n
+        @inbounds x.buf[idx] = x.s[offset+idx]*window[idx]
     end
     x.buf
 end
