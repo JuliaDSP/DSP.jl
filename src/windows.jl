@@ -202,18 +202,18 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1)
 
     # Get tapers
     @static if VERSION < v"0.7.0-DEV.3159"
-        eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]::Array{Float64, 2}
+        eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]::Matrix{Float64}
     elseif VERSION < v"0.7.0-DEV.5211"
-        eigvec = eigfact!(mat, n-ntapers+1:n).vectors::Array{Float64, 2}
+        eigvec = eigfact!(mat, n-ntapers+1:n).vectors
     else
-        eigvec = eigen!(mat, n-ntapers+1:n).vectors::Array{Float64, 2}
+        eigvec = eigen!(mat, n-ntapers+1:n).vectors
     end
-    rv = Compat.reverse(eigvec, dims=2)::Array{Float64, 2}
+    rv = Compat.reverse(eigvec, dims=2)::Matrix{Float64}
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(rv, 2))
     for i = 2:2:size(rv, 2)
-        s = zero(Float64)
+        s = zero(eltype(rv))
         for j = 1:n
             s = sign(rv[j, i])
             s != 0 && break
