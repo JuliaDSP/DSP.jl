@@ -450,7 +450,6 @@ end
 
 # Does not check that 'out' and 'x' are the same length
 function _tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
-    size(x) != size(out) && error("out size must match x")
     if length(h) == 1
         return mul!(out, h[1], x)
     elseif length(h) <= 15
