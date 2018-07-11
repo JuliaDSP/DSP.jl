@@ -80,8 +80,8 @@ using DSP, Compat, Compat.Test, FilterTestHelpers, Polynomials
 
     # And with only poles (no zeros)
     m_sos_only_poles = copy(m_sos_full)
-    m_sos_only_poles[:, 1:2] = 0
-    m_sos_only_poles[:, 3] = 1
+    m_sos_only_poles[:, 1:2] .= 0
+    m_sos_only_poles[:, 3] .= 1
     @test m_sos_only_poles ≈ sosfilter_to_matrix(convert(SecondOrderSections, ZeroPoleGain(Float64[], p, k)))
 
     # Test that a filter with repeated zeros is handled properly
