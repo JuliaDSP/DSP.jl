@@ -2,6 +2,7 @@
 # in the frequency domain
 
 #=============================================
+
 Translated from C code in scipy into Julia.
 Tom Krauss, 2018.
 
@@ -47,6 +48,41 @@ SIGTOOLS module by Travis Oliphant
 Copyright 2005 Travis Oliphant
 Permission to use, copy, modify, and distribute this software without fee
 is granted under the SciPy License.
+
+C CODE BANNER
+
+/********************************************************
+ *
+ *  Code taken from remez.c by Erik Kvaleberg which was 
+ *    converted from an original FORTRAN by:
+ *
+ * AUTHORS: JAMES H. MCCLELLAN
+ *
+ *         DEPARTMENT OF ELECTRICAL ENGINEERING AND COMPUTER SCIENCE
+ *         MASSACHUSETTS INSTITUTE OF TECHNOLOGY
+ *         CAMBRIDGE, MASS. 02139
+ *
+ *         THOMAS W. PARKS
+ *         DEPARTMENT OF ELECTRICAL ENGINEERING
+ *         RICE UNIVERSITY
+ *         HOUSTON, TEXAS 77001
+ *
+ *         LAWRENCE R. RABINER
+ *         BELL LABORATORIES
+ *         MURRAY HILL, NEW JERSEY 07974
+ *
+ *  
+ *  Adaptation to C by 
+ *      egil kvaleberg
+ *      husebybakken 14a
+ *      0379 oslo, norway
+ *  Email:
+ *      egil@kvaleberg.no
+ *  Web:
+ *      http://www.kvaleberg.com/
+ *
+ *********************************************************/
+
 =============================================#
 
 """/*
