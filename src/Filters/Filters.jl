@@ -60,7 +60,6 @@ export  FIRFilter,
         timedelay
 
 include("remez_fir.jl")
-export  remez,
-        remez_jl2
+export  remez
 
 end
