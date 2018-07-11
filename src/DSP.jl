@@ -46,6 +46,7 @@ if VERSION >= v"0.7.0-DEV.602"
 end
 
 include("util.jl")
+include("unwrap.jl")
 include("windows.jl")
 include("periodograms.jl")
 include("Filters/Filters.jl")
@@ -53,7 +54,7 @@ include("lpc.jl")
 include("estimation.jl")
 
 using Reexport
-@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Estimation
+@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation
 
 include("deprecated.jl")
 end

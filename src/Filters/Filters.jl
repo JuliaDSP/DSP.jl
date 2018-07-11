@@ -1,5 +1,6 @@
 module Filters
 using ..DSP: @importffts, mul!, rmul!
+using ..Unwrap
 using Polynomials, ..Util
 import Base: *
 using Compat: copyto!, undef
