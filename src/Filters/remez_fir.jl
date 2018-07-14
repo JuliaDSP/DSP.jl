@@ -97,7 +97,7 @@ function lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
     q = x[k];
     for l = 1 : m
         for j = l : m : n
-            if (j != k)
+            if j != k
                 retval *= 2.0 * (q - x[j])
             end
         end
@@ -123,7 +123,7 @@ eff(freq::Float64, fx::AbstractVector, lband::Integer, jtype::Integer)
  */
 """
 function eff(freq::Float64, fx::AbstractVector, lband::Integer, jtype::Integer)
-    if (jtype != 2)
+    if jtype != 2
         return fx[lband]
     else 
         return fx[lband] * freq
@@ -143,10 +143,10 @@ wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, jty
  */
 """
 function wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, jtype::Integer)
-    if (jtype != 2)
+    if jtype != 2
         return wtx[lband]
     end
-    if (fx[lband] >= 0.0001)
+    if fx[lband] >= 0.0001
         return wtx[lband] / freq
     end
     wtx[lband]
@@ -180,12 +180,12 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     nfilt = numtaps
 
     neg = 1
-    if (jtype == 1)
+    if jtype == 1
         neg = 0
     end
     nodd = nfilt % 2
     nfcns = nfilt ÷ 2
-    if (nodd == 1 && neg == 0) 
+    if nodd == 1 && neg == 0
         nfcns = nfcns + 1
     end
 
@@ -196,8 +196,8 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     grid[1] = edge[1]
     delf = lgrid * nfcns
     delf = 0.5 / delf
-    if (neg != 0)
-        if (edge[1] < delf)
+    if neg != 0
+        if edge[1] < delf
             grid[1] = delf
         end
     end
@@ -216,12 +216,12 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
             des[j] = eff(temp,fx,lband,jtype)
             wt[j] = wate(temp,fx,wtx,lband,jtype)
             j += 1
-            if (j > wrksize)
+            if j > wrksize
                 # too many points, or too dense grid
                 return -1
             end
             grid[j] = temp + delf
-            if (grid[j] > fup)
+            if grid[j] > fup
                 break
             end
         end
@@ -230,15 +230,15 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
         wt[j-1] = wate(fup,fx,wtx,lband,jtype)
         lband += 1
         l += 2
-        if (lband > nbands) 
-            break;
+        if lband > nbands
+            break
         end
         grid[j] = edge[l]
     end
 
     ngrid = j - 1
-    if (neg == nodd)
-        if (grid[ngrid] > (0.5-delf))
+    if neg == nodd
+        if grid[ngrid] > (0.5-delf)
             ngrid -= 1
         end
     end
@@ -272,7 +272,7 @@ end
 
 function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::AbstractArray, wt::AbstractArray, y::AbstractArray)
     nu = 1
-    if ( (dev) > 0.0 )
+    if dev > 0.0
         nu = -1
     end
     dev = -nu * dev
@@ -382,17 +382,17 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
                maxiter::Integer=25, 
                grid_density::Integer=16)
     # Convert type
-    if (filter_type == "bandpass")
+    if filter_type == "bandpass"
         jtype = 1
-    elseif (filter_type == "differentiator")
+    elseif filter_type == "differentiator"
         jtype = 2
-    elseif (filter_type == "hilbert")
+    elseif filter_type == "hilbert"
         jtype = 3
     else
         error("`filter_type` must be \"bandpass\", \"differentiator\", or \"hilbert\".")
     end
 
-    if (length(weight)==0)
+    if length(weight)==0
         weight = ones(desired)
     end
     bands = copy(bands)/Hz
@@ -419,14 +419,14 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     # jtype input:
     #    Type I and II symmetric linear phase: neg==0   (jtype==1)
     #    Type III and IV negative symmetric linear phase: neg==1   (jtype==2 or 3)
-    if (jtype == 1)
+    if jtype == 1
       neg = 0
     else
       neg = 1     # "neg" means negative symmetry.
     end
     nodd = numtaps % 2   # nodd == 1: length is odd; nodd == 0: length is even
     nfcns = numtaps ÷ 2  # integer divide
-    if (nodd == 1 && neg == 0)
+    if nodd == 1 && neg == 0
         nfcns = nfcns + 1
     end
     temp = Float64(ngrid-1) / nfcns
@@ -437,8 +437,8 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
      * SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
      * TO THE ORIGINAL PROBLEM
      */"""
-    if (neg <= 0)
-        if (nodd != 1)
+    if neg <= 0
+        if nodd != 1
             for j = 1 : ngrid
                 change = cos(π*grid[j]);
                 des[j] = des[j] / change;
@@ -446,7 +446,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
             end
         end
     else
-        if (nodd != 1)
+        if nodd != 1
             for j = 1 : ngrid
                 change = sin(π*grid[j]);
                 des[j] = des[j] / change;
@@ -488,7 +488,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
       @label L100
         iext[nzz] = ngrid + 1;
         niter += 1;
-        if (niter > maxiter) 
+        if niter > maxiter
             break
         end
         
@@ -516,7 +516,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
         y = 0*x
         nu, dev = initialize_y(dev, nz, iext, des, wt, y)
         
-        if ( dev <= devl )
+        if dev <= devl
             # finished 
             return -1  # error - deviation should always increase
         end        
@@ -663,7 +663,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
       @label L370
         ;
         
-        if (jchnge <= 0)  # we are done if none of the extremal indices changed
+        if jchnge <= 0  # we are done if none of the extremal indices changed
             break
         end
     end  # while
@@ -692,7 +692,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     if (bands[1] == 0.0 && bands[end] == 0.5) kkk = 1; end
 
     if (nfcns <= 3) kkk = 1; end
-    if (kkk !=     1)
+    if kkk != 1
         dtemp = cos(TWOPI*grid[1]);
         dnum  = cos(TWOPI*grid[ngrid]);
         aa    = 2.0/(dtemp-dnum);
@@ -707,7 +707,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     for j = 1 : nfcns 
         ft = (j - 1) * delf;
         xt = cos(TWOPI*ft);
-        if (kkk != 1)
+        if kkk != 1
             xt = (xt-bb)/aa;
             ft = acos(xt)/TWOPI;
         end
@@ -736,7 +736,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     for j = 1 : nfcns
         dtemp = 0.0;
         dnum = (j-1) * dden;
-        if (nm1 >= 1)
+        if nm1 >= 1
             for k = 1 : nm1
                 dtemp += a[k+1] * cos(dnum*k);
             end
@@ -749,12 +749,12 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     end
     alpha[1] /= cn;
 
-    if (kkk != 1)
+    if kkk != 1
         p[1] = 2.0*alpha[nfcns]*bb+alpha[nm1];
         p[2] = 2.0*aa*alpha[nfcns];
         q[1] = alpha[nfcns-2]-alpha[nfcns];
         for j = 2 : nm1
-            if (j >= nm1)
+            if j >= nm1
                 aa *= 0.5;
                 bb *= 0.5;
             end
@@ -773,7 +773,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
                 p[k] += aa * a[k-1];
             end
 
-            if (j != nm1)
+            if j != nm1
                 for k = 1 : j
                     q[k] = -a[k];
                 end
@@ -785,7 +785,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
         end
     end
 
-    if (nfcns <= 3)
+    if nfcns <= 3
         alpha[nfcns+1] = alpha[nfcns+2] = 0.0;
     end
 
@@ -797,8 +797,8 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     # CALCULATE THE IMPULSE RESPONSE.
     #
     h = zeros(Float64, nfilt)
-    if (neg <= 0)
-        if (nodd != 0)
+    if neg <= 0
+        if nodd != 0
             for j = 1 : nm1
                 h[j] = 0.5 * alpha[nz-j];
             end
@@ -811,7 +811,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
             h[nfcns] = 0.5*alpha[1] + 0.25*alpha[2];
         end
     else
-        if (nodd != 0)
+        if nodd != 0
             h[1] = 0.25 * alpha[nfcns];
             h[2] = 0.25 * alpha[nm1];
             for j = 1 : nm1
@@ -830,7 +830,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
 
     for j = 1 : nfcns
         k = nfilt + 1 - j;
-        if (neg == 0)
+        if neg == 0
            h[k] = h[j];
         else
            h[k] = -h[j];
