@@ -160,7 +160,7 @@ return "grid" and "des" and "wt" arrays
 function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     # translate from scipy remez argument names
     L = numtaps
-    M = Int(floor(L / 2))
+    M = L ÷ 2    # integer divide (truncated)
     grid_spacing = 0.5 / (grid_density * M)  # "delf" or "delta f"
 
     lgrid = grid_density
@@ -179,13 +179,10 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     edge = bands
     nfilt = numtaps
 
-    neg = 1
-    if jtype == 1
-        neg = 0
-    end
-    nodd = nfilt % 2
+    neg = jtype != 1
+    nodd = isodd(nfilt)
     nfcns = nfilt ÷ 2
-    if nodd == 1 && neg == 0
+    if nodd && !neg
         nfcns = nfcns + 1
     end
 
@@ -196,7 +193,7 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     grid[1] = edge[1]
     delf = lgrid * nfcns
     delf = 0.5 / delf
-    if neg != 0
+    if neg
         if edge[1] < delf
             grid[1] = delf
         end
@@ -419,14 +416,10 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     # jtype input:
     #    Type I and II symmetric linear phase: neg==0   (jtype==1)
     #    Type III and IV negative symmetric linear phase: neg==1   (jtype==2 or 3)
-    if jtype == 1
-      neg = 0
-    else
-      neg = 1     # "neg" means negative symmetry.
-    end
-    nodd = numtaps % 2   # nodd == 1: length is odd; nodd == 0: length is even
-    nfcns = numtaps ÷ 2  # integer divide
-    if nodd == 1 && neg == 0
+    neg = jtype != 1      # boolean: "neg" means negative symmetry.
+    nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
+    nfcns = numtaps ÷ 2   # integer divide
+    if nodd && !neg
         nfcns = nfcns + 1
     end
     temp = Float64(ngrid-1) / nfcns
@@ -437,8 +430,8 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
      * SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
      * TO THE ORIGINAL PROBLEM
      */"""
-    if neg <= 0
-        if nodd != 1
+    if !neg
+        if !nodd
             for j = 1 : ngrid
                 change = cos(π*grid[j]);
                 des[j] = des[j] / change;
@@ -446,7 +439,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
             end
         end
     else
-        if nodd != 1
+        if !nodd
             for j = 1 : ngrid
                 change = sin(π*grid[j]);
                 des[j] = des[j] / change;
@@ -797,8 +790,8 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     # CALCULATE THE IMPULSE RESPONSE.
     #
     h = zeros(Float64, nfilt)
-    if neg <= 0
-        if nodd != 0
+    if !neg
+        if nodd
             for j = 1 : nm1
                 h[j] = 0.5 * alpha[nz-j];
             end
@@ -811,7 +804,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
             h[nfcns] = 0.5*alpha[1] + 0.25*alpha[2];
         end
     else
-        if nodd != 0
+        if nodd
             h[1] = 0.25 * alpha[nfcns];
             h[2] = 0.25 * alpha[nm1];
             for j = 1 : nm1
@@ -830,13 +823,13 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
 
     for j = 1 : nfcns
         k = nfilt + 1 - j;
-        if neg == 0
+        if !neg
            h[k] = h[j];
         else
            h[k] = -h[j];
         end
       end
-    if (neg == 1 && nodd == 1) h[nz] = 0.0; end
+    if (neg && nodd) h[nz] = 0.0; end
     
     return h
 end
