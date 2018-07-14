@@ -334,7 +334,7 @@ frequency bands using the Remez exchange algorithm.
     ``(numtaps + 1) * grid_density``. Default is 16.
 
 # Returns
-- `h::Vector{Float64,1}`: A rank-1 array containing the coefficients of the optimal
+- `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
     (in a minimax sense) filter.
 
 [^McClellan1973a]: 
