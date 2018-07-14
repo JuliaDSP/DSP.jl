@@ -85,6 +85,13 @@ C CODE BANNER
 
 =============================================#
 
+# RemezFilterType:
+#    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)
+#    Type III and IV negative symmetric linear phase: neg==1   (filter_type==hilbert or differentiator)
+@enum RemezFilterType filter_type_bandpass=1 filter_type_differentiator=2 filter_type_hilbert=3
+
+
+
 """/*
  *-----------------------------------------------------------------------
  * FUNCTION: lagrange_interp (d)
@@ -107,7 +114,7 @@ end
 
 
 """
-eff(freq::Float64, fx::AbstractVector, lband::Integer, jtype::Integer)
+eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
 
 /*
  *-----------------------------------------------------------------------
@@ -122,16 +129,16 @@ eff(freq::Float64, fx::AbstractVector, lband::Integer, jtype::Integer)
  *-----------------------------------------------------------------------
  */
 """
-function eff(freq::Float64, fx::AbstractVector, lband::Integer, jtype::Integer)
-    if jtype != 2
-        return fx[lband]
-    else 
+function eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
+    if filter_type == filter_type_differentiator
         return fx[lband] * freq
+    else 
+        return fx[lband]
     end
 end
 
 """
-wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, jtype::Integer)
+wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
 /*
  *-----------------------------------------------------------------------
  * FUNCTION: wate
@@ -142,8 +149,8 @@ wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, jty
  *-----------------------------------------------------------------------
  */
 """
-function wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, jtype::Integer)
-    if jtype != 2
+function wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
+    if filter_type != filter_type_differentiator
         return wtx[lband]
     end
     if fx[lband] >= 0.0001
@@ -157,7 +164,7 @@ end
 build_grid(numtaps, bands, desired, weight, grid_density)
 return "grid" and "des" and "wt" arrays
 """
-function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
+function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::RemezFilterType)
     # translate from scipy remez argument names
     L = numtaps
     M = L ÷ 2    # integer divide (truncated)
@@ -174,12 +181,11 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
     fx = desired
     wtx = weight
     
-    #jtype = 1
     nbands = length(desired)
     edge = bands
     nfilt = numtaps
 
-    neg = jtype != 1
+    neg = filter_type != filter_type_bandpass
     nodd = isodd(nfilt)
     nfcns = nfilt ÷ 2
     if nodd && !neg
@@ -210,8 +216,8 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
         fup = edge[l + 1]
         while true
             temp = grid[j]
-            des[j] = eff(temp,fx,lband,jtype)
-            wt[j] = wate(temp,fx,wtx,lband,jtype)
+            des[j] = eff(temp,fx,lband,filter_type)
+            wt[j] = wate(temp,fx,wtx,lband,filter_type)
             j += 1
             if j > wrksize
                 # too many points, or too dense grid
@@ -223,8 +229,8 @@ function build_grid(numtaps, bands, desired, weight, grid_density, jtype)
             end
         end
         grid[j-1] = fup
-        des[j-1] = eff(fup,fx,lband,jtype)
-        wt[j-1] = wate(fup,fx,wtx,lband,jtype)
+        des[j-1] = eff(fup,fx,lband,filter_type)
+        wt[j-1] = wate(fup,fx,wtx,lband,filter_type)
         lband += 1
         l += 2
         if lband > nbands
@@ -256,7 +262,7 @@ function freq_eval(k::Integer, n::Integer, grid::AbstractVector,
 function freq_eval(k::Integer, n::Integer, grid::AbstractVector, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0;
     p = 0.0;
-    xf = cos((2π)*grid[k])
+    xf = cospi(2grid[k])
 
     for j = 1 : n
         c = ad[j] / (xf - x[j])
@@ -282,14 +288,13 @@ function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::Abstr
     nu, dev
 end
 
-
 """
     remez(numtaps::Integer, 
           bands::Array, 
           desired::Array; 
           weight::Array=[], 
           Hz::Real=1.0, 
-          filter_type::String="bandpass", 
+          filter_type::RemezFilterType=filter_type_bandpass,
           maxiter::Integer=25, 
           grid_density::Integer=16)
 
@@ -313,11 +318,13 @@ frequency bands using the Remez exchange algorithm.
     A relative weighting to give to each band region. The length of
     `weight` has to be half the length of `bands`.
 - `Hz::Real`: The sampling frequency in Hz. Default is 1.
-- `filter_type::String`: {'bandpass', 'differentiator', 'hilbert'}, optional
+- `filter_type::RemezFilterType`: Default is filter_type_bandpass.
     The type of filter:
-      'bandpass' : flat response in bands. This is the default.
-      'differentiator' : frequency proportional response in bands.
-      'hilbert' : filter with odd symmetry, that is, type III
+      filter_type_bandpass : flat response in bands. This is the default.
+      filter_type_differentiator : frequency proportional response in bands.
+        Assymetric as in filter_type_hilbert case, but with a linear sloping
+        desired response.
+      filter_type_hilbert : filter with odd symmetry, that is, type III
                   (for even order) or type IV (for odd order)
                   linear phase filters.
 - `maxiter::Integer`: (optional)
@@ -375,20 +382,9 @@ grid()
 function remez(numtaps::Integer, bands::Array, desired::Array; 
                weight::Array=[], 
                Hz::Real=1.0, 
-               filter_type::String="bandpass",
+               filter_type::RemezFilterType=filter_type_bandpass,
                maxiter::Integer=25, 
                grid_density::Integer=16)
-    # Convert type
-    if filter_type == "bandpass"
-        jtype = 1
-    elseif filter_type == "differentiator"
-        jtype = 2
-    elseif filter_type == "hilbert"
-        jtype = 3
-    else
-        error("`filter_type` must be \"bandpass\", \"differentiator\", or \"hilbert\".")
-    end
-
     if length(weight)==0
         weight = ones(desired)
     end
@@ -398,7 +394,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     desired = Array{Float64,1}(vec(desired))
     weight = Array{Float64,1}(vec(weight))
     
-    grid, des, wt = build_grid(numtaps, bands, desired, weight, grid_density, jtype);
+    grid, des, wt = build_grid(numtaps, bands, desired, weight, grid_density, filter_type);
 
     nfilt = numtaps
     ngrid = length(grid)
@@ -407,16 +403,7 @@ function remez(numtaps::Integer, bands::Array, desired::Array;
     #    printfmtln("  j={}: grid[j]={}", j, grid[j]);
     #end
     
-    # "jtype" is the type of filter, with the following meaning.
-      #define BANDPASS       1
-      #define DIFFERENTIATOR 2
-      #define HILBERT        3
-    # I think the "j" is because it is an int, and FORTRAN assigned
-    # types based on starting letter of variable name LOL.
-    # jtype input:
-    #    Type I and II symmetric linear phase: neg==0   (jtype==1)
-    #    Type III and IV negative symmetric linear phase: neg==1   (jtype==2 or 3)
-    neg = jtype != 1      # boolean: "neg" means negative symmetry.
+    neg = filter_type != filter_type_bandpass      # boolean: "neg" means negative symmetry.
     nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
     nfcns = numtaps ÷ 2   # integer divide
     if nodd && !neg

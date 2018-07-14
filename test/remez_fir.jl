@@ -61,7 +61,7 @@ end
 #    h.tofile('remez_20_hilbert.txt', sep='\n')
 #
 @testset "remez_20_hilbert" begin
-    h = remez(20, [0.1, 0.95],[1]; filter_type="hilbert", Hz=2.0);
+    h = remez(20, [0.1, 0.95],[1]; filter_type=filter_type_hilbert, Hz=2.0);
     h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_20_hilbert.txt"),'\t')
     @test h ≈ h_scipy
 end
@@ -74,7 +74,7 @@ end
 #    h.tofile('remez_21_hilbert.txt', sep='\n')
 #
 @testset "remez_21_hilbert" begin
-    h = remez(21, [0.1, 0.95],[1]; filter_type="hilbert", Hz=2.0);
+    h = remez(21, [0.1, 0.95],[1]; filter_type=filter_type_hilbert, Hz=2.0);
     h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_21_hilbert.txt"),'\t')
     @test h ≈ h_scipy
 end
@@ -87,7 +87,7 @@ end
 #    h.tofile('remez_200_differentiator.txt', sep='\n')
 #
 @testset "remez_200_differentiator" begin
-    h = remez(200, [0.01, 0.99],[1]; filter_type="differentiator", Hz=2.0);
+    h = remez(200, [0.01, 0.99],[1]; filter_type=filter_type_differentiator, Hz=2.0);
     h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_200_differentiator.txt"),'\t')
     @test h ≈ h_scipy
 end
@@ -100,7 +100,7 @@ end
 #    h.tofile('remez_201_differentiator.txt', sep='\n')
 #
 @testset "remez_201_differentiator" begin
-    h = remez(201, [0.05, 0.95],[1]; filter_type="differentiator", Hz=2.0);
+    h = remez(201, [0.05, 0.95],[1]; filter_type=filter_type_differentiator, Hz=2.0);
     h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_201_differentiator.txt"),'\t')
     @test h ≈ h_scipy
 end
