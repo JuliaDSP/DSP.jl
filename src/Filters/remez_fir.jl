@@ -665,12 +665,14 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     cn  = 2*nfcns - 1
     delf = 1.0/cn
     l = 1
-    kkk = 0
 
-    if (bands[1] == 0.0 && bands[end] == 0.5) kkk = 1; end
-
-    if (nfcns <= 3) kkk = 1; end
-    if kkk != 1
+    # Boolean for "kkk" in C code.
+    full_grid = (bands[1] == 0.0 && bands[end] == 0.5)
+    if (nfcns <= 3)
+        full_grid = true
+    end
+    
+    if !full_grid
         dtemp = cospi(2grid[1])
         dnum  = cospi(2grid[ngrid])
         aa    = 2.0/(dtemp-dnum)
@@ -685,7 +687,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     for j = 1 : nfcns 
         ft = (j - 1) * delf
         xt = cospi(2ft)
-        if kkk != 1
+        if !full_grid
             xt = (xt-bb)/aa
             ft = acos(xt)/(2π)
         end
@@ -727,7 +729,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     end
     alpha[1] /= cn
 
-    if kkk != 1
+    if !full_grid
         p[1] = 2.0*alpha[nfcns]*bb+alpha[nm1]
         p[2] = 2.0*aa*alpha[nfcns]
         q[1] = alpha[nfcns-2]-alpha[nfcns]
