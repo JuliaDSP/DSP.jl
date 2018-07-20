@@ -6,6 +6,7 @@ import Base: *
 using Compat: copyto!, undef
 import Compat
 using Compat.LinearAlgebra: I
+using Compat.Statistics: middle
 @importffts
 if VERSION >= v"0.7.0-DEV.602"
     import ..DSP: filt, filt!
