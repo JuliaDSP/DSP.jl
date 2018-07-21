@@ -192,10 +192,10 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         nfcns = nfcns + 1
     end
 
-    """/*
-     * SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
-     * IS (FILTER LENGTH + 1)*GRID DENSITY/2
-     */"""
+    #
+    # SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
+    # IS (FILTER LENGTH + 1)*GRID DENSITY/2
+    #
     grid[1] = edge[1]
     delf = lgrid * nfcns
     delf = 0.5 / delf
@@ -208,10 +208,10 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     l = 1
     lband = 1
 
-    """/*
-     * CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
-     * FUNCTION ON THE GRID
-     */"""
+    #
+    # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
+    # FUNCTION ON THE GRID
+    #
     while true
         fup = edge[l + 1]
         while true
@@ -399,10 +399,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     nfilt = numtaps
     ngrid = length(grid)
     
-    #for j = 1 : ngrid
-    #    printfmtln("  j={}: grid[j]={}", j, grid[j])
-    #end
-    
     neg = filter_type != filter_type_bandpass      # boolean: "neg" means negative symmetry.
     nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
     nfcns = numtaps ÷ 2   # integer divide
@@ -410,13 +406,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         nfcns = nfcns + 1
     end
     temp = (ngrid-1) / nfcns
-    dimsize = Int64(ceil(numtaps/2.0 + 2))
-    #printfmtln("  dimsize={}   nfcns={}", dimsize, nfcns)
-
-    """/*
-     * SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
-     * TO THE ORIGINAL PROBLEM
-     */"""
+    dimsize = ceil(Int64, numtaps/2 + 2)
+    
+    #
+    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
+    # TO THE ORIGINAL PROBLEM
+    #
     if !neg
         if !nodd
             for j = 1 : ngrid
@@ -473,9 +468,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         end
         
         x[1:nz] = cospi.(2grid[iext[1:nz]])
-        #for j = 1 : nz
-        #    printfmtln("  j={}: iext[j]={} grid[iext[j]]={} x[j]={}", j, iext[j], grid[iext[j]], x[j])
-        #end
         
         for j = 1 : nz
             ad[j] = lagrange_interp(j, nz, jet, x)
@@ -493,12 +485,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         dev = dnum / dden
         # printfmtln("DEVIATION = {}", dev)
 
-        y = 0*x
+        fill!(y, 0.0)
         nu, dev = initialize_y(dev, nz, iext, des, wt, y)
         
         if dev <= devl
-            # finished 
-            return -1  # error - deviation should always increase
+            # finished
+            throw(ErrorException("error - deviation should always increase"))
         end        
         devl = dev
 
@@ -667,11 +659,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     l = 1
 
     # Boolean for "kkk" in C code.
-    full_grid = (bands[1] == 0.0 && bands[end] == 0.5)
-    if (nfcns <= 3)
-        full_grid = true
-    end
-    
+    full_grid = (bands[1] == 0.0 && bands[end] == 0.5) || (nfcns <= 3)
     if !full_grid
         dtemp = cospi(2grid[1])
         dnum  = cospi(2grid[ngrid])
@@ -691,35 +679,25 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             xt = (xt-bb)/aa
             ft = acos(xt)/(2π)
         end
-      @label L410
-        xe = x[l]
-        if (xt > xe) @goto L420; end
-        if ((xe-xt) < fsh) @goto L415; end
-        l += 1
-        @goto L410
-      @label L415
-        a[j] = y[l]
-        @goto L425
-      @label L420
-        if ((xt-xe) < fsh) @goto L415; end
-        grid[1] = ft
-        a[j] = freq_eval(1,nz,grid,x,y,ad)
-      @label L425
         if (l > 1) l = l-1; end
+        while x[l]-xt >= fsh
+            l += 1
+        end
+        if xt-x[l] < fsh
+            a[j] = y[l]
+        else
+            grid[1] = ft
+            a[j] = freq_eval(1,nz,grid,x,y,ad)
+        end
     end
     grid[1] = gtemp  # restore grid[1]
-    #for j = 1 : nfcns 
-    #    printfmtln("  j={}: a[j]={}", j, a[j])
-    #end
 
     dden = 2π / cn
     for j = 1 : nfcns
         dtemp = 0.0
         dnum = (j-1) * dden
-        if nm1 >= 1
-            for k = 1 : nm1
-                dtemp += a[k+1] * cos(dnum*k)
-            end
+        for k = 1 : nm1
+            dtemp += a[k+1] * cos(dnum*k)
         end
         alpha[j] = 2.0 * dtemp + a[1]
     end
@@ -768,10 +746,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     if nfcns <= 3
         alpha[nfcns+1] = alpha[nfcns+2] = 0.0
     end
-
-    #for j = 1 : nfcns 
-    #    printfmtln("  j={}: alpha[j]={}", j, alpha[j])
-    #end
     
     #
     # CALCULATE THE IMPULSE RESPONSE.
