@@ -85,6 +85,8 @@ C CODE BANNER
 
 =============================================#
 
+#using Formatting
+
 # RemezFilterType:
 #    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)
 #    Type III and IV negative symmetric linear phase: neg==1   (filter_type==hilbert or differentiator)
@@ -379,6 +381,25 @@ plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
 ```
 """
+
+#=========
+Banner from C code
+
+-----------------------------------------------------------------------
+ SUBROUTINE: remez
+  THIS SUBROUTINE IMPLEMENTS THE REMEZ EXCHANGE ALGORITHM
+  FOR THE WEIGHTED CHEBYSHEV APPROXIMATION OF A CONTINUOUS
+  FUNCTION WITH A SUM OF COSINES.  INPUTS TO THE SUBROUTINE
+  ARE A DENSE GRID WHICH REPLACES THE FREQUENCY AXIS, THE
+  DESIRED FUNCTION ON THIS GRID, THE WEIGHT FUNCTION ON THE
+  GRID, THE NUMBER OF COSINES, AND AN INITIAL GUESS OF THE
+  EXTREMAL FREQUENCIES.  THE PROGRAM MINIMIZES THE CHEBYSHEV
+  ERROR BY DETERMINING THE BSMINEST LOCATION OF THE EXTREMAL
+  FREQUENCIES (POINTS OF MAXIMUM ERROR) AND THEN CALCULATES
+  THE COEFFICIENTS OF THE BEST APPROXIMATION.
+-----------------------------------------------------------------------
+=========#
+
 function remez(numtaps::Integer, bands::Vector, desired::Vector; 
                weight::Vector=[], 
                Hz::Real=1.0, 
@@ -464,6 +485,8 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         iext[nzz] = ngrid + 1
         niter += 1
         if niter > maxiter
+            warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
+            # the filter is returned in its current, unconverged state.
             break
         end
         
@@ -483,15 +506,16 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             k = -k
         end
         dev = dnum / dden
-        # printfmtln("DEVIATION = {}", dev)
+        #printfmtln("  DEVIATION = {} at niter {}", dev, niter)
 
         fill!(y, 0.0)
         nu, dev = initialize_y(dev, nz, iext, des, wt, y)
         
         if dev <= devl
             # finished
-            throw(ErrorException("error - deviation should always increase"))
-        end        
+            #printfmtln("dev {} <= devl {}, throwing", dev, devl)
+            throw(ErrorException("remez() - failure to converge at iteration $niter, try reducing transition band width"))
+        end
         devl = dev
 
         #
@@ -639,6 +663,8 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             break
         end
     end  # while
+
+    # printfmtln("Iterations complete, niter = {}", niter)
     
     # 
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
