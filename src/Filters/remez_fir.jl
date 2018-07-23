@@ -194,23 +194,20 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
     # IS (FILTER LENGTH + 1)*GRID DENSITY/2
     #
-    grid[1] = edge[1]
     delf = lgrid * nfcns
     delf = 0.5 / delf
-    if neg
-        if edge[1] < delf
-            grid[1] = delf
-        end
-    end
     j = 1
     l = 1
-    lband = 1
 
     #
     # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
     # FUNCTION ON THE GRID
     #
-    while true
+    for lband in 1:nbands
+        grid[j] = edge[l]
+        if neg && edge[j] < delf
+            grid[j] = delf
+        end
         fup = edge[l + 1]
         while true
             temp = grid[j]
@@ -229,12 +226,7 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         grid[j-1] = fup
         des[j-1] = eff(fup,fx,lband,filter_type)
         wt[j-1] = wate(fup,fx,wtx,lband,filter_type)
-        lband += 1
         l += 2
-        if lband > nbands
-            break
-        end
-        grid[j] = edge[l]
     end
 
     ngrid = j - 1
