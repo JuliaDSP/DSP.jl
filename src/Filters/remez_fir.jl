@@ -180,7 +180,6 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     wtx = weight
     
     nbands = length(desired)
-    edge = bands
     nfilt = numtaps
 
     neg = filter_type != filter_type_bandpass
@@ -196,19 +195,24 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     #
     delf = lgrid * nfcns
     delf = 0.5 / delf
+
+    # calculate clamped band-edges
+    edges = reshape(bands, 2, nbands)
+    if neg || !nodd
+        flimlow = neg ? delf : 0.0
+        flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
+        edges = map(f -> clamp(f, flimlow, flimhigh), edges)
+    end
+
     j = 1
-    l = 1
 
     #
     # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
     # FUNCTION ON THE GRID
     #
     for lband in 1:nbands
-        flow = edge[l]
-        if neg && flow < delf
-            flow = delf
-        end
-        fup = edge[l + 1]
+        flow = edges[1, lband]
+        fup = edges[2, lband]
         for f in (flow:delf:fup)[1:end-1]
             grid[j] = f
             des[j] = eff(f,fx,lband,filter_type)
@@ -223,16 +227,10 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         des[j] = eff(fup,fx,lband,filter_type)
         wt[j] = wate(fup,fx,wtx,lband,filter_type)
         j += 1
-        l += 2
     end
 
     ngrid = j - 1
-    if neg == nodd
-        if grid[ngrid] > (0.5-delf)
-            ngrid -= 1
-        end
-    end
-    
+
     grid[1:ngrid], des[1:ngrid], wt[1:ngrid]
 
 end
