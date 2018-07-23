@@ -169,16 +169,10 @@ return "grid" and "des" and "wt" arrays
 function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::RemezFilterType)
     # translate from scipy remez argument names
     lgrid = grid_density
-    dimsize = Int( ceil(numtaps/2.0 + 2) )
-    wrksize = grid_density * dimsize
-
-    grid = zeros(Float64, wrksize)  # the array of frequencies, between 0 and 0.5
-    des = zeros(Float64, wrksize)   # the desired function on the grid
-    wt = zeros(Float64, wrksize)    # array of weights
 
     fx = desired
     wtx = weight
-    
+
     nbands = length(desired)
     nfilt = numtaps
 
@@ -203,6 +197,11 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
         edges = map(f -> clamp(f, flimlow, flimhigh), edges)
     end
+    ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)
+
+    grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
+    des = zeros(Float64, ngrid)   # the desired function on the grid
+    wt = zeros(Float64, ngrid)    # array of weights
 
     j = 1
 
@@ -218,21 +217,15 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
             des[j] = eff(f,fx,lband,filter_type)
             wt[j] = wate(f,fx,wtx,lband,filter_type)
             j += 1
-            if j > wrksize
-                # too many points, or too dense grid
-                return -1
-            end
         end
         grid[j] = fup
         des[j] = eff(fup,fx,lband,filter_type)
         wt[j] = wate(fup,fx,wtx,lband,filter_type)
         j += 1
     end
+    @assert ngrid == j - 1
 
-    ngrid = j - 1
-
-    grid[1:ngrid], des[1:ngrid], wt[1:ngrid]
-
+    return grid, des, wt
 end
 
 """
