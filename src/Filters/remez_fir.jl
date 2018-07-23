@@ -168,10 +168,6 @@ return "grid" and "des" and "wt" arrays
 """
 function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::RemezFilterType)
     # translate from scipy remez argument names
-    L = numtaps
-    M = L ÷ 2    # integer divide (truncated)
-    grid_spacing = 0.5 / (grid_density * M)  # "delf" or "delta f"
-
     lgrid = grid_density
     dimsize = Int( ceil(numtaps/2.0 + 2) )
     wrksize = grid_density * dimsize
