@@ -204,28 +204,25 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # FUNCTION ON THE GRID
     #
     for lband in 1:nbands
-        grid[j] = edge[l]
-        if neg && edge[j] < delf
-            grid[j] = delf
+        flow = edge[l]
+        if neg && flow < delf
+            flow = delf
         end
         fup = edge[l + 1]
-        while true
-            temp = grid[j]
-            des[j] = eff(temp,fx,lband,filter_type)
-            wt[j] = wate(temp,fx,wtx,lband,filter_type)
+        for f in (flow:delf:fup)[1:end-1]
+            grid[j] = f
+            des[j] = eff(f,fx,lband,filter_type)
+            wt[j] = wate(f,fx,wtx,lband,filter_type)
             j += 1
             if j > wrksize
                 # too many points, or too dense grid
                 return -1
             end
-            grid[j] = temp + delf
-            if grid[j] > fup
-                break
-            end
         end
-        grid[j-1] = fup
-        des[j-1] = eff(fup,fx,lband,filter_type)
-        wt[j-1] = wate(fup,fx,wtx,lband,filter_type)
+        grid[j] = fup
+        des[j] = eff(fup,fx,lband,filter_type)
+        wt[j] = wate(fup,fx,wtx,lband,filter_type)
+        j += 1
         l += 2
     end
 
