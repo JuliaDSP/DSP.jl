@@ -15,6 +15,7 @@
 #end
 
 using DSP, Compat, Compat.Test
+using Compat.Statistics: mean
 
 @testset "matlab ref" begin
     x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
@@ -52,22 +53,22 @@ end
     # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
     expected = Float64[34.5, 0.5]
     @test power(welch_pgram(data, 2, 0; onesided=false)) ≈ expected
-    @test Compat.mean(power(spectrogram(data, 2, 0; onesided=false)), dims=2) ≈ expected
+    @test mean(power(spectrogram(data, 2, 0; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1], 0, 3, 1, 'twosided')
     expected = Float64[25.5, 1.0, 1.0]
     @test power(welch_pgram(data, 3, 0; onesided=false)) ≈ expected
-    @test Compat.mean(power(spectrogram(data, 3, 0; onesided=false)), dims=2) ≈ expected
+    @test mean(power(spectrogram(data, 3, 0; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1], 1, 3, 1, 'twosided')
     expected = Float64[35.0, 1.0, 1.0]
     @test power(welch_pgram(data, 3, 1; onesided=false)) ≈ expected
-    @test Compat.mean(power(spectrogram(data, 3, 1; onesided=false)), dims=2) ≈ expected
+    @test mean(power(spectrogram(data, 3, 1; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1, 1], 1, 4, 1, 'twosided')
     expected = Float64[45, 2, 1, 2]
     @test power(welch_pgram(data, 4, 1; onesided=false)) ≈ expected
-    @test Compat.mean(power(spectrogram(data, 4, 1; onesided=false)), dims=2) ≈ expected
+    @test mean(power(spectrogram(data, 4, 1; onesided=false)), dims=2) ≈ expected
 
     # ~~~~~~~~~~~ This one tests periodogram ~~~~~~~~~~~~
     # ~ If functionality of the other arguments has been

@@ -191,8 +191,8 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1)
 
     # Construct symmetric tridiagonal matrix
     v = cospi(2*nw/n)
-    dv = Vector{Float64}(n)
-    ev = Vector{Float64}(n - 1)
+    dv = Vector{Float64}(undef, n)
+    ev = Vector{Float64}(undef, n - 1)
     @inbounds dv[1] = v * abs2((n - 1) / 2)
     @inbounds @simd for i = 1:(n-1)
         dv[i + 1] = v * abs2((n - 1) / 2 - i)
