@@ -85,8 +85,6 @@ C CODE BANNER
 
 =============================================#
 
-#using Formatting
-
 # RemezFilterType:
 #    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)
 #    Type III and IV negative symmetric linear phase: neg==1   (filter_type==hilbert or differentiator)
@@ -95,12 +93,10 @@ C CODE BANNER
 
 
 """/*
- *-----------------------------------------------------------------------
- * FUNCTION: lagrange_interp (d)
- *  FUNCTION TO CALCULATE THE LAGRANGE INTERPOLATION
- *  COEFFICIENTS FOR USE IN THE FUNCTION gee.
- *-----------------------------------------------------------------------
- */"""
+lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
+
+CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
+"""
 function lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
     retval = 1.0
     q = x[k]
@@ -357,7 +353,6 @@ plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
 ```
 """
-
 #=========
 Banner from C code
 
@@ -375,17 +370,18 @@ Banner from C code
   THE COEFFICIENTS OF THE BEST APPROXIMATION.
 -----------------------------------------------------------------------
 =========#
-
 function remez(numtaps::Integer, bands::Vector, desired::Vector; 
-               weight::Vector=[], 
+               weight::Vector=fill(1.0, length(desired)), 
                Hz::Real=1.0, 
                filter_type::RemezFilterType=filter_type_bandpass,
                maxiter::Integer=25, 
                grid_density::Integer=16)
-    if length(weight)==0
-        weight = ones(desired)
-    end
-    bands = copy(bands)/Hz
+    bands = bands/Hz
+
+    # Sanity checks on arguments
+    @assert issorted(bands)
+    @assert length(bands) == 2length(desired) == 2length(weight)
+    @assert (0 <= bands[1]) && (bands[end]/2 <= 0.5)
 
     bands = convert(Vector{Float64}, bands)   # in C, known as "edge"
     desired = convert(Vector{Float64}, desired)
@@ -461,7 +457,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         iext[nzz] = ngrid + 1
         niter += 1
         if niter > maxiter
-            warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
+            Compat.@warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
             # the filter is returned in its current, unconverged state.
             break
         end
@@ -482,14 +478,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             k = -k
         end
         dev = dnum / dden
-        #printfmtln("  DEVIATION = {} at niter {}", dev, niter)
 
         fill!(y, 0.0)
         nu, dev = initialize_y(dev, nz, iext, des, wt, y)
         
         if dev <= devl
             # finished
-            #printfmtln("dev {} <= devl {}, throwing", dev, devl)
             throw(ErrorException("remez() - failure to converge at iteration $niter, try reducing transition band width"))
         end
         devl = dev
@@ -524,12 +518,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         comp = dev
         l >= kup && @goto L220
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L220
+        nut*err <= comp && @goto L220
         comp = nut * err
       @label L210
         l += 1; l >= kup && @goto L215
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L215
+        nut*err <= comp && @goto L215
         comp = nut * err
         @goto L210
 
@@ -553,7 +547,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       @label L235
         l -= 1; l <= klow && @goto L240
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L240
+        nut*err <= comp && @goto L240
         comp = nut * err
         @goto L235
       @label L240
@@ -570,7 +564,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       @label L255
         l += 1; l >= kup && @goto L260
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L255
+        nut*err <= comp && @goto L255
         comp = nut * err
 
         @goto L210
@@ -591,7 +585,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       @label L310
         l += 1; l >= kup && @goto L315
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L310
+        nut*err <= comp && @goto L310
         comp =  nut * err
         j = nzz
         @goto L210
@@ -612,7 +606,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       @label L330
         l -= 1; l <= klow && @goto L340
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) <= 0.0 && @goto L330
+        nut*err <= comp && @goto L330
         j = nzz
         comp =  nut * err
         luck = luck + 10
@@ -640,8 +634,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         end
     end  # while
 
-    # printfmtln("Iterations complete, niter = {}", niter)
-    
     # 
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
     #    USING THE INVERSE DISCRETE FOURIER TRANSFORM
