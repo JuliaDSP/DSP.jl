@@ -408,8 +408,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         nfcns = nfcns + 1
     end
     temp = (ngrid-1) / nfcns
-    dimsize = ceil(Int64, numtaps/2 + 2)
-    
+
     #
     # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
     # TO THE ORIGINAL PROBLEM
@@ -437,10 +436,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             end
         end
     end
-        
-    iext = zeros(Int64, dimsize)   # indices of extremals
-    x = zeros(Float64, dimsize)
-    y = zeros(Float64, dimsize)
+
+    nz  = nfcns+1
+    nzz = nfcns+2
+    iext = zeros(Int64, nzz)   # indices of extremals
+    x = zeros(Float64, nzz)
+    y = zeros(Float64, nz)
 
     for j = 1 : nfcns
         iext[j] = Int64(floor((j-1)*temp)) + 1
@@ -450,8 +451,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     dev = 0.0     # deviation from the desired function, 
                   # that is, the amount of "ripple" on the extremal set
     devl = -1.0   # deviation on last iteration
-    nz  = nfcns+1
-    nzz = nfcns+2
     niter = 0
     ad = zeros(Float64, nz)
     
@@ -634,23 +633,23 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
 
         @goto L100
       @label L370
-        
-        
+
+
         if jchnge <= 0  # we are done if none of the extremal indices changed
             break
         end
     end  # while
 
-    # 
+    #
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
     #    USING THE INVERSE DISCRETE FOURIER TRANSFORM
     #
 
-    a = zeros(Float64, dimsize)   # frequency response on evenly spaced grid
-    p = zeros(Float64, dimsize)
-    q = zeros(Float64, dimsize) 
-    alpha = zeros(Float64, dimsize)   # return vector
-    
+    a = zeros(Float64, nfcns)   # frequency response on evenly spaced grid
+    p = zeros(Float64, nfcns)
+    q = zeros(Float64, nfcns-2)
+    alpha = zeros(Float64, nzz)   # return vector
+
     nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
     fsh = 1.0e-06
     x[nzz] = -2.0
