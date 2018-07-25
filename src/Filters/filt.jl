@@ -484,40 +484,28 @@ filt(h::AbstractArray, x::AbstractArray) =
 # fftfilt and filt
 #
 
-const FFT_LENGTHS = 2 .^ (1:28)
-# FFT times computed on a Core i7-3930K @4.4GHz
-# The real time doesn't matter, just the relative difference
-const FFT_TIMES = [6.36383e-7, 6.3779e-7 , 6.52212e-7, 6.65282e-7, 7.12794e-7, 7.63172e-7,
-                   7.91914e-7, 1.02289e-6, 1.37939e-6, 2.10868e-6, 4.04436e-6, 9.12889e-6,
-                   2.32142e-5, 4.95576e-5, 0.000124927, 0.000247771, 0.000608867, 0.00153119,
-                   0.00359037, 0.0110568, 0.0310893, 0.065813, 0.143516, 0.465745, 0.978072,
-                   2.04371, 4.06017, 8.77769]
+# Number of real operations required for overlap-save with nfft = 2^pow2 and filter
+# length nb
+os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
 
 # Determine optimal length of the FFT for fftfilt
 function optimalfftfiltlength(nb, nx)
-    nfft = 0
-    if nb > FFT_LENGTHS[end] || nb >= nx
-        nfft = nextfastfft(nx+nb-1)
-    else
-        fastestestimate = Inf
-        firsti = max(1, searchsortedfirst(FFT_LENGTHS, nb))
-        lasti = max(1, searchsortedfirst(FFT_LENGTHS, nx+nb-1))
-        L = 0
-        for i = firsti:lasti
-            curL = FFT_LENGTHS[i] - (nb - 1)
-            estimate = ceil(Int, nx/curL)*FFT_TIMES[i]
-            if estimate < fastestestimate
-                nfft = FFT_LENGTHS[i]
-                fastestestimate = estimate
-                L = curL
-            end
-        end
+    first_pow2 = ceil(Int, log2(nb))
+    last_pow2 = ceil(Int, log2(nx + nb - 1))
+    complexities = os_fft_complexity.(first_pow2:last_pow2, nb)
 
-        if L > nx
-            # If L > nx, better to find next fast power
-            nfft = nextfastfft(nx+nb-1)
-        end
+    # Find power of 2 with least complexity relative to the first power of 2
+    relative_ind_best_pow2 = argmin(complexities)
+
+    best_pow2 = first_pow2 + relative_ind_best_pow2 - 1
+    nfft = 2 ^ best_pow2
+
+    L = nfft - nb + 1
+    if L > nx
+        # If L > nx, better to find next fast power
+        nfft = nextfastfft(nx + nb - 1)
     end
+
     nfft
 end
 
