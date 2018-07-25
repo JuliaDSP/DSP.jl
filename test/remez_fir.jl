@@ -1,6 +1,31 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
 using DSP, Compat, Compat.Test, FilterTestHelpers
 
+@testset "remez_argument_check1" begin
+    # bands not monotonically increasing
+    @test_throws ArgumentError remez(151, [0, 0.25, 0.23, 0.5], [1.0, 0.0])
+end
+
+@testset "remez_argument_check2" begin
+    # bands values out of range
+    @test_throws ArgumentError remez(151, [0, 0.23, 0.25, 0.6], [1.0, 0.0])
+end
+
+@testset "remez_argument_check3" begin
+    # bands values out of range
+    @test_throws ArgumentError remez(151, [-0.01, 0.23, 0.25, 0.5], [1.0, 0.0])
+end
+
+@testset "remez_argument_check4" begin
+    # length of bands not 2x length of desired
+    @test_throws ArgumentError remez(151, [0, 0.23, 0.5], [1.0, 0.0])
+end
+
+@testset "remez_argument_check5" begin
+    # length of bands not 2x length of weight
+    @test_throws ArgumentError remez(151, [0, 0.23, 0.25, 0.5], [1.0, 0.0]; weight=[1.0, 1.0, 17.0])
+end
+
 #
 # Length 151 LPF (Low Pass Filter).
 #
@@ -40,13 +65,22 @@ end
 # Length 180 BPF (Band Pass Filter).
 #
 #    from scipy.signal import remez
-#    bpf = remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0], Hz=2.0)
+#    bpf = remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0], Hz=2.0, maxiter=30)
 #    bpf.tofile('remez_180_bpf.txt', sep='\n')
 #
 @testset "remez_180_bpf" begin
-    h = remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0);
+    h = remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0, maxiter=30);
     h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_180_bpf.txt"),'\t')
     @test h ≈ h_scipy
+end
+
+@testset "remez_warn_no_converge_too_few_iterations" begin
+    warn_check(msg) = contains(msg, "filter is not converged")
+    @test_warn warn_check remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0)
+end
+
+@testset "remez_error_no_converge_transition_band_too_wide" begin
+    @test_throws ErrorException remez(151, [0, 0.1, 0.4, 0.5], [1.0, 0.0])
 end
 
 #

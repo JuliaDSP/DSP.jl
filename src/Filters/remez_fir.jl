@@ -262,6 +262,23 @@ function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::Abstr
     nu, dev
 end
 
+#=========
+Banner from C code
+
+-----------------------------------------------------------------------
+ SUBROUTINE: remez
+  THIS SUBROUTINE IMPLEMENTS THE REMEZ EXCHANGE ALGORITHM
+  FOR THE WEIGHTED CHEBYSHEV APPROXIMATION OF A CONTINUOUS
+  FUNCTION WITH A SUM OF COSINES.  INPUTS TO THE SUBROUTINE
+  ARE A DENSE GRID WHICH REPLACES THE FREQUENCY AXIS, THE
+  DESIRED FUNCTION ON THIS GRID, THE WEIGHT FUNCTION ON THE
+  GRID, THE NUMBER OF COSINES, AND AN INITIAL GUESS OF THE
+  EXTREMAL FREQUENCIES.  THE PROGRAM MINIMIZES THE CHEBYSHEV
+  ERROR BY DETERMINING THE BSMINEST LOCATION OF THE EXTREMAL
+  FREQUENCIES (POINTS OF MAXIMUM ERROR) AND THEN CALCULATES
+  THE COEFFICIENTS OF THE BEST APPROXIMATION.
+-----------------------------------------------------------------------
+=========#
 """
     remez(numtaps::Integer, 
           bands::Vector, 
@@ -353,23 +370,6 @@ plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
 ```
 """
-#=========
-Banner from C code
-
------------------------------------------------------------------------
- SUBROUTINE: remez
-  THIS SUBROUTINE IMPLEMENTS THE REMEZ EXCHANGE ALGORITHM
-  FOR THE WEIGHTED CHEBYSHEV APPROXIMATION OF A CONTINUOUS
-  FUNCTION WITH A SUM OF COSINES.  INPUTS TO THE SUBROUTINE
-  ARE A DENSE GRID WHICH REPLACES THE FREQUENCY AXIS, THE
-  DESIRED FUNCTION ON THIS GRID, THE WEIGHT FUNCTION ON THE
-  GRID, THE NUMBER OF COSINES, AND AN INITIAL GUESS OF THE
-  EXTREMAL FREQUENCIES.  THE PROGRAM MINIMIZES THE CHEBYSHEV
-  ERROR BY DETERMINING THE BSMINEST LOCATION OF THE EXTREMAL
-  FREQUENCIES (POINTS OF MAXIMUM ERROR) AND THEN CALCULATES
-  THE COEFFICIENTS OF THE BEST APPROXIMATION.
------------------------------------------------------------------------
-=========#
 function remez(numtaps::Integer, bands::Vector, desired::Vector; 
                weight::Vector=fill(1.0, length(desired)), 
                Hz::Real=1.0, 
@@ -379,9 +379,13 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     bands = bands/Hz
 
     # Sanity checks on arguments
-    @assert issorted(bands)
-    @assert length(bands) == 2length(desired) == 2length(weight)
-    @assert (0 <= bands[1]) && (bands[end]/2 <= 0.5)
+    issorted(bands) || throw(ArgumentError("`bands` is not monotonically increasing"))
+    (0 <= bands[1]) && (bands[end] <= 0.5) ||
+      throw(ArgumentError("`bands` values must be between 0 and `Hz`/2"))
+    length(bands) == 2length(desired) || 
+      throw(ArgumentError("`desired` must be half the length of `bands`."))
+    length(bands) == 2length(weight) || 
+      throw(ArgumentError("`weight` must be half the length of `bands`."))
 
     bands = convert(Vector{Float64}, bands)   # in C, known as "edge"
     desired = convert(Vector{Float64}, desired)
@@ -538,7 +542,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       @label L225
         l -= 1; l <= klow && @goto L250
         err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
-        (nut*err-comp) > 0.0 && @goto L230
+        nut*err > comp && @goto L230
         jchnge <= 0 && @goto L225
         @goto L260
 
