@@ -593,24 +593,26 @@ end
 
 # Perform FIR filtering with either time domain or fft based algorithms, writing
 # output to `out` argument. Does not check that x and out are the same size.
-function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
+function filt_choose_alg!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{<:Real}
+)
     nb = length(b)
     nx = size(x, 1)
 
-    filtops = length(x) * min(nx, nb)
-    if filtops <= 500000
-        # 65536 is apprximate cutoff where FFT-based algorithm may be
-        # more effective (due to overhead for allocation, plan
-        # creation, etc.)
-        _tdfilt!(out, b, x)
-    else
-        # Estimate number of multiplication operations for fftfilt()
-        # and filt()
-        nfft = optimalfftfiltlength(nb, nx)
-        L = min(nx, nfft - (nb - 1))
-        nchunk = ceil(Int, nx/L)*div(length(x), nx)
-        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
+    filtops_per_sample = min(nx, nb)
 
-        filtops > fftops ? _fftfilt!(out, b, x, nfft) : _tdfilt!(out, b, x)
+    nfft = optimalfftfiltlength(nb, nx)
+    fftops_per_sample = os_fft_complexity(log2(nfft), nb)
+
+    if filtops_per_sample > fftops_per_sample
+        _fftfilt!(out, b, x, nfft)
+    else
+        _tdfilt!(out, b, x)
     end
+end
+
+function filt_choose_alg!(out::AbstractArray, b::AbstractArray, x::AbstractArray)
+    _tdfilt!(out, b, x)
 end
