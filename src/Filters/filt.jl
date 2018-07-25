@@ -624,6 +624,6 @@ function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArra
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? _fftfilt!(out, b, x, nfft) : tdfilt!(out, b, x)
+        filtops > fftops ? _fftfilt!(out, b, x, nfft) : _tdfilt!(out, b, x)
     end
 end
