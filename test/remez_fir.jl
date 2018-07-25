@@ -74,7 +74,7 @@ end
     @test h ≈ h_scipy
 end
 
-@testset "remez_warn_no_converge_too_few_iterations" begin
+@testset "remez_warn_no_converge_after_maxiter_iterations" begin
     warn_check(msg) = contains(msg, "filter is not converged")
     @test_warn warn_check remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0)
 end
