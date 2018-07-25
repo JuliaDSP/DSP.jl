@@ -10,9 +10,7 @@ using DSP, Compat, Compat.Test
     amplitudes = [2.0 1.5]
     phases = [0.7 -1.0]
     x = exp.( 1im*2*π*t*frequencies .+ phases) * amplitudes'
-    srand(1) # Freeze noise
     noise = randn(n, 2)*[1;1im]
-    srand() # Shuffle seed
     sigma = 0.1
     noise *= sigma
     x += noise
