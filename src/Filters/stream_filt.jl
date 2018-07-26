@@ -657,7 +657,7 @@ end
 #
 
 # Single-rate, decimation, interpolation, and rational resampling.
-function filt(h::Vector, x::AbstractVector, ratio::Rational)
+function filt(h::Vector, x::AbstractVector, ratio::Union{Integer,Rational})
     self = FIRFilter(h, ratio)
     filt(self, x)
 end
