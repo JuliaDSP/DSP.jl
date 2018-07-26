@@ -297,7 +297,7 @@ end
 # ( It's hard to explain how this works without a diagram )
 #
 
-function outputlength(inputlength::Integer, ratio::Rational, initialϕ::Integer)
+function outputlength(inputlength::Integer, ratio::Union{Integer,Rational}, initialϕ::Integer)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
     outLen        = ((inputlength * interpolation) - initialϕ + 1) / decimation
@@ -334,7 +334,7 @@ end
 # given the output length
 #
 
-function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
+function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
     inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
