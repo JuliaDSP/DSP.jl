@@ -91,6 +91,7 @@ Elliptic
 
 ```@docs
 FIRWindow
+remez
 ```
 
 ## Filter response

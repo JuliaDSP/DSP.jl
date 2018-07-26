@@ -61,4 +61,11 @@ export  FIRFilter,
         setphase!,
         timedelay
 
+include("remez_fir.jl")
+export  remez,
+        RemezFilterType,
+        filter_type_bandpass,
+        filter_type_differentiator,
+        filter_type_hilbert
+
 end
