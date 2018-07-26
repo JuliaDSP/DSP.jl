@@ -521,11 +521,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "filters.html#DSP.Filters.remez",
+    "page": "Filters - filter design and filtering",
+    "title": "DSP.Filters.remez",
+    "category": "function",
+    "text": "remez(numtaps::Integer, \n      bands::Vector, \n      desired::Vector; \n      weight::Vector=[], \n      Hz::Real=1.0, \n      filter_type::RemezFilterType=filter_type_bandpass,\n      maxiter::Integer=25, \n      grid_density::Integer=16)\n\nCalculate the minimax optimal filter using the Remez exchange algorithm [McClellan1973a] [McClellan1973b].\n\nCalculate the filter-coefficients for the finite impulse response (FIR) filter whose transfer function minimizes the maximum error between the desired gain and the realized gain in the specified frequency bands using the Remez exchange algorithm.\n\nArguments\n\nnumtaps::Integer: The desired number of taps in the filter.    The number of taps is the number of terms in the filter, or the filter    order plus one.\nbands::Vector: A monotonic sequence containing the band edges in Hz.   All elements must be non-negative and less than half the sampling   frequency as given by Hz.\ndesired::Vector:A sequence half the size of bands containing the desired    gain in each of the specified bands.\nweight::Vector: (optional)   A relative weighting to give to each band region. The length of   weight has to be half the length of bands.\nHz::Real: The sampling frequency in Hz. Default is 1.\nfilter_type::RemezFilterType: Default is filter_type_bandpass.   The type of filter:     filter_type_bandpass : flat response in bands. This is the default.     filter_type_differentiator : frequency proportional response in bands.       Assymetric as in filter_type_hilbert case, but with a linear sloping       desired response.     filter_type_hilbert : filter with odd symmetry, that is, type III                 (for even order) or type IV (for odd order)                 linear phase filters.\nmaxiter::Integer: (optional)   Maximum number of iterations of the algorithm. Default is 25.\ngrid_density:Integer: (optional)   Grid density. The dense grid used in remez is of size   (numtaps + 1) * grid_density. Default is 16.\n\nReturns\n\nh::Array{Float64,1}: A rank-1 array containing the coefficients of the optimal   (in a minimax sense) filter.\n\n[McClellan1973a]: \n\nJ. H. McClellan and T. W. Parks, A unified approach to the design of optimum FIR linear phase digital filters, IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.\n\n[McClellan1973b]: \n\nJ. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer Program for Designing Optimum FIR Linear Phase Digital Filters, IEEE Trans. Audio Electroacoust., vol. AU-21, pp. 506-525, 1973.\n\nExamples\n\nConstruct a length 35 filter with a passband at 0.15-0.4 Hz  (desired response of 1), and stop bands at 0-0.1 Hz and 0.45-0.5 Hz (desired response of 0). Note: the behavior in the frequency ranges between  those bands - the transition bands - is unspecified.\n\njulia> bpass = remez(35, [0 0.1 0.15 0.4 0.45 0.5], [0 1 0])\n\nYou can trade-off maximum error achieved for transition bandwidth.  The wider the transition bands, the lower the maximum error in the bands specified. Here is a bandpass filter with the same passband, but wider transition bands.\n\njulia> bpass2 = remez(35, [0 0.08 0.15 0.4 0.47 0.5], [0 1 0])\n\nHere we compute the frequency responses and plot them in dB.\n\nusing PyPlot\nb = DSP.Filters.PolynomialRatio(bpass, [1.0])\nb2 = DSP.Filters.PolynomialRatio(bpass2, [1.0])\nf = linspace(0, 0.5, 1000)\nplot(f, 20*log10.(abs.(freqz(b,f,1.0))))\nplot(f, 20*log10.(abs.(freqz(b2,f,1.0))))\ngrid()\n\n\n\n"
+},
+
+{
     "location": "filters.html#FIR-filter-design-methods-1",
     "page": "Filters - filter design and filtering",
     "title": "FIR filter design methods",
     "category": "section",
-    "text": "FIRWindow"
+    "text": "FIRWindow\nremez"
 },
 
 {
