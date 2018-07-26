@@ -1,6 +1,6 @@
 using DSP, Compat, Compat.Test
 
-@testset "esprit" begin
+@testset "esprit ($i)" for i in 1:500
     # create a sum of sinusoids in noise, and estimate their frequencies
     Fs = 10000.0           # sampling frequency in Hz
     duration = 1           # length of signal, in seconds
@@ -19,4 +19,3 @@ using DSP, Compat, Compat.Test
     frequencies_estimated = esprit(x, M, p, Fs)
     @test isapprox(frequencies', frequencies_estimated; atol = 1e-2)
 end
-
