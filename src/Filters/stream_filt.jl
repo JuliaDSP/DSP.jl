@@ -137,7 +137,7 @@ Construct a stateful FIRFilter object from the vector of filter taps `h`.
 the input to output sample rate relationship (e.g. `147//160` for
 converting recorded audio from 48 KHz to 44.1 KHz).
 """
-function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
+function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1//1)
     interpolation = numerator(resampleRatio)
     decimation    = denominator(resampleRatio)
     historyLen    = 0
@@ -185,7 +185,7 @@ function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32)
     FIRFilter(h, rate)
 end
 
-function FIRFilter(rate::Rational)
+function FIRFilter(rate::Union{Integer,Rational})
     h = resample_filter(rate)
     FIRFilter(h, rate)
 end
