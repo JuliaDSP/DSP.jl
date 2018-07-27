@@ -231,20 +231,19 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
 end
 
 """
-function freq_eval(k::Integer, n::Integer, grid::AbstractVector, 
-                   x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(f, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
   LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
 -----------------------------------------------------------------------
 """
-function freq_eval(k::Integer, n::Integer, grid::AbstractVector, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(f, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
-    xf = cospi(2grid[k])
+    xf = cospi(2f)
 
-    for j = 1 : n
+    for j = 1:length(ad)
         c = ad[j] / (xf - x[j])
         d += c
         p += c * y[j]
@@ -527,12 +526,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         j == 2 && (y1 = comp)
         comp = dev
         l >= kup && @goto L220
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L220
         comp = nut * err
       @label L210
         l += 1; l >= kup && @goto L215
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L215
         comp = nut * err
         @goto L210
@@ -547,7 +546,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         l -= 1
       @label L225
         l -= 1; l <= klow && @goto L250
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err > comp && @goto L230
         jchnge <= 0 && @goto L225
         @goto L260
@@ -556,7 +555,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         comp = nut * err
       @label L235
         l -= 1; l <= klow && @goto L240
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L240
         comp = nut * err
         @goto L235
@@ -573,7 +572,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
 
       @label L255
         l += 1; l >= kup && @goto L260
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L255
         comp = nut * err
 
@@ -594,7 +593,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         luck = 1
       @label L310
         l += 1; l >= kup && @goto L315
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L310
         comp =  nut * err
         j = nzz
@@ -615,7 +614,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         comp = y1*(1.00001)
       @label L330
         l -= 1; l <= klow && @goto L340
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L330
         j = nzz
         comp =  nut * err
@@ -656,7 +655,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     
     nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
     fsh = 1.0e-06
-    gtemp = grid[1]   # grid[1] is temporarily used in freq_eval in this loop
     x[nzz] = -2.0
     cn  = 2*nfcns - 1
     delf = 1.0/cn
@@ -692,11 +690,9 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         if xt-x[l] < fsh
             a[j] = y[l]
         else
-            grid[1] = ft
-            a[j] = freq_eval(1,nz,grid,x,y,ad)
+            a[j] = freq_eval(ft, x, y, ad)
         end
     end
-    grid[1] = gtemp  # restore grid[1]
 
     dden = 2π / cn
     for j = 1 : nfcns
