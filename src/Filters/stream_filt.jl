@@ -58,7 +58,7 @@ end
 # Rational resampler FIR kernel
 mutable struct FIRRational{T}  <: FIRKernel{T}
     pfb::PFB{T}
-    ratio::Union{Integer,Rational{Int}}
+    ratio::Rational{Int}
     Nϕ::Int
     ϕIdxStepSize::Int
     tapsPerϕ::Int
@@ -67,7 +67,7 @@ mutable struct FIRRational{T}  <: FIRKernel{T}
     hLen::Int
 end
 
-function FIRRational(h::Vector, ratio::Union{Integer,Rational})
+function FIRRational(h::Vector, ratio::Rational)
     pfb          = taps2pfb(h, numerator(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
@@ -77,6 +77,7 @@ function FIRRational(h::Vector, ratio::Union{Integer,Rational})
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
 end
 
+FIRRational(h::Vector,ratio::Integer)=FIRRational(h,convert(Rational,ratio))
 
 #
 # Arbitrary resampler FIR kernel
