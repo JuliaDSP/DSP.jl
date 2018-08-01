@@ -26,7 +26,10 @@ export FilterCoefficients,
 include("filt.jl")
 export  DF2TFilter,
         filtfilt,
-        fftfilt
+        tdfilt,
+        tdfilt!,
+        fftfilt,
+        fftfilt!
 
 include("design.jl")
 export  FilterType,

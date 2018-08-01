@@ -12,7 +12,8 @@ _zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
     filt!(out, f, x[, si])
 
 Same as [`filt()`](@ref) but writes the result into the `out`
-argument, which may alias the input `x` to modify it in-place.
+argument. Output array `out` may not be an alias of `x`, i.e. filtering may
+not be done in place.
 """
 filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
     filt!(out, coefb(f), coefa(f), x, si)
@@ -426,7 +427,29 @@ let chain = :(throw(ArgumentError("invalid tuple size")))
     end
 end
 
-function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+"""
+    tdfilt(h, x)
+
+Apply filter or filter coefficients `h` along the first dimension
+of array `x` using a naïve time-domain algorithm
+"""
+function tdfilt(h::AbstractVector, x::AbstractArray{T}) where T<:Real
+    _tdfilt!(Array{T}(undef, size(x)), h, x)
+end
+
+"""
+    tdfilt!(out, h, x)
+
+Like `tdfilt`, but writes the result into array `out`. Output array `out` may
+not be an alias of `x`, i.e. filtering may not be done in place.
+"""
+function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
+    size(x) != size(out) && error("out size must match x")
+    _tdfilt!(out, h, x)
+end
+
+# Does not check that 'out' and 'x' are the same length
+function _tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
     elseif length(h) <= 15
@@ -436,7 +459,6 @@ function filt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     h = reverse(h)
     hLen = length(h)
     xLen = size(x, 1)
-    size(x) != size(out) && error("out size must match x")
     ncols = Base.trailingsize(x, 2)
 
     for col = 0:ncols-1
@@ -506,7 +528,24 @@ Apply FIR filter taps `h` along the first dimension of array `x`
 using an FFT-based overlap-save algorithm.
 """
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
-                 nfft=optimalfftfiltlength(length(b), length(x))) where T<:Real
+                 nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+    _fftfilt!(Array{T}(undef, size(x)), b, x, nfft)
+end
+
+"""
+    fftfilt!(out, h, x)
+
+Like `fftfilt` but writes result into out array.
+"""
+function fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
+                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+    size(out) == size(x) || throw(ArgumentError("out and x must be the same size"))
+    _fftfilt!(out, b, x, nfft)
+end
+
+# Like fftfilt! but does not check if out and x are the same size
+function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
+                 nfft::Integer) where T<:Real
     nb = length(b)
     nx = size(x, 1)
     normfactor = 1/nfft
@@ -514,7 +553,6 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     L = min(nx, nfft - (nb - 1))
     tmp1 = Vector{T}(undef, nfft)
     tmp2 = Vector{Complex{T}}(undef, nfft >> 1 + 1)
-    out = Array{T}(undef, size(x))
 
     p1 = plan_rfft(tmp1)
     p2 = plan_brfft(tmp2, nfft)
@@ -522,7 +560,7 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     # FFT of filter
     filterft = similar(tmp2)
     copyto!(tmp1, b)
-    tmp1[nb+1:end] .= zero(T)
+    tmp1[nb+1:end] = zero(T)
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
@@ -533,8 +571,8 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
             xstart = off - nb + npadbefore + 1
             n = min(nfft - npadbefore, nx - xstart + 1)
 
-            tmp1[1:npadbefore] .= zero(T)
-            tmp1[npadbefore+n+1:end] .= zero(T)
+            tmp1[1:npadbefore] = zero(T)
+            tmp1[npadbefore+n+1:end] = zero(T)
 
             copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
             mul!(tmp2, p1, tmp1)
@@ -553,10 +591,21 @@ function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
     out
 end
 
-# Filter x using FIR filter b, heuristically choosing to perform
-# convolution in the time domain using filt or in the frequency domain
-# using fftfilt
+# Filter x using FIR filter b, heuristically choosing to perform convolution in
+# the time domain using tdfilt or in the frequency domain using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
+    filt_choose_alg!(Array{T}(undef, size(x)), b, x)
+end
+
+# Like filt but mutates output array
+function filt!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
+    size(out) == size(x) || throw(ArgumentError("out must be the same size as x"))
+    filt_choose_alg!(out, b, x)
+end
+
+# Perform FIR filtering with either time domain or fft based algorithms, writing
+# output to `out` argument. Does not check that x and out are the same size.
+function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
     nb = length(b)
     nx = size(x, 1)
 
@@ -565,7 +614,7 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         # 65536 is apprximate cutoff where FFT-based algorithm may be
         # more effective (due to overhead for allocation, plan
         # creation, etc.)
-        filt!(Array{eltype(x)}(undef, size(x)), b, x)
+        _tdfilt!(out, b, x)
     else
         # Estimate number of multiplication operations for fftfilt()
         # and filt()
@@ -574,6 +623,6 @@ function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
         nchunk = ceil(Int, nx/L)*div(length(x), nx)
         fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
 
-        filtops > fftops ? fftfilt(b, x, nfft) : filt!(Array{eltype(x)}(undef, size(x)), b, x)
+        filtops > fftops ? _fftfilt!(out, b, x, nfft) : _tdfilt!(out, b, x)
     end
 end
