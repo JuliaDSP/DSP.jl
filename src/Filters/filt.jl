@@ -525,15 +525,23 @@ end
 
 Like `fftfilt` but writes result into out array.
 """
-function fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
-                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+function fftfilt!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{<:Real},
+    nfft::Integer=optimalfftfiltlength(length(b), length(x))
+)
     size(out) == size(x) || throw(ArgumentError("out and x must be the same size"))
     _fftfilt!(out, b, x, nfft)
 end
 
 # Like fftfilt! but does not check if out and x are the same size
-function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
-                 nfft::Integer) where T<:Real
+function _fftfilt!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{T},
+    nfft::Integer
+) where T<:Real
     nb = length(b)
     nx = size(x, 1)
     normfactor = 1/nfft
