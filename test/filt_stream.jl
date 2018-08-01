@@ -244,7 +244,7 @@ function test_rational(h, x, ratio)
     @printfifinteractive( "\n\nTesting rational resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d//%d", string(typeof(h)), string(typeof(x)), xLen, hLen, upfactor, downfactor )
 
     @printfifinteractive( "\n\tNaive rational resampling\n\t\t")
-    @timeifinteractive naiveResult = naivefilt(h, x, ratio)
+    @timeifinteractive naiveResult = naivefilt(h, x, convert(Rational,ratio))
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
     @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
@@ -260,60 +260,6 @@ function test_rational(h, x, ratio)
     @test naiveResult ≈ statefulResult
 
     @printfifinteractive( "\n\tDSP.filt rational. Piecewise for all %d inputs\n\t\t", length( x ) )
-    reset!(myfilt)
-    y1 = similar(x, 0)
-    @timeifinteractive begin
-        for i in 1:length(x)
-            append!(y1, DSP.filt(myfilt, x[i:i]))
-        end
-    end
-    piecewiseResult = y1
-    @test naiveResult ≈ piecewiseResult
-
-    DSP.reset!(myfilt)
-    @test inputlength(myfilt, length(piecewiseResult)) == xLen
-end
-
-
-#
-# Integer resampling
-#
-
-function test_integer(h, x, ratio)
-    xLen       = length(x)
-    hLen       = length(h)
-    pivotPoint = min(rand(50:150), div(xLen, 4))
-    x1         = x[1:pivotPoint]
-    x2         = x[pivotPoint+1:end]
-    upfactor   = ratio
-    resultType = promote_type(eltype(h), eltype(x))
-    @printfifinteractive( "\n\n" )
-    @printfifinteractive( "_ _  _ ___ ____ ____ ____ ____  \n" )
-    @printfifinteractive( "| |\\ |  |  |___ | __ |___ |__/  \n" )
-    @printfifinteractive( "| | \\|  |  |___ |__] |___ |  \\  \n" )
-    @printfifinteractive( "                                          \n" )
-    @printfifinteractive( "____ ____ ____ ____ _  _ ___  _    _ _  _ ____\n" )
-    @printfifinteractive( "|__/ |___ [__  |__| |\\/| |__] |    | |\\ | | __\n" )
-    @printfifinteractive( "|  \\ |___ ___] |  | |  | |    |___ | | \\| |__]\n" )
-    @printfifinteractive( "\n\nTesting integer resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d", string(typeof(h)), string(typeof(x)), xLen, hLen, upfactor)
-
-    @printfifinteractive( "\n\tNaive rational resampling\n\t\t")
-    @timeifinteractive naiveResult = naivefilt(h, x, convert(Rational,ratio))
-
-    @printfifinteractive( "\n\tDSP.filt( h, x, %d )\n\t\t", upfactor)
-    @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
-    @test naiveResult ≈ statelesResult
-
-    @printfifinteractive( "\n\tDSP.filt integer resampling. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = DSP.FIRFilter(h, ratio)
-    @timeifinteractive begin
-        s1 = DSP.filt(myfilt, x1)
-        s2 = DSP.filt(myfilt, x2)
-    end
-    statefulResult = [s1; s2]
-    @test naiveResult ≈ statefulResult
-
-    @printfifinteractive( "\n\tDSP.filt integer. Piecewise for all %d inputs\n\t\t", length( x ) )
     reset!(myfilt)
     y1 = similar(x, 0)
     @timeifinteractive begin
@@ -408,7 +354,7 @@ end
             test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
         end
     end
-    if numerator(ratio) == interpolation && denominator(ratio) == decimation && numerator(ratio) != 1 && denominator(ratio) == 1
-        test_integer(h, x, numerator(ratio))
+    if denominator(ratio) == 1
+        test_rational(h, x, numerator(ratio))
     end
 end
