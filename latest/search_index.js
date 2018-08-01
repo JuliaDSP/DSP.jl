@@ -357,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "Base.DSP.filt!",
     "category": "function",
-    "text": "filt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument, which may alias the input x to modify it in-place.\n\n\n\n"
+    "text": "filt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n"
 },
 
 {
@@ -377,6 +377,30 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "filters.html#DSP.Filters.fftfilt!",
+    "page": "Filters - filter design and filtering",
+    "title": "DSP.Filters.fftfilt!",
+    "category": "function",
+    "text": "fftfilt!(out, h, x)\n\nLike fftfilt but writes result into out array.\n\n\n\n"
+},
+
+{
+    "location": "filters.html#DSP.Filters.tdfilt",
+    "page": "Filters - filter design and filtering",
+    "title": "DSP.Filters.tdfilt",
+    "category": "function",
+    "text": "tdfilt(h, x)\n\nApply filter or filter coefficients h along the first dimension of array x using a naïve time-domain algorithm\n\n\n\n"
+},
+
+{
+    "location": "filters.html#DSP.Filters.tdfilt!",
+    "page": "Filters - filter design and filtering",
+    "title": "DSP.Filters.tdfilt!",
+    "category": "function",
+    "text": "tdfilt!(out, h, x)\n\nLike tdfilt, but writes the result into array out. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n"
+},
+
+{
     "location": "filters.html#DSP.Filters.resample",
     "page": "Filters - filter design and filtering",
     "title": "DSP.Filters.resample",
@@ -389,7 +413,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "Filter application",
     "category": "section",
-    "text": "filt\nfilt!\nfiltfilt\nfftfilt\nresample"
+    "text": "filt\nfilt!\nfiltfilt\nfftfilt\nfftfilt!\ntdfilt\ntdfilt!\nresample"
 },
 
 {
