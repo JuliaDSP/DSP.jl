@@ -591,9 +591,8 @@ function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray
     out
 end
 
-# Filter x using FIR filter b, heuristically choosing to perform
-# convolution in the time domain using filt or in the frequency domain
-# using fftfilt
+# Filter x using FIR filter b, heuristically choosing to perform convolution in
+# the time domain using tdfilt or in the frequency domain using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
     filt_choose_alg!(Array{T}(undef, size(x)), b, x)
 end
