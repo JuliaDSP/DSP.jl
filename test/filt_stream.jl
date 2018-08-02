@@ -1,7 +1,7 @@
 using DSP, Compat, Compat.Test
 
 # Naive rational resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
+function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)
 
     upfactor     = numerator(resamplerate)
     downfactor   = denominator(resamplerate)
@@ -244,7 +244,7 @@ function test_rational(h, x, ratio)
     @printfifinteractive( "\n\nTesting rational resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d//%d", string(typeof(h)), string(typeof(x)), xLen, hLen, upfactor, downfactor )
 
     @printfifinteractive( "\n\tNaive rational resampling\n\t\t")
-    @timeifinteractive naiveResult = naivefilt(h, x, convert(Rational,ratio))
+    @timeifinteractive naiveResult = naivefilt(h, x, ratio)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
     @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
@@ -354,7 +354,7 @@ end
             test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
         end
     end
-    if denominator(ratio) == 1
-        test_rational(h, x, numerator(ratio))
+    if decimation == 1
+        test_rational(h, x, interpolation)
     end
 end

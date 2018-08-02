@@ -138,7 +138,7 @@ Construct a stateful FIRFilter object from the vector of filter taps `h`.
 the input to output sample rate relationship (e.g. `147//160` for
 converting recorded audio from 48 KHz to 44.1 KHz).
 """
-function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1//1)
+function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     interpolation = numerator(resampleRatio)
     decimation    = denominator(resampleRatio)
     historyLen    = 0
@@ -310,7 +310,7 @@ function outputlength(kernel::FIRStandard, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRInterpolator, inputlength::Integer)
-    outputlength(inputlength-kernel.inputDeficit+1, kernel.interpolation//1, kernel.ϕIdx)
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.interpolation, kernel.ϕIdx)
 end
 
 function outputlength(kernel::FIRDecimator, inputlength::Integer)
@@ -347,7 +347,7 @@ function inputlength(kernel::FIRStandard, outputlength::Integer)
 end
 
 function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    inLen = inputlength(outputlength, kernel.interpolation//1, kernel.ϕIdx)
+    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx)
     inLen += kernel.inputDeficit - 1
 end
 
