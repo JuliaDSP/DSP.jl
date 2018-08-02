@@ -613,7 +613,7 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
 end
 
 # Compute FIR coefficients necessary for rational rate resampling
-function resample_filter(rate::Rational, rel_bw = 1.0, attenuation = 60)
+function resample_filter(rate::Union{Integer,Rational}, rel_bw = 1.0, attenuation = 60)
     Nϕ          = numerator(rate)
     decimation  = denominator(rate)
     f_nyq       = min(1/Nϕ, 1/decimation)

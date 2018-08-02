@@ -1,7 +1,7 @@
 using DSP, Compat, Compat.Test
 
 # Naive rational resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
+function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)
 
     upfactor     = numerator(resamplerate)
     downfactor   = denominator(resamplerate)
@@ -353,5 +353,8 @@ end
         if Tx in [Float32, ComplexF32]
             test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
         end
+    end
+    if decimation == 1
+        test_rational(h, x, interpolation)
     end
 end
