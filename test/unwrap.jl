@@ -39,7 +39,7 @@ using DSP, Compat, Compat.Test
     # test generically typed unwrapping
     types = (Float32, Float64, BigFloat)
     for T in types
-        srand(1234)
+        seed!(1234)
         A_unwrapped = collect(Compat.range(0, stop=4convert(T, π), length=10))
         A_wrapped = A_unwrapped .% (2convert(T, π))
 
@@ -58,7 +58,7 @@ end
 @testset "Unwrap 2D" begin
     types = (Float32, Float64, BigFloat)
     for T in types
-        srand(1234)
+        seed!(1234)
         v_unwrapped = collect(Compat.range(0, stop=4convert(T, π), length=7))
         A_unwrapped = v_unwrapped .+ v_unwrapped'
         A_wrapped = A_unwrapped .% (2convert(T, π))
