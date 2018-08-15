@@ -118,9 +118,15 @@ function Base.getindex(x::Frequencies, i::Int)
     (i >= 1 && i <= x.n) || throw(BoundsError())
     unsafe_getindex(x, i)
 end
-Base.start(x::Frequencies) = 1
-Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
-Base.done(x::Frequencies, i::Int) = i > x.n
+if isdefined(Base, :iterate)
+    function Base.iterate(x::Frequencies, i::Int=1)
+        i > x.n ? nothing : (unsafe_getindex(x,i), i + 1)
+    end
+else
+    Base.start(x::Frequencies) = 1
+    Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
+    Base.done(x::Frequencies, i::Int) = i > x.n
+end
 Base.size(x::Frequencies) = (x.n,)
 Base.step(x::Frequencies) = x.multiplier
 

@@ -4,7 +4,7 @@ using DSP, Compat, Compat.Test, Compat.Random, FilterTestHelpers
 # filt with different filter forms
 #
 @testset "filt" begin
-    srand(1776)
+    seed!(1776)
     x = randn(100)
 
     for n = 1:6

@@ -560,7 +560,7 @@ function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray
     # FFT of filter
     filterft = similar(tmp2)
     copyto!(tmp1, b)
-    tmp1[nb+1:end] = zero(T)
+    tmp1[nb+1:end] .= zero(T)
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
@@ -571,8 +571,8 @@ function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray
             xstart = off - nb + npadbefore + 1
             n = min(nfft - npadbefore, nx - xstart + 1)
 
-            tmp1[1:npadbefore] = zero(T)
-            tmp1[npadbefore+n+1:end] = zero(T)
+            tmp1[1:npadbefore] .= zero(T)
+            tmp1[npadbefore+n+1:end] .= zero(T)
 
             copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
             mul!(tmp2, p1, tmp1)
