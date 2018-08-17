@@ -580,7 +580,7 @@ function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray
             mul!(tmp1, p2, tmp2)
 
             # Copy to output
-            for j = 0:min(L - 1, nx - off)
+            @simd for j = 0:min(L - 1, nx - off)
                 @inbounds out[colstart+off+j] = tmp1[nb+j]*normfactor
             end
 
