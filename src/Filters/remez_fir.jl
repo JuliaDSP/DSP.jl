@@ -628,11 +628,9 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         iext[1] = k1
         @goto L100
       @label L350
-        kn = iext[nzz]
-        for j = 1 : nfcns
+        for j = 1:nz
             iext[j] = iext[j+1]
         end
-        iext[nz] = kn
 
         @goto L100
       @label L370
