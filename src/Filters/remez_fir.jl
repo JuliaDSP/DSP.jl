@@ -199,7 +199,11 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
         edges = map(f -> clamp(f, flimlow, flimhigh), edges)
     end
-    ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)
+    local ngrid
+    # work around JuliaLang/julia#15276
+    let delf=delf, edges=edges
+        ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)#::Int
+    end
 
     grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
     des = zeros(Float64, ngrid)   # the desired function on the grid
