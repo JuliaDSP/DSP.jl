@@ -231,17 +231,16 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
 end
 
 """
-function freq_eval(f, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
   LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
 -----------------------------------------------------------------------
 """
-function freq_eval(f, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
-    xf = cospi(2f)
 
     for j = 1:length(ad)
         c = ad[j] / (xf - x[j])
@@ -436,6 +435,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             end
         end
     end
+    grid .= cospi.(2 .* grid)
 
     nz  = nfcns+1
     nzz = nfcns+2
@@ -469,9 +469,9 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             # the filter is returned in its current, unconverged state.
             break
         end
-        
-        x[1:nz] = cospi.(2grid[iext[1:nz]])
-        
+
+        x[1:nz] = grid[iext[1:nz]]
+
         for j = 1 : nz
             ad[j] = lagrange_interp(j, nz, jet, x)
         end
@@ -660,8 +660,8 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     # Boolean for "kkk" in C code.
     full_grid = (bands[1] == 0.0 && bands[end] == 0.5) || (nfcns <= 3)
     if !full_grid
-        dtemp = cospi(2grid[1])
-        dnum  = cospi(2grid[ngrid])
+        dtemp = grid[1]
+        dnum  = grid[ngrid]
         aa    = 2.0/(dtemp-dnum)
         bb    = -(dtemp+dnum)/(dtemp-dnum)
     end
@@ -671,12 +671,10 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     # an already computed response on one of the extremals "l" -
     # if the extremal is equal to the frequency ft. If no y[l]
     # matches, a[j] is computed using freq_eval.
-    for j = 1 : nfcns 
-        ft = (j - 1) * delf
-        xt = cospi(2ft)
+    for j = 1 : nfcns
+        xt = cospi(2 * (j - 1) * delf)
         if !full_grid
             xt = (xt-bb)/aa
-            ft = acos(xt)/(2π)
         end
         if (l > 1)
             l = l-1
@@ -687,7 +685,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         if xt-x[l] < fsh
             a[j] = y[l]
         else
-            a[j] = freq_eval(ft, x, y, ad)
+            a[j] = freq_eval(xt, x, y, ad)
         end
     end
 
