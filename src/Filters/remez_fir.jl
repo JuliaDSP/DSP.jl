@@ -211,19 +211,21 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
     # FUNCTION ON THE GRID
     #
+    # and
+    #
+    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
+    # TO THE ORIGINAL PROBLEM
+    #
     for lband in 1:nbands
         flow = edges[1, lband]
         fup = edges[2, lband]
-        for f in (flow:delf:fup)[1:end-1]
-            grid[j] = f
-            des[j] = eff(f,fx,lband,filter_type)
-            wt[j] = wate(f,fx,wtx,lband,filter_type)
+        for f in [(flow:delf:fup)[1:end-1]; fup]
+            change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
+            grid[j] = cospi(2f)
+            des[j] = eff(f,fx,lband,filter_type) / change
+            wt[j] = wate(f,fx,wtx,lband,filter_type) * change
             j += 1
         end
-        grid[j] = fup
-        des[j] = eff(fup,fx,lband,filter_type)
-        wt[j] = wate(fup,fx,wtx,lband,filter_type)
-        j += 1
     end
     @assert ngrid == j - 1
 
@@ -407,35 +409,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         nfcns = nfcns + 1
     end
     temp = (ngrid-1) / nfcns
-
-    #
-    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
-    # TO THE ORIGINAL PROBLEM
-    #
-    if !neg
-        if !nodd
-            for j = 1 : ngrid
-                change = cospi(grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j] * change
-            end
-        end
-    else
-        if !nodd
-            for j = 1 : ngrid
-                change = sinpi(grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j]  * change
-            end
-        else
-            for j = 1 : ngrid
-                change = sinpi(2grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j]  * change
-            end
-        end
-    end
-    grid .= cospi.(2 .* grid)
 
     nz  = nfcns+1
     nzz = nfcns+2
