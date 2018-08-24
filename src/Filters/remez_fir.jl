@@ -408,7 +408,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     if nodd && !neg
         nfcns = nfcns + 1
     end
-    temp = (ngrid-1) / nfcns
 
     nz  = nfcns+1
     nzz = nfcns+2
@@ -416,10 +415,9 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     x = zeros(Float64, nzz)
     y = zeros(Float64, nz)
 
-    for j = 1 : nfcns
-        iext[j] = Int64(floor((j-1)*temp)) + 1
+    for j = 1:nz
+        iext[j] = (j-1)*(ngrid-1) ÷ nfcns + 1
     end
-    iext[nfcns+1] = ngrid
 
     dev = 0.0     # deviation from the desired function, 
                   # that is, the amount of "ripple" on the extremal set
@@ -623,20 +621,16 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     q = zeros(Float64, nfcns-2)
     alpha = zeros(Float64, nzz)   # return vector
 
-    nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
     fsh = 1.0e-06
     x[nzz] = -2.0
-    cn  = 2*nfcns - 1
-    delf = 1.0/cn
+    delf = 1 / (2*nfcns - 1)
     l = 1
 
     # Boolean for "kkk" in C code.
     full_grid = (bands[1] == 0.0 && bands[end] == 0.5) || (nfcns <= 3)
     if !full_grid
-        dtemp = grid[1]
-        dnum  = grid[ngrid]
-        aa    = 2.0/(dtemp-dnum)
-        bb    = -(dtemp+dnum)/(dtemp-dnum)
+        aa    = 2.0/(grid[1]-grid[ngrid])
+        bb    = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
     end
 
     # Fill in "a" array with the frequency response on an evenly
@@ -662,20 +656,20 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         end
     end
 
-    dden = 2π / cn
+    nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
+
     for j = 1 : nfcns
         dtemp = 0.0
-        dnum = (j-1) * dden
         for k = 1 : nm1
-            dtemp += a[k+1] * cos(dnum*k)
+            dtemp += a[k+1] * cospi(2 * (j-1) * delf * k)
         end
         alpha[j] = 2.0 * dtemp + a[1]
     end
 
     for j = 2 : nfcns
-        alpha[j] *= 2.0 / cn
+        alpha[j] *= 2.0 * delf
     end
-    alpha[1] /= cn
+    alpha[1] *= delf
 
     if !full_grid
         p[1] = 2.0*alpha[nfcns]*bb+alpha[nm1]
@@ -692,12 +686,10 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
                 p[k] = 2.0 * bb * a[k]
             end
             p[2] += a[1] * 2.0 *aa
-            jm1 = j - 1
-            for k = 1 : jm1
+            for k = 1 : j-1
                 p[k] += q[k] + aa * a[k+1]
             end
-            jp1 = j + 1
-            for k = 3 : jp1
+            for k = 3 : j+1
                 p[k] += aa * a[k-1]
             end
 
