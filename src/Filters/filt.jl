@@ -559,9 +559,8 @@ function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray
 
     # FFT of filter
     filterft = similar(tmp2)
-    copyto!(tmp1, b)
+    tmp1[1:nb] .= b .* normfactor
     tmp1[nb+1:end] .= zero(T)
-    broadcast!(*, tmp1, tmp1, normfactor)
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
