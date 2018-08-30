@@ -199,7 +199,11 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
         edges = map(f -> clamp(f, flimlow, flimhigh), edges)
     end
-    ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)
+    local ngrid
+    # work around JuliaLang/julia#15276
+    let delf=delf, edges=edges
+        ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)#::Int
+    end
 
     grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
     des = zeros(Float64, ngrid)   # the desired function on the grid
@@ -211,19 +215,21 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
     # FUNCTION ON THE GRID
     #
+    # and
+    #
+    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
+    # TO THE ORIGINAL PROBLEM
+    #
     for lband in 1:nbands
         flow = edges[1, lband]
         fup = edges[2, lband]
-        for f in (flow:delf:fup)[1:end-1]
-            grid[j] = f
-            des[j] = eff(f,fx,lband,filter_type)
-            wt[j] = wate(f,fx,wtx,lband,filter_type)
+        for f in [(flow:delf:fup)[1:end-1]; fup]
+            change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
+            grid[j] = cospi(2f)
+            des[j] = eff(f,fx,lband,filter_type) / change
+            wt[j] = wate(f,fx,wtx,lband,filter_type) * change
             j += 1
         end
-        grid[j] = fup
-        des[j] = eff(fup,fx,lband,filter_type)
-        wt[j] = wate(fup,fx,wtx,lband,filter_type)
-        j += 1
     end
     @assert ngrid == j - 1
 
@@ -231,20 +237,18 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
 end
 
 """
-function freq_eval(k::Integer, n::Integer, grid::AbstractVector, 
-                   x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
   LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
 -----------------------------------------------------------------------
 """
-function freq_eval(k::Integer, n::Integer, grid::AbstractVector, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
-    xf = cospi(2grid[k])
 
-    for j = 1 : n
+    for j = 1:length(ad)
         c = ad[j] / (xf - x[j])
         d += c
         p += c * y[j]
@@ -408,51 +412,20 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     if nodd && !neg
         nfcns = nfcns + 1
     end
-    temp = (ngrid-1) / nfcns
-    dimsize = ceil(Int64, numtaps/2 + 2)
-    
-    #
-    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
-    # TO THE ORIGINAL PROBLEM
-    #
-    if !neg
-        if !nodd
-            for j = 1 : ngrid
-                change = cospi(grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j] * change
-            end
-        end
-    else
-        if !nodd
-            for j = 1 : ngrid
-                change = sinpi(grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j]  * change
-            end
-        else
-            for j = 1 : ngrid
-                change = sinpi(2grid[j])
-                des[j] = des[j] / change
-                wt[j]  = wt[j]  * change
-            end
-        end
-    end
-        
-    iext = zeros(Int64, dimsize)   # indices of extremals
-    x = zeros(Float64, dimsize)
-    y = zeros(Float64, dimsize)
 
-    for j = 1 : nfcns
-        iext[j] = Int64(floor((j-1)*temp)) + 1
+    nz  = nfcns+1
+    nzz = nfcns+2
+    iext = zeros(Int64, nzz)   # indices of extremals
+    x = zeros(Float64, nzz)
+    y = zeros(Float64, nz)
+
+    for j = 1:nz
+        iext[j] = (j-1)*(ngrid-1) ÷ nfcns + 1
     end
-    iext[nfcns+1] = ngrid
 
     dev = 0.0     # deviation from the desired function, 
                   # that is, the amount of "ripple" on the extremal set
     devl = -1.0   # deviation on last iteration
-    nz  = nfcns+1
-    nzz = nfcns+2
     niter = 0
     ad = zeros(Float64, nz)
     
@@ -471,9 +444,9 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
             # the filter is returned in its current, unconverged state.
             break
         end
-        
-        x[1:nz] = cospi.(2grid[iext[1:nz]])
-        
+
+        x[1:nz] = grid[iext[1:nz]]
+
         for j = 1 : nz
             ad[j] = lagrange_interp(j, nz, jet, x)
         end
@@ -527,12 +500,12 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         j == 2 && (y1 = comp)
         comp = dev
         l >= kup && @goto L220
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L220
         comp = nut * err
       @label L210
         l += 1; l >= kup && @goto L215
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L215
         comp = nut * err
         @goto L210
@@ -547,7 +520,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         l -= 1
       @label L225
         l -= 1; l <= klow && @goto L250
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err > comp && @goto L230
         jchnge <= 0 && @goto L225
         @goto L260
@@ -556,7 +529,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         comp = nut * err
       @label L235
         l -= 1; l <= klow && @goto L240
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L240
         comp = nut * err
         @goto L235
@@ -573,7 +546,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
 
       @label L255
         l += 1; l >= kup && @goto L260
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L255
         comp = nut * err
 
@@ -594,7 +567,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         luck = 1
       @label L310
         l += 1; l >= kup && @goto L315
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L310
         comp =  nut * err
         j = nzz
@@ -615,7 +588,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         comp = y1*(1.00001)
       @label L330
         l -= 1; l <= klow && @goto L340
-        err = (freq_eval(l,nz,grid,x,y,ad)-des[l]) * wt[l]
+        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
         nut*err <= comp && @goto L330
         j = nzz
         comp =  nut * err
@@ -629,46 +602,39 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         iext[1] = k1
         @goto L100
       @label L350
-        kn = iext[nzz]
-        for j = 1 : nfcns
+        for j = 1:nz
             iext[j] = iext[j+1]
         end
-        iext[nz] = kn
 
         @goto L100
       @label L370
-        
-        
+
+
         if jchnge <= 0  # we are done if none of the extremal indices changed
             break
         end
     end  # while
 
-    # 
+    #
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
     #    USING THE INVERSE DISCRETE FOURIER TRANSFORM
     #
 
-    a = zeros(Float64, dimsize)   # frequency response on evenly spaced grid
-    p = zeros(Float64, dimsize)
-    q = zeros(Float64, dimsize) 
-    alpha = zeros(Float64, dimsize)   # return vector
-    
-    nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
+    a = zeros(Float64, nfcns)   # frequency response on evenly spaced grid
+    p = zeros(Float64, nfcns)
+    q = zeros(Float64, nfcns-2)
+    alpha = zeros(Float64, nzz)   # return vector
+
     fsh = 1.0e-06
-    gtemp = grid[1]   # grid[1] is temporarily used in freq_eval in this loop
     x[nzz] = -2.0
-    cn  = 2*nfcns - 1
-    delf = 1.0/cn
+    delf = 1 / (2*nfcns - 1)
     l = 1
 
     # Boolean for "kkk" in C code.
     full_grid = (bands[1] == 0.0 && bands[end] == 0.5) || (nfcns <= 3)
     if !full_grid
-        dtemp = cospi(2grid[1])
-        dnum  = cospi(2grid[ngrid])
-        aa    = 2.0/(dtemp-dnum)
-        bb    = -(dtemp+dnum)/(dtemp-dnum)
+        aa    = 2.0/(grid[1]-grid[ngrid])
+        bb    = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
     end
 
     # Fill in "a" array with the frequency response on an evenly
@@ -676,12 +642,10 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     # an already computed response on one of the extremals "l" -
     # if the extremal is equal to the frequency ft. If no y[l]
     # matches, a[j] is computed using freq_eval.
-    for j = 1 : nfcns 
-        ft = (j - 1) * delf
-        xt = cospi(2ft)
+    for j = 1 : nfcns
+        xt = cospi(2 * (j - 1) * delf)
         if !full_grid
             xt = (xt-bb)/aa
-            ft = acos(xt)/(2π)
         end
         if (l > 1)
             l = l-1
@@ -692,26 +656,24 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
         if xt-x[l] < fsh
             a[j] = y[l]
         else
-            grid[1] = ft
-            a[j] = freq_eval(1,nz,grid,x,y,ad)
+            a[j] = freq_eval(xt, x, y, ad)
         end
     end
-    grid[1] = gtemp  # restore grid[1]
 
-    dden = 2π / cn
+    nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
+
     for j = 1 : nfcns
         dtemp = 0.0
-        dnum = (j-1) * dden
         for k = 1 : nm1
-            dtemp += a[k+1] * cos(dnum*k)
+            dtemp += a[k+1] * cospi(2 * (j-1) * delf * k)
         end
         alpha[j] = 2.0 * dtemp + a[1]
     end
 
     for j = 2 : nfcns
-        alpha[j] *= 2.0 / cn
+        alpha[j] *= 2.0 * delf
     end
-    alpha[1] /= cn
+    alpha[1] *= delf
 
     if !full_grid
         p[1] = 2.0*alpha[nfcns]*bb+alpha[nm1]
@@ -728,12 +690,10 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
                 p[k] = 2.0 * bb * a[k]
             end
             p[2] += a[1] * 2.0 *aa
-            jm1 = j - 1
-            for k = 1 : jm1
+            for k = 1 : j-1
                 p[k] += q[k] + aa * a[k+1]
             end
-            jp1 = j + 1
-            for k = 3 : jp1
+            for k = 3 : j+1
                 p[k] += aa * a[k-1]
             end
 
