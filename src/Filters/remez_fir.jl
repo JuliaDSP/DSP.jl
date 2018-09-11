@@ -356,7 +356,7 @@ Construct a length 35 filter with a passband at 0.15-0.4 Hz
 those bands - the transition bands - is unspecified.
 
 ```julia-repl
-julia> bpass = remez(35, [0 0.1 0.15 0.4 0.45 0.5], [0 1 0])
+julia> bpass = remez(35, [0, 0.1, 0.15, 0.4, 0.45, 0.5], [0, 1, 0])
 ```
 
 You can trade-off maximum error achieved for transition bandwidth. 
@@ -365,7 +365,7 @@ bands specified. Here is a bandpass filter with the same passband, but
 wider transition bands.
 
 ```julia-repl
-julia> bpass2 = remez(35, [0 0.08 0.15 0.4 0.47 0.5], [0 1 0])
+julia> bpass2 = remez(35, [0, 0.08, 0.15, 0.4, 0.47, 0.5], [0, 1, 0])
 ```
 
 Here we compute the frequency responses and plot them in dB.
@@ -374,7 +374,7 @@ Here we compute the frequency responses and plot them in dB.
 using PyPlot
 b = DSP.Filters.PolynomialRatio(bpass, [1.0])
 b2 = DSP.Filters.PolynomialRatio(bpass2, [1.0])
-f = linspace(0, 0.5, 1000)
+f = range(0, stop=0.5, length=1000)
 plot(f, 20*log10.(abs.(freqz(b,f,1.0))))
 plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
