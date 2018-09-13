@@ -1,5 +1,5 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
-using DSP, Compat, Compat.Test, FilterTestHelpers
+using DSP, Compat, Compat.Test, Compat.DelimitedFiles, FilterTestHelpers
 
 @testset "remez_argument_check1" begin
     # bands not monotonically increasing
