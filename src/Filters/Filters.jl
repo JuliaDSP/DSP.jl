@@ -3,7 +3,7 @@ using ..DSP: @importffts, mul!, rmul!
 using ..Unwrap
 using Polynomials, ..Util
 import Base: *
-using Compat: copyto!, undef
+using Compat: copyto!, Nothing, undef
 import Compat
 using Compat.LinearAlgebra: I
 using Compat.Statistics: middle

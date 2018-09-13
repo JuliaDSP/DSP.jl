@@ -118,67 +118,16 @@ end
 
 
 """
-eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-
-/*
- *-----------------------------------------------------------------------
- * FUNCTION: eff
- *  FUNCTION TO CALCULATE THE DESIRED MAGNITUDE RESPONSE
- *  AS A FUNCTION OF FREQUENCY.
- *  AN ARBITRARY FUNCTION OF FREQUENCY CAN BE
- *  APPROXIMATED IF THE USER REPLACES THIS FUNCTION
- *  WITH THE APPROPRIATE CODE TO EVALUATE THE IDEAL
- *  MAGNITUDE.  NOTE THAT THE PARAMETER FREQ IS THE
- *  VALUE OF NORMALIZED FREQUENCY NEEDED FOR EVALUATION.
- *-----------------------------------------------------------------------
- */
-"""
-function eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-    if filter_type == filter_type_differentiator
-        return fx[lband] * freq
-    else 
-        return fx[lband]
-    end
-end
-
-"""
-wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-/*
- *-----------------------------------------------------------------------
- * FUNCTION: wate
- *  FUNCTION TO CALCULATE THE WEIGHT FUNCTION AS A FUNCTION
- *  OF FREQUENCY.  SIMILAR TO THE FUNCTION eff, THIS FUNCTION CAN
- *  BE REPLACED BY A USER-WRITTEN ROUTINE TO CALCULATE ANY
- *  DESIRED WEIGHTING FUNCTION.
- *-----------------------------------------------------------------------
- */
-"""
-function wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-    if filter_type != filter_type_differentiator
-        return wtx[lband]
-    end
-    if fx[lband] >= 0.0001
-        return wtx[lband] / freq
-    end
-    wtx[lband]
-end
-
-
-"""
 build_grid(numtaps, bands, desired, weight, grid_density)
 return "grid" and "des" and "wt" arrays
 """
-function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::RemezFilterType)
+function build_grid(numtaps, bands, eff, wate, grid_density, neg)
     # translate from scipy remez argument names
     lgrid = grid_density
 
-    fx = desired
-    wtx = weight
-
-    nbands = length(desired)
+    nbands = length(eff)
     nfilt = numtaps
 
-    neg = filter_type != filter_type_bandpass
     nodd = isodd(nfilt)
     nfcns = nfilt ÷ 2
     if nodd && !neg
@@ -226,8 +175,8 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
         for f in [(flow:delf:fup)[1:end-1]; fup]
             change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
             grid[j] = cospi(2f)
-            des[j] = eff(f,fx,lband,filter_type) / change
-            wt[j] = wate(f,fx,wtx,lband,filter_type) * change
+            des[j] = eff[lband](f) / change
+            wt[j] = wate[lband](f) * change
             j += 1
         end
     end
@@ -380,11 +329,12 @@ plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
 ```
 """
-function remez(numtaps::Integer, bands::Vector, desired::Vector; 
-               weight::Vector=fill(1.0, length(desired)), 
-               Hz::Real=1.0, 
-               filter_type::RemezFilterType=filter_type_bandpass,
-               maxiter::Integer=25, 
+function remez(numtaps::Integer, bands::Vector, desired::Vector;
+               weight::Vector=fill(1.0, length(desired)),
+               Hz::Real=1.0,
+               filter_type::Union{RemezFilterType,Nothing}=nothing,
+               neg::Bool=filter_type in (filter_type_hilbert, filter_type_differentiator),
+               maxiter::Integer=25,
                grid_density::Integer=16)
     bands = bands/Hz
 
@@ -396,17 +346,28 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
       throw(ArgumentError("`desired` must be half the length of `bands`."))
     length(bands) == 2length(weight) || 
       throw(ArgumentError("`weight` must be half the length of `bands`."))
+    filter_type === nothing || all(d -> isa(d, Number), desired) ||
+      throw(ArgumentError("`filter_type` given but non-numeric entry in `desired`"))
+    filter_type === nothing || all(w -> isa(w, Number), weight) ||
+      throw(ArgumentError("`filter_type` given but non-numeric entry in `weight`"))
+    filter_type === nothing || neg == (filter_type !== filter_type_bandpass) ||
+      throw(ArgumentError("`neg` does not match given `filter_type`"))
 
     bands = convert(Vector{Float64}, bands)   # in C, known as "edge"
-    desired = convert(Vector{Float64}, desired)
-    weight = convert(Vector{Float64}, weight)
-    
-    grid, des, wt = build_grid(numtaps, bands, desired, weight, grid_density, filter_type)
+
+    if filter_type == filter_type_differentiator
+        eff = [f -> d*f for d in desired]
+        wate = [d > 0.0001 ? f -> w/f : f -> w for (w, d) in zip(weight, desired)]
+    else
+        eff = [isa(d, Number) ? f->d : d for d in desired]
+        wate = [isa(w, Number) ? f->w : w for w in weight]
+    end
+
+    grid, des, wt = build_grid(numtaps, bands, eff, wate, grid_density, neg)
 
     nfilt = numtaps
     ngrid = length(grid)
-    
-    neg = filter_type != filter_type_bandpass      # boolean: "neg" means negative symmetry.
+
     nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
     nfcns = numtaps ÷ 2   # integer divide
     if nodd && !neg
