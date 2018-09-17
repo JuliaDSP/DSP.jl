@@ -142,6 +142,45 @@ conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, 
 conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
 conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
 
+
+# Fallback
+@generated function conv(u::AbstractVector{U}, v::AbstractVector{V}) where {
+                                    U<:Union{Real, Complex}, V<:Union{Real, Complex}}
+    T = promote_type(U, V)
+    
+    # Maybe it would make sense to previusly check for defintions of the same <:AbstractVector types
+    # but promoted eltypes?
+
+    # If collecting to common T works, just do it
+    hasmethod(conv, (Vector{T}, Vector{T})) && return :(conv(collect($T, u), collect($T, v)))
+    
+    @assert T<:Real || T <: Complex
+
+    if T<:Real
+        # Try with `float`
+        TF = typeof(float(one(T)))
+        hasmethod(conv, (Vector{TF}, Vector{TF})) && return :(conv(collect($TF, u), collect($TF, v)))
+
+        # If it didn't work, fall back on Float64
+        return :(conv(collect(Float64, u), collect(Float64, v)))
+
+    else # T<: Complex
+        # Try with `complex`
+        TC = typeof(complex(one(T)))
+        hasmethod(conv, (Vector{TC}, Vector{TC})) && return :(conv(collect($TC, u), collect($TC, v)))      
+
+        # If it didn't work, fall back on Float64
+        return :(conv(collect(Complex{Float64}, u), collect(Complex{Float64}, v)))
+    end
+end
+function conv(u::AbstractVector{<:Number}, v::AbstractVector{<:Number})
+    # fallback implementation in Julia that should work with any Number (units, etc)
+    error("General Julia implementation of `conv`: Under Construction")
+end
+
+
+
+
 """
     conv2(u,v,A)
 
