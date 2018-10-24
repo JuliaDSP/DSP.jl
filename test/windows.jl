@@ -18,8 +18,8 @@ end
     # and Blackman windows against values computed with MATLAB.
     # Lanczos and cosine are checked against values generated with DSP.jl v0.4.0
     # to test for regressions, as there's no reference MATLAB implementation
-    # Gaussian is compared against DSP.jl from v0.5.0, when the implementation
-    # was corrected (see GH issue #204)
+    # Gaussian is compared against DSP.jl from commit da1b195, when the
+    # implementation was corrected (see GH issue #204)
     @test rect(128) == ones(128)
 
     hanning_jl = hanning(128)
