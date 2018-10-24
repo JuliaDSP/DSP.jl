@@ -11,7 +11,7 @@ makedocs(
         "windows.md",
         "filters.md",
         "util.md",
-        "convolutions.md"
+        "convolutions.md",
         "index.md",
     ],
 )
