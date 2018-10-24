@@ -484,40 +484,28 @@ filt(h::AbstractArray, x::AbstractArray) =
 # fftfilt and filt
 #
 
-const FFT_LENGTHS = 2 .^ (1:28)
-# FFT times computed on a Core i7-3930K @4.4GHz
-# The real time doesn't matter, just the relative difference
-const FFT_TIMES = [6.36383e-7, 6.3779e-7 , 6.52212e-7, 6.65282e-7, 7.12794e-7, 7.63172e-7,
-                   7.91914e-7, 1.02289e-6, 1.37939e-6, 2.10868e-6, 4.04436e-6, 9.12889e-6,
-                   2.32142e-5, 4.95576e-5, 0.000124927, 0.000247771, 0.000608867, 0.00153119,
-                   0.00359037, 0.0110568, 0.0310893, 0.065813, 0.143516, 0.465745, 0.978072,
-                   2.04371, 4.06017, 8.77769]
+# Number of real operations required for overlap-save with nfft = 2^pow2 and filter
+# length nb
+os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
 
 # Determine optimal length of the FFT for fftfilt
 function optimalfftfiltlength(nb, nx)
-    nfft = 0
-    if nb > FFT_LENGTHS[end] || nb >= nx
-        nfft = nextfastfft(nx+nb-1)
-    else
-        fastestestimate = Inf
-        firsti = max(1, searchsortedfirst(FFT_LENGTHS, nb))
-        lasti = max(1, searchsortedfirst(FFT_LENGTHS, nx+nb-1))
-        L = 0
-        for i = firsti:lasti
-            curL = FFT_LENGTHS[i] - (nb - 1)
-            estimate = ceil(Int, nx/curL)*FFT_TIMES[i]
-            if estimate < fastestestimate
-                nfft = FFT_LENGTHS[i]
-                fastestestimate = estimate
-                L = curL
-            end
-        end
+    first_pow2 = ceil(Int, log2(nb))
+    last_pow2 = ceil(Int, log2(nx + nb - 1))
+    complexities = os_fft_complexity.(first_pow2:last_pow2, nb)
 
-        if L > nx
-            # If L > nx, better to find next fast power
-            nfft = nextfastfft(nx+nb-1)
-        end
+    # Find power of 2 with least complexity relative to the first power of 2
+    relative_ind_best_pow2 = argmin(complexities)
+
+    best_pow2 = first_pow2 + relative_ind_best_pow2 - 1
+    nfft = 2 ^ best_pow2
+
+    L = nfft - nb + 1
+    if L > nx
+        # If L > nx, better to find next fast power
+        nfft = nextfastfft(nx + nb - 1)
     end
+
     nfft
 end
 
@@ -537,15 +525,23 @@ end
 
 Like `fftfilt` but writes result into out array.
 """
-function fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
-                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
+function fftfilt!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{<:Real},
+    nfft::Integer=optimalfftfiltlength(length(b), length(x))
+)
     size(out) == size(x) || throw(ArgumentError("out and x must be the same size"))
     _fftfilt!(out, b, x, nfft)
 end
 
 # Like fftfilt! but does not check if out and x are the same size
-function _fftfilt!(out::AbstractArray{T}, b::AbstractVector{T}, x::AbstractArray{T},
-                 nfft::Integer) where T<:Real
+function _fftfilt!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{T},
+    nfft::Integer
+) where T<:Real
     nb = length(b)
     nx = size(x, 1)
     normfactor = 1/nfft
@@ -603,24 +599,26 @@ end
 
 # Perform FIR filtering with either time domain or fft based algorithms, writing
 # output to `out` argument. Does not check that x and out are the same size.
-function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
+function filt_choose_alg!(
+    out::AbstractArray{<:Real},
+    b::AbstractVector{<:Real},
+    x::AbstractArray{<:Real}
+)
     nb = length(b)
     nx = size(x, 1)
 
-    filtops = length(x) * min(nx, nb)
-    if filtops <= 500000
-        # 65536 is apprximate cutoff where FFT-based algorithm may be
-        # more effective (due to overhead for allocation, plan
-        # creation, etc.)
-        _tdfilt!(out, b, x)
-    else
-        # Estimate number of multiplication operations for fftfilt()
-        # and filt()
-        nfft = optimalfftfiltlength(nb, nx)
-        L = min(nx, nfft - (nb - 1))
-        nchunk = ceil(Int, nx/L)*div(length(x), nx)
-        fftops = (2*nchunk + 1) * nfft * log2(nfft)/2 + nchunk * nfft + 500000
+    filtops_per_sample = min(nx, nb)
 
-        filtops > fftops ? _fftfilt!(out, b, x, nfft) : _tdfilt!(out, b, x)
+    nfft = optimalfftfiltlength(nb, nx)
+    fftops_per_sample = os_fft_complexity(log2(nfft), nb)
+
+    if filtops_per_sample > fftops_per_sample
+        _fftfilt!(out, b, x, nfft)
+    else
+        _tdfilt!(out, b, x)
     end
+end
+
+function filt_choose_alg!(out::AbstractArray, b::AbstractArray, x::AbstractArray)
+    _tdfilt!(out, b, x)
 end
