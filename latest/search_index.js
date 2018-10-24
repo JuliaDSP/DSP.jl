@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contents",
     "title": "Welcome to DSP.jl\'s documentation!",
     "category": "section",
-    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"index.md\",\n]"
+    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"convolutions.md\",\n    \"index.md\",\n]"
 },
 
 {
@@ -213,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Windows - window functions",
     "title": "DSP.Windows.gaussian",
     "category": "function",
-    "text": "gaussian(n, sigma)\n\nGaussian window of length n parameterized by the standard deviation sigma.\n\n\n\n"
+    "text": "gaussian(n, σ)\n\nGives an n-sample gaussian window defined by sampling the function w(x) = e^-frac 1 2 left(frac x  right)^2 in the range -0505. This means that for =05 the endpoints of the window will correspond to 1 standard deviation away from the center.\n\n\n\n"
 },
 
 {
@@ -758,6 +758,22 @@ var documenterSearchIndex = {"docs": [
     "title": "Util - utility functions",
     "category": "section",
     "text": "unwrap\nunwrap!\nhilbert\nfftfreq\nrfftfreq\nnextfastfft\npow2db\namp2db\ndb2pow\ndb2amp\nrms\nrmsfft\nmeanfreq"
+},
+
+{
+    "location": "convolutions.html#",
+    "page": "Convolutions - similarity methods",
+    "title": "Convolutions - similarity methods",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "convolutions.html#Convolutions-similarity-methods-1",
+    "page": "Convolutions - similarity methods",
+    "title": "Convolutions - similarity methods",
+    "category": "section",
+    "text": "conv\nconv2\ndeconv\nxcorr"
 },
 
 {
