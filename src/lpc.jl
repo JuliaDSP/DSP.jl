@@ -45,7 +45,7 @@ function arburg{T <: Number}(x::AbstractVector{T}, p::Int)
 end
 
 function lpc{T <: Number}(x::AbstractVector{T}, p::Int, ::LPCBurg)
-    a, prediction_err = arburg(x, p)
+    a, prediction_err, _ = arburg(x, p)
     return a[2:end], prediction_err
 end
 
