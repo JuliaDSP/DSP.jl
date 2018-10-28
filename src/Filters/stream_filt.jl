@@ -10,7 +10,7 @@ mutable struct FIRStandard{T} <: FIRKernel{T}
 end
 
 function FIRStandard(h::Vector)
-    h    = flipdim(h, 1)
+    h    = Compat.reverse(h, dims=1)
     hLen = length(h)
     FIRStandard(h, hLen)
 end
@@ -48,7 +48,7 @@ mutable struct FIRDecimator{T} <: FIRKernel{T}
 end
 
 function FIRDecimator(h::Vector, decimation::Integer)
-    h            = flipdim(h, 1)
+    h            = Compat.reverse(h, dims=1)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)
@@ -77,6 +77,7 @@ function FIRRational(h::Vector, ratio::Rational)
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
 end
 
+FIRRational(h::Vector,ratio::Integer)=FIRRational(h,convert(Rational,ratio))
 
 #
 # Arbitrary resampler FIR kernel
@@ -137,7 +138,7 @@ Construct a stateful FIRFilter object from the vector of filter taps `h`.
 the input to output sample rate relationship (e.g. `147//160` for
 converting recorded audio from 48 KHz to 44.1 KHz).
 """
-function FIRFilter(h::Vector, resampleRatio::Rational = 1//1)
+function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     interpolation = numerator(resampleRatio)
     decimation    = denominator(resampleRatio)
     historyLen    = 0
@@ -185,7 +186,7 @@ function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32)
     FIRFilter(h, rate)
 end
 
-function FIRFilter(rate::Rational)
+function FIRFilter(rate::Union{Integer,Rational})
     h = resample_filter(rate)
     FIRFilter(h, rate)
 end
@@ -277,7 +278,7 @@ function taps2pfb(h::Vector{T}, Nϕ::Integer) where T
     hLen     = length(h)
     tapsPerϕ = ceil(Int, hLen/Nϕ)
     pfbSize  = tapsPerϕ * Nϕ
-    pfb      = Matrix{T}(uninitialized, tapsPerϕ, Nϕ)
+    pfb      = Matrix{T}(undef, tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
@@ -297,7 +298,7 @@ end
 # ( It's hard to explain how this works without a diagram )
 #
 
-function outputlength(inputlength::Integer, ratio::Rational, initialϕ::Integer)
+function outputlength(inputlength::Integer, ratio::Union{Integer,Rational}, initialϕ::Integer)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
     outLen        = ((inputlength * interpolation) - initialϕ + 1) / decimation
@@ -309,7 +310,7 @@ function outputlength(kernel::FIRStandard, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRInterpolator, inputlength::Integer)
-    outputlength(inputlength-kernel.inputDeficit+1, kernel.interpolation//1, kernel.ϕIdx)
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.interpolation, kernel.ϕIdx)
 end
 
 function outputlength(kernel::FIRDecimator, inputlength::Integer)
@@ -334,7 +335,7 @@ end
 # given the output length
 #
 
-function inputlength(outputlength::Int, ratio::Rational, initialϕ::Integer)
+function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
     inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
@@ -346,7 +347,7 @@ function inputlength(kernel::FIRStandard, outputlength::Integer)
 end
 
 function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    inLen = inputlength(outputlength, kernel.interpolation//1, kernel.ϕIdx)
+    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx)
     inLen += kernel.inputDeficit - 1
 end
 
@@ -417,7 +418,7 @@ end
 
 function filt(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -468,7 +469,7 @@ end
 
 function filt(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -524,7 +525,7 @@ end
 
 function filt(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -572,7 +573,7 @@ end
 
 function filt(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -643,7 +644,7 @@ end
 
 function filt(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
     bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(uninitialized, bufLen)
+    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
     samplesWritten == bufLen || resize!(buffer, samplesWritten)
@@ -657,7 +658,7 @@ end
 #
 
 # Single-rate, decimation, interpolation, and rational resampling.
-function filt(h::Vector, x::AbstractVector, ratio::Rational)
+function filt(h::Vector, x::AbstractVector, ratio::Union{Integer,Rational})
     self = FIRFilter(h, ratio)
     filt(self, x)
 end

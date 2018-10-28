@@ -21,17 +21,17 @@ end
 
 function zpkfilter_eq(f1, f2)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test map(Complex128, sort(f1.z, lt=lt)) ≈ map(Complex128, sort(f2.z, lt=lt))
+        @test map(ComplexF64, sort(f1.z, lt=lt)) ≈ map(ComplexF64, sort(f2.z, lt=lt))
     end
-    @test map(Complex128, sort(f1.p, lt=lt)) ≈ map(Complex128, sort(f2.p, lt=lt))
+    @test map(ComplexF64, sort(f1.p, lt=lt)) ≈ map(ComplexF64, sort(f2.p, lt=lt))
     @test map(Float64, f1.k) ≈ map(Float64, f2.k)
 end
 
 function zpkfilter_eq(f1, f2, eps)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test ≈(map(Complex128, sort(f1.z, lt=lt)), map(Complex128, sort(f2.z, lt=lt)), atol=eps)
+        @test ≈(map(ComplexF64, sort(f1.z, lt=lt)), map(ComplexF64, sort(f2.z, lt=lt)), atol=eps)
     end
-    @test ≈(map(Complex128, sort(f1.p, lt=lt)), map(Complex128, sort(f2.p, lt=lt)), atol=eps)
+    @test ≈(map(ComplexF64, sort(f1.p, lt=lt)), map(ComplexF64, sort(f2.p, lt=lt)), atol=eps)
     @test ≈(map(Float64, f1.k), map(Float64, f2.k), atol=eps)
 end
 

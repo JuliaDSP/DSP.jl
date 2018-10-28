@@ -3,9 +3,9 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..DSP: @importffts
+using ..DSP: @importffts, mul!
 using ..Util, ..Windows
-using Compat: AbstractRange, uninitialized
+using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, undef
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 @importffts
@@ -30,12 +30,12 @@ end
 ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
     ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
 
-function Base.getindex(x::ArraySplit{T,S,Void}, i::Int) where {T,S}
-    (1 ≤ i ≤ x.k) || throw(BoundsError())
-    copy!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
+function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
+    (i >= 1 && i <= x.k) || throw(BoundsError())
+    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
 end
 function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
-    (1 ≤ i ≤ x.k) || throw(BoundsError())
+    (i >= 1 && i <= x.k) || throw(BoundsError())
     offset = (i-1)*(x.n-x.noverlap)
     window = x.window
     for i = 1:x.n
@@ -43,9 +43,15 @@ function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     end
     x.buf
 end
-Base.start(x::ArraySplit) = 1
-Base.next(x::ArraySplit, i::Int) = (x[i], i+1)
-Base.done(x::ArraySplit, i::Int) = i > x.k
+if isdefined(Base, :iterate)
+    function Base.iterate(x::ArraySplit, i::Int = 1)
+        i > x.k ? nothing : (x[i], i+1)
+    end
+else
+    Base.start(x::ArraySplit) = 1
+    Base.next(x::ArraySplit, i::Int) = (x[i], i+1)
+    Base.done(x::ArraySplit, i::Int) = i > x.k
+end
 Base.size(x::ArraySplit) = (x.k,)
 
 """
@@ -157,7 +163,7 @@ end
 
 function fft2oneortwosided!(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, nfft::Int, onesided::Bool, offset::Int=0) where T
     n = length(s_fft)
-    copy!(out, offset+1, s_fft, 1, n)
+    copyto!(out, offset+1, s_fft, 1, n)
     if !onesided && n != nfft
         # Convert real FFT to two-sided
         @inbounds for i = 2:n-1
@@ -172,7 +178,7 @@ end
 
 # Evaluate a window function at n points, returning both the window
 # (or nothing if no window) and the squared L2 norm of the window
-compute_window(::Void, n::Int) = (nothing, n)
+compute_window(::Nothing, n::Int) = (nothing, n)
 function compute_window(window::Function, n::Int)
     win = window(n)::Vector{Float64}
     norm2 = sum(abs2, win)
@@ -255,7 +261,7 @@ signal.
 """
 function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                     window::Union{Function,AbstractVector,Void}=nothing) where T<:Number
+                     window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
@@ -269,7 +275,7 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                 @inbounds input[i] = s[i]*win[i]
             end
         else
-            copy!(input, s)
+            copyto!(input, s)
         end
     end
 
@@ -345,7 +351,7 @@ end
 
 forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
     plan_rfft(X)
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{Complex64, Complex128}} =
+forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
@@ -365,7 +371,7 @@ object. For a Bartlett periodogram, set `noverlap=0`. See
 function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                      onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
-                     window::Union{Function,AbstractVector,Void}=nothing) where T<:Number
+                     window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= n || error("nfft must be >= n")
 
@@ -374,10 +380,10 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     r = fs*norm2*length(sig_split)
 
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(sig_split.buf, tmp)
     for sig in sig_split
-        A_mul_B!(tmp, plan, sig)
+        mul!(tmp, plan, sig)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -403,11 +409,11 @@ See also: [`dpss`](@ref)
 function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   nfft::Int=nextfastfft(length(s)), fs::Real=1,
                   nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
-                  window::Union{AbstractMatrix,Void}=nothing) where T<:Number
+                  window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= length(s) || error("nfft must be >= n")
 
-    if isa(window, Void)
+    if isa(window, Nothing)
         window = dpss(length(s), nw, ntapers)
         r::T = fs*ntapers
     else
@@ -418,14 +424,14 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
 
     out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
     input = zeros(fftintype(T), nfft)
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
 
     plan = forward_plan(input, tmp)
     for j = 1:size(window, 2)
         for i = 1:size(window, 1)
             @inbounds input[i] = window[i, j]*s[i]
         end
-        A_mul_B!(tmp, plan, input)
+        mul!(tmp, plan, input)
         fft2pow!(out, tmp, nfft, r, onesided)
     end
 
@@ -464,7 +470,7 @@ with overlap of `noverlap` samples, and returns a Spectrogram object. See
 function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
                      onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
-                     window::Union{Function,AbstractVector,Void}=nothing) where T
+                     window::Union{Function,AbstractVector,Nothing}=nothing) where T
 
     out = stft(s, n, noverlap, PSDOnly(); onesided=onesided, nfft=nfft, fs=fs, window=window)
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
@@ -474,7 +480,7 @@ end
 
 struct PSDOnly end
 stfttype(T::Type, psdonly::PSDOnly) = fftabs2type(T)
-stfttype(T::Type, psdonly::Void) = fftouttype(T)
+stfttype(T::Type, psdonly::Nothing) = fftouttype(T)
 
 """
     stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
@@ -485,22 +491,22 @@ coefficients. See [`periodogram`](@ref) for description of optional
 keyword arguments.
 """
 function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
-              psdonly::Union{Void,PSDOnly}=nothing;
+              psdonly::Union{Nothing,PSDOnly}=nothing;
               onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
-              window::Union{Function,AbstractVector,Void}=nothing) where T
+              window::Union{Function,AbstractVector,Nothing}=nothing) where T
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
     nout = onesided ? (nfft >> 1)+1 : nfft
     out = zeros(stfttype(T, psdonly), nout, length(sig_split))
-    tmp = Vector{fftouttype(T)}(uninitialized, T<:Real ? (nfft >> 1)+1 : nfft)
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     r = fs*norm2
 
     plan = forward_plan(sig_split.buf, tmp)
     offset = 0
     for sig in sig_split
-        A_mul_B!(tmp, plan, sig)
+        mul!(tmp, plan, sig)
         if isa(psdonly, PSDOnly)
             fft2pow!(out, tmp, nfft, r, onesided, offset)
         else

@@ -1,7 +1,7 @@
 using DSP, Compat, Compat.Test
 
 # Naive rational resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
+function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)
 
     upfactor     = numerator(resamplerate)
     downfactor   = denominator(resamplerate)
@@ -329,38 +329,32 @@ end
 # Run the tests
 #
 
-function test_all()
-    for interpolation in [1, 5, 14, 23],
+@testset "interp.=$interpolation, dec.=$decimation, Th=$Th, Tx=$Tx" for interpolation in [1, 5, 14, 23],
             decimation in [1, 9, 17, 21],
                 Th in [Float32, Float64],
-                    Tx in [Float32, Float64, Complex64, Complex128]
+                    Tx in [Float32, Float64, ComplexF32, ComplexF64]
 
-        h     = rand(Th, rand(16:128))
-        xLen  = rand(200:300)
-        xLen  = xLen-mod(xLen, decimation)
-        x     = rand(Tx, xLen)
-        ratio = interpolation//decimation
-
-        if ratio == 1
-            test_singlerate(h, x)
-        end
-
-        if decimation != 1
-            test_decimation(h, x, decimation)
-        end
-
-        if interpolation != 1
-            test_interpolation(h, x, interpolation)
-        end
-
-
-        if numerator(ratio) == interpolation && denominator(ratio) == decimation && numerator(ratio) != 1 && denominator(ratio) != 1
-            test_rational(h, x, ratio)
-            if Tx in [Float32, Complex64]
-                test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
-            end
+    h     = rand(Th, rand(16:128))
+    xLen  = rand(200:300)
+    xLen  = xLen-mod(xLen, decimation)
+    x     = rand(Tx, xLen)
+    ratio = interpolation//decimation
+    if ratio == 1
+        test_singlerate(h, x)
+    end
+    if decimation != 1
+        test_decimation(h, x, decimation)
+    end
+    if interpolation != 1
+        test_interpolation(h, x, interpolation)
+    end
+    if numerator(ratio) == interpolation && denominator(ratio) == decimation && numerator(ratio) != 1 && denominator(ratio) != 1
+        test_rational(h, x, ratio)
+        if Tx in [Float32, ComplexF32]
+            test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
         end
     end
+    if decimation == 1
+        test_rational(h, x, interpolation)
+    end
 end
-
-test_all()

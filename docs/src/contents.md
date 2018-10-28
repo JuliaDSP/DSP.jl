@@ -6,9 +6,11 @@ DSP.jl provides a number of common DSP routines in Julia. So far, the following 
 
 ```@contents
 Pages = ["periodograms.md",
+    "estimation.md",
     "windows.md",
     "filters.md",
     "util.md",
+    "convolutions.md",
     "index.md",
 ]
 ```
