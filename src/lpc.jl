@@ -7,7 +7,7 @@ mutable struct LPCBurg; end
 mutable struct LPCLevinson; end
 
 """
-`ar_burg(x::AbstractVector, p::Int)`
+`arburg(x::AbstractVector, p::Int)`
 
 LPC (Linear-Predictive-Code) estimation, using the Burg method.
 
@@ -27,7 +27,7 @@ function arburg{T <: Number}(x::AbstractVector{T}, p::Int)
     eb = x                      # backwards error
     a = [1; zeros(T, p)]        # prediction coefficients
     # Initialize prediction error wtih the variance of the signal
-    prediction_err :: T = sum(abs2, x) ./ length(x)
+    prediction_err :: T = sum(abs2, x) / length(x)
     reflection_coeffs = zeros(T, p)
 
     for m in 1:p
