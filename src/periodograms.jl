@@ -22,7 +22,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
 
     function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window) where {Ti<:AbstractVector,Si,Wi}
         # n = noverlap is a problem - the algorithm will not terminate.
-        (0 <= noverlap < n) || error("noverlap must be between zero and n")
+        (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
         new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
     end
@@ -62,6 +62,9 @@ of length `m`. Iterating or indexing the returned AbstractVector
 always yields the same Vector with different contents.
 """
 arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
+
+## Make collect() return the correct split arrays rather than repeats of the last computed copy
+Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
 
 ## UTILITY FUNCTIONS
 
