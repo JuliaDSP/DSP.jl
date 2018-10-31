@@ -18,7 +18,14 @@ after_success:
       Pkg.add("Coverage");
       using Coverage;
       Coveralls.submit(Coveralls.process_folder())'
-  - julia -e 'VERSION >= v"0.7.0-DEV.5183" && using Pkg;
-      VERSION >= v"0.7.0-DEV.5183" || cd(Pkg.dir("DSP"));
-      Pkg.add("Documenter");
-      include(joinpath("docs", "make.jl"))'
+
+jobs:
+  include:
+    - stage: "Documentation"
+      julia: 1.0
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
+                                               Pkg.instantiate()'
+        - julia --project=docs/ docs/make.jl
+      after_success: skip

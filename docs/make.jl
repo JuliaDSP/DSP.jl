@@ -18,7 +18,6 @@ makedocs(
 
 deploydocs(
     repo = "github.com/JuliaDSP/DSP.jl.git",
-    julia = "0.6",
     target = "build",
     deps   = nothing,
     make   = nothing,
