@@ -7,7 +7,11 @@ DSP.jl
 
 DSP.jl provides a number of common DSP routines in Julia.  So far, the following are implemented:
 
-- [Periodogram estimation](https://juliadsp.github.io/DSP.jl/latest/periodograms.html)
-- [Window functions](https://juliadsp.github.io/DSP.jl/latest/windows.html)
-- [Filter design and filtering](https://juliadsp.github.io/DSP.jl/latest/filters.html)
-- [Utility functions](https://juliadsp.github.io/DSP.jl/latest/util.html)
+- [Online Documentation](https://juliadsp.github.io/DSP.jl/latest/contents/)
+
+- [Periodogram estimation](https://juliadsp.github.io/DSP.jl/latest/periodograms)
+- [Window functions](https://juliadsp.github.io/DSP.jl/latest/windows)
+- [Filter design and filtering](https://juliadsp.github.io/DSP.jl/latest/filters)
+- [Estimation](http://juliadsp.github.io/DSP.jl/latest/estimation/)
+- [Convolution](https://juliadsp.github.io/DSP.jl/latest/convolutions)
+- [Utility functions](https://juliadsp.github.io/DSP.jl/latest/util)
