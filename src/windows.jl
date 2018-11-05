@@ -29,18 +29,38 @@ export  rect,
 # this gets shared between the docstrings of all the window functions because
 # they share these args.
 zerophase_docs = """
+If `zerophase` is `false` (the default) the window is centered around index
+`(n+1)÷2`, which is commonly used for FIR filter design. These are usually
+odd-length.
+
 If `zerophase` is `true` the window is centered around index 1 (with the
-negative half wrapped to the end of the vector), and is suitable for FFT
-processing. These are usually even-length.
-
-If `zerophase` is `false` the window is centered around `(len+1)/2`, which is
-commonly used for FIR filter design. These are usually odd-length. Note that
-this corresponds to sampling a continuous window of length `len-1`, including
-the endpoints.
+negative half wrapped to the end of the vector). These are often used in FFT
+processing, and are usually even-length.
 """
 
 """
-    makewindow(winfunc::Function, len, padding, zerophase)
+    padplot(plotstr)
+
+Takes a multiline string and pre-pads it so that it shows up as
+preformatted code when included in a docstring.
+"""
+function padplot(plotstr)
+    minpad = typemax(Int)
+    lines = split(plotstr, "\n")
+    # count the minimum number of spaces preceeding any line
+    for line in lines
+        line == "" && continue
+        minpad = min(minpad, length(match(r"^ *", line).match))
+    end
+
+    pad = " " ^ (4-minpad)
+    join((string(pad, line) for line in lines), "\n")
+end
+
+include("winplots.jl")
+
+"""
+    makewindow(winfunc::Function, n, padding, zerophase)
 
 Generate a discrete window vector of the given length with `padding` zeros.
 `winfunc` should be a function giving the window value in the range of
@@ -58,14 +78,14 @@ function hanning(n::Integer; padding=0, zerophase=false)
 end
 ```
 """
-function makewindow(winfunc::Function, len, padding, zerophase)
-    win = zeros(len+padding)
+function makewindow(winfunc::Function, n, padding, zerophase)
+    win = zeros(n+padding)
     # TODO - handle odd-length zerophase case (e.g. check triang)
     if zerophase
-        win[end-len÷2+1:end] .= winfunc.(linspace(-0.5, -1/len, len÷2))
-        win[1:len÷2] .= winfunc.(linspace(0.0, 0.5-1/len, len÷2))
+        win[end-n÷2+1:end] .= winfunc.(range(-0.5, stop=-1/n, length=n÷2))
+        win[1:n÷2] .= winfunc.(range(0.0, stop=0.5-1/n, length=n÷2))
     else
-        win[1:len] .= winfunc.(linspace(-0.5, 0.5, len))
+        win[1:n] .= winfunc.(range(-0.5, stop=0.5, length=n))
     end
 
     win
@@ -75,7 +95,11 @@ end
 # Window functions
 #
 
+# equations rendered into Unicode with https://arthursonzogni.com/Diagon/
+
 """
+$rect_winplot
+
     rect(n; padding=0, zerophase=false)
 
 Rectangular window of length `n`, padded with `padding` zeros. This window is 1
@@ -91,10 +115,28 @@ end
 
 
 """
+$hanning_winplot
+
     hanning(n; padding=0, zerophase=false)
 
 Hanning window of length `n` with `padding` zeros. The Hanning (or Hann) window
 is a raised-cosine window that reaches zero at the endpoints.
+
+The window is defined by sampling the continuous function:
+
+           1 + cos(2πx)
+    w(x) = ──────────── = cos²(πx)
+                2
+
+in the range `[-0.5, 0.5]`
+
+The `hanning` window satisfies the Constant Overlap-Add (COLA) property with an
+hop of 0.5, which means that adding together a sequence of delayed windows with
+50% overlap will result in a constant signal. This is useful when synthesizing
+a signal from a number of overlapping frames (each with a roughly rectangular
+window), to eliminate windowing amplitude modulation.
+
+Note that the `hanning` window is the `cosine` window squared.
 
 $zerophase_docs
 """
@@ -105,21 +147,30 @@ function hanning(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$hamming_winplot
+
     hamming(n; padding=0, zerophase=false)
 
 Hamming window of length `n` with `padding` zeros. The Hamming window does not
 reach zero at the endpoints and so has a shallower frequency roll-off when
 compared to the Hanning window, but is designed to cancel the first side-lobe.
 
+The window is defined by sampling the continuous function:
+
+    w(x) = 0.54 + 0.46*cos(2pi*x)
+
+in the range `[-0.5, 0.5]`
 $zerophase_docs
 """
 function hamming(n::Integer; padding=0, zerophase=false)
     makewindow(n, padding, zerophase) do x
-        0.54 + 0.46*cos(2*pi*x)
+        0.54 + 0.46*cos(2pi*x)
     end
 end
 
 """
+$tukey_winplot
+
     tukey(n, α::Real; padding=0, zerophase=false)
 
 Tukey window of length `n` with `padding` zeros. The Tukey window has a flat top
@@ -127,39 +178,64 @@ and reaches zero at the endpoints, with a sinusoidal transition area
 parameterized by `α`. For `α == 0`, the window is equivalent to a rectangular
 window. For `α == 1`, the window is a Hann window.
 
+The window is defined by sampling the continuous function:
+
+           ⎛              ⎛    ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜2πα ⎜x + ─────⎟⎟             1 - α
+           ⎜              ⎝    ⎝      2  ⎠⎠         x ≤ ─────
+           ⎜      ─────────────────────────               2
+           ⎜                  2
+           ⎜
+    w(x) = ⎜      1                                 -α/2 < x ≤ α/2
+           ⎜
+           ⎜              ⎛    ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜2πα ⎜x - ─────⎟⎟             1 - α
+           ⎜              ⎝    ⎝      2  ⎠⎠         x > ─────
+           ⎜      ─────────────────────────               2
+           ⎝                  2
+
+in the range `[-0.5, 0.5]`
+
 $zerophase_docs
 """
 function tukey(n::Integer, α::Real; padding=0, zerophase=false)
-    # check that alpha is reasonable
+    # check that α is reasonable
     !(0 <= α <= 1) && error("α must be in the range 0 <= α <= 1.")
 
-    # if alpha is less than machine precision, call it zero and return the
+    # if α is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
     # here, it will blow up below.
-    if abs(alpha) <= eps()
-        rect(n, padding, zerophase)
-    else
-        m = alpha/2
-        makewindow(n, padding, zerophase) do x
-            # shift x so we define in terms of the range [0,1]
-            x += 0.5
-            if x <= m
-                0.5*(1 + cos(pi*(x/m - 1)))
-            elseif x <= 1-m
-                1.0
-            else
-                0.5*(1 + cos(pi*(x/m - 2/alpha + 1)))
-            end
+    abs(α) <= eps() && return rect(n, padding, zerophase)
+
+    makewindow(n, padding, zerophase) do x
+        if x <= -(1-α)/2
+            0.5*(1 + cos(2pi/α*(x+(1-α)/2)))
+        elseif x <= (1-α)/2
+            1.0
+        else
+            0.5*(1 + cos(2pi/α*(x-(1-α)/2)))
         end
     end
 end
 
 """
+$cosine_winplot
+
     cosine(n; padding=0, zerophase=false)
 
 Cosine window of length `n` with `padding` zeros. The cosine window is the first
 lobe of a cosine function (with the zero crossings at +/- π as endpoints). Also
 called the sine window.
+
+The window is defined by sampling the continuous function:
+
+    w(x) = cos(πx)
+
+in the range `[-0.5, 0.5]`
+
+Note that the cosine window is the square root of the `hanning` window, so it is
+sometimes used when you are applying the window twice, such as the analysis and
+synthesis steps of an STFT.
 
 $zerophase_docs
 """
@@ -170,10 +246,20 @@ function cosine(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$lanczos_winplot
+
     lanczos(n; padding=0, zerophase=false)
 
 Lanczos window of length `n` with `padding` zeros. The Lanczos window is the
-main lobe of a sinc function.
+main lobe of a `sinc` function.
+
+The window is defined by sampling the continuous function:
+
+                      sin(2πx)
+    w(x) = sinc(2x) = ────────
+                         2πx
+
+in the range `[-0.5, 0.5]`
 
 $zerophase_docs
 """
@@ -184,11 +270,21 @@ function lanczos(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$triang_winplot
+
     triang(n; padding=0, zerophase=false)
 
 Triangular window of length `n` with `padding` zeros. The Triangular window does
-not reach zero at the endpoints. It is equivilent to a `bartlett` window of
-length `n+2` but without including the zero endpoints.
+not reach zero at the endpoints. The zero point would be 1/2 sample past the
+ends of the window.
+
+The window is defined by sampling the continuous function:
+
+        n-1
+    1 - ─── abs(2x)
+         n
+
+in the range `[-0.5, 0.5]`
 
 $zerophase_docs
 """
@@ -199,12 +295,20 @@ function triang(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$bartlett_winplot
+
     bartlett(n; padding=0, zerophase=false)
 
 Bartlett window of length `n`. The Bartlett window is a triangular window that
-reaches 0 at the edges. This is also equivalent to the convolution of two
-rectangular windows of size `n/2`. See `triang` for a window that does not
-include the zero endpoints. 
+reaches 0 at the endpoints. This is equivalent to convolving two rectangular
+windows of length `(n-1)/2` and adding the zero endpoints. See `triang` for a
+window that does not reach zero at the endpoints.
+
+The window is defined by sampling the continuous function:
+
+    1 - abs(2x)
+
+in the range `[-0.5, 0.5]`
 
 $zerophase_docs
 """
@@ -215,12 +319,20 @@ function bartlett(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$gaussian_winplot
+
     gaussian(n, σ; padding=0, zerophase=false)
 
-Gives an n-sample gaussian window defined by sampling the function
-\$w(x) = e^{-\\frac 1 2 \\left(\\frac x σ \\right)^2}\$ in the range
-\$[-0.5,0.5]\$. This means that for \$σ=0.5\$ the endpoints of the window will
-correspond to 1 standard deviation away from the center.
+Gives an n-sample gaussian window defined by sampling the function:
+
+            ⎛        2⎞
+            ⎜-1   ⎛x⎞ ⎟
+            ⎜── ⋅ ⎜─⎟ ⎟
+            ⎝ 2   ⎝σ⎠ ⎠
+    w(x) = e
+
+in the range `[-0.5,0.5]`. This means that for `σ=0.5` the endpoints of the
+window will correspond to 1 standard deviation away from the center.
 
 $zerophase_docs
 """
@@ -232,10 +344,18 @@ function gaussian(n::Integer, σ::Real; padding=0, zerophase=false)
 end
 
 """
+$bartlett_hann_winplot
+
     bartlett_hann(n; padding=0, zerophase=false)
 
 Bartlett-Hann window of length `n` with `padding` zeros. The Bartlett-Hann
-window is 
+window is a weighted sum of the Bartlett and Hann windows.
+
+The window is defined by sampling the continuous function:
+
+    w(x) = 0.62 - 0.48*abs(x) + 0.38*cos(2π*x)
+
+in the range `[-0.5, 0.5]`
 
 $zerophase_docs
 """
@@ -247,9 +367,20 @@ function bartlett_hann(n::Integer; padding=0, zerophase=false)
 end
 
 """
+$blackman_winplot
+
     blackman(n)
 
-"Exact" Blackman window, alpha = 0.16.
+Approximates the "Exact" Blackman window. This is the generalized Blackman
+window with α = 0.16.
+
+The window is defined by sampling the continuous function:
+
+    w(x) = 0.42 + 0.5*cos(2π*x) + 0.08*cos(4π*x)
+
+in the range `[-0.5, 0.5]`
+
+$zerophase_docs
 """
 function blackman(n::Integer; padding=0, zerophase=false)
     a0, a1, a2 = 0.42, 0.5, 0.08
@@ -259,14 +390,34 @@ function blackman(n::Integer; padding=0, zerophase=false)
 end
 
 """
-    kaiser(n, alpha)
+$kaiser_winplot
 
-Kaiser window of length `n` parameterized by `alpha`.
+    kaiser(n, α)
+
+Kaiser window of length `n` parameterized by `α`. The Kaiser window approximates
+the DPSS window (given by `dpss`), using a simplified definition relying on a
+Bessel function. Larger values for `α` give a wider main lobe but have lower
+sidelobes. Typically `α` is set around 3.
+
+The window is defined by sampling the continuous function:
+
+
+             ⎛  ⎛   _________⎞⎞
+             ⎜  ⎜  ╱        2⎟⎟
+    w(x) = I₀⎝πα⎝╲╱ 1 - (2x) ⎠⎠
+           ────────────────────
+                   I₀(πα)
+
+in the range `[-0.5, 0.5]`
+
+Where I₀(⋅) is the zeroth-order modified Bessel function of the first kind.
+
+$zerophase_docs
 """
-function kaiser(n::Integer, alpha::Real; padding=0, zerophase=false)
-    pf = 1.0/besseli(0,pi*alpha)
+function kaiser(n::Integer, α::Real; padding=0, zerophase=false)
+    pf = 1.0/besseli(0,pi*α)
     makewindow(n, padding, zerophase) do x
-        pf*besseli(0, pi*alpha*(sqrt(1 - (2x)^2)))
+        pf*besseli(0, pi*α*(sqrt(1 - (2x)^2)))
     end
 end
 
@@ -276,6 +427,8 @@ end
 # for generating discrete prolate spheroidal sequences. IEEE
 # Transactions on Signal Processing, 42(11), 3276-3278.
 """
+$dpss_winplot
+
     dpss(n, nw, ntapers=iceil(2*nw)-1)
 
 The first `ntapers` discrete prolate spheroid sequences (Slepian
@@ -283,6 +436,8 @@ tapers) as an `n` × `ntapers` matrix. The signs of the tapers
 follow the convention that the first element of the skew-symmetric
 (odd) tapers is positive. The time-bandwidth product is given by
 `nw`.
+
+The DPSS window maximizes the energy concentration in the main lobe.
 """
 function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
               padding=0, zerophase=false)
