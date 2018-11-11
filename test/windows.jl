@@ -114,8 +114,8 @@ end
     @test tukey(8, 0.5, zerophase=true) == ifftshift(tukey(9, 0.5)[1:8])
     @test tukey(9, 0.5, zerophase=true) == ifftshift(tukey(19, 0.5)[2:2:end])
     @test dpss(8, 2, 1, zerophase=true)[:] == ifftshift(dpss(9, 2, 1)[1:8])
-    # this test fails because `dpss` isn't normalized
-    # @test dpss(9, 2, 1, zerophase=true)[:] == ifftshift(dpss(19, 2, 1)[2:2:end])
+    # odd-length zerophase dpss windows not currently supported
+    @test_throws ArgumentError dpss(9, 2, 1, zerophase=true)
 
     # triang needs to be special-cased here because it has different definitions
     # for odd and even `n` (and also the underlying continuous function changes

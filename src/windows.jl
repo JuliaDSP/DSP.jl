@@ -469,6 +469,9 @@ The DPSS window maximizes the energy concentration in the main lobe.
 """
 function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
               padding=0, zerophase=false)
+    if isodd(n) && zerophase
+        throw(ArgumentError("`dpss` does not currently support odd-length zerophase windows"))
+    end
     # TODO there's probably a more efficient way to compute the zero-phase
     # version of this
     if zerophase
@@ -521,8 +524,10 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
     end
 
     if zerophase
-        # TODO make sure this is doing the right thing for odd-length windows
-        rv = circshift(rv, (-n÷2, 0))
+        # TODO: figure out how to handle odd-length zerophase windows. See the
+        # tests for one approach, but upsampling by 2 doesn't work here becasue
+        # the overall amplitude varies with `n`
+        rv = ifftshift(rv, 1)
     end
 
     rv
