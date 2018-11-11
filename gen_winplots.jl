@@ -29,7 +29,7 @@ open(joinpath(@__DIR__, "src", "winplots.jl"), "w") do io
         ]
 
         ymax = winfunc == dpss ? 0.2 : 1.0
-        n = 70
+        n = winfunc == triang ? 7 : 70
 
         fname = split(string(winfunc), ".")[end]
         println(io, "$(fname)_winplot = padplot(\"\"\"")

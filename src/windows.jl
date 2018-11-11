@@ -30,12 +30,18 @@ export  rect,
 # they share these args.
 zerophase_docs = """
 If `zerophase` is `false` (the default) the window is centered around index
-`(n+1)÷2`, which is commonly used for FIR filter design. These are usually
-odd-length.
+`(n+1)/2`, which is commonly used for FIR filter design. These are often used
+for FIR filter design, and usually odd-length. Note that for even-length windows
+this will cause the window center to be located between samples.
 
 If `zerophase` is `true` the window is centered around index 1 (with the
-negative half wrapped to the end of the vector). These are often used in FFT
-processing, and are usually even-length.
+negative half wrapped to the end of the vector). Additionally this creates a
+"periodic" window, which means that if there is no padding then the left and
+right endpoints of the window wrap around to the same sample, so the window
+length is the same as an `n+1`-length non-`zerophase` window. Alternatively you
+can think of the continuous `zerophase` window being of width `n` and the
+non-`zerophase` window being of length `n-1`. `zerophase` windows are often used
+in FFT processing, and are usually even-length.
 """
 
 """
@@ -80,10 +86,17 @@ end
 """
 function makewindow(winfunc::Function, n, padding, zerophase)
     win = zeros(n+padding)
-    # TODO - handle odd-length zerophase case (e.g. check triang)
-    if zerophase
-        win[end-n÷2+1:end] .= winfunc.(range(-0.5, stop=-1/n, length=n÷2))
-        win[1:n÷2] .= winfunc.(range(0.0, stop=0.5-1/n, length=n÷2))
+    if n == 1
+        win[1] = winfunc(0.0)
+    elseif zerophase
+        # note that the endpoint of the window gets set in both lines. In the
+        # unpadded case this will set the same index (which shouldn't make a
+        # difference if the window is symmetric), but it's necessary for when
+        # there's padding, which ends up in the center of the vector length
+        # n÷2+1
+        win[1:n÷2+1] .= winfunc.(range(0.0, stop=(n÷2)/n, length=n÷2+1))
+        # length n÷2
+        win[end-n÷2+1:end] .= winfunc.(range(-(n÷2)/n, stop=-1/n, length=n÷2))
     else
         win[1:n] .= winfunc.(range(-0.5, stop=0.5, length=n))
     end
@@ -275,22 +288,37 @@ $triang_winplot
     triang(n; padding=0, zerophase=false)
 
 Triangular window of length `n` with `padding` zeros. The Triangular window does
-not reach zero at the endpoints. The zero point would be 1/2 sample past the
-ends of the window.
+not reach zero at the endpoints. For odd `n` the `triang` window is the center
+`n` points of an `n+2`-point [`bartlett`](@ref) window (i.e. the samples just
+outside the window would be zero). For even `n` the window slope is the same as
+the `n-1` window but delayed by a half sample so the zero points would be 1/2
+sample past the ends of the window.
 
 The window is defined by sampling the continuous function:
 
-        n-1
-    1 - ─── abs(2x)
-         n
+            ⎛    2(n-1)
+            ⎜1 - ────── abs(x)     n is even
+            ⎜       n
+    w(x) =  ⎜
+            ⎜    2(n-1)
+            ⎜1 - ────── abs(x)     n is odd
+            ⎝     n+1
 
-in the range `[-0.5, 0.5]`
+in the range `[-0.5, 0.5]`.
 
 $zerophase_docs
+
+When `zerophase` is `true` substitute `n+1` for `n` in the above window
+expressions.
 """
 function triang(n::Integer; padding=0, zerophase=false)
+    # for the purpose of calculating the slope of the window, consider `n` to be
+    # 1 larger to compensate for the fact that `zerophase` gives a periodic
+    # window
+    m = zerophase ? n+1 : n
+    scale = iseven(m) ? 2(m-1)/m : 2(m-1)/(m+1)
     makewindow(n, padding, zerophase) do x
-        1 - (n-1)/n*abs(2x)
+        1 - scale*abs(x)
     end
 end
 

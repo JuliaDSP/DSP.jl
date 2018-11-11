@@ -1,4 +1,30 @@
-using DSP, Compat, Compat.Test, Compat.DelimitedFiles
+using FFTW, DSP, Compat, Compat.Test, Compat.DelimitedFiles
+
+# not exported, but used for some internal testing
+using DSP.Windows: makewindow
+@testset "makewindow" begin
+    # make sure we're evaluating the given function at the correct points for
+    # all combinations of arguments
+    @test makewindow(identity, 6, 0, false) ≈ [-0.5, -0.3, -0.1, 0.1, 0.3, 0.5]
+    win = makewindow(identity, 6, 0, true)
+    # doesn't matter whether the middle value is evaluated at +/- 0.5
+    @test win ≈ [0.0, 1/6, 1/3, 1/2, -1/3, -1/6] || win ≈ [0.0, 1/6, 1/3, -1/2, -1/3, -1/6]
+    # we actually only end up with one real zero here, because one of the
+    # "padding" values is used to split the -1/2 from +1/2. For windows that go
+    # to zero padding will actually add `padding` zeros, because evaluting at
+    # +/- 0.5 will be zero.
+    @test makewindow(identity, 6, 2, false) ≈ [-0.5, -0.3, -0.1, 0.1, 0.3, 0.5, 0.0, 0.0]
+    @test makewindow(identity, 6, 2, true) ≈ [0.0, 1/6, 1/3, 1/2, 0.0, -1/2, -1/3, -1/6]
+    @test makewindow(identity, 5, 0, false) ≈ [-0.5, -0.25, 0.0, 0.25, 0.5]
+    @test makewindow(identity, 5, 0, true) ≈ [0.0, 0.2, 0.4, -0.4, -0.2]
+    @test makewindow(identity, 5, 2, false) ≈ [-0.5, -0.25, 0.0, 0.25, 0.5, 0.0, 0.0]
+    @test makewindow(identity, 5, 2, true) ≈ [0.0, 0.2, 0.4, 0.0, 0.0, -0.4, -0.2]
+
+    @test makewindow(x->42.0, 1, 0, false) ≈ [42.0]
+    @test makewindow(x->42.0, 1, 0, true) ≈ [42.0]
+    @test makewindow(x->42.0, 1, 2, false) ≈ [42.0, 0.0, 0.0]
+    @test makewindow(x->42.0, 1, 2, true) ≈ [42.0, 0.0, 0.0]
+end
 
 @testset "dspss" begin
     # Test dpss against dpss computed with MATLAB
@@ -34,6 +60,10 @@ end
     triang_ml = readdlm(joinpath(dirname(@__FILE__), "data", "triang128.txt"), '\t')
     @test triang_jl ≈ triang_ml
 
+    # for odd `n` the `triang` window should be the middle n-2 samples of the
+    # bartlett
+    @test triang(5) ≈ bartlett(7)[2:6]
+
     bartlett_jl = bartlett(128)
     bartlett_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett128.txt"), '\t')
     @test bartlett_jl ≈ bartlett_ml
@@ -68,22 +98,32 @@ end
 end
 
 @testset "zero-phase windows" begin
-    # TODO add gaussian test
-    # test zero-phase versions
     for winf in [rect, hanning, hamming, cosine, lanczos,
                  bartlett, bartlett_hann, blackman]
-        @test winf(128, zerophase=true) ≈ fftshift(winf(129)[1:128])
+        @test winf(8, zerophase=true) ≈ ifftshift(winf(9)[1:8])
+        # the `zerophase=false` version doesn't hit the center point, but the
+        # zerophase one does, so this ends up introducing a 1/2-sample shift.
+        @test winf(9, zerophase=true) ≈ ifftshift(winf(19)[2:2:end])
     end
 
-    # TODO triang test - the definition has a (n-1)/n term for some reason, which
-    # doesn't match my assumption here about how the zero-phase window is created
+    # test the window functions that need extra args
+    @test gaussian(8, 0.1, zerophase=true) == ifftshift(gaussian(9, 0.1)[1:8])
+    @test gaussian(9, 0.1, zerophase=true) == ifftshift(gaussian(19, 0.1)[2:2:end])
+    @test kaiser(8, pi, zerophase=true) == ifftshift(kaiser(9, pi)[1:8])
+    @test kaiser(9, pi, zerophase=true) == ifftshift(kaiser(19, pi)[2:2:end])
+    @test tukey(8, 0.5, zerophase=true) == ifftshift(tukey(9, 0.5)[1:8])
+    @test tukey(9, 0.5, zerophase=true) == ifftshift(tukey(19, 0.5)[2:2:end])
+    @test dpss(8, 2, 1, zerophase=true)[:] == ifftshift(dpss(9, 2, 1)[1:8])
+    # this test fails because `dpss` isn't normalized
+    # @test dpss(9, 2, 1, zerophase=true)[:] == ifftshift(dpss(19, 2, 1)[2:2:end])
 
-    @test gaussian(128, 0.1, zerophase=true) == fftshift(gaussian(129, 0.1)[1:128])
-    @test kaiser(128, pi, zerophase=true) == fftshift(kaiser(129, pi)[1:128])
-    @test tukey(128, 0.5, zerophase=true) == fftshift(tukey(129, 0.5)[1:128])
-
-    # TODO dpss test
+    # triang needs to be special-cased here because it has different definitions
+    # for odd and even `n` (and also the underlying continuous function changes
+    # with `n`), so it doesn't match the zerophase assumption above
+    @test triang(6, zerophase=true) ≈ [1.0, 0.75, 0.5, 0.25, 0.5, 0.75]
+    @test triang(7, zerophase=true) ≈ [1.0, 0.75, 0.5, 0.25, 0.25, 0.5, 0.75]
 end
+
 @testset "window return types" begin
     # make sure return types are correct
     n = 12
