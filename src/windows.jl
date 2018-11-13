@@ -44,6 +44,20 @@ non-`zerophase` window being of length `n-1`. `zerophase` windows are often used
 in FFT processing, and are usually even-length.
 """
 
+
+function twoD_docs(arg=nothing)
+    argstr = if arg !== nothing
+        "`$arg`, "
+    else
+        ""
+    end
+    """
+    Providing a 2D `Tuple` rather than a single `n` constructs a 2D window.
+    $argstr`padding` and `zerophase` can then be given either as a single value
+    for both horizontal and vertical or a 2-tuple to specify them separately.
+    """
+end
+
 """
     padplot(plotstr)
 
@@ -114,9 +128,12 @@ end
 $rect_winplot
 
     rect(n; padding=0, zerophase=false)
+    rect((r,c); padding=0, zerophase=false)
 
 Rectangular window of length `n`, padded with `padding` zeros. This window is 1
 within the window, and 0 outside of it.
+
+$(twoD_docs())
 
 $zerophase_docs
 """
@@ -131,6 +148,7 @@ end
 $hanning_winplot
 
     hanning(n; padding=0, zerophase=false)
+    hanning((r,c); padding=0, zerophase=false)
 
 Hanning window of length `n` with `padding` zeros. The Hanning (or Hann) window
 is a raised-cosine window that reaches zero at the endpoints.
@@ -151,6 +169,8 @@ window), to eliminate windowing amplitude modulation.
 
 Note that the `hanning` window is the `cosine` window squared.
 
+$(twoD_docs())
+
 $zerophase_docs
 """
 function hanning(n::Integer; padding=0, zerophase=false)
@@ -163,6 +183,7 @@ end
 $hamming_winplot
 
     hamming(n; padding=0, zerophase=false)
+    hamming((r,c); padding=0, zerophase=false)
 
 Hamming window of length `n` with `padding` zeros. The Hamming window does not
 reach zero at the endpoints and so has a shallower frequency roll-off when
@@ -173,6 +194,9 @@ The window is defined by sampling the continuous function:
     w(x) = 0.54 + 0.46*cos(2pi*x)
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs())
+
 $zerophase_docs
 """
 function hamming(n::Integer; padding=0, zerophase=false)
@@ -185,6 +209,7 @@ end
 $tukey_winplot
 
     tukey(n, α::Real; padding=0, zerophase=false)
+    tukey((r,c), α::Real; padding=0, zerophase=false)
 
 Tukey window of length `n` with `padding` zeros. The Tukey window has a flat top
 and reaches zero at the endpoints, with a sinusoidal transition area
@@ -208,6 +233,8 @@ The window is defined by sampling the continuous function:
            ⎝                  2
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs("α"))
 
 $zerophase_docs
 """
@@ -235,6 +262,7 @@ end
 $cosine_winplot
 
     cosine(n; padding=0, zerophase=false)
+    cosine((r,c); padding=0, zerophase=false)
 
 Cosine window of length `n` with `padding` zeros. The cosine window is the first
 lobe of a cosine function (with the zero crossings at +/- π as endpoints). Also
@@ -250,6 +278,8 @@ Note that the cosine window is the square root of the `hanning` window, so it is
 sometimes used when you are applying the window twice, such as the analysis and
 synthesis steps of an STFT.
 
+$(twoD_docs())
+
 $zerophase_docs
 """
 function cosine(n::Integer; padding=0, zerophase=false)
@@ -262,6 +292,7 @@ end
 $lanczos_winplot
 
     lanczos(n; padding=0, zerophase=false)
+    lanczos((r,c); padding=0, zerophase=false)
 
 Lanczos window of length `n` with `padding` zeros. The Lanczos window is the
 main lobe of a `sinc` function.
@@ -273,6 +304,8 @@ The window is defined by sampling the continuous function:
                          2πx
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs())
 
 $zerophase_docs
 """
@@ -286,6 +319,7 @@ end
 $triang_winplot
 
     triang(n; padding=0, zerophase=false)
+    triang((r,c); padding=0, zerophase=false)
 
 Triangular window of length `n` with `padding` zeros. The Triangular window does
 not reach zero at the endpoints. For odd `n` the `triang` window is the center
@@ -305,6 +339,8 @@ The window is defined by sampling the continuous function:
             ⎝     n+1
 
 in the range `[-0.5, 0.5]`.
+
+$(twoD_docs())
 
 $zerophase_docs
 
@@ -326,6 +362,7 @@ end
 $bartlett_winplot
 
     bartlett(n; padding=0, zerophase=false)
+    bartlett((r,c); padding=0, zerophase=false)
 
 Bartlett window of length `n`. The Bartlett window is a triangular window that
 reaches 0 at the endpoints. This is equivalent to convolving two rectangular
@@ -337,6 +374,8 @@ The window is defined by sampling the continuous function:
     1 - abs(2x)
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs())
 
 $zerophase_docs
 """
@@ -350,6 +389,7 @@ end
 $gaussian_winplot
 
     gaussian(n, σ; padding=0, zerophase=false)
+    gaussian((r,c), σ; padding=0, zerophase=false)
 
 Gives an n-sample gaussian window defined by sampling the function:
 
@@ -361,6 +401,8 @@ Gives an n-sample gaussian window defined by sampling the function:
 
 in the range `[-0.5,0.5]`. This means that for `σ=0.5` the endpoints of the
 window will correspond to 1 standard deviation away from the center.
+
+$(twoD_docs("σ"))
 
 $zerophase_docs
 """
@@ -375,6 +417,7 @@ end
 $bartlett_hann_winplot
 
     bartlett_hann(n; padding=0, zerophase=false)
+    bartlett_hann((r,c); padding=0, zerophase=false)
 
 Bartlett-Hann window of length `n` with `padding` zeros. The Bartlett-Hann
 window is a weighted sum of the Bartlett and Hann windows.
@@ -384,6 +427,8 @@ The window is defined by sampling the continuous function:
     w(x) = 0.62 - 0.48*abs(x) + 0.38*cos(2π*x)
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs())
 
 $zerophase_docs
 """
@@ -397,7 +442,8 @@ end
 """
 $blackman_winplot
 
-    blackman(n)
+    blackman(n; padding=0, zerophase=false)
+    blackman((r,c); padding=0, zerophase=false)
 
 Approximates the "Exact" Blackman window. This is the generalized Blackman
 window with α = 0.16.
@@ -407,6 +453,8 @@ The window is defined by sampling the continuous function:
     w(x) = 0.42 + 0.5*cos(2π*x) + 0.08*cos(4π*x)
 
 in the range `[-0.5, 0.5]`
+
+$(twoD_docs())
 
 $zerophase_docs
 """
@@ -420,7 +468,8 @@ end
 """
 $kaiser_winplot
 
-    kaiser(n, α)
+    kaiser(n, α; padding=0, zerophase=false)
+    kaiser((r,c), α; padding=0, zerophase=false)
 
 Kaiser window of length `n` parameterized by `α`. The Kaiser window approximates
 the DPSS window (given by `dpss`), using a simplified definition relying on a
@@ -440,6 +489,8 @@ in the range `[-0.5, 0.5]`
 
 Where I₀(⋅) is the zeroth-order modified Bessel function of the first kind.
 
+$(twoD_docs("α"))
+
 $zerophase_docs
 """
 function kaiser(n::Integer, α::Real; padding=0, zerophase=false)
@@ -457,7 +508,7 @@ end
 """
 $dpss_winplot
 
-    dpss(n, nw, ntapers=iceil(2*nw)-1)
+    dpss(n, nw, ntapers=iceil(2*nw)-1; padding=0, zerophase=false)
 
 The first `ntapers` discrete prolate spheroid sequences (Slepian
 tapers) as an `n` × `ntapers` matrix. The signs of the tapers
@@ -466,6 +517,8 @@ follow the convention that the first element of the skew-symmetric
 `nw`.
 
 The DPSS window maximizes the energy concentration in the main lobe.
+
+$zerophase_docs
 """
 function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
               padding=0, zerophase=false)
@@ -584,19 +637,36 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
 end
 
 # tensor product window functions in 2-d, defined as w(x,y) = w(x) \otimes w(y)
-for func in (:tukey, :gaussian, :kaiser)
-    @eval begin
-        $func(n::NTuple{2,Integer}, a::Real; padding=(0,0), kwargs...) =
-            $func(n[1], a; padding=padding[1], kwargs...) * $func(n[2], a; padding=padding[2], kwargs...)'
-    end
-end
+
+# convert the given argument to a 2-Tuple so we can distribute it to the
+# input windows when making a 2D window
+argdup(arg::Tuple) = arg
+argdup(arg::Real) = (arg, arg)
+
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
              :triang, :bartlett, :bartlett_hann, :blackman)
     @eval begin
-        $func(n::NTuple{2,Integer}; padding=(0,0), kwargs...) =
-            $func(n[1]; padding=padding[1], kwargs...) * $func(n[2]; padding=padding[2], kwargs...)'
+        function $func(n::NTuple{2, Integer}; padding=0, zerophase=false)
+            paddings = argdup(padding)
+            zerophases = argdup(zerophase)
+            w1 = $func(n[1], padding=paddings[1], zerophase=zerophases[1])
+            w2 = $func(n[2], padding=paddings[2], zerophase=zerophases[2])
+            w1 * w2'
+        end
     end
 end
 
+for func in (:tukey, :gaussian, :kaiser)
+    @eval begin
+        function $func(n::NTuple{2, Integer}, arg; padding=0, zerophase=false)
+            args = argdup(arg)
+            paddings = argdup(padding)
+            zerophases = argdup(zerophase)
+            w1 = $func(n[1], args[1]; padding=paddings[1], zerophase=zerophases[1])
+            w2 = $func(n[2], args[2]; padding=paddings[2], zerophase=zerophases[2])
+            w1 * w2'
+        end
+    end
+end
 
 end # end module definition
