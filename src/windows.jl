@@ -3,7 +3,7 @@ using ..DSP: @importffts, mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
 import Compat
-using Compat: copyto!, undef
+using Compat: copyto!, undef, range
 if VERSION < v"0.7.0-DEV.5211"
     using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
 else
