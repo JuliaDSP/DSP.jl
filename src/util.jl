@@ -27,8 +27,8 @@ export  hilbert,
         polyfit,
         shiftin!,
         finddelay,
-        shiftsignals,
-        shiftsignals!,
+        shiftsignal,
+        shiftsignal!,
         alignsignals,
         alignsignals!
 
