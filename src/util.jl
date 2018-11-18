@@ -1,5 +1,5 @@
 module Util
-using ..DSP: @importffts, mul!
+using ..DSP: @importffts, mul!, xcorr
 import Base: *
 import Compat
 using Compat: copyto!, ComplexF64, selectdim, undef
