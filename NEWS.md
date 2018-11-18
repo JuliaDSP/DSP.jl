@@ -1,3 +1,8 @@
+# Awaiting next release
+
+- Addition of `lpc_burg` and `lpc_levinson` methods to calculate the Linear
+  Predictive Coefficients describing a signal.
+
 # DSP v0.0.8 Release Notes
 
 - The `DF2TFilter` object provides a filter that preserves state

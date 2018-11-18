@@ -1,7 +1,18 @@
 module Filters
-using Polynomials, Compat, ..Util
-import ..Util.@julia_newer_than
-import Base.Operators: *
+using ..DSP: @importffts, mul!, rmul!
+using ..Unwrap
+using Polynomials, ..Util
+import Base: *
+using Compat: copyto!, undef, argmin
+import Compat
+using Compat.LinearAlgebra: I
+using Compat.Statistics: middle
+@importffts
+if VERSION >= v"0.7.0-DEV.602"
+    import ..DSP: filt, filt!
+else
+    import Base: filt, filt!
+end
 
 include("coefficients.jl")
 export FilterCoefficients,
@@ -15,7 +26,10 @@ export FilterCoefficients,
 include("filt.jl")
 export  DF2TFilter,
         filtfilt,
-        fftfilt
+        tdfilt,
+        tdfilt!,
+        fftfilt,
+        fftfilt!
 
 include("design.jl")
 export  FilterType,
@@ -49,5 +63,12 @@ export  FIRFilter,
         resample,
         setphase!,
         timedelay
+
+include("remez_fir.jl")
+export  remez,
+        RemezFilterType,
+        filter_type_bandpass,
+        filter_type_differentiator,
+        filter_type_hilbert
 
 end

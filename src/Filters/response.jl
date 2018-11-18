@@ -10,63 +10,113 @@ function freqz(filter::FilterCoefficients, w::Number)
     polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
 end
 
-function freqz(filter::FilterCoefficients, w = linspace(0, π, 250))
-    filter = convert(PolynomialRatio, filter)
+function freqz(filter::ZeroPoleGain, w::Number)
+    ejw = exp(im * w)
+    filter.k * prod([ejw - z for z in filter.z]) / prod([ejw - p for p in filter.p])
+end
+
+function freqz(filter::Biquad, w::Number)
+    ejw = exp(-im * w)
+    ejw2 = ejw*ejw
+    (filter.b0 + filter.b1*ejw + filter.b2*ejw2) / (1 + filter.a1*ejw  + filter.a2*ejw2)
+end
+
+function freqz(filter::SecondOrderSections, w::Number)
+    filter.g * prod([freqz(b, w) for b in filter.biquads])
+end
+
+"""
+    freqz(filter, w = range(0, stop=π, length=250))
+
+Frequency response of a digital `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
+function freqz(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
     [freqz(filter, i) for i = w]
 end
 
-function freqz(filter::FilterCoefficients, hz::@compat(Union{Number, AbstractVector}), fs::Number)
-    filter = convert(PolynomialRatio, filter)
+"""
+    freqz(filter, hz, fs)
+
+Frequency response of a digital `filter` at frequency or
+frequencies `hz` with sampling rate `fs`.
+"""
+function freqz(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     freqz(filter, hz_to_radians_per_second(hz, fs))
 end
 
 
-#
-# Phase response of a digital filter
-#
+"""
+    phasez(filter, w = range(0, stop=π, length=250))
 
-function phasez(filter::FilterCoefficients, w = linspace(0, π, 250))
+Phase response of a digital `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
+function phasez(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
     h = freqz(filter, w)
-    unwrap(-atan2(imag(h), real(h)))
+    unwrap(-atan.(imag(h), real(h)); dims=ndims(h))
 end
 
 
-#
-# Impulse response of a digital filter
-#
+"""
+    impz(filter, n=100)
 
+Impulse response of a digital `filter` with `n` points.
+"""
 function impz(filter::FilterCoefficients, n=100)
   i = [1; zeros(n-1)]
   filt(filter, i)
 end
 
-#
-# Step response of a digital filter
-#
+"""
+    stepz(filter, n=100)
 
+Step response of a digital `filter` with `n` points.
+"""
 function stepz(filter::FilterCoefficients, n=100)
   i = ones(n)
   filt(filter, i)
 end
 
 
-#
-# Frequency response of an analog filter
-#
+"""
+    freqs(filter, w)
 
+Frequency response of an analog `filter` at normalised frequency
+or frequencies `w` in radians/sample.
+"""
 function freqs(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     s = im * w
     polyval(filter.b, s) ./ polyval(filter.a, s)
 end
 
+function freqs(filter::ZeroPoleGain, w::Number)
+    s = im * w
+    filter.k * prod([s - z for z in filter.z]) / prod([s - p for p in filter.p])
+end
+
+function freqs(filter::Biquad, w::Number)
+    s = im * w
+    s2 = s*s
+    (filter.b0*s2 + filter.b1*s + filter.b2) / (s2 + filter.a1*s  + filter.a2)
+end
+
+function freqs(filter::SecondOrderSections, w::Number)
+    filter.g * prod([freqs(b, w) for b in filter.biquads])
+end
+
 function freqs(filter::FilterCoefficients, w::AbstractVector)
-    filter = convert(PolynomialRatio, filter)
     [freqs(filter, i) for i = w]
 end
 
-function freqs(filter::FilterCoefficients, hz::@compat(Union{Number, AbstractVector}), fs::Number)
-    filter = convert(PolynomialRatio, filter)
+"""
+    freqs(filter, hz, fs)
+
+Frequency response of an analog `filter` at frequency or
+frequencies `hz` with sampling rate `fs`.
+"""
+function freqs(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number)
     freqs(filter, hz_to_radians_per_second(hz, fs))
 end
 

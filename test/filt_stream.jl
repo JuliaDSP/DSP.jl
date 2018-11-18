@@ -1,10 +1,10 @@
-using DSP, Base.Test, Compat
+using DSP, Compat, Compat.Test
 
 # Naive rational resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
+function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)
 
-    upfactor     = num(resamplerate)
-    downfactor   = den(resamplerate)
+    upfactor     = numerator(resamplerate)
+    downfactor   = denominator(resamplerate)
     xLen         = length(x)
     xZeroStuffed = zeros(eltype(x), length(x) * upfactor)
 
@@ -12,7 +12,7 @@ function naivefilt(h::Vector, x::Vector, resamplerate::Rational=1//1)
         xZeroStuffed[n*upfactor+1] = x[n+1]
     end
 
-    y = Base.filt(h, one(eltype(x)), xZeroStuffed)
+    y = filt(h, one(eltype(x)), xZeroStuffed)
     y = [y[n] for n = 1:downfactor:length(y)]
 end
 
@@ -82,11 +82,11 @@ function test_singlerate(h, x)
     @printfifinteractive( "\nTesting single-rate fitering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
 
     @printfifinteractive( "\n\tBase.filt\n\t\t")
-    @timeifinteractive naiveResult = Base.filt(h, 1.0, x)
+    @timeifinteractive naiveResult = filt(h, 1.0, x)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, 1//1 )\n\t\t" )
     @timeifinteractive statelesResult = DSP.filt( h, x )
-    @test_approx_eq naiveResult statelesResult
+    @test naiveResult ≈ statelesResult
 
     @printfifinteractive( "\n\tDSP.filt. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
     myfilt = DSP.FIRFilter(h, 1//1)
@@ -95,7 +95,7 @@ function test_singlerate(h, x)
         y2 = DSP.filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
-    @test_approx_eq naiveResult statefulResult
+    @test naiveResult ≈ statefulResult
 
     @printfifinteractive( "\n\tDSP.filt filt. Piecewise for first %d inputs\n\t\t", length(x1) )
     DSP.reset!(myfilt)
@@ -106,8 +106,8 @@ function test_singlerate(h, x)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    @test_approx_eq naiveResult piecewiseResult
-    
+    @test naiveResult ≈ piecewiseResult
+
     DSP.reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
@@ -135,7 +135,7 @@ function test_decimation(h, x, decimation)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, 1//%d)\n\t\t", decimation )
     @timeifinteractive statelesResult = DSP.filt(h, x, 1//decimation)
-    @test_approx_eq naiveResult statelesResult
+    @test naiveResult ≈ statelesResult
 
     @printfifinteractive( "\n\tDSP.filt decimation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
     myfilt = DSP.FIRFilter(h, 1//decimation)
@@ -144,7 +144,7 @@ function test_decimation(h, x, decimation)
         y2 = DSP.filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
-    @test_approx_eq naiveResult statefulResult
+    @test naiveResult ≈ statefulResult
 
     @printfifinteractive( "\n\tDSP.filt decimation. Piecewise for first %d inputs.\n\t\t", length(x1) )
     DSP.reset!(myfilt)
@@ -156,8 +156,8 @@ function test_decimation(h, x, decimation)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    @test_approx_eq_eps naiveResult piecewiseResult sqrt(eps(real(one(eltype(x)))))
-    
+    @test ≈(naiveResult, piecewiseResult, atol=sqrt(eps(real(one(eltype(x))))))
+
     DSP.reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
@@ -186,12 +186,12 @@ function test_interpolation(h, x, interpolation)
         for n = 0:xLen-1;
             xZeroStuffed[n*interpolation+1] = x[n+1]
         end
-        naiveResult = Base.filt(h, one(eltype(h)), xZeroStuffed)
+        naiveResult = filt(h, one(eltype(h)), xZeroStuffed)
     end
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//1 )\n\t\t", interpolation )
     @timeifinteractive statelesResult = DSP.filt( h, x, interpolation//1 )
-    @test_approx_eq naiveResult statelesResult
+    @test naiveResult ≈ statelesResult
 
     @printfifinteractive( "\n\tDSP.filt interpolation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
     myfilt = DSP.FIRFilter( h, interpolation//1 )
@@ -200,7 +200,7 @@ function test_interpolation(h, x, interpolation)
         y2 = DSP.filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
-    @test_approx_eq naiveResult statefulResult
+    @test naiveResult ≈ statefulResult
 
     DSP.reset!(myfilt)
     @test inputlength(myfilt, length(statefulResult)) == xLen
@@ -215,7 +215,7 @@ function test_interpolation(h, x, interpolation)
         y2 = DSP.filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    @test_approx_eq_eps naiveResult piecewiseResult sqrt(eps(real(one(eltype(x)))))
+    @test ≈(naiveResult, piecewiseResult, atol=sqrt(eps(real(one(eltype(x))))))
 end
 
 
@@ -229,8 +229,8 @@ function test_rational(h, x, ratio)
     pivotPoint = min(rand(50:150), div(xLen, 4))
     x1         = x[1:pivotPoint]
     x2         = x[pivotPoint+1:end]
-    upfactor   = num(ratio)
-    downfactor = den(ratio)
+    upfactor   = numerator(ratio)
+    downfactor = denominator(ratio)
     resultType = promote_type(eltype(h), eltype(x))
 
     @printfifinteractive( "\n\n" )
@@ -248,7 +248,7 @@ function test_rational(h, x, ratio)
 
     @printfifinteractive( "\n\tDSP.filt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
     @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
-    @test_approx_eq naiveResult statelesResult
+    @test naiveResult ≈ statelesResult
 
     @printfifinteractive( "\n\tDSP.filt rational resampling. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
     myfilt = DSP.FIRFilter(h, ratio)
@@ -257,7 +257,7 @@ function test_rational(h, x, ratio)
         s2 = DSP.filt(myfilt, x2)
     end
     statefulResult = [s1; s2]
-    @test_approx_eq naiveResult statefulResult
+    @test naiveResult ≈ statefulResult
 
     @printfifinteractive( "\n\tDSP.filt rational. Piecewise for all %d inputs\n\t\t", length( x ) )
     reset!(myfilt)
@@ -268,8 +268,8 @@ function test_rational(h, x, ratio)
         end
     end
     piecewiseResult = y1
-    @test_approx_eq naiveResult piecewiseResult
-    
+    @test naiveResult ≈ piecewiseResult
+
     DSP.reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
@@ -301,7 +301,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     @printfifinteractive( "\n\tStateful arbitrary resampling\n\t\t" )
     @timeifinteractive statefulResult = DSP.filt(myfilt, x)
 
-    # DSP.reset!(myfilt)                                 
+    # DSP.reset!(myfilt)
     # TODO: figure out why this fails
     # @test inputlength(myfilt, length(statefulResult)) == xLen
 
@@ -320,47 +320,41 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     resize!(statefulResult, commonLen)
     resize!(piecwiseResult, commonLen)
 
-    @test_approx_eq naiveResult statelessResult
-    @test_approx_eq naiveResult statefulResult
-    @test_approx_eq naiveResult piecwiseResult    
+    @test naiveResult ≈ statelessResult
+    @test naiveResult ≈ statefulResult
+    @test naiveResult ≈ piecwiseResult
 end
 
 #
 # Run the tests
 #
 
-function test_all()
-    for interpolation in [1, 5, 14, 23],
+@testset "interp.=$interpolation, dec.=$decimation, Th=$Th, Tx=$Tx" for interpolation in [1, 5, 14, 23],
             decimation in [1, 9, 17, 21],
                 Th in [Float32, Float64],
-                    Tx in [Float32, Float64, Complex64, Complex128]
+                    Tx in [Float32, Float64, ComplexF32, ComplexF64]
 
-        h     = rand(Th, rand(16:128))
-        xLen  = rand(200:300)
-        xLen  = xLen-mod(xLen, decimation)
-        x     = rand(Tx, xLen)
-        ratio = interpolation//decimation
-
-        if ratio == 1
-            test_singlerate(h, x)
-        end
-
-        if decimation != 1
-            test_decimation(h, x, decimation)
-        end
-
-        if interpolation != 1
-            test_interpolation(h, x, interpolation)
-        end
-
-
-        if num(ratio) == interpolation && den(ratio) == decimation && num(ratio) != 1 && den(ratio) != 1
-            test_rational(h, x, ratio)
-            if Tx in [Float32, Complex64]
-                test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
-            end
+    h     = rand(Th, rand(16:128))
+    xLen  = rand(200:300)
+    xLen  = xLen-mod(xLen, decimation)
+    x     = rand(Tx, xLen)
+    ratio = interpolation//decimation
+    if ratio == 1
+        test_singlerate(h, x)
+    end
+    if decimation != 1
+        test_decimation(h, x, decimation)
+    end
+    if interpolation != 1
+        test_interpolation(h, x, interpolation)
+    end
+    if numerator(ratio) == interpolation && denominator(ratio) == decimation && numerator(ratio) != 1 && denominator(ratio) != 1
+        test_rational(h, x, ratio)
+        if Tx in [Float32, ComplexF32]
+            test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
         end
     end
+    if decimation == 1
+        test_rational(h, x, interpolation)
+    end
 end
-
-test_all()
