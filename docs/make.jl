@@ -11,13 +11,13 @@ makedocs(
         "windows.md",
         "filters.md",
         "util.md",
+        "convolutions.md",
         "index.md",
     ],
 )
 
 deploydocs(
     repo = "github.com/JuliaDSP/DSP.jl.git",
-    julia = "0.6",
     target = "build",
     deps   = nothing,
     make   = nothing,

@@ -109,3 +109,6 @@ end
 end
 
 @test shiftin!([1,2,3,4],[5,6]) ≈ [3,4,5,6]
+
+## arraysplit
+@test collect(DSP.arraysplit(collect(1:10), 3, 1)) == [ collect(1.0:3), collect(3.0:5), collect(5.0:7), collect(7.0:9)]

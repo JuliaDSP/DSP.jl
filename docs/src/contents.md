@@ -10,6 +10,7 @@ Pages = ["periodograms.md",
     "windows.md",
     "filters.md",
     "util.md",
+    "convolutions.md",
     "index.md",
 ]
 ```
