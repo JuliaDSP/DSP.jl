@@ -411,7 +411,8 @@ frequency bands using the Remez exchange algorithm.
       Differentiator. [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true.
 - `Hz::Real`: The sampling frequency in Hz. Default is 1.
 - `neg::Bool`: Whether the filter has negative symmetry or not. Default is false.
-    If false, the filter is symmetric. If true, the filter is asymmetric.
+    If false, the filter is even-symmetric. If true, the filter is odd-symmetric.
+    neg=true means that h[n]=-h[end+1-n]; neg=false means that h[n]=h[end+1-n].
 - `maxiter::Integer`: (optional)
     Maximum number of iterations of the algorithm. Default is 25.
 - `grid_density:Integer`: (optional)
