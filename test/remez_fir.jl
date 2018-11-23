@@ -171,7 +171,7 @@ end
     L = 64
     
     Fs = 4800*L
-    f = range(0, stop=0.5, length=10000)
+    f = Compat.range(0, stop=0.5, length=10000)
 
     P = (π*f*Fs/4800) ./ sin.(π*f*Fs/4800)
     Pdb = 20*log10.(abs.(P))
