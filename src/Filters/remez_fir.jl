@@ -118,67 +118,10 @@ end
 
 
 """
-eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-
-/*
- *-----------------------------------------------------------------------
- * FUNCTION: eff
- *  FUNCTION TO CALCULATE THE DESIRED MAGNITUDE RESPONSE
- *  AS A FUNCTION OF FREQUENCY.
- *  AN ARBITRARY FUNCTION OF FREQUENCY CAN BE
- *  APPROXIMATED IF THE USER REPLACES THIS FUNCTION
- *  WITH THE APPROPRIATE CODE TO EVALUATE THE IDEAL
- *  MAGNITUDE.  NOTE THAT THE PARAMETER FREQ IS THE
- *  VALUE OF NORMALIZED FREQUENCY NEEDED FOR EVALUATION.
- *-----------------------------------------------------------------------
- */
-"""
-function eff(freq::Float64, fx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-    if filter_type == filter_type_differentiator
-        return fx[lband] * freq
-    else 
-        return fx[lband]
-    end
-end
-
-"""
-wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-/*
- *-----------------------------------------------------------------------
- * FUNCTION: wate
- *  FUNCTION TO CALCULATE THE WEIGHT FUNCTION AS A FUNCTION
- *  OF FREQUENCY.  SIMILAR TO THE FUNCTION eff, THIS FUNCTION CAN
- *  BE REPLACED BY A USER-WRITTEN ROUTINE TO CALCULATE ANY
- *  DESIRED WEIGHTING FUNCTION.
- *-----------------------------------------------------------------------
- */
-"""
-function wate(freq::Float64, fx::AbstractVector, wtx::AbstractVector, lband::Integer, filter_type::RemezFilterType)
-    if filter_type != filter_type_differentiator
-        return wtx[lband]
-    end
-    if fx[lband] >= 0.0001
-        return wtx[lband] / freq
-    end
-    wtx[lband]
-end
-
-
-"""
-build_grid(numtaps, bands, desired, weight, grid_density)
+build_grid(numtaps, band_defs, Hz, grid_density, neg)
 return "grid" and "des" and "wt" arrays
 """
-function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::RemezFilterType)
-    # translate from scipy remez argument names
-    lgrid = grid_density
-
-    fx = desired
-    wtx = weight
-
-    nbands = length(desired)
-    nfilt = numtaps
-
-    neg = filter_type != filter_type_bandpass
+function build_grid(nfilt, band_defs, Hz, grid_density, neg)
     nodd = isodd(nfilt)
     nfcns = nfilt ÷ 2
     if nodd && !neg
@@ -189,20 +132,40 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
     # IS (FILTER LENGTH + 1)*GRID DENSITY/2
     #
-    delf = lgrid * nfcns
-    delf = 0.5 / delf
+    delf = 0.5 / (grid_density * nfcns)
 
-    # calculate clamped band-edges
-    edges = reshape(bands, 2, nbands)
-    if neg || !nodd
-        flimlow = neg ? delf : 0.0
-        flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
-        edges = map(f -> clamp(f, flimlow, flimhigh), edges)
+    flimlow = neg ? delf : 0.0
+    flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
+    function normalize_banddef_entry(b)
+        # normalize and clamp band-edges
+        fl = convert(Float64, clamp(b.first[1] / Hz, flimlow, flimhigh))
+        fu = convert(Float64, clamp(b.first[2] / Hz, flimlow, flimhigh))
+        # make sure desired and weight are functions
+        if !isa(b.second, Tuple{Any, Any})
+            desired = b.second
+            weight = 1.0
+        else
+            desired = b.second[1]
+            weight = b.second[2]
+        end
+        if isa(desired, Real)
+            let d = desired
+                desired = _ -> d
+            end
+        end
+        if isa(weight, Real)
+            let w = weight
+                weight = _ -> w
+            end
+        end
+        return Pair{Tuple{Float64,Float64},Tuple{Any,Any}}((fl, fu), (desired, weight))
     end
+    normalized_band_defs = normalize_banddef_entry.(band_defs)
+
     local ngrid
     # work around JuliaLang/julia#15276
-    let delf=delf, edges=edges
-        ngrid = sum(max(length(edges[1,lband]:delf:edges[2,lband]), 1) for lband in 1:nbands)#::Int
+    let delf=delf
+        ngrid = sum(max(length(band_def.first[1]:delf:band_def.first[2]), 1) for band_def in normalized_band_defs)#::Int
     end
 
     grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
@@ -220,20 +183,27 @@ function build_grid(numtaps, bands, desired, weight, grid_density, filter_type::
     # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
     # TO THE ORIGINAL PROBLEM
     #
-    for lband in 1:nbands
-        flow = edges[1, lband]
-        fup = edges[2, lband]
-        for f in [(flow:delf:fup)[1:end-1]; fup]
-            change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
-            grid[j] = cospi(2f)
-            des[j] = eff(f,fx,lband,filter_type) / change
-            wt[j] = wate(f,fx,wtx,lband,filter_type) * change
-            j += 1
-        end
+    for band_def in normalized_band_defs
+        flow = band_def.first[1]
+        fup = band_def.first[2]
+        # outline inner loop to have it type-stable (band_def.second is Tuple{Any,Any})
+        j = _buildgrid!(grid, des, wt, j, [(flow:delf:fup)[1:end-1]; fup], neg, nodd, Hz,
+                        band_def.second)
     end
     @assert ngrid == j - 1
 
     return grid, des, wt
+end
+
+function _buildgrid!(grid, des, wt, j, fs, neg, nodd, Hz, des_wt)
+    for f in fs
+        change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
+        grid[j] = cospi(2f)
+        des[j] = des_wt[1](f * Hz) / change
+        wt[j] = des_wt[2](f * Hz) * change
+        j += 1
+    end
+    return j
 end
 
 """
@@ -300,6 +270,9 @@ Banner from C code
           grid_density::Integer=16)
 
 Calculate the minimax optimal filter using the Remez exchange algorithm [^McClellan1973a] [^McClellan1973b].
+
+This is the scipy compatible version that requires 3 arguments (numtaps, bands, desired). 
+For a simplified API, see the 2 argument version (numtaps, band_defs).
 
 Calculate the filter-coefficients for the finite impulse response
 (FIR) filter whose transfer function minimizes the maximum error
@@ -380,33 +353,135 @@ plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
 grid()
 ```
 """
-function remez(numtaps::Integer, bands::Vector, desired::Vector; 
-               weight::Vector=fill(1.0, length(desired)), 
-               Hz::Real=1.0, 
+function remez(numtaps::Integer, bands::Vector, desired::Vector;
+               weight::Vector=fill(1.0, length(desired)),
+               Hz::Real=1.0,
                filter_type::RemezFilterType=filter_type_bandpass,
-               maxiter::Integer=25, 
-               grid_density::Integer=16)
-    bands = bands/Hz
-
-    # Sanity checks on arguments
+               kwargs...)
     issorted(bands) || throw(ArgumentError("`bands` is not monotonically increasing"))
-    (0 <= bands[1]) && (bands[end] <= 0.5) ||
-      throw(ArgumentError("`bands` values must be between 0 and `Hz`/2"))
-    length(bands) == 2length(desired) || 
-      throw(ArgumentError("`desired` must be half the length of `bands`."))
-    length(bands) == 2length(weight) || 
-      throw(ArgumentError("`weight` must be half the length of `bands`."))
+    length(bands) == 2length(desired) ||
+        throw(ArgumentError("`desired` must be half the length of `bands`."))
+    length(bands) == 2length(weight) ||
+        throw(ArgumentError("`weight` must be half the length of `bands`."))
+    band_ranges = [(bands[i], bands[i+1]) for i in 1:2:length(bands)]
+    if filter_type == filter_type_differentiator
+        eff = [f -> d*f/Hz for d in desired]
+        wate = [d > 0.0001 ? f -> w/(f/Hz) : f -> w for (w, d) in zip(weight, desired)]
+    else
+        eff = desired
+        wate = weight
+    end
+    band_defs = [r => (d, w) for (r, d, w) in zip(band_ranges, eff, wate)]
+    neg = filter_type in (filter_type_hilbert, filter_type_differentiator)
+    return remez(numtaps, band_defs; Hz=Hz, neg=neg, kwargs...)
+end
 
-    bands = convert(Vector{Float64}, bands)   # in C, known as "edge"
-    desired = convert(Vector{Float64}, desired)
-    weight = convert(Vector{Float64}, weight)
-    
-    grid, des, wt = build_grid(numtaps, bands, desired, weight, grid_density, filter_type)
+"""
+    remez(numtaps::Integer, band_defs;
+          Hz::Real=1.0,
+          neg::Bool=false,
+          maxiter::Integer=25,
+          grid_density::Integer=16)
+
+Calculate the minimax optimal filter using the Remez exchange algorithm [^McClellan1973a] [^McClellan1973b].
+
+This is the simplified API that accepts just 2 required arguments (numtaps, band_defs).
+For a scipy compatible version see the 3 arguments version (numtaps, bands, desired). 
+
+Calculate the filter-coefficients for the finite impulse response
+(FIR) filter whose transfer function minimizes the maximum error
+between the desired gain and the realized gain in the specified
+frequency bands using the Remez exchange algorithm.
+
+# Arguments
+- `numtaps::Integer`: The desired number of taps in the filter. 
+    The number of taps is the number of terms in the filter, or the filter 
+    order plus one.
+- `bands_defs`: A sequence of band definitions.
+    This sequence defines the bands. Each entry is a pair. The pair's
+    first item is a tuple of band edges (low, high). The pair's second item 
+    defines the desired response and weight in that band. The weight is optional
+    and defaults to 1.0. Both the desired response and weight may be either scalars
+    or functions. If a function, the function should accept a real frequency and
+    return the real desired response or real weight. Examples:
+      LPF with unity weights. [(0, 0.475) => 1, (0.5, 1.0) => 0].
+      LPF with weight of 2 in the stop band. [(0, 0.475) => (1, 1), (0.5, 1.0) => (0, 2)].
+      BPF with unity weights. [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]
+      Hilbert transformer. [(0.1, 0.95) => 1]; neg=true.
+      Differentiator. [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true.
+- `Hz::Real`: The sampling frequency in Hz. Default is 1.
+- `neg::Bool`: Whether the filter has negative symmetry or not. Default is false.
+    If false, the filter is even-symmetric. If true, the filter is odd-symmetric.
+    neg=true means that h[n]=-h[end+1-n]; neg=false means that h[n]=h[end+1-n].
+- `maxiter::Integer`: (optional)
+    Maximum number of iterations of the algorithm. Default is 25.
+- `grid_density:Integer`: (optional)
+    Grid density. The dense grid used in `remez` is of size
+    ``(numtaps + 1) * grid_density``. Default is 16.
+
+# Returns
+- `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
+    (in a minimax sense) filter.
+
+[^McClellan1973a]: 
+J. H. McClellan and T. W. Parks, A unified approach to the
+design of optimum FIR linear phase digital filters,
+IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
+
+[^McClellan1973b]: 
+J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer
+Program for Designing Optimum FIR Linear Phase Digital
+Filters, IEEE Trans. Audio Electroacoust., vol. AU-21,
+pp. 506-525, 1973.
+
+# Examples
+Construct a length 35 filter with a passband at 0.15-0.4 Hz 
+(desired response of 1), and stop bands at 0-0.1 Hz and 0.45-0.5 Hz
+(desired response of 0). Note: the behavior in the frequency ranges between 
+those bands - the transition bands - is unspecified.
+
+```julia-repl
+julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0])
+```
+
+You can trade-off maximum error achieved for transition bandwidth. 
+The wider the transition bands, the lower the maximum error in the
+bands specified. Here is a bandpass filter with the same passband, but
+wider transition bands.
+
+```julia-repl
+julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0])
+```
+
+Here we compute the frequency responses and plot them in dB.
+
+```julia-repl
+using PyPlot
+b = DSP.Filters.PolynomialRatio(bpass, [1.0])
+b2 = DSP.Filters.PolynomialRatio(bpass2, [1.0])
+f = range(0, stop=0.5, length=1000)
+plot(f, 20*log10.(abs.(freqz(b,f,1.0))))
+plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
+grid()
+```
+"""
+function remez(numtaps::Integer, band_defs;
+                Hz::Real=1.0,
+                neg::Bool=false,
+                maxiter::Integer=25,
+                grid_density::Integer=16)
+    all(b.first[1] <= b.first[2] for b in band_defs) ||
+        throw(ArgumentError("lower band edge higher then upper band edge"))
+    all(band_defs[i].first[2] < band_defs[i+1].first[1] for i in 1:length(band_defs)-1) ||
+        throw(ArgumentError("band edges is not monotonically increasing"))
+    (0 <= band_defs[1].first[1]) && (band_defs[end].first[2] <= 0.5*Hz) ||
+        throw(ArgumentError("band edges must be between 0 and `Hz`/2"))
+
+    grid, des, wt = build_grid(numtaps, band_defs, Hz, grid_density, neg)
 
     nfilt = numtaps
     ngrid = length(grid)
-    
-    neg = filter_type != filter_type_bandpass      # boolean: "neg" means negative symmetry.
+
     nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
     nfcns = numtaps ÷ 2   # integer divide
     if nodd && !neg
@@ -631,7 +706,7 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     l = 1
 
     # Boolean for "kkk" in C code.
-    full_grid = (bands[1] == 0.0 && bands[end] == 0.5) || (nfcns <= 3)
+    full_grid = (band_defs[1].first[1] == 0.0 && band_defs[end].first[2] == 0.5*Hz) || (nfcns <= 3)
     if !full_grid
         aa    = 2.0/(grid[1]-grid[ngrid])
         bb    = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
