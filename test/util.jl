@@ -119,47 +119,51 @@ end
     # Test signals length
     L = 10
     # Test delay
-    δ = 3
+    d = 3
 
     # Forcing valid test parameters values
     L = round(Int, abs(L))
-    δ = round(Int, min(abs(δ), L))
+    d = round(Int, min(abs(d), L))
 
     # Generating the test signal as random 0 mean white uniform noise
     x = 2.0 .* rand(L) .- 1.0
 
     # Tests
 
-    @test finddelay(x, [zeros(δ); x]) == δ
-    @test finddelay([zeros(δ); x], x) == -δ
+    @test finddelay([zeros(d); x], x) == d
+    @test finddelay(x, [zeros(d); x]) == -d
 
-    @test shiftsignal(x, δ) == [x[(δ + 1):end]; zeros(δ)]
-    @test shiftsignal(x, -δ) == [zeros(δ); x[1:(end - δ)]]
-
-    y = copy(x)
-    shiftsignal!(y, δ)
-    @test y == [x[(δ + 1):end]; zeros(δ)]
+    @test shiftsignal(x, d) == [zeros(d); x[1:(end - d)]]
+    @test shiftsignal(x, -d) == [x[(d + 1):end]; zeros(d)]
 
     y = copy(x)
-    shiftsignal!(y, -δ)
-    @test y == [zeros(δ); x[1:(end - δ)]]
-
-    y, d = alignsignals(x, [zeros(δ); x])
-    @test y == [x; zeros(δ)]
-    @test d == δ
-
-    y, d = alignsignals([zeros(δ); x], x)
-    @test y == [zeros(δ); x[1:(end - δ)]]
-    @test d == -δ
-
-    y = [zeros(δ); x]
-    d = alignsignals!(x, y)
-    @test d == δ
-    @test y == [x; zeros(δ)]
+    z = shiftsignal!(y, d)
+    @test z == y
+    @test y == [zeros(d); x[1:(end - d)]]
 
     y = copy(x)
-    d = alignsignals!([zeros(δ); x], y)
-    @test d == -δ
-    @test y == [zeros(δ); x[1:(end - δ)]]
+    z = shiftsignal!(y, -d)
+    @test z == y
+    @test y == [x[(d + 1):end]; zeros(d)]
+
+    y, s = alignsignals([zeros(d); x], x)
+    @test y == [x; zeros(d)]
+    @test s == d
+
+    y, s = alignsignals(x, [zeros(d); x])
+    @test y == [zeros(d); x[1:(end - d)]]
+    @test s == -d
+
+    y = copy(x)
+    z, s = alignsignals!(y, [zeros(d); x])
+    @test z == y
+    @test s == -d
+    @test y == [zeros(d); x[1:(end - d)]]
+
+    y = [zeros(d); x]
+    z, s = alignsignals!(y, x)
+    @test z == y
+    @test s == d
+    @test y == [x; zeros(d)]
 
 end

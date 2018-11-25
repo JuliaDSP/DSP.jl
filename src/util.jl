@@ -344,126 +344,114 @@ end
 # DELAY FINDING UTILITIES
 
 """
-    finddelay(x, u)
+    finddelay(x, y)
 
-Estimate the delay of u with respect x by locating the peak of their
+Estimate the delay of x with respect to y by locating the peak of their
 cross-correlation.
 
-The output delay will be positive when u is delayed with respect x, negative if
+The output delay will be positive when x is delayed with respect y, negative if
 advanced, 0 otherwise.
+
+# Example
+```jldoctest
+julia> finddelay([0, 0, 1, 2, 3], [1, 2, 3])
+2
+
+julia> finddelay([1, 2, 3], [0, 0, 1, 2, 3])
+-2
+```
 """
-function finddelay(x::AbstractVector{T}, u::AbstractVector{T}) where T <: Real
+function finddelay(x::AbstractVector{<: Real}, y::AbstractVector{<: Real})
 
-    # I would include  a shortcut like this, but it seems to make the function
-    # type unstable...
-    # if isequal(x, u)
-    #     return 0
-    # end
+    s = xcorr(y, x)
 
-    sₓᵤ = xcorr(x, u)
-
-    if all(y -> y == first(sₓᵤ), sₓᵤ)
+    if all(v -> v == first(s), s)
         return 0
     end
 
-    ct_idx = cld(length(sₓᵤ), 2)
-
-    _, pk_idx = findmax(sₓᵤ)
-
-    return ct_idx - pk_idx
+    # Delay as position of absoute cross-correlation peak relative to center
+    d = cld(length(s), 2) - argmax(abs.(s))
 
 end
 
 """
-    shiftsignal(u, δ)
+    shiftsignal!(x, s)
 
-Shift elements of u by a given amount δ of samples.
+Mutating version of shiftsignals(): shift x of s samples and fill the spaces
+with zeros in-place.
 
-The shift is operated as follows: ``u[n] ⟼  y[n] = u[n + δ]``
+See also [`shiftsignal`](@ref).
 """
-function shiftsignal(u::AbstractVector{T}, δ::Int) where T
-
-    if δ == 0
-        return u
+function shiftsignal!(x::AbstractVector, s::Integer)
+    l = length(x)
+    if abs(s) > l
+        error("The absolute value of s must not be greater than the length of x")
     end
-
-    lᵤ = length(u)
-
-    y = zeros(T, lᵤ)
-
-    if δ > 0
-        y[1:(lᵤ - δ)] = u[(δ + 1):lᵤ]
-    else
-        y[(-δ + 1):lᵤ] = u[1:(lᵤ - -δ)]
+    if s > 0
+        x[s + 1:l] = x[1:l - s]
+        x[1:s] .= 0
+    elseif s < 0
+        x[1:l + s] = x[1 - s:l]
+        x[l + s + 1:l] .= 0
     end
-
-    return y
-
+    x
 end
 
 """
-    shiftsignal!(u, δ)
+    shiftsignal(x, s)
 
-Mutating version of shiftsignals(): shift u of δ samples in-place.
+Shift elements of signal x in time by a given amount s of samples and fill
+the spaces with zeros. For circular shifting, use circshift.
+
+# Example
+```jldoctest
+julia> shiftsignal([1, 2, 3], 2)
+3-element Array{Int64,1}:
+ 0
+ 0
+ 1
+
+julia> shiftsignal([1, 2, 3], -2)
+3-element Array{Int64,1}:
+ 3
+ 0
+ 0
+```
+
+See also [`shiftsignal!`](@ref).
 """
-function shiftsignal!(u::AbstractVector, δ::Int)
+shiftsignal(x::AbstractVector, s::Integer) = shiftsignal!(copy(x), s)
 
-    if δ == 0
-        return
-    end
+"""
+    alignsignals!(x, y)
 
-    lᵤ = length(u)
+Mutating version of alignsignals(): time align x to y in-place.
 
-    if δ > 0
-
-        deleteat!(u, 1:δ)
-
-        # append!() could be used, but this is faster and prevents allocation.
-        for d = 1:δ
-            insert!(u, lᵤ - δ + d, 0)
-        end
-
-    elseif δ < 0
-
-        deleteat!(u, (lᵤ - -δ + 1):lᵤ)
-
-        # prepend!() could be used, but this is faster and prevents allocation.
-        for d = 1:(-δ)
-            insert!(u, d, 0)
-        end
-
-    end
-
+See also [`alignsignals`](@ref).
+"""
+function alignsignals!(x, y)
+    d = finddelay(x, y)
+    x = shiftsignal!(x, -d)
+    x, d
 end
 
 """
-    alignsignals(x, u)
+    alignsignals(x, y)
 
-Use finddelay() and shiftsignals() to align u to x.
+Use finddelay() and shiftsignal() to time align x to y. Also return the delay
+of x with respect to y.
+
+# Example
+```jldoctest
+julia> alignsignals([0, 0, 1, 2, 3], [1, 2, 3])
+([1, 2, 3, 0, 0], 2)
+
+julia> alignsignals([1, 2, 3], [0, 0, 1, 2, 3])
+([0, 0, 1], -2)
+```
+
+See also [`alignsignals!`](@ref).
 """
-function alignsignals(x::AbstractVector{T}, u::AbstractVector{T}) where T <: Real
-
-    δ = finddelay(x, u)
-
-    y = shiftsignal(u, δ)
-
-    return y, δ
-
-end
-
-"""
-    alignsignals!(x, u)
-
-Mutating version of alignsignals(): align u to x in-place.
-"""
-function alignsignals!(x::AbstractVector{T}, u::AbstractVector{T}) where T <: Real
-
-    δ = finddelay(x, u)
-
-    shiftsignal!(u, δ)
-
-    return δ
-
-end
+alignsignals(x, y) = alignsignals!(copy(x), y)
 
 end # end module definition
