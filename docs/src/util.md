@@ -14,4 +14,9 @@ db2amp
 rms
 rmsfft
 meanfreq
+finddelay
+shiftsignal
+shiftsignal!
+alignsignals
+alignsignals
 ```
