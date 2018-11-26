@@ -368,8 +368,8 @@ function finddelay(x::AbstractVector{<: Real}, y::AbstractVector{<: Real})
     end
 
     # Find indices of maximum absolute cross-correlations
-    max_corr = mapreduce(abs, max, s, init = typemin(eltype(s)))
-    max_ind = findall(x -> x == max_corr, s)
+    max_corr = Compat.mapreduce(abs, max, s, init = typemin(eltype(s)))
+    max_ind = findall(x -> abs(x) == max_corr, s)
 
     # Delay is position of peak cross-correlation relative to center.
     # If the maximum absolute cross-correlation is not unique, use the position
