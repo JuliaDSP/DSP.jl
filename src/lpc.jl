@@ -13,16 +13,24 @@ mutable struct LPCBurg; end
 mutable struct LPCLevinson; end
 
 """
-`lpc_burg(x::AbstractVector, p::Int)`
-
-LPC (Linear-Predictive-Code) estimation, using the Burg method.
+    lpc(x::AbstractVector, p::Int, [LPCBurg()])
 
 Given input signal `x` and prediction order `p`, returns IIR coefficients `a`
 and average reconstruction error `prediction_err`. Note that this method does
 NOT return the leading `1` present in the true autocorrelative estimate; it
 omits it as it is implicit in every LPC estimate, and must be manually
-reintroduced if the returned vector should be treated as a polynomial. This
-function implements the mathematics published in [1].
+reintroduced if the returned vector should be treated as a polynomial.
+
+The algorithm used is determined by the last optional parameter, and can be
+either `LPCBurg` or `LPCLevinson`.
+"""
+function lpc end
+
+"""
+    lpc(x::AbstractVector, p::Int, LPCBurg())
+
+LPC (Linear-Predictive-Code) estimation, using the Burg method. This function
+implements the mathematics published in [1].
 
 [1] - Enhanced Partial Tracking Using Linear Prediction
 (DAFX 2003 article, Lagrange et al)
@@ -50,15 +58,9 @@ function lpc(x::AbstractVector{T}, p::Int, ::LPCBurg) where T <: Number
 end
 
 """
-lpc_levinson(x::AbstractVector, p::Int)
+    lpc(x::AbstractVector, p::Int, LPCLevinson())
 
-LPC (Linear-Predictive-Code) estimation, using the Levinson method.
-
-Given input signal `x` and prediction order `p`, returns IIR coefficients `a`
-and average reconstruction error `prediction_err`. Note that this method does
-NOT return the leading `1` present in the true autocorrelative estimate; it
-omits it as it is implicit in every LPC estimate, and must be manually
-reintroduced if the returned vector should be treated as a polynomial.  This
+LPC (Linear-Predictive-Code) estimation, using the Levinson method. This
 function implements the mathematics described in [1].
 
 [1] - The Wiener (RMS) Error Criterion in Filter Design and Prediction

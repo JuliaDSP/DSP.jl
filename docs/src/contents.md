@@ -11,6 +11,7 @@ Pages = ["periodograms.md",
     "filters.md",
     "util.md",
     "convolutions.md",
+    "lpc.md",
     "index.md",
 ]
 ```
