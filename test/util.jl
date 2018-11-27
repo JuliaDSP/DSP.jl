@@ -131,7 +131,9 @@ end
     # Tests
 
     @test finddelay([zeros(d); x], x) == d
+    @test finddelay([zeros(d); x], -x) == d
     @test finddelay(x, [zeros(d); x]) == -d
+    @test finddelay(-x, [zeros(d); x]) == -d
 
     @test shiftsignal(x, d) == [zeros(d); x[1:(end - d)]]
     @test shiftsignal(x, -d) == [x[(d + 1):end]; zeros(d)]
