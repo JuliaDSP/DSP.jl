@@ -14,4 +14,5 @@ DSP.jl provides a number of common DSP routines in Julia.  So far, the following
 - [Filter design and filtering](https://juliadsp.github.io/DSP.jl/stable/filters)
 - [Estimation](http://juliadsp.github.io/DSP.jl/stable/estimation/)
 - [Convolution](https://juliadsp.github.io/DSP.jl/stable/convolutions)
+- [Linear Predictive Coding](https://juliadsp.github.io/DSP.jl/dev/lpc)
 - [Utility functions](https://juliadsp.github.io/DSP.jl/stable/util)
