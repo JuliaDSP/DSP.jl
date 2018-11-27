@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contents",
     "title": "Welcome to DSP.jl\'s documentation!",
     "category": "section",
-    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"convolutions.md\",\n    \"index.md\",\n]"
+    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"convolutions.md\",\n    \"lpc.md\",\n    \"index.md\",\n]"
 },
 
 {
@@ -349,7 +349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.filt",
     "category": "function",
-    "text": "filt(f, x[, si])\n\nApply filter or filter coefficients f along the first dimension of array x. If f is a filter coefficient object, si is an optional array representing the initial filter state (defaults to zeros). If f is a PolynomialRatio, Biquad, or SecondOrderSections, filtering is implemented directly. If f is a ZeroPoleGain object, it is first converted to a SecondOrderSections object.  If f is a Vector, it is interpreted as an FIR filter, and a naïve or FFT-based algorithm is selected based on the data and filter length.\n\n\n\n\n\nfilt(b, a, x, [si])\n\nApply filter described by vectors a and b to vector x, with an optional initial filter state vector si (defaults to zeros).\n\n\n\n\n\n"
+    "text": "filt(b, a, x, [si])\n\nApply filter described by vectors a and b to vector x, with an optional initial filter state vector si (defaults to zeros).\n\n\n\n\n\nfilt(f, x[, si])\n\nApply filter or filter coefficients f along the first dimension of array x. If f is a filter coefficient object, si is an optional array representing the initial filter state (defaults to zeros). If f is a PolynomialRatio, Biquad, or SecondOrderSections, filtering is implemented directly. If f is a ZeroPoleGain object, it is first converted to a SecondOrderSections object.  If f is a Vector, it is interpreted as an FIR filter, and a naïve or FFT-based algorithm is selected based on the data and filter length.\n\n\n\n\n\n"
 },
 
 {
@@ -357,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.filt!",
     "category": "function",
-    "text": "filt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n\n\nfilt!(out, b, a, x, [si])\n\nSame as filt but writes the result into the out argument, which may alias the input x to modify it in-place.\n\n\n\n\n\n"
+    "text": "filt!(out, b, a, x, [si])\n\nSame as filt but writes the result into the out argument, which may alias the input x to modify it in-place.\n\n\n\n\n\nfilt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n\n\n"
 },
 
 {
@@ -649,11 +649,155 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "util/#DSP.Unwrap.unwrap",
+    "page": "Util - utility functions",
+    "title": "DSP.Unwrap.unwrap",
+    "category": "function",
+    "text": "unwrap(m; kwargs...)\n\nAssumes m to be a sequence of values that has been wrapped to be inside the given range (centered around zero), and undoes the wrapping by identifying discontinuities. If a single dimension is passed to dims, then m is assumed to have wrapping discontinuities only along that dimension. If a range of dimensions, as in 1:ndims(m), is passed to dims, then m is assumed to have wrapping discontinuities across all ndims(m) dimensions.\n\nA common usage for unwrapping across a singleton dimension is for a phase measurement over time, such as when comparing successive frames of a short-time-fourier-transform, as each frame is wrapped to stay within (-pi, pi].\n\nA common usage for unwrapping across multiple dimensions is for a phase measurement of a scene, such as when retrieving the phase information of of an image, as each pixel is wrapped to stay within (-pi, pi].\n\nArguments\n\nm::AbstractArray{T, N}: Array to unwrap.\ndims=nothing: Dimensions along which to unwrap. If dims is an integer, then   unwrap is called on that dimension. If dims=1:ndims(m), then m is unwrapped   across all dimensions.\nrange=2pi: Range of wrapped array.\ncircular_dims=(false, ...):  When an element of this tuple is true, the   unwrapping process will consider the edges along the corresponding axis   of the array to be connected.\nrng=GLOBAL_RNG: Unwrapping of arrays with dimension > 1 uses a random   initialization. A user can pass their own RNG through this argument.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Unwrap.unwrap!",
+    "page": "Util - utility functions",
+    "title": "DSP.Unwrap.unwrap!",
+    "category": "function",
+    "text": "unwrap!(m; kwargs...)\n\nIn-place version of unwrap.\n\n\n\n\n\nunwrap!(y, m; kwargs...)\n\nUnwrap m storing the result in y, see unwrap.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.hilbert",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.hilbert",
+    "category": "function",
+    "text": "hilbert(x)\n\nComputes the analytic representation of x, x_a = x + j hatx, where hatx is the Hilbert transform of x, along the first dimension of x.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.fftfreq",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.fftfreq",
+    "category": "function",
+    "text": "fftfreq(n, fs=1)\n\nReturn discrete fourier transform sample frequencies. The returned Frequencies object is an AbstractVector containing the frequency bin centers at every sample point. fs is the sample rate of the input signal.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.rfftfreq",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.rfftfreq",
+    "category": "function",
+    "text": "rfftfreq(n, fs=1)\n\nReturn discrete fourier transform sample frequencies for use with rfft. The returned Frequencies object is an AbstractVector containing the frequency bin centers at every sample point. fs is the sample rate of the input signal.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.nextfastfft",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.nextfastfft",
+    "category": "function",
+    "text": "nextfastfft(n)\n\nReturn the closest product of 2, 3, 5, and 7 greater than or equal to n. FFTW contains optimized kernels for these sizes and computes Fourier transforms of input that is a product of these sizes faster than for input of other sizes.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.pow2db",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.pow2db",
+    "category": "function",
+    "text": "pow2db(a)\n\nConvert a power ratio to dB (decibel), or 10log_10(a). The inverse of db2pow.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.amp2db",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.amp2db",
+    "category": "function",
+    "text": "amp2db(a)\n\nConvert an amplitude ratio to dB (decibel), or 20 log_10(a)=10log_10(a^2). The inverse of db2amp.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.db2pow",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.db2pow",
+    "category": "function",
+    "text": "db2pow(a)\n\nConvert dB to a power ratio. This function call also be called using a*dB, i.e. 3dB == db2pow(3). The inverse of pow2db.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.db2amp",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.db2amp",
+    "category": "function",
+    "text": "db2amp(a)\n\nConvert dB to an amplitude ratio. This function call also be called using a*dBa, i.e. 3dBa == db2amp(3). The inverse of amp2db.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.rms",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.rms",
+    "category": "function",
+    "text": "rms(s)\n\nReturn the root mean square of signal s.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.rmsfft",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.rmsfft",
+    "category": "function",
+    "text": "rmsfft(f)\n\nReturn the root mean square of signal s given the FFT transform f = fft(s). Equivalent to rms(ifft(f)).\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.meanfreq",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.meanfreq",
+    "category": "function",
+    "text": "meanfreq(x, fs)\n\nCalculate the mean power frequency of x with a sampling frequency of fs, defined as:\n\nMPF = fracsum_i=1^F f_i X_i^2 sum_i=0^F X_i^2  Hz\n\nwhere F is the Nyquist frequency, and X is the power spectral density.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.finddelay",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.finddelay",
+    "category": "function",
+    "text": "finddelay(x, y)\n\nEstimate the delay of x with respect to y by locating the peak of their cross-correlation.\n\nThe output delay will be positive when x is delayed with respect y, negative if advanced, 0 otherwise.\n\nExample\n\njulia> finddelay([0, 0, 1, 2, 3], [1, 2, 3])\n2\n\njulia> finddelay([1, 2, 3], [0, 0, 1, 2, 3])\n-2\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.shiftsignal",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.shiftsignal",
+    "category": "function",
+    "text": "shiftsignal(x, s)\n\nShift elements of signal x in time by a given amount s of samples and fill the spaces with zeros. For circular shifting, use circshift.\n\nExample\n\njulia> shiftsignal([1, 2, 3], 2)\n3-element Array{Int64,1}:\n 0\n 0\n 1\n\njulia> shiftsignal([1, 2, 3], -2)\n3-element Array{Int64,1}:\n 3\n 0\n 0\n\nSee also shiftsignal!.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.shiftsignal!",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.shiftsignal!",
+    "category": "function",
+    "text": "shiftsignal!(x, s)\n\nMutating version of shiftsignals(): shift x of s samples and fill the spaces with zeros in-place.\n\nSee also shiftsignal.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.alignsignals",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.alignsignals",
+    "category": "function",
+    "text": "alignsignals(x, y)\n\nUse finddelay() and shiftsignal() to time align x to y. Also return the delay of x with respect to y.\n\nExample\n\njulia> alignsignals([0, 0, 1, 2, 3], [1, 2, 3])\n([1, 2, 3, 0, 0], 2)\n\njulia> alignsignals([1, 2, 3], [0, 0, 1, 2, 3])\n([0, 0, 1], -2)\n\nSee also alignsignals!.\n\n\n\n\n\n"
+},
+
+{
+    "location": "util/#DSP.Util.alignsignals!",
+    "page": "Util - utility functions",
+    "title": "DSP.Util.alignsignals!",
+    "category": "function",
+    "text": "alignsignals!(x, y)\n\nMutating version of alignsignals(): time align x to y in-place.\n\nSee also alignsignals.\n\n\n\n\n\n"
+},
+
+{
     "location": "util/#Util-utility-functions-1",
     "page": "Util - utility functions",
     "title": "Util - utility functions",
     "category": "section",
-    "text": "unwrap\nunwrap!\nhilbert\nfftfreq\nrfftfreq\nnextfastfft\npow2db\namp2db\ndb2pow\ndb2amp\nrms\nrmsfft\nmeanfreq\nfinddelay\nshiftsignal\nshiftsignal!\nalignsignals\nalignsignals"
+    "text": "DocTestSetup = quote\n    using DSP\nendunwrap\nunwrap!\nhilbert\nfftfreq\nrfftfreq\nnextfastfft\npow2db\namp2db\ndb2pow\ndb2amp\nrms\nrmsfft\nmeanfreq\nfinddelay\nshiftsignal\nshiftsignal!\nalignsignals\nalignsignals!DocTestSetup = nothing"
 },
 
 {
@@ -702,6 +846,46 @@ var documenterSearchIndex = {"docs": [
     "title": "Convolutions - similarity methods",
     "category": "section",
     "text": "conv\nconv2\ndeconv\nxcorr"
+},
+
+{
+    "location": "lpc/#",
+    "page": "LPC - Linear Predictive Coding",
+    "title": "LPC - Linear Predictive Coding",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "lpc/#DSP.LPC.lpc",
+    "page": "LPC - Linear Predictive Coding",
+    "title": "DSP.LPC.lpc",
+    "category": "function",
+    "text": "lpc(x::AbstractVector, p::Int, [LPCBurg()])\n\nGiven input signal x and prediction order p, returns IIR coefficients a and average reconstruction error prediction_err. Note that this method does NOT return the leading 1 present in the true autocorrelative estimate; it omits it as it is implicit in every LPC estimate, and must be manually reintroduced if the returned vector should be treated as a polynomial.\n\nThe algorithm used is determined by the last optional parameter, and can be either LPCBurg or LPCLevinson.\n\n\n\n\n\n"
+},
+
+{
+    "location": "lpc/#DSP.LPC.lpc-Tuple{AbstractArray{Number,1},Int64,LPCBurg}",
+    "page": "LPC - Linear Predictive Coding",
+    "title": "DSP.LPC.lpc",
+    "category": "method",
+    "text": "lpc(x::AbstractVector, p::Int, LPCBurg())\n\nLPC (Linear-Predictive-Code) estimation, using the Burg method. This function implements the mathematics published in [1].\n\n[1] - Enhanced Partial Tracking Using Linear Prediction (DAFX 2003 article, Lagrange et al) http://www.sylvain-marchand.info/Publications/dafx03.pdf\n\n\n\n\n\n"
+},
+
+{
+    "location": "lpc/#DSP.LPC.lpc-Tuple{AbstractArray{Number,1},Int64,LPCLevinson}",
+    "page": "LPC - Linear Predictive Coding",
+    "title": "DSP.LPC.lpc",
+    "category": "method",
+    "text": "lpc(x::AbstractVector, p::Int, LPCLevinson())\n\nLPC (Linear-Predictive-Code) estimation, using the Levinson method. This function implements the mathematics described in [1].\n\n[1] - The Wiener (RMS) Error Criterion in Filter Design and Prediction (Studies in Applied Mathematics 1947 article, N. Levison)\n\n\n\n\n\n"
+},
+
+{
+    "location": "lpc/#LPC-Linear-Predictive-Coding-1",
+    "page": "LPC - Linear Predictive Coding",
+    "title": "LPC - Linear Predictive Coding",
+    "category": "section",
+    "text": "lpc\nlpc(::AbstractVector{Number}, ::Int, ::LPCBurg)\nlpc(::AbstractVector{Number}, ::Int, ::LPCLevinson)"
 },
 
 {
