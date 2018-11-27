@@ -1,5 +1,5 @@
 module Util
-using ..DSP: @importffts, mul!
+using ..DSP: @importffts, mul!, xcorr
 import Base: *
 import Compat
 using Compat: copyto!, ComplexF64, selectdim, undef
@@ -25,7 +25,12 @@ export  hilbert,
         meanfreq,
         unsafe_dot,
         polyfit,
-        shiftin!
+        shiftin!,
+        finddelay,
+        shiftsignal,
+        shiftsignal!,
+        alignsignals,
+        alignsignals!
 
 
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
@@ -335,5 +340,118 @@ function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
 
     return a
 end
+
+# DELAY FINDING UTILITIES
+
+"""
+    finddelay(x, y)
+
+Estimate the delay of x with respect to y by locating the peak of their
+cross-correlation.
+
+The output delay will be positive when x is delayed with respect y, negative if
+advanced, 0 otherwise.
+
+# Example
+```jldoctest
+julia> finddelay([0, 0, 1, 2, 3], [1, 2, 3])
+2
+
+julia> finddelay([1, 2, 3], [0, 0, 1, 2, 3])
+-2
+```
+"""
+function finddelay(x::AbstractVector{<: Real}, y::AbstractVector{<: Real})
+    s = xcorr(y, x)
+    max_corr = maximum(abs, s)
+    max_idxs = Compat.findall(x -> abs(x) == max_corr, s)
+
+    center_idx = cld(length(s), 2)
+    # Delay is position of peak cross-correlation relative to center.
+    # If the maximum cross-correlation is not unique, use the position
+    # closest to the center.
+    d_ind = Compat.argmin(abs.(center_idx .- max_idxs))
+    d = center_idx - max_idxs[d_ind]
+end
+
+"""
+    shiftsignal!(x, s)
+
+Mutating version of shiftsignals(): shift x of s samples and fill the spaces
+with zeros in-place.
+
+See also [`shiftsignal`](@ref).
+"""
+function shiftsignal!(x::AbstractVector, s::Integer)
+    l = length(x)
+    if abs(s) > l
+        error("The absolute value of s must not be greater than the length of x")
+    end
+    if s > 0
+        x[s + 1:l] = x[1:l - s]
+        x[1:s] .= 0
+    elseif s < 0
+        x[1:l + s] = x[1 - s:l]
+        x[l + s + 1:l] .= 0
+    end
+    x
+end
+
+"""
+    shiftsignal(x, s)
+
+Shift elements of signal x in time by a given amount s of samples and fill
+the spaces with zeros. For circular shifting, use circshift.
+
+# Example
+```jldoctest
+julia> shiftsignal([1, 2, 3], 2)
+3-element Array{Int64,1}:
+ 0
+ 0
+ 1
+
+julia> shiftsignal([1, 2, 3], -2)
+3-element Array{Int64,1}:
+ 3
+ 0
+ 0
+```
+
+See also [`shiftsignal!`](@ref).
+"""
+shiftsignal(x::AbstractVector, s::Integer) = shiftsignal!(copy(x), s)
+
+"""
+    alignsignals!(x, y)
+
+Mutating version of alignsignals(): time align x to y in-place.
+
+See also [`alignsignals`](@ref).
+"""
+function alignsignals!(x, y)
+    d = finddelay(x, y)
+    x = shiftsignal!(x, -d)
+    x, d
+end
+
+"""
+    alignsignals(x, y)
+
+Use finddelay() and shiftsignal() to time align x to y. Also return the delay
+of x with respect to y.
+
+# Example
+```jldoctest
+julia> alignsignals([0, 0, 1, 2, 3], [1, 2, 3])
+([1, 2, 3, 0, 0], 2)
+
+julia> alignsignals([1, 2, 3], [0, 0, 1, 2, 3])
+([0, 0, 1], -2)
+```
+
+See also [`alignsignals!`](@ref).
+"""
+alignsignals(x, y) = alignsignals!(copy(x), y)
 
 end # end module definition

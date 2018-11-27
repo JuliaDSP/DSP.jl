@@ -112,3 +112,60 @@ end
 
 ## arraysplit
 @test collect(DSP.arraysplit(collect(1:10), 3, 1)) == [ collect(1.0:3), collect(3.0:5), collect(5.0:7), collect(7.0:9)]
+
+# DELAY FINDING UTILITIES
+
+@testset "delay finders" begin
+    # Test signals length
+    L = 10
+    # Test delay
+    d = 3
+
+    # Forcing valid test parameters values
+    L = round(Int, abs(L))
+    d = round(Int, min(abs(d), L))
+
+    # Generating the test signal as random 0 mean white uniform noise
+    x = 2.0 .* rand(L) .- 1.0
+
+    # Tests
+
+    @test finddelay([zeros(d); x], x) == d
+    @test finddelay([zeros(d); x], -x) == d
+    @test finddelay(x, [zeros(d); x]) == -d
+    @test finddelay(-x, [zeros(d); x]) == -d
+
+    @test shiftsignal(x, d) == [zeros(d); x[1:(end - d)]]
+    @test shiftsignal(x, -d) == [x[(d + 1):end]; zeros(d)]
+
+    y = copy(x)
+    z = shiftsignal!(y, d)
+    @test z == y
+    @test y == [zeros(d); x[1:(end - d)]]
+
+    y = copy(x)
+    z = shiftsignal!(y, -d)
+    @test z == y
+    @test y == [x[(d + 1):end]; zeros(d)]
+
+    y, s = alignsignals([zeros(d); x], x)
+    @test y == [x; zeros(d)]
+    @test s == d
+
+    y, s = alignsignals(x, [zeros(d); x])
+    @test y == [zeros(d); x[1:(end - d)]]
+    @test s == -d
+
+    y = copy(x)
+    z, s = alignsignals!(y, [zeros(d); x])
+    @test z == y
+    @test s == -d
+    @test y == [zeros(d); x[1:(end - d)]]
+
+    y = [zeros(d); x]
+    z, s = alignsignals!(y, x)
+    @test z == y
+    @test s == d
+    @test y == [x; zeros(d)]
+
+end
