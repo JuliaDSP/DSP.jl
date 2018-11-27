@@ -1,4 +1,9 @@
 # `Util` - utility functions
+```@meta
+DocTestSetup = quote
+    using DSP
+end
+```
 
 ```@docs
 unwrap
@@ -18,5 +23,9 @@ finddelay
 shiftsignal
 shiftsignal!
 alignsignals
-alignsignals
+alignsignals!
+```
+
+```@meta
+DocTestSetup = nothing
 ```
