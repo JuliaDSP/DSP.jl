@@ -32,7 +32,7 @@ open(joinpath(@__DIR__, "src", "winplots.jl"), "w") do io
         n = winfunc == triang ? 7 : 69
 
         fname = split(string(winfunc), ".")[end]
-        println(io, "$(fname)_winplot = padplot(\"\"\"")
+        println(io, "const $(fname)_winplot = padplot(\"\"\"")
         # convert Nx1 matrices to vectors with [:] - necessary for dpss
         print(io, lineplot(winfunc(n, args...)[:], ylim=[0,ymax], xlim=[1,n], width=70, canvas=BlockCanvas))
         println(io, "\"\"\")\n")

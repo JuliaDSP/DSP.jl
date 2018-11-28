@@ -3,7 +3,7 @@
 # to re-generate use the `gen_winplots.jl` script
 #####################################################
 
-rect_winplot = padplot("""
+const rect_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘│ 
      │                                                                      │ 
@@ -24,7 +24,7 @@ rect_winplot = padplot("""
      0                                                                     70
 """)
 
-hanning_winplot = padplot("""
+const hanning_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                             ▗▄▞▀▀▀▀▀▀▀▄▄                             │ 
      │                           ▄▞▘           ▀▄▖                          │ 
@@ -45,7 +45,7 @@ hanning_winplot = padplot("""
      0                                                                     70
 """)
 
-hamming_winplot = padplot("""
+const hamming_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                             ▗▄▀▀▀▀▀▀▀▀▚▄                             │ 
      │                           ▄▀▘           ▀▚▖                          │ 
@@ -66,7 +66,7 @@ hamming_winplot = padplot("""
      0                                                                     70
 """)
 
-tukey_winplot = padplot("""
+const tukey_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │            ▗▞▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄            │ 
      │           ▞▘                                             ▌           │ 
@@ -87,7 +87,7 @@ tukey_winplot = padplot("""
      0                                                                     70
 """)
 
-cosine_winplot = padplot("""
+const cosine_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                           ▗▄▞▀▀▀▀▀▀▀▀▀▀▀▄▄                           │ 
      │                        ▄▞▀▘               ▀▀▄▖                       │ 
@@ -108,7 +108,7 @@ cosine_winplot = padplot("""
      0                                                                     70
 """)
 
-lanczos_winplot = padplot("""
+const lanczos_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                            ▗▄▞▀▀▀▀▀▀▀▀▀▄▄                            │ 
      │                         ▗▞▀▘             ▀▀▄                         │ 
@@ -129,7 +129,7 @@ lanczos_winplot = padplot("""
      0                                                                     70
 """)
 
-triang_winplot = padplot("""
+const triang_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                                ▄▞▀▀▀▄▖                               │ 
      │                            ▗▄▞▀      ▝▀▄▖                            │ 
@@ -150,7 +150,7 @@ triang_winplot = padplot("""
      1                                                                      7
 """)
 
-bartlett_winplot = padplot("""
+const bartlett_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                                 ▄▀▀▚▖                                │ 
      │                              ▗▄▀    ▝▚▄                              │ 
@@ -171,7 +171,7 @@ bartlett_winplot = padplot("""
      0                                                                     70
 """)
 
-gaussian_winplot = padplot("""
+const gaussian_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                              ▄▞▀▀▀▀▀▀▀▄▖                             │ 
      │                            ▄▀          ▝▚▖                           │ 
@@ -192,7 +192,7 @@ gaussian_winplot = padplot("""
      0                                                                     70
 """)
 
-bartlett_hann_winplot = padplot("""
+const bartlett_hann_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                              ▗▄▞▀▀▀▀▀▄▄                              │ 
      │                            ▄▀▘         ▀▚▖                           │ 
@@ -213,7 +213,7 @@ bartlett_hann_winplot = padplot("""
      0                                                                     70
 """)
 
-blackman_winplot = padplot("""
+const blackman_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                               ▄▀▀▀▀▀▀▚▖                              │ 
      │                             ▄▀        ▝▚▖                            │ 
@@ -234,7 +234,7 @@ blackman_winplot = padplot("""
      0                                                                     70
 """)
 
-kaiser_winplot = padplot("""
+const kaiser_winplot = padplot("""
      ┌──────────────────────────────────────────────────────────────────────┐ 
    1 │                               ▄▞▀▀▀▀▀▄▖                              │ 
      │                             ▄▀        ▝▚▖                            │ 
@@ -255,7 +255,7 @@ kaiser_winplot = padplot("""
      0                                                                     70
 """)
 
-dpss_winplot = padplot("""
+const dpss_winplot = padplot("""
        ┌──────────────────────────────────────────────────────────────────────┐ 
    0.2 │                              ▄▄▀▀▀▀▀▀▚▄▖                             │ 
        │                           ▗▞▀          ▝▀▄                           │ 

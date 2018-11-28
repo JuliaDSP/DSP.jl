@@ -28,7 +28,7 @@ export  rect,
 
 # this gets shared between the docstrings of all the window functions because
 # they share these args.
-zerophase_docs = """
+const zerophase_docs = """
 If `zerophase` is `false` (the default) the window is centered around index
 `(n+1)/2`, which is commonly used for FIR filter design. These are often used
 for FIR filter design, and usually odd-length. Note that for even-length windows
@@ -44,7 +44,6 @@ non-`zerophase` window being of length `n-1`. `zerophase` windows are often used
 in FFT processing, and are usually even-length.
 """
 
-
 function twoD_docs(arg=nothing)
     argstr = if arg !== nothing
         "`$arg`, "
@@ -52,7 +51,7 @@ function twoD_docs(arg=nothing)
         ""
     end
     """
-    Providing a 2D `Tuple` rather than a single `n` constructs a 2D window.
+    Providing a `dims` `Tuple` rather than a single `n` constructs a 2D window.
     $argstr`padding` and `zerophase` can then be given either as a single value
     for both horizontal and vertical or a 2-tuple to specify them separately.
     """
@@ -80,7 +79,7 @@ end
 include("winplots.jl")
 
 """
-    makewindow(winfunc::Function, n, padding, zerophase)
+    makewindow(winfunc::Function, n::Integer, padding::Integer, zerophase::Bool)
 
 Generate a discrete window vector of the given length with `padding` zeros.
 `winfunc` should be a function giving the window value in the range of
@@ -91,14 +90,20 @@ $zerophase_docs
 Example:
 
 ```
-function hanning(n::Integer; padding=0, zerophase=false)
+function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.5*(1+cos(2pi*x))
     end
 end
 ```
 """
-function makewindow(winfunc::Function, n, padding, zerophase)
+function makewindow(winfunc::Function, n::Integer, padding::Integer, zerophase::Bool)
+    if n < 0
+        throw(ArgumentError("`n` must be nonnegative"))
+    end
+    if padding < 0
+        throw(ArgumentError("`padding` must be nonnegative"))
+    end
     win = zeros(n+padding)
     if n == 1
         win[1] = winfunc(0.0)
@@ -127,8 +132,8 @@ end
 """
 $rect_winplot
 
-    rect(n; padding=0, zerophase=false)
-    rect((r,c); padding=0, zerophase=false)
+    rect(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    rect(dims; padding=0, zerophase=false)
 
 Rectangular window of length `n`, padded with `padding` zeros. This window is 1
 within the window, and 0 outside of it.
@@ -137,7 +142,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function rect(n::Integer; padding=0, zerophase=false)
+function rect(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         1.0
     end
@@ -147,8 +152,8 @@ end
 """
 $hanning_winplot
 
-    hanning(n; padding=0, zerophase=false)
-    hanning((r,c); padding=0, zerophase=false)
+    hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    hanning(dims; padding=0, zerophase=false)
 
 Hanning window of length `n` with `padding` zeros. The Hanning (or Hann) window
 is a raised-cosine window that reaches zero at the endpoints.
@@ -173,7 +178,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function hanning(n::Integer; padding=0, zerophase=false)
+function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.5*(1+cos(2pi*x))
     end
@@ -182,8 +187,8 @@ end
 """
 $hamming_winplot
 
-    hamming(n; padding=0, zerophase=false)
-    hamming((r,c); padding=0, zerophase=false)
+    hamming(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    hamming(dims; padding=0, zerophase=false)
 
 Hamming window of length `n` with `padding` zeros. The Hamming window does not
 reach zero at the endpoints and so has a shallower frequency roll-off when
@@ -199,7 +204,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function hamming(n::Integer; padding=0, zerophase=false)
+function hamming(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.54 + 0.46*cos(2pi*x)
     end
@@ -208,8 +213,8 @@ end
 """
 $tukey_winplot
 
-    tukey(n, α::Real; padding=0, zerophase=false)
-    tukey((r,c), α::Real; padding=0, zerophase=false)
+    tukey(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
+    tukey(dims, α; padding=0, zerophase=false)
 
 Tukey window of length `n` with `padding` zeros. The Tukey window has a flat top
 and reaches zero at the endpoints, with a sinusoidal transition area
@@ -238,7 +243,7 @@ $(twoD_docs("α"))
 
 $zerophase_docs
 """
-function tukey(n::Integer, α::Real; padding=0, zerophase=false)
+function tukey(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     # check that α is reasonable
     !(0 <= α <= 1) && error("α must be in the range 0 <= α <= 1.")
 
@@ -261,8 +266,8 @@ end
 """
 $cosine_winplot
 
-    cosine(n; padding=0, zerophase=false)
-    cosine((r,c); padding=0, zerophase=false)
+    cosine(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    cosine(dims; padding=0, zerophase=false)
 
 Cosine window of length `n` with `padding` zeros. The cosine window is the first
 lobe of a cosine function (with the zero crossings at +/- π as endpoints). Also
@@ -282,7 +287,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function cosine(n::Integer; padding=0, zerophase=false)
+function cosine(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         cos(pi*x)
     end
@@ -291,8 +296,8 @@ end
 """
 $lanczos_winplot
 
-    lanczos(n; padding=0, zerophase=false)
-    lanczos((r,c); padding=0, zerophase=false)
+    lanczos(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    lanczos(dims; padding=0, zerophase=false)
 
 Lanczos window of length `n` with `padding` zeros. The Lanczos window is the
 main lobe of a `sinc` function.
@@ -309,7 +314,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function lanczos(n::Integer; padding=0, zerophase=false)
+function lanczos(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         sinc(2x)
     end
@@ -318,8 +323,8 @@ end
 """
 $triang_winplot
 
-    triang(n; padding=0, zerophase=false)
-    triang((r,c); padding=0, zerophase=false)
+    triang(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    triang(dims; padding=0, zerophase=false)
 
 Triangular window of length `n` with `padding` zeros. The Triangular window does
 not reach zero at the endpoints. For odd `n` the `triang` window is the center
@@ -347,7 +352,7 @@ $zerophase_docs
 When `zerophase` is `true` substitute `n+1` for `n` in the above window
 expressions.
 """
-function triang(n::Integer; padding=0, zerophase=false)
+function triang(n::Integer; padding::Integer=0, zerophase::Bool=false)
     # for the purpose of calculating the slope of the window, consider `n` to be
     # 1 larger to compensate for the fact that `zerophase` gives a periodic
     # window
@@ -361,8 +366,8 @@ end
 """
 $bartlett_winplot
 
-    bartlett(n; padding=0, zerophase=false)
-    bartlett((r,c); padding=0, zerophase=false)
+    bartlett(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    bartlett(dims; padding=0, zerophase=false)
 
 Bartlett window of length `n`. The Bartlett window is a triangular window that
 reaches 0 at the endpoints. This is equivalent to convolving two rectangular
@@ -379,7 +384,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function bartlett(n::Integer; padding=0, zerophase=false)
+function bartlett(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         1 - abs(2x)
     end
@@ -388,8 +393,8 @@ end
 """
 $gaussian_winplot
 
-    gaussian(n, σ; padding=0, zerophase=false)
-    gaussian((r,c), σ; padding=0, zerophase=false)
+    gaussian(n::Integer, σ::Real; padding::Integer=0, zerophase::Bool=false)
+    gaussian(dims, σ; padding=0, zerophase=false)
 
 Gives an n-sample gaussian window defined by sampling the function:
 
@@ -406,7 +411,7 @@ $(twoD_docs("σ"))
 
 $zerophase_docs
 """
-function gaussian(n::Integer, σ::Real; padding=0, zerophase=false)
+function gaussian(n::Integer, σ::Real; padding::Integer=0, zerophase::Bool=false)
     σ > 0.0 || error("σ must be positive")
     makewindow(n, padding, zerophase) do x
         exp(-0.5*(x/σ)^2)
@@ -416,8 +421,8 @@ end
 """
 $bartlett_hann_winplot
 
-    bartlett_hann(n; padding=0, zerophase=false)
-    bartlett_hann((r,c); padding=0, zerophase=false)
+    bartlett_hann(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    bartlett_hann(dims; padding=0, zerophase=false)
 
 Bartlett-Hann window of length `n` with `padding` zeros. The Bartlett-Hann
 window is a weighted sum of the Bartlett and Hann windows.
@@ -432,7 +437,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function bartlett_hann(n::Integer; padding=0, zerophase=false)
+function bartlett_hann(n::Integer; padding::Integer=0, zerophase::Bool=false)
     a0, a1, a2 = 0.62, 0.48, 0.38
     makewindow(n, padding, zerophase) do x
         a0 - a1*abs(x) + a2*cos(2pi*x)
@@ -442,8 +447,8 @@ end
 """
 $blackman_winplot
 
-    blackman(n; padding=0, zerophase=false)
-    blackman((r,c); padding=0, zerophase=false)
+    blackman(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    blackman(dims; padding=0, zerophase=false)
 
 Approximates the "Exact" Blackman window. This is the generalized Blackman
 window with α = 0.16.
@@ -458,7 +463,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function blackman(n::Integer; padding=0, zerophase=false)
+function blackman(n::Integer; padding::Integer=0, zerophase::Bool=false)
     a0, a1, a2 = 0.42, 0.5, 0.08
     makewindow(n, padding, zerophase) do x
         a0 + a1*cos(2pi*x) + a2*cos(4pi*x)
@@ -468,8 +473,8 @@ end
 """
 $kaiser_winplot
 
-    kaiser(n, α; padding=0, zerophase=false)
-    kaiser((r,c), α; padding=0, zerophase=false)
+    kaiser(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
+    kaiser(dims, α; padding=0, zerophase=false)
 
 Kaiser window of length `n` parameterized by `α`. The Kaiser window approximates
 the DPSS window (given by `dpss`), using a simplified definition relying on a
@@ -493,7 +498,7 @@ $(twoD_docs("α"))
 
 $zerophase_docs
 """
-function kaiser(n::Integer, α::Real; padding=0, zerophase=false)
+function kaiser(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     pf = 1.0/besseli(0,pi*α)
     makewindow(n, padding, zerophase) do x
         pf*besseli(0, pi*α*(sqrt(1 - (2x)^2)))
@@ -508,7 +513,8 @@ end
 """
 $dpss_winplot
 
-    dpss(n, nw, ntapers=iceil(2*nw)-1; padding=0, zerophase=false)
+    dpss(n::Integer, nw::Real, ntapers::Integer=iceil(2*nw)-1;
+         padding::Integer=0, zerophase::Bool=false)
 
 The first `ntapers` discrete prolate spheroid sequences (Slepian
 tapers) as an `n` × `ntapers` matrix. The signs of the tapers
@@ -521,7 +527,7 @@ The DPSS window maximizes the energy concentration in the main lobe.
 $zerophase_docs
 """
 function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
-              padding=0, zerophase=false)
+              padding::Integer=0, zerophase::Bool=false)
     if isodd(n) && zerophase
         throw(ArgumentError("`dpss` does not currently support odd-length zerophase windows"))
     end
@@ -642,15 +648,20 @@ end
 # input windows when making a 2D window
 argdup(arg::Tuple) = arg
 argdup(arg::Real) = (arg, arg)
+const IntegerOr2 = Union{Tuple{<:Integer, <:Integer}, Integer}
+const RealOr2 = Union{Tuple{<:Real, <:Real}, Real}
+const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
              :triang, :bartlett, :bartlett_hann, :blackman)
     @eval begin
-        function $func(n::NTuple{2, Integer}; padding=0, zerophase=false)
+        function $func(dims::Tuple; padding::IntegerOr2=0,
+                                    zerophase::BoolOr2=false)
+            length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
             paddings = argdup(padding)
             zerophases = argdup(zerophase)
-            w1 = $func(n[1], padding=paddings[1], zerophase=zerophases[1])
-            w2 = $func(n[2], padding=paddings[2], zerophase=zerophases[2])
+            w1 = $func(dims[1], padding=paddings[1], zerophase=zerophases[1])
+            w2 = $func(dims[2], padding=paddings[2], zerophase=zerophases[2])
             w1 * w2'
         end
     end
@@ -658,12 +669,14 @@ end
 
 for func in (:tukey, :gaussian, :kaiser)
     @eval begin
-        function $func(n::NTuple{2, Integer}, arg; padding=0, zerophase=false)
+        function $func(dims::Tuple, arg::RealOr2;
+                       padding::IntegerOr2=0, zerophase::BoolOr2=false)
+            length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
             args = argdup(arg)
             paddings = argdup(padding)
             zerophases = argdup(zerophase)
-            w1 = $func(n[1], args[1]; padding=paddings[1], zerophase=zerophases[1])
-            w2 = $func(n[2], args[2]; padding=paddings[2], zerophase=zerophases[2])
+            w1 = $func(dims[1], args[1]; padding=paddings[1], zerophase=zerophases[1])
+            w2 = $func(dims[2], args[2]; padding=paddings[2], zerophase=zerophases[2])
             w1 * w2'
         end
     end
