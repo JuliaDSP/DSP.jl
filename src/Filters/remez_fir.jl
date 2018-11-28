@@ -260,123 +260,6 @@ Banner from C code
 -----------------------------------------------------------------------
 =========#
 """
-    remez(numtaps::Integer, 
-          bands::Vector, 
-          desired::Vector; 
-          weight::Vector=[], 
-          Hz::Real=1.0, 
-          filter_type::RemezFilterType=filter_type_bandpass,
-          maxiter::Integer=25, 
-          grid_density::Integer=16)
-
-Calculate the minimax optimal filter using the Remez exchange algorithm [^McClellan1973a] [^McClellan1973b].
-
-This is the scipy compatible version that requires 3 arguments (numtaps, bands, desired). 
-For a simplified API, see the 2 argument version (numtaps, band_defs).
-
-Calculate the filter-coefficients for the finite impulse response
-(FIR) filter whose transfer function minimizes the maximum error
-between the desired gain and the realized gain in the specified
-frequency bands using the Remez exchange algorithm.
-
-# Arguments
-- `numtaps::Integer`: The desired number of taps in the filter. 
-    The number of taps is the number of terms in the filter, or the filter 
-    order plus one.
-- `bands::Vector`: A monotonic sequence containing the band edges in Hz.
-    All elements must be non-negative and less than half the sampling
-    frequency as given by `Hz`.
-- `desired::Vector`:A sequence half the size of bands containing the desired 
-    gain in each of the specified bands.
-- `weight::Vector`: (optional)
-    A relative weighting to give to each band region. The length of
-    `weight` has to be half the length of `bands`.
-- `Hz::Real`: The sampling frequency in Hz. Default is 1.
-- `filter_type::RemezFilterType`: Default is filter_type_bandpass.
-    The type of filter:
-      filter_type_bandpass : flat response in bands. This is the default.
-      filter_type_differentiator : frequency proportional response in bands.
-        Assymetric as in filter_type_hilbert case, but with a linear sloping
-        desired response.
-      filter_type_hilbert : filter with odd symmetry, that is, type III
-                  (for even order) or type IV (for odd order)
-                  linear phase filters.
-- `maxiter::Integer`: (optional)
-    Maximum number of iterations of the algorithm. Default is 25.
-- `grid_density:Integer`: (optional)
-    Grid density. The dense grid used in `remez` is of size
-    ``(numtaps + 1) * grid_density``. Default is 16.
-
-# Returns
-- `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
-    (in a minimax sense) filter.
-
-[^McClellan1973a]: 
-J. H. McClellan and T. W. Parks, A unified approach to the
-design of optimum FIR linear phase digital filters,
-IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
-
-[^McClellan1973b]: 
-J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer
-Program for Designing Optimum FIR Linear Phase Digital
-Filters, IEEE Trans. Audio Electroacoust., vol. AU-21,
-pp. 506-525, 1973.
-
-# Examples
-Construct a length 35 filter with a passband at 0.15-0.4 Hz 
-(desired response of 1), and stop bands at 0-0.1 Hz and 0.45-0.5 Hz
-(desired response of 0). Note: the behavior in the frequency ranges between 
-those bands - the transition bands - is unspecified.
-
-```julia-repl
-julia> bpass = remez(35, [0, 0.1, 0.15, 0.4, 0.45, 0.5], [0, 1, 0])
-```
-
-You can trade-off maximum error achieved for transition bandwidth. 
-The wider the transition bands, the lower the maximum error in the
-bands specified. Here is a bandpass filter with the same passband, but
-wider transition bands.
-
-```julia-repl
-julia> bpass2 = remez(35, [0, 0.08, 0.15, 0.4, 0.47, 0.5], [0, 1, 0])
-```
-
-Here we compute the frequency responses and plot them in dB.
-
-```julia-repl
-using PyPlot
-b = DSP.Filters.PolynomialRatio(bpass, [1.0])
-b2 = DSP.Filters.PolynomialRatio(bpass2, [1.0])
-f = range(0, stop=0.5, length=1000)
-plot(f, 20*log10.(abs.(freqz(b,f,1.0))))
-plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
-grid()
-```
-"""
-function remez(numtaps::Integer, bands::Vector, desired::Vector;
-               weight::Vector=fill(1.0, length(desired)),
-               Hz::Real=1.0,
-               filter_type::RemezFilterType=filter_type_bandpass,
-               kwargs...)
-    issorted(bands) || throw(ArgumentError("`bands` is not monotonically increasing"))
-    length(bands) == 2length(desired) ||
-        throw(ArgumentError("`desired` must be half the length of `bands`."))
-    length(bands) == 2length(weight) ||
-        throw(ArgumentError("`weight` must be half the length of `bands`."))
-    band_ranges = [(bands[i], bands[i+1]) for i in 1:2:length(bands)]
-    if filter_type == filter_type_differentiator
-        eff = [f -> d*f/Hz for d in desired]
-        wate = [d > 0.0001 ? f -> w/(f/Hz) : f -> w for (w, d) in zip(weight, desired)]
-    else
-        eff = desired
-        wate = weight
-    end
-    band_defs = [r => (d, w) for (r, d, w) in zip(band_ranges, eff, wate)]
-    neg = filter_type in (filter_type_hilbert, filter_type_differentiator)
-    return remez(numtaps, band_defs; Hz=Hz, neg=neg, kwargs...)
-end
-
-"""
     remez(numtaps::Integer, band_defs;
           Hz::Real=1.0,
           neg::Bool=false,
@@ -404,11 +287,11 @@ frequency bands using the Remez exchange algorithm.
     and defaults to 1.0. Both the desired response and weight may be either scalars
     or functions. If a function, the function should accept a real frequency and
     return the real desired response or real weight. Examples:
-      LPF with unity weights. [(0, 0.475) => 1, (0.5, 1.0) => 0].
-      LPF with weight of 2 in the stop band. [(0, 0.475) => (1, 1), (0.5, 1.0) => (0, 2)].
-      BPF with unity weights. [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]
-      Hilbert transformer. [(0.1, 0.95) => 1]; neg=true.
-      Differentiator. [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true.
+    + LPF with unity weights. `[(0, 0.475) => 1, (0.5, 1.0) => 0]`
+    + LPF with weight of 2 in the stop band. `[(0, 0.475) => (1, 1), (0.5, 1.0) => (0, 2)]`
+    + BPF with unity weights. `[(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]`
+    + Hilbert transformer. `[(0.1, 0.95) => 1]; neg=true`
+    + Differentiator. `[(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true`
 - `Hz::Real`: The sampling frequency in Hz. Default is 1.
 - `neg::Bool`: Whether the filter has negative symmetry or not. Default is false.
     If false, the filter is even-symmetric. If true, the filter is odd-symmetric.
@@ -417,7 +300,7 @@ frequency bands using the Remez exchange algorithm.
     Maximum number of iterations of the algorithm. Default is 25.
 - `grid_density:Integer`: (optional)
     Grid density. The dense grid used in `remez` is of size
-    ``(numtaps + 1) * grid_density``. Default is 16.
+    `(numtaps + 1) * grid_density`. Default is 16.
 
 # Returns
 - `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
@@ -839,4 +722,78 @@ function remez(numtaps::Integer, band_defs;
 end
 
 
+"""
+    remez(numtaps::Integer, 
+          bands::Vector, 
+          desired::Vector; 
+          weight::Vector=[], 
+          Hz::Real=1.0, 
+          filter_type::RemezFilterType=filter_type_bandpass,
+          maxiter::Integer=25, 
+          grid_density::Integer=16)
+
+This is the scipy compatible version that requires 3 arguments (numtaps, bands, desired). 
+For a simplified API, see the 2 argument version (numtaps, band_defs). The filters
+designed are equivalent, the inputs are just specified in a different way.
+Below the arguments and examples are described that differ from the simplified
+API version.
+
+# Arguments
+- `bands::Vector`: A monotonic sequence containing the band edges in Hz.
+    All elements must be non-negative and less than half the sampling
+    frequency as given by `Hz`.
+- `desired::Vector`:A sequence half the size of bands containing the desired 
+    gain in each of the specified bands.
+- `weight::Vector`: (optional)
+    A relative weighting to give to each band region. The length of
+    `weight` has to be half the length of `bands`.
+- `filter_type::RemezFilterType`: Default is `filter_type_bandpass`.
+    The type of filter:
+    +  `filter_type_bandpass` : flat response in bands. This is the default.
+    +  `filter_type_differentiator` : frequency proportional response in bands.
+        Odd symetric as in `filter_type_hilbert` case, but with a linear sloping
+        desired response.
+    +  `filter_type_hilbert` : filter with odd symmetry, that is, type III
+                  (for even order) or type IV (for odd order)
+                  linear phase filters.
+
+# Examples
+Compare the examples with the scipy API and the simplified API.
+
+```julia-repl
+Simple:
+julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0])
+Scipy:
+julia> bpass = remez(35, [0, 0.1, 0.15, 0.4, 0.45, 0.5], [0, 1, 0])
+```
+
+```julia-repl
+Simple:
+julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0])
+Scipy:
+julia> bpass2 = remez(35, [0, 0.08, 0.15, 0.4, 0.47, 0.5], [0, 1, 0])
+```
+"""
+function remez(numtaps::Integer, bands::Vector, desired::Vector;
+               weight::Vector=fill(1.0, length(desired)),
+               Hz::Real=1.0,
+               filter_type::RemezFilterType=filter_type_bandpass,
+               kwargs...)
+    issorted(bands) || throw(ArgumentError("`bands` is not monotonically increasing"))
+    length(bands) == 2length(desired) ||
+        throw(ArgumentError("`desired` must be half the length of `bands`."))
+    length(bands) == 2length(weight) ||
+        throw(ArgumentError("`weight` must be half the length of `bands`."))
+    band_ranges = [(bands[i], bands[i+1]) for i in 1:2:length(bands)]
+    if filter_type == filter_type_differentiator
+        eff = [f -> d*f/Hz for d in desired]
+        wate = [d > 0.0001 ? f -> w/(f/Hz) : f -> w for (w, d) in zip(weight, desired)]
+    else
+        eff = desired
+        wate = weight
+    end
+    band_defs = [r => (d, w) for (r, d, w) in zip(band_ranges, eff, wate)]
+    neg = filter_type in (filter_type_hilbert, filter_type_differentiator)
+    return remez(numtaps, band_defs; Hz=Hz, neg=neg, kwargs...)
+end
 
