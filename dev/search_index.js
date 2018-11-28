@@ -349,7 +349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.filt",
     "category": "function",
-    "text": "filt(f, x[, si])\n\nApply filter or filter coefficients f along the first dimension of array x. If f is a filter coefficient object, si is an optional array representing the initial filter state (defaults to zeros). If f is a PolynomialRatio, Biquad, or SecondOrderSections, filtering is implemented directly. If f is a ZeroPoleGain object, it is first converted to a SecondOrderSections object.  If f is a Vector, it is interpreted as an FIR filter, and a naïve or FFT-based algorithm is selected based on the data and filter length.\n\n\n\n\n\nfilt(b, a, x, [si])\n\nApply filter described by vectors a and b to vector x, with an optional initial filter state vector si (defaults to zeros).\n\n\n\n\n\n"
+    "text": "filt(b, a, x, [si])\n\nApply filter described by vectors a and b to vector x, with an optional initial filter state vector si (defaults to zeros).\n\n\n\n\n\nfilt(f, x[, si])\n\nApply filter or filter coefficients f along the first dimension of array x. If f is a filter coefficient object, si is an optional array representing the initial filter state (defaults to zeros). If f is a PolynomialRatio, Biquad, or SecondOrderSections, filtering is implemented directly. If f is a ZeroPoleGain object, it is first converted to a SecondOrderSections object.  If f is a Vector, it is interpreted as an FIR filter, and a naïve or FFT-based algorithm is selected based on the data and filter length.\n\n\n\n\n\n"
 },
 
 {
@@ -357,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.filt!",
     "category": "function",
-    "text": "filt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n\n\nfilt!(out, b, a, x, [si])\n\nSame as filt but writes the result into the out argument, which may alias the input x to modify it in-place.\n\n\n\n\n\n"
+    "text": "filt!(out, b, a, x, [si])\n\nSame as filt but writes the result into the out argument, which may alias the input x to modify it in-place.\n\n\n\n\n\nfilt!(out, f, x[, si])\n\nSame as filt() but writes the result into the out argument. Output array out may not be an alias of x, i.e. filtering may not be done in place.\n\n\n\n\n\n"
 },
 
 {
