@@ -7,4 +7,4 @@ DSP.jl's documentation has moved!
 ==================================
 
 Please see `the new documentation site
-<https://juliadsp.github.io/DSP.jl/latest/contents.html>`_.
+<https://juliadsp.github.io/DSP.jl/latest/contents/>`_.
