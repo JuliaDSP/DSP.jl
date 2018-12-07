@@ -2,7 +2,7 @@
 
 Contents:
 
-DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:
+DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia. So far, the following submodules are implemented:
 
 ```@contents
 Pages = ["periodograms.md",
