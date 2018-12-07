@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contents",
     "title": "Welcome to DSP.jl\'s documentation!",
     "category": "section",
-    "text": "Contents:DSP.jl provides a number of common DSP routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"convolutions.md\",\n    \"lpc.md\",\n    \"index.md\",\n]"
+    "text": "Contents:DSP.jl provides a number of common digital signal processing routines in Julia. So far, the following submodules are implemented:Pages = [\"periodograms.md\",\n    \"estimation.md\",\n    \"windows.md\",\n    \"filters.md\",\n    \"util.md\",\n    \"convolutions.md\",\n    \"lpc.md\",\n    \"index.md\",\n]"
 },
 
 {
