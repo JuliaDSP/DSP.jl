@@ -57,18 +57,24 @@ Most analog and digital filters are constructed by composing
 [response types](@ref response-types), which determine the frequency
 response of the filter, with [design methods](@ref design-methods),
 which determine how the filter is constructed.
+The response type is low-pass, high-pass, band-pass or
+band-stop and includes the edges of the bands.
+The design method is Butterworth, Chebyshev1, Chebyshev2, Elliptic, 
+or FIRWindow, and includes any
+necessary parameters for the method that affect the shape of the response,
+such as filter order, ripple, and attenuation.
 
 ```@docs
 analogfilter
 digitalfilter
 ```
 
-For some filters, the design method inherently implies a response type.
-Such filters are documented below.
+For some filters, the design method is more general or 
+inherently implies a response type;
+these [direct design methods](@ref direct-design-methods)
+include "remez" which designs equiripple FIR
+filters of all types, and "iirnotch" which designs a 2nd order "biquad" IIR notch filter.
 
-```@docs
-iirnotch
-```
 
 ### [Filter response types](@id response-types)
 
@@ -94,7 +100,12 @@ Elliptic
 
 ```@docs
 FIRWindow
+```
+
+### [Direct filter design methods](@id direct-design-methods)
+```@docs
 remez
+iirnotch
 ```
 
 ## Filter response
