@@ -11,8 +11,10 @@ DSP.jl provides a number of common [digital signal processing](https://en.wikipe
 - [Filter design and filtering](https://juliadsp.github.io/DSP.jl/stable/filters)
 - [Estimation](http://juliadsp.github.io/DSP.jl/stable/estimation/)
 - [Convolution](https://juliadsp.github.io/DSP.jl/stable/convolutions)
-- [Linear Predictive Coding](https://juliadsp.github.io/DSP.jl/dev/lpc)
+- [Linear Predictive Coding](https://juliadsp.github.io/DSP.jl/stable/lpc)
 - [Window functions](https://juliadsp.github.io/DSP.jl/stable/windows)
 - [Utility functions](https://juliadsp.github.io/DSP.jl/stable/util)
 
-More details can be found in the [Online Documentation](https://juliadsp.github.io/DSP.jl/latest/contents/).
+More details can be found in the [Online Documentation](https://juliadsp.github.io/DSP.jl/stable/contents/).
+
+The documentation for pre-releases (master) can be found [here](https://juliadsp.github.io/DSP.jl/latest/contents/).
