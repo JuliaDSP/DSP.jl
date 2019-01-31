@@ -290,7 +290,7 @@ struct Bandstop{T} <: FilterType
 end
 
 """
-Bandstop(Wn1, Wn2[; fs])
+    Bandstop(Wn1, Wn2[; fs])
 
 Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
 `fs` is not specified, `Wn1` and `Wn2` are interpreted as
@@ -461,7 +461,7 @@ Second-order digital IIR notch filter [^Orfandis] at frequency `Wn` with
 bandwidth `bandwidth`. If `fs` is not specified, `Wn` is
 interpreted as a normalized frequency in half-cycles/sample.
 
-[^Orfandis]: 
+[^Orfandis]:
 Orfanidis, S. J. (1996). Introduction to signal processing.
 Englewood Cliffs, N.J: Prentice Hall, p. 370.
 """

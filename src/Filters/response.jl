@@ -28,7 +28,7 @@ end
 """
     freqz(filter, w = range(0, stop=π, length=250))
 
-Frequency response of a digital `filter` at normalised frequency
+Frequency response of a digital `filter` at normalised angular frequency
 or frequencies `w` in radians/sample.
 """
 function freqz(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
@@ -49,7 +49,7 @@ end
 """
     phasez(filter, w = range(0, stop=π, length=250))
 
-Phase response of a digital `filter` at normalised frequency
+Phase response of a digital `filter` at normalised angular frequency
 or frequencies `w` in radians/sample.
 """
 function phasez(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
@@ -82,7 +82,7 @@ end
 """
     freqs(filter, w)
 
-Frequency response of an analog `filter` at normalised frequency
+Frequency response of an analog `filter` at normalised angular frequency
 or frequencies `w` in radians/sample.
 """
 function freqs(filter::FilterCoefficients, w::Number)
