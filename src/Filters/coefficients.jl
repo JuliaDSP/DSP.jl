@@ -112,6 +112,7 @@ Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
 coefb(f::PolynomialRatio) = reverse(f.b.a)
+coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
     coefa(f)
@@ -120,6 +121,7 @@ Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
 coefa(f::PolynomialRatio) = reverse(f.a.a)
+coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
 # Biquad filter in transfer function form
