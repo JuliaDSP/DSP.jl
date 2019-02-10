@@ -19,7 +19,7 @@ complextype(::Type{Complex{T}}) where {T} = Complex{T}
 Filter representation in terms of zeros `z`, poles `p`, and
 gain `k`:
 ```math
-H(x) = k\\frac{(x - \\verb!z[1]!) \\ldots (x - \\verb!z[end]!)}{(x - \\verb!p[1]!) \\ldots (x - \\verb!p[end]!)}
+H(x) = k\\frac{(x - \\verb!z[1]!) \\ldots (x - \\verb!z[m]!)}{(x - \\verb!p[1]!) \\ldots (x - \\verb!p[n]!)}
 ```
 """
 struct ZeroPoleGain{Z<:Number,P<:Number,K<:Number} <: FilterCoefficients
@@ -58,7 +58,7 @@ end
 Filter representation in terms of the coefficients of the numerator
 `b` and denominator `a` of the transfer function:
 ```math
-H(s) = \\frac{\\verb!b[1]! s^{n-1} + \\ldots + \\verb!b[n]!}{\\verb!a[1]! s^{n-1} + \\ldots + \\verb!a[n]!}
+H(s) = \\frac{\\verb!b[1]! s^{m-1} + \\ldots + \\verb!b[m]!}{\\verb!a[1]! s^{n-1} + \\ldots + \\verb!a[n]!}
 ```
 or equivalently:
 ```math
@@ -112,6 +112,7 @@ Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
 coefb(f::PolynomialRatio) = reverse(f.b.a)
+coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
     coefa(f)
@@ -120,6 +121,7 @@ Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
 coefa(f::PolynomialRatio) = reverse(f.a.a)
+coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
 # Biquad filter in transfer function form

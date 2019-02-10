@@ -210,3 +210,42 @@ end
     @test f1p.b == f1f.b
     @test f1p.a == f1f.a
 end
+
+@testset "coef() testing" begin
+    # relies on conversion for non-polynomial ratio filter coeff objects
+    # so no need to test conversion correctness
+
+    @testset "Biquad" begin
+        bs = [1, 2, 3, 4, 5]
+        B = Biquad(bs...)
+        @test coefa(B) == [1, 4, 5]
+        @test coefb(B) == [1, 2, 3]
+
+        bs = Float64[20, 16, 13, 31, 33]
+        B = Biquad(bs...)
+        @test coefa(B) == [1.0, 31, 33]
+        @test coefb(B) == [20.0, 16, 13]
+    end
+
+    @testset "SecondOrderSections" begin
+        bs = [2.0, 0, 0, 0, 0]
+        B = SecondOrderSections(repeat([Biquad(bs...)], 2), 0.25)
+        @test coefb(B) == [1.0]
+        @test coefa(B) == [1.0]
+
+        bs = [0, 1, 0, 0, 0]
+        B = SecondOrderSections(repeat([Biquad(bs...)], 2), 1)
+        @test coefb(B) == [1]
+        @test coefa(B) == [1, 0, 0]
+    end
+
+    @testset "ZeroPoleGain" begin
+        f = ZeroPoleGain([0], [-1, 1], 1)
+        @test coefa(f) == [1, 0, -1]
+        @test coefb(f) == [1, 0]
+
+        f = ZeroPoleGain(Int[], [-0.25, 0.25], 1)
+        @test coefa(f) == [1.0, 0, -1/16]
+        @test coefb(f) == [1.0]
+    end
+end
