@@ -285,7 +285,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.Filters.ZeroPoleGain",
     "category": "type",
-    "text": "ZeroPoleGain(z, p, k)\n\nFilter representation in terms of zeros z, poles p, and gain k:\n\nH(x) = kfrac(x - verbz1) ldots (x - verbzend)(x - verbp1) ldots (x - verbpend)\n\n\n\n\n\n"
+    "text": "ZeroPoleGain(z, p, k)\n\nFilter representation in terms of zeros z, poles p, and gain k:\n\nH(x) = kfrac(x - verbz1) ldots (x - verbzm)(x - verbp1) ldots (x - verbpn)\n\n\n\n\n\n"
 },
 
 {
@@ -293,7 +293,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Filters - filter design and filtering",
     "title": "DSP.Filters.PolynomialRatio",
     "category": "type",
-    "text": "PolynomialRatio(b, a)\n\nFilter representation in terms of the coefficients of the numerator b and denominator a of the transfer function:\n\nH(s) = fracverbb1 s^n-1 + ldots + verbbnverba1 s^n-1 + ldots + verban\n\nor equivalently:\n\nH(z) = fracverbb1 + ldots + verbbn z^-n+1verba1 + ldots + verban z^-n+1\n\nb and a may be specified as Polynomial objects or vectors ordered from highest power to lowest.\n\n\n\n\n\n"
+    "text": "PolynomialRatio(b, a)\n\nFilter representation in terms of the coefficients of the numerator b and denominator a of the transfer function:\n\nH(s) = fracverbb1 s^m-1 + ldots + verbbmverba1 s^n-1 + ldots + verban\n\nor equivalently:\n\nH(z) = fracverbb1 + ldots + verbbn z^-n+1verba1 + ldots + verban z^-n+1\n\nb and a may be specified as Polynomial objects or vectors ordered from highest power to lowest.\n\n\n\n\n\n"
 },
 
 {
