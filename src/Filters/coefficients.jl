@@ -4,10 +4,6 @@ abstract type FilterCoefficients end
 
 Base.convert(::Type{T}, f::FilterCoefficients) where {T<:FilterCoefficients} = T(f)
 
-realtype(x::DataType) = x
-realtype(::Type{Complex{T}}) where {T} = T
-complextype(T::DataType) = Complex{T}
-complextype(::Type{Complex{T}}) where {T} = Complex{T}
 
 #
 # Zero-pole gain form

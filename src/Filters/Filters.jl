@@ -1,12 +1,18 @@
 module Filters
+
 using ..DSP: @importffts, mul!, rmul!
+using ..Util
+using ..Util: realtype, complextype, realandcomplex
 using ..Unwrap
-using Polynomials, ..Util
+
 import Base: *
-using Compat: copyto!, undef, argmin
+
 import Compat
-using Compat.LinearAlgebra: I
+using Compat: copyto!, undef, argmin
 using Compat.Statistics: middle
+
+using Polynomials
+
 @importffts
 if VERSION >= v"0.7.0-DEV.602"
     import ..DSP: filt, filt!

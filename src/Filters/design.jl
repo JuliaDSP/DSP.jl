@@ -8,10 +8,12 @@ abstract type FilterType end
 # Butterworth prototype
 #
 
-function Butterworth(T::Type, n::Integer)
+function Butterworth(T::Type{N}, n::Integer) where {N<:Number}
     n > 0 || error("n must be positive")
 
-    poles = zeros(Complex{T}, n)
+    RT, CT = realandcomplex(T)
+
+    poles = zeros(CT, n)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
         pole = complex(-sinpi(w), cospi(w))
@@ -21,7 +23,7 @@ function Butterworth(T::Type, n::Integer)
     if isodd(n)
         poles[end] = -1
     end
-    ZeroPoleGain(T[], poles, 1)
+    ZeroPoleGain(CT[], poles, one(RT))
 end
 
 """
@@ -35,32 +37,36 @@ Butterworth(n::Integer) = Butterworth(Float64, n)
 # Chebyshev type I and II prototypes
 #
 
-function chebyshev_poles(T::Type, n::Integer, ε::Real)
-    p = zeros(Complex{T}, n)
-    μ = asinh(convert(T, 1)/ε)/n
+function chebyshev_poles(RT::Type{R}, n::Integer, ε::Real) where {R<:Real}
+    CT = realtype(RT)
+
+    p = zeros(CT, n)
+    μ = asinh(convert(RT, 1)/ε)/n
     b = -sinh(μ)
     c = cosh(μ)
     for i = 1:div(n, 2)
-        w = convert(T, 2i-1)/2n
+        w = convert(RT, 2i-1)/2n
         pole = complex(b*sinpi(w), c*cospi(w))
         p[2i-1] = pole
         p[2i] = conj(pole)
     end
     if isodd(n)
-        w = convert(T, 2*div(n, 2)+1)/2n
+        w = convert(RT, 2*div(n, 2)+1)/2n
         pole = b*sinpi(w)
         p[end] = pole
     end
     p
 end
 
-function Chebyshev1(T::Type, n::Integer, ripple::Real)
+function Chebyshev1(T::Type{N}, n::Integer, ripple::Real) where {N<:Number}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    ε = sqrt(10^(convert(T, ripple)/10)-1)
-    p = chebyshev_poles(T, n, ε)
-    k = one(T)
+    RT, CT = realandcomplex(T)
+
+    ε = sqrt(10^(convert(RT, ripple)/10)-1)
+    p = chebyshev_poles(RT, n, ε)
+    k = one(RT)
     for i = 1:div(n, 2)
         k *= abs2(p[2i])
     end
@@ -69,7 +75,7 @@ function Chebyshev1(T::Type, n::Integer, ripple::Real)
     else
         k *= real(-p[end])
     end
-    ZeroPoleGain(Float64[], p, k)
+    ZeroPoleGain(RT[], p, k)
 end
 
 """
@@ -80,21 +86,23 @@ the passband.
 """
 Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
-function Chebyshev2(T::Type, n::Integer, ripple::Real)
+function Chebyshev2(T::Type{N}, n::Integer, ripple::Real) where {N<:Number}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
-    p = chebyshev_poles(T, n, ε)
+    RT, CT = realandcomplex(T)
+
+    ε = 1/sqrt(10^(convert(RT, ripple)/10)-1)
+    p = chebyshev_poles(RT, n, ε)
     for i = 1:length(p)
         p[i] = inv(p[i])
     end
 
-    z = zeros(Complex{T}, n-isodd(n))
-    k = one(T)
+    z = zeros(CT, n-isodd(n))
+    k = one(RT)
     for i = 1:div(n, 2)
-        w = convert(T, 2i-1)/2n
-        ze = Complex(zero(T), -inv(cospi(w)))
+        w = convert(RT, 2i-1)/2n
+        ze = Complex(zero(RT), -inv(cospi(w)))
         z[2i-1] = ze
         z[2i] = conj(ze)
         k *= abs2(p[2i])/abs2(ze)
@@ -160,14 +168,16 @@ function asne(w::Number, k::Real)
     2*asin(w)/π
 end
 
-function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
+function Elliptic(T::Type{N}, n::Integer, rp::Real, rs::Real) where {N<:Number}
     n > 0 || error("n must be positive")
     rp > 0 || error("rp must be positive")
     rp < rs || error("rp must be less than rs")
 
+    RT, CT = realandcomplex(T)
+
     # Eq. (2)
-    εp = sqrt(10^(convert(T, rp)/10)-1)
-    εs = sqrt(10^(convert(T, rs)/10)-1)
+    εp = sqrt(10^(convert(RT, rp)/10)-1)
+    εs = sqrt(10^(convert(RT, rs)/10)-1)
 
     # Eq. (3)
     k1 = εp/εs
@@ -179,7 +189,7 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
     k1′_landen = landen(k1′)
 
     # Eq. (47)
-    k′ = one(T)
+    k′ = one(RT)
     for i = 1:div(n, 2)
         k′ *= sne(convert(T, 2i-1)/n, k1′_landen)
     end
@@ -191,15 +201,15 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
     # Eq. (65)
     v0 = -im/n*asne(im/εp, k1)
 
-    z = Vector{Complex{T}}(undef, 2*div(n, 2))
-    p = Vector{Complex{T}}(undef, n)
-    gain = one(T)
+    z = Vector{CT}(undef, 2*div(n, 2))
+    p = Vector{CT}(undef, n)
+    gain = one(RT)
     for i = 1:div(n, 2)
         # Eq. (43)
-        w = convert(T, 2i-1)/n
+        w = convert(RT, 2i-1)/n
 
         # Eq. (62)
-        ze = complex(zero(T), -inv(k*cde(w, k_landen)))
+        ze = complex(zero(RT), -inv(k*cde(w, k_landen)))
         z[2i-1] = ze
         z[2i] = conj(ze)
 
@@ -216,7 +226,7 @@ function Elliptic(T::Type, n::Integer, rp::Real, rs::Real)
         p[end] = pole
         gain *= abs(pole)
     else
-        gain *= 10^(-convert(T, rp)/20)
+        gain *= 10^(-convert(RT, rp)/20)
     end
 
     ZeroPoleGain(z, p, gain)
@@ -461,7 +471,7 @@ Second-order digital IIR notch filter [^Orfandis] at frequency `Wn` with
 bandwidth `bandwidth`. If `fs` is not specified, `Wn` is
 interpreted as a normalized frequency in half-cycles/sample.
 
-[^Orfandis]: 
+[^Orfandis]:
 Orfanidis, S. J. (1996). Introduction to signal processing.
 Englewood Cliffs, N.J: Prentice Hall, p. 370.
 """

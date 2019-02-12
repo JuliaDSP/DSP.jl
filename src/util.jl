@@ -33,6 +33,14 @@ export  hilbert,
         alignsignals!
 
 
+realtype(::Type{R}) where {R<:Real} = R
+realtype(::Type{Complex{T}}) where {T} = T
+
+complextype(::Type{R}) where {R<:Real} = R
+complextype(::Type{Complex{T}}) where {T} = Complex{T}
+
+realandcomplex(::Type{N}) where {N<:Number} = (realtype(N), complextype(N))
+
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
