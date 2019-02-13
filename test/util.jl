@@ -1,5 +1,6 @@
 using DSP, Compat, Compat.Test
 using Compat.Statistics: mean
+using DSP.Util: realtype, complextype
 
 @testset "hilbert" begin
     # Testing hilbert transform
@@ -168,4 +169,20 @@ end
     @test s == d
     @test y == [x; zeros(d)]
 
+end
+
+@testset "misc functions" begin
+    @testset "real & complex" begin
+        for T in vcat(subtypes.([Signed, Unsigned, AbstractFloat])...)
+            @test realtype(T) == T
+            @test realtype(Complex{T}) == T
+            @test complextype(T) == Complex{T}
+            @test complextype(Complex{T}) == Complex{T}
+        end
+
+        for T in (String, Char, Vector{ComplexF16}, Tuple{Int, Char})
+            @test_throws MethodError realtype(T)
+            @test_throws MethodError complextype(T)
+        end
+    end
 end

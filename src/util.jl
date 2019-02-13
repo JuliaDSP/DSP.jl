@@ -34,12 +34,10 @@ export  hilbert,
 
 
 realtype(::Type{R}) where {R<:Real} = R
-realtype(::Type{Complex{T}}) where {T} = T
+realtype(::Type{Complex{R}}) where {R} = R
 
-complextype(::Type{R}) where {R<:Real} = R
-complextype(::Type{Complex{T}}) where {T} = Complex{T}
-
-realandcomplex(::Type{N}) where {N<:Number} = (realtype(N), complextype(N))
+complextype(::Type{R}) where {R<:Real} = Complex{R}
+complextype(::Type{C}) where {C<:Complex} = C
 
 function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
 # Return the Hilbert transform of x (a real signal).

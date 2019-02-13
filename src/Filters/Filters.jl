@@ -2,12 +2,13 @@ module Filters
 
 using ..DSP: @importffts, mul!, rmul!
 using ..Util
-using ..Util: realtype, complextype, realandcomplex
+using ..Util: realtype, complextype
 using ..Unwrap
 
 import Base: *
 
 import Compat
+using Compat.LinearAlgebra: I
 using Compat: copyto!, undef, argmin
 using Compat.Statistics: middle
 

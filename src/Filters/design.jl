@@ -8,10 +8,10 @@ abstract type FilterType end
 # Butterworth prototype
 #
 
-function Butterworth(T::Type{N}, n::Integer) where {N<:Number}
+function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     n > 0 || error("n must be positive")
 
-    RT, CT = realandcomplex(T)
+    CT = Complex{T}
 
     poles = zeros(CT, n)
     for i = 1:div(n, 2)
@@ -23,7 +23,7 @@ function Butterworth(T::Type{N}, n::Integer) where {N<:Number}
     if isodd(n)
         poles[end] = -1
     end
-    ZeroPoleGain(CT[], poles, one(RT))
+    ZeroPoleGain(T[], poles, one(T))
 end
 
 """
@@ -37,36 +37,36 @@ Butterworth(n::Integer) = Butterworth(Float64, n)
 # Chebyshev type I and II prototypes
 #
 
-function chebyshev_poles(RT::Type{R}, n::Integer, ε::Real) where {R<:Real}
-    CT = realtype(RT)
+function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
+    CT = Complex{T}
 
     p = zeros(CT, n)
-    μ = asinh(convert(RT, 1)/ε)/n
+    μ = asinh(convert(T, 1)/ε)/n
     b = -sinh(μ)
     c = cosh(μ)
     for i = 1:div(n, 2)
-        w = convert(RT, 2i-1)/2n
+        w = convert(T, 2i-1)/2n
         pole = complex(b*sinpi(w), c*cospi(w))
         p[2i-1] = pole
         p[2i] = conj(pole)
     end
     if isodd(n)
-        w = convert(RT, 2*div(n, 2)+1)/2n
+        w = convert(T, 2*div(n, 2)+1)/2n
         pole = b*sinpi(w)
         p[end] = pole
     end
     p
 end
 
-function Chebyshev1(T::Type{N}, n::Integer, ripple::Real) where {N<:Number}
+function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    RT, CT = realandcomplex(T)
+    CT = Complex{T}
 
-    ε = sqrt(10^(convert(RT, ripple)/10)-1)
-    p = chebyshev_poles(RT, n, ε)
-    k = one(RT)
+    ε = sqrt(10^(convert(T, ripple)/10)-1)
+    p = chebyshev_poles(T, n, ε)
+    k = one(T)
     for i = 1:div(n, 2)
         k *= abs2(p[2i])
     end
@@ -75,7 +75,7 @@ function Chebyshev1(T::Type{N}, n::Integer, ripple::Real) where {N<:Number}
     else
         k *= real(-p[end])
     end
-    ZeroPoleGain(RT[], p, k)
+    ZeroPoleGain(T[], p, k)
 end
 
 """
@@ -86,23 +86,23 @@ the passband.
 """
 Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
-function Chebyshev2(T::Type{N}, n::Integer, ripple::Real) where {N<:Number}
+function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    RT, CT = realandcomplex(T)
+    CT = Complex{T}
 
-    ε = 1/sqrt(10^(convert(RT, ripple)/10)-1)
-    p = chebyshev_poles(RT, n, ε)
+    ε = 1/sqrt(10^(convert(, ripple)/10)-1)
+    p = chebyshev_poles(T, n, ε)
     for i = 1:length(p)
         p[i] = inv(p[i])
     end
 
     z = zeros(CT, n-isodd(n))
-    k = one(RT)
+    k = one(T)
     for i = 1:div(n, 2)
-        w = convert(RT, 2i-1)/2n
-        ze = Complex(zero(RT), -inv(cospi(w)))
+        w = convert(T, 2i-1)/2n
+        ze = Complex(zero(T), -inv(cospi(w)))
         z[2i-1] = ze
         z[2i] = conj(ze)
         k *= abs2(p[2i])/abs2(ze)
@@ -168,16 +168,16 @@ function asne(w::Number, k::Real)
     2*asin(w)/π
 end
 
-function Elliptic(T::Type{N}, n::Integer, rp::Real, rs::Real) where {N<:Number}
+function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     n > 0 || error("n must be positive")
     rp > 0 || error("rp must be positive")
     rp < rs || error("rp must be less than rs")
 
-    RT, CT = realandcomplex(T)
+    CT = Complex{T}
 
     # Eq. (2)
-    εp = sqrt(10^(convert(RT, rp)/10)-1)
-    εs = sqrt(10^(convert(RT, rs)/10)-1)
+    εp = sqrt(10^(convert(T, rp)/10)-1)
+    εs = sqrt(10^(convert(T, rs)/10)-1)
 
     # Eq. (3)
     k1 = εp/εs
@@ -189,7 +189,7 @@ function Elliptic(T::Type{N}, n::Integer, rp::Real, rs::Real) where {N<:Number}
     k1′_landen = landen(k1′)
 
     # Eq. (47)
-    k′ = one(RT)
+    k′ = one(T)
     for i = 1:div(n, 2)
         k′ *= sne(convert(T, 2i-1)/n, k1′_landen)
     end
@@ -203,13 +203,13 @@ function Elliptic(T::Type{N}, n::Integer, rp::Real, rs::Real) where {N<:Number}
 
     z = Vector{CT}(undef, 2*div(n, 2))
     p = Vector{CT}(undef, n)
-    gain = one(RT)
+    gain = one(T)
     for i = 1:div(n, 2)
         # Eq. (43)
-        w = convert(RT, 2i-1)/n
+        w = convert(T, 2i-1)/n
 
         # Eq. (62)
-        ze = complex(zero(RT), -inv(k*cde(w, k_landen)))
+        ze = complex(zero(T), -inv(k*cde(w, k_landen)))
         z[2i-1] = ze
         z[2i] = conj(ze)
 
@@ -226,10 +226,11 @@ function Elliptic(T::Type{N}, n::Integer, rp::Real, rs::Real) where {N<:Number}
         p[end] = pole
         gain *= abs(pole)
     else
-        gain *= 10^(-convert(RT, rp)/20)
+        gain *= 10^(-convert(T, rp)/20)
     end
 
-    ZeroPoleGain(z, p, gain)
+    # without convert, gain reverts to F64
+    ZeroPoleGain(z, p, convert(T, gain))
 end
 
 """
