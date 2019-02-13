@@ -87,12 +87,12 @@ function PolynomialRatio{T}(f::ZeroPoleGain) where T<:Real
     PolynomialRatio{T}(Poly(real(b.a)), Poly(real(a.a)))
 end
 PolynomialRatio(f::ZeroPoleGain{Z,P,K}) where {Z,P,K} =
-    PolynomialRatio{promote_type(realtype(Z),realtype(P),K)}(f)
+    PolynomialRatio{promote_type(real(Z),real(P),K)}(f)
 
 ZeroPoleGain{Z,P,K}(f::PolynomialRatio) where {Z,P,K} =
     ZeroPoleGain{Z,P,K}(roots(f.b), roots(f.a), real(f.b[end]))
 ZeroPoleGain(f::PolynomialRatio{T}) where {T} =
-    ZeroPoleGain{complextype(T),complextype(T),T}(f)
+    ZeroPoleGain{complex(T),complex(T),T}(f)
 
 *(f::PolynomialRatio, g::Number) = PolynomialRatio(g*f.b, f.a)
 *(g::Number, f::PolynomialRatio) = PolynomialRatio(g*f.b, f.a)
@@ -231,7 +231,7 @@ function ZeroPoleGain{Z,P,K}(f::SecondOrderSections) where {Z,P,K}
     ZeroPoleGain{Z,P,K}(z, p, k)
 end
 ZeroPoleGain(f::SecondOrderSections{T,G}) where {T,G} =
-    ZeroPoleGain{complextype(T),complextype(T),G}(f)
+    ZeroPoleGain{complex(T),complex(T),G}(f)
 
 function Biquad{T}(f::SecondOrderSections) where T
     if length(f.biquads) != 1
@@ -361,7 +361,7 @@ function SecondOrderSections{T,G}(f::ZeroPoleGain{Z,P}) where {T,G,Z,P}
     SecondOrderSections{T,G}(biquads, f.k)
 end
 SecondOrderSections(f::ZeroPoleGain{Z,P,K}) where {Z,P,K} =
-    SecondOrderSections{promote_type(realtype(Z), realtype(P)), K}(f)
+    SecondOrderSections{promote_type(real(Z), real(P)), K}(f)
 
 
 SecondOrderSections{T,G}(f::Biquad) where {T,G} = SecondOrderSections{T,G}([f], one(G))

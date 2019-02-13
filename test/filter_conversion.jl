@@ -192,7 +192,7 @@ end
     f2 = digitalfilter(Highpass(0.5), Butterworth(1))
     # Test some otherwise untested code paths
     @test promote_type(ZeroPoleGain{ComplexF32,ComplexF64,Float32}, ZeroPoleGain{ComplexF64,ComplexF32,Float64}) == ZeroPoleGain{ComplexF64,ComplexF64,Float64}
-    @test convert(ZeroPoleGain{Float64,ComplexF64,Float64}, f1) === f1
+    @test convert(ZeroPoleGain{ComplexF64,ComplexF64,Float64}, f1) === f1
     f1f = convert(ZeroPoleGain{ComplexF32,ComplexF32,Float32}, f1)
     @test f1f.z == convert(Vector{ComplexF32}, f1.z)
     @test f1f.p == convert(Vector{ComplexF32}, f1.p)

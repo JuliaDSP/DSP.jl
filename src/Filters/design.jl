@@ -23,7 +23,7 @@ function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     if isodd(n)
         poles[end] = -1
     end
-    ZeroPoleGain(T[], poles, one(T))
+    ZeroPoleGain(CT[], poles, one(T))
 end
 
 """
@@ -75,7 +75,7 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     else
         k *= real(-p[end])
     end
-    ZeroPoleGain(T[], p, k)
+    ZeroPoleGain(CT[], p, k)
 end
 
 """
@@ -92,7 +92,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 
     CT = Complex{T}
 
-    ε = 1/sqrt(10^(convert(, ripple)/10)-1)
+    ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
     for i = 1:length(p)
         p[i] = inv(p[i])
@@ -321,23 +321,27 @@ end
 # The Octave implementation was not consulted in creating this code.
 
 # Create a lowpass filter from a lowpass filter prototype
-transform_prototype(ftype::Lowpass, proto::ZeroPoleGain) =
-    ZeroPoleGain(ftype.w * proto.z, ftype.w * proto.p,
+transform_prototype(ftype::Lowpass, proto::ZeroPoleGain{Z, P, K}) where {Z, P, K} =
+    ZeroPoleGain{Z, P, K}(ftype.w * proto.z, ftype.w * proto.p,
               proto.k * ftype.w^(length(proto.p)-length(proto.z)))
 
 # Create a highpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Highpass, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
+    k = proto.k
     nz = length(z)
     np = length(p)
-    newz = zeros(Base.promote_eltype(z, p), max(nz, np))
-    newp = zeros(Base.promote_eltype(z, p), max(nz, np))
+    TR = Base.promote_eltype(z, p)
+    newz = zeros(TR, max(nz, np))
+    newp = zeros(TR, max(nz, np))
+
     num = one(eltype(z))
     for i = 1:nz
         num *= -z[i]
         newz[i] = ftype.w / z[i]
     end
+
     den = one(eltype(p))
     for i = 1:np
         den *= -p[i]
@@ -346,18 +350,20 @@ function transform_prototype(ftype::Highpass, proto::ZeroPoleGain)
 
     abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
     abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
-    ZeroPoleGain(newz, newp, proto.k * real(num)/real(den))
+    ZeroPoleGain(newz, newp, oftype(k, k * real(num)/real(den)))
 end
 
 # Create a bandpass filter from a lowpass filter prototype
 function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
+    k = proto.k
     nz = length(z)
     np = length(p)
     ncommon = min(nz, np)
-    newz = zeros(Base.promote_eltype(z, p), 2*nz+np-ncommon)
-    newp = zeros(Base.promote_eltype(z, p), 2*np+nz-ncommon)
+    TR = Base.promote_eltype(z, p)
+    newz = zeros(TR, 2*nz+np-ncommon)
+    newp = zeros(TR, 2*np+nz-ncommon)
     for (oldc, newc) in ((p, newp), (z, newz))
         for i = 1:length(oldc)
             b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
@@ -366,18 +372,20 @@ function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain)
             newc[2i] = b - pm
         end
     end
-    ZeroPoleGain(newz, newp, proto.k * (ftype.w2 - ftype.w1) ^ (np - nz))
+    ZeroPoleGain(newz, newp, oftype(k, k * (ftype.w2 - ftype.w1) ^ (np - nz)))
 end
 
 # Create a bandstop filter from a lowpass filter prototype
 function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
     z = proto.z
     p = proto.p
+    k = proto.k
     nz = length(z)
     np = length(p)
     npairs = nz+np-min(nz, np)
-    newz = Vector{Base.promote_eltype(z, p)}(undef, 2*npairs)
-    newp = Vector{Base.promote_eltype(z, p)}(undef, 2*npairs)
+    TR = Base.promote_eltype(z, p)
+    newz = Vector{TR}(undef, 2*npairs)
+    newp = Vector{TR}(undef, 2*npairs)
 
     num = one(eltype(z))
     for i = 1:nz
@@ -408,7 +416,7 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain)
 
     abs(real(num) - 1) < np*eps(real(num)) && (num = 1)
     abs(real(den) - 1) < np*eps(real(den)) && (den = 1)
-    ZeroPoleGain(newz, newp, proto.k * real(num)/real(den))
+    ZeroPoleGain(newz, newp, oftype(k, k * real(num)/real(den)))
 end
 
 transform_prototype(ftype, proto::FilterCoefficients) =

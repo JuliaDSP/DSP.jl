@@ -1028,20 +1028,35 @@ end
     @test winfirtaps_jl ≈ vec(winfirtaps_scipy)
 end
 
-# test passing in complex, real, and non-numeric types
+# make sure typing is preserved
+# ie, user passes in F32, should get ZPK{CF32, CF32, F32}
 @testset "typing" begin
-    @test_throws MethodError Butterworth(ComplexF64, 4)
-    @test_throws MethodError Chebyshev1(ComplexF64, 4, 1.01)
-    @test_throws MethodError Chebyshev2(ComplexF64, 4, 1.01)
-    @test_throws MethodError Elliptic(ComplexF64, 4, 0.5, 1.01)
+    @testset "prototypes" begin
+        @test_throws MethodError Butterworth(ComplexF64, 4)
+        @test_throws MethodError Chebyshev1(ComplexF64, 4, 1.01)
+        @test_throws MethodError Chebyshev2(ComplexF64, 4, 1.01)
+        @test_throws MethodError Elliptic(ComplexF64, 4, 0.5, 1.01)
 
-    @test_throws MethodError Butterworth(Char, 4)
-    @test_throws MethodError Chebyshev1(Char, 4, 1.01)
-    @test_throws MethodError Chebyshev2(Char, 4, 1.01)
-    @test_throws MethodError Elliptic(Char, 4, 0.5, 1.01)
+        @test_throws MethodError Butterworth(Char, 4)
+        @test_throws MethodError Chebyshev1(Char, 4, 1.01)
+        @test_throws MethodError Chebyshev2(Char, 4, 1.01)
+        @test_throws MethodError Elliptic(Char, 4, 0.5, 1.01)
 
-    @test Butterworth(Float32, 4) isa ZeroPoleGain{Float32, ComplexF32, Float32}
-    @test Chebyshev1(Float32, 5, 1.16) isa ZeroPoleGain{Float32, ComplexF32, Float32}
-    @test Chebyshev2(Float16, 5, 1.16) isa ZeroPoleGain{ComplexF16, ComplexF16, Float16}
-    @test Elliptic(Float32, 5, 0.31, 1.16) isa ZeroPoleGain{ComplexF32, ComplexF32, Float32}
+        @testset "$T" for T in [BigFloat, Float16, Float32, Float64]
+            @test Butterworth(T, 4) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Chebyshev1(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Chebyshev2(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Elliptic(T, 5, 0.31, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+        end
+    end
+
+    @testset "transformed types" begin
+        @testset "$T & $R" for T in [BigFloat, Float16, Float32, Float64],
+                R in [Lowpass(0.4), Highpass(0.6), Bandpass(0.3, 0.6), Bandstop(0.7, 0.8)]
+            @test digitalfilter(R, Butterworth(T, 5)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev1(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev2(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Elliptic(T, 5, 0.31, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+        end
+    end
 end

@@ -2,7 +2,6 @@ module Filters
 
 using ..DSP: @importffts, mul!, rmul!
 using ..Util
-using ..Util: realtype, complextype
 using ..Unwrap
 
 import Base: *
