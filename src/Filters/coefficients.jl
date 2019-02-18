@@ -49,9 +49,9 @@ struct PolynomialRatio{T<:Number} <: FilterCoefficients
     b::Poly{T}
     a::Poly{T}
 
-    function PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number}
+    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:Number}
         _polynomialratio_check_coeffs(b::Poly, a::Poly)
-        new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
+        new(b / a[end], a / a[end])
     end
 end
 
@@ -80,18 +80,20 @@ function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number}
     PolynomialRatio{T}(b, a)
 end
 
+function PolynomialRatio(b::Poly{T}, a::Poly{S}) where {T<:Number, S<:Number}
+    P = promote_type(T,S)
+    PolynomialRatio(convert(Poly{P}, b), convert(Poly{P}, a))
+end
+
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
-function PolynomialRatio{T}(
+function PolynomialRatio(
     b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}
-) where {T}
+)
     PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)))
 end
-PolynomialRatio(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {T<:Number,S<:Number} =
-    PolynomialRatio{promote_type(T,S)}(b, a)
 
-PolynomialRatio{T}(f::PolynomialRatio) where {T} = PolynomialRatio{T}(f.b, f.a)
-PolynomialRatio(f::PolynomialRatio{T}) where {T} = PolynomialRatio{T}(f)
+PolynomialRatio(f::PolynomialRatio) = PolynomialRatio(f.b, f.a)
 
 Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
 
