@@ -203,7 +203,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
 
     z = Vector{CT}(undef, 2*div(n, 2))
     p = Vector{CT}(undef, n)
-    gain = one(T)
+    gain::T = one(T) # somehow this changes type ...
     for i = 1:div(n, 2)
         # Eq. (43)
         w = convert(T, 2i-1)/n
@@ -229,8 +229,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
         gain *= 10^(-convert(T, rp)/20)
     end
 
-    # without convert, gain reverts to F64
-    ZeroPoleGain(z, p, convert(T, gain))
+    ZeroPoleGain(z, p, gain)
 end
 
 """
@@ -245,6 +244,7 @@ Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 # Prototype transformation types
 #
 
+# returns frequency in half-cycles per sample ∈ (0, 1)
 function normalize_freq(w::Real, fs::Real)
     w <= 0 && error("frequencies must be positive")
     f = 2*w/fs
@@ -456,8 +456,10 @@ function bilinear(f::ZeroPoleGain{Z,P,K}, fs::Real) where {Z,P,K}
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(4*tan(pi*ftype.w/2))
-prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(4*tan(pi*ftype.w1/2), 4*tan(pi*ftype.w2/2))
+prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(prewarp(ftype.w))
+prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(prewarp(ftype.w1), prewarp(ftype.w2))
+# freq in half-samples per cycle
+prewarp(f::Real) = 4*tan(pi*f/2)
 
 # Digital filter design
 """
