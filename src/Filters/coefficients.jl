@@ -207,7 +207,7 @@ Base.promote_rule(::Type{Biquad{T}}, ::Type{Biquad{S}}) where {T,S} = Biquad{pro
 ZeroPoleGain{Z,P,K}(f::Biquad) where {Z,P,K} = ZeroPoleGain{Z,P,K}(PolynomialRatio(f))
 ZeroPoleGain(f::Biquad) = ZeroPoleGain(convert(PolynomialRatio, f))
 
-function PolynomialRatio(f::Biquad{T}) where T
+function PolynomialRatio(f::Biquad{T}, coeff_type::Type = Nothing) where T
     if f.b2 == zero(T) && f.a2 == zero(T)
         if f.b1 == zero(T) && f.a1 == zero(T)
             b = T[f.b0]
@@ -221,7 +221,7 @@ function PolynomialRatio(f::Biquad{T}) where T
         a = T[one(T), f.a1, f.a2]
     end
 
-    PolynomialRatio(b, a)
+    PolynomialRatio(b, a, coeff_type)
 end
 
 function Biquad{T}(f::PolynomialRatio) where T
