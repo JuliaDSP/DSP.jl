@@ -75,6 +75,12 @@ function _polynomialratio_check_coeffs(b::Poly, a::Poly)
     nothing
 end
 
+# This allows users to easily specify coefficient data type while minimizing the
+# need for two sets of functions PolynomialRatio{T}(...) and
+# PolynomialRatio(...), by using standard default arguments and a sentinal
+# coefficient type Nothing to indicate that there is no desired coefficient type
+PolynomialRatio{T}(args...) where T = PolynomialRatio(args..., T)
+
 """
     PolynomialRatio(b, a)
 
@@ -94,44 +100,47 @@ function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number}
     PolynomialRatio{T}(b, a)
 end
 
+function PolynomialRatio(b::Poly, a::Poly, ::Type{T}) where {T<:Number}
+    PolynomialRatio{T}(convert(Poly{T}, b), convert(Poly{T}, a))
+end
+
 # Normalization for integers -- will convert PolynomialRatio to floats
 # To keep integer coefficients, call PolynomolaiRatio{Int} explicitly with
 # already normalized coefficients
-function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Integer}
+function PolynomialRatio(
+    b::Poly{T}, a::Poly{T}, ::Type{Nothing} = Nothing
+) where {T<:Integer}
     PolynomialRatio(b / a[end], a / a[end])
 end
 
-function PolynomialRatio(b::Poly{T}, a::Poly{S}) where {T<:Number, S<:Number}
+function PolynomialRatio(
+    b::Poly{T}, a::Poly{S}, ::Type{Nothing} = Nothing
+) where {T<:Number, S<:Number}
     P = promote_type(T,S)
-    PolynomialRatio(convert(Poly{P}, b), convert(Poly{P}, a))
+    PolynomialRatio{P}(b, a)
 end
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
 function PolynomialRatio(
-    b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}
+    b::Union{Number,Vector{<:Number}},
+    a::Union{Number,Vector{<:Number}},
+    coeff_type::Type = Nothing
 )
-    PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)))
+    PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)), coeff_type)
 end
 
-# Skips outer constructors, and therefore coefficient normalization
-function PolynomialRatio{T}(
-    b::Union{T,Vector{T}}, a::Union{T,Vector{<:T}}
-) where T<:Integer
-    PolynomialRatio{T}(Poly(reverse(b)), Poly(reverse(a)))
-end
-
-PolynomialRatio(f::PolynomialRatio) = PolynomialRatio(f.b, f.a)
+PolynomialRatio{T}(f::PolynomialRatio) where T<:Number = PolynomialRatio{T}(f.b, f.a)
+PolynomialRatio(f::T) where T<:PolynomialRatio = T(f.b, f.a)
 
 Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
 
-function PolynomialRatio{T}(f::ZeroPoleGain) where T<:Real
+function PolynomialRatio(f::ZeroPoleGain, coeff_type::Type = Nothing)
     b = f.k*poly(f.z)
     a = poly(f.p)
-    PolynomialRatio{T}(Poly(real(b.a)), Poly(real(a.a)))
+    PolynomialRatio(Poly(real(b.a)), Poly(real(a.a)), coeff_type)
 end
-PolynomialRatio(f::ZeroPoleGain{Z,P,K}) where {Z,P,K} =
-    PolynomialRatio{promote_type(realtype(Z),realtype(P),K)}(f)
+
 
 ZeroPoleGain{Z,P,K}(f::PolynomialRatio) where {Z,P,K} =
     ZeroPoleGain{Z,P,K}(roots(f.b), roots(f.a), real(f.b[end]))
@@ -198,7 +207,7 @@ Base.promote_rule(::Type{Biquad{T}}, ::Type{Biquad{S}}) where {T,S} = Biquad{pro
 ZeroPoleGain{Z,P,K}(f::Biquad) where {Z,P,K} = ZeroPoleGain{Z,P,K}(PolynomialRatio(f))
 ZeroPoleGain(f::Biquad) = ZeroPoleGain(convert(PolynomialRatio, f))
 
-function PolynomialRatio{T}(f::Biquad) where T
+function PolynomialRatio(f::Biquad{T}) where T
     if f.b2 == zero(T) && f.a2 == zero(T)
         if f.b1 == zero(T) && f.a1 == zero(T)
             b = T[f.b0]
@@ -212,9 +221,8 @@ function PolynomialRatio{T}(f::Biquad) where T
         a = T[one(T), f.a1, f.a2]
     end
 
-    PolynomialRatio{T}(b, a)
+    PolynomialRatio(b, a)
 end
-PolynomialRatio(f::Biquad{T}) where {T} = PolynomialRatio{T}(f)
 
 function Biquad{T}(f::PolynomialRatio) where T
     a, b = f.a, f.b
@@ -285,8 +293,9 @@ function Biquad{T}(f::SecondOrderSections) where T
 end
 Biquad(f::SecondOrderSections{T,G}) where {T,G} = Biquad{promote_type(T,G)}(f)
 
-PolynomialRatio{T}(f::SecondOrderSections) where {T} = PolynomialRatio{T}(ZeroPoleGain(f))
-PolynomialRatio(f::SecondOrderSections) = PolynomialRatio(ZeroPoleGain(f))
+function PolynomialRatio(f::SecondOrderSections, coeff_type::Type = Nothing)
+    PolynomialRatio(ZeroPoleGain(f), coeff_type)
+end
 
 # Group each pole in p with its closest zero in z
 # Remove paired poles from p and z
