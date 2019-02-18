@@ -49,8 +49,17 @@ struct PolynomialRatio{T<:Number} <: FilterCoefficients
     b::Poly{T}
     a::Poly{T}
 
-    PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number} =
+    function PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number}
+        _polynomialratio_check_coeffs(b::Poly, a::Poly)
         new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
+    end
+end
+
+function _polynomialratio_check_coeffs(b::Poly, a::Poly)
+    if all(iszero, coeffs(b)) || all(iszero, coeffs(a))
+        throw(ArgumentError("filter must have non-zero numerator and denominator"))
+    end
+    nothing
 end
 """
     PolynomialRatio(b, a)
@@ -67,15 +76,16 @@ H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\l
 `b` and `a` may be specified as `Polynomial` objects or
 vectors ordered from highest power to lowest.
 """
-PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
+function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number}
+    PolynomialRatio{T}(b, a)
+end
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
-function PolynomialRatio{T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T}
-    if all(iszero, b) || all(iszero, a)
-        throw(ArgumentError("filter must have non-zero numerator and denominator"))
-    end
-    PolynomialRatio{T}(Poly(reverse(b)), Poly(reverse(a)))
+function PolynomialRatio{T}(
+    b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}
+) where {T}
+    PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)))
 end
 PolynomialRatio(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {T<:Number,S<:Number} =
     PolynomialRatio{promote_type(T,S)}(b, a)
