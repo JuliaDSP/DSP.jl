@@ -53,6 +53,19 @@ struct PolynomialRatio{T<:Number} <: FilterCoefficients
         _polynomialratio_check_coeffs(b::Poly, a::Poly)
         new(b / a[end], a / a[end])
     end
+
+    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:Integer}
+        _polynomialratio_check_coeffs(b::Poly, a::Poly)
+        if a[end] != 1
+            throw(
+                ArgumentError(
+                    "PolynomialRatio{<:Integer} requires normalized " *
+                    "coefficients, i.e. a[end] must be 1"
+                )
+            )
+        end
+        new(b, a)
+    end
 end
 
 function _polynomialratio_check_coeffs(b::Poly, a::Poly)
@@ -61,6 +74,7 @@ function _polynomialratio_check_coeffs(b::Poly, a::Poly)
     end
     nothing
 end
+
 """
     PolynomialRatio(b, a)
 
@@ -80,6 +94,13 @@ function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number}
     PolynomialRatio{T}(b, a)
 end
 
+# Normalization for integers -- will convert PolynomialRatio to floats
+# To keep integer coefficients, call PolynomolaiRatio{Int} explicitly with
+# already normalized coefficients
+function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Integer}
+    PolynomialRatio(b / a[end], a / a[end])
+end
+
 function PolynomialRatio(b::Poly{T}, a::Poly{S}) where {T<:Number, S<:Number}
     P = promote_type(T,S)
     PolynomialRatio(convert(Poly{P}, b), convert(Poly{P}, a))
@@ -91,6 +112,13 @@ function PolynomialRatio(
     b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}
 )
     PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)))
+end
+
+# Skips outer constructors, and therefore coefficient normalization
+function PolynomialRatio{T}(
+    b::Union{T,Vector{T}}, a::Union{T,Vector{<:T}}
+) where T<:Integer
+    PolynomialRatio{T}(Poly(reverse(b)), Poly(reverse(a)))
 end
 
 PolynomialRatio(f::PolynomialRatio) = PolynomialRatio(f.b, f.a)
