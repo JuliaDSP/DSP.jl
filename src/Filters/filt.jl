@@ -4,6 +4,10 @@
 # filt and filt!
 #
 
+## PolynomialRatio
+_zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
+    zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
+
 """
     filt!(out, f, x[, si])
 
@@ -11,7 +15,8 @@ Same as [`filt()`](@ref) but writes the result into the `out`
 argument. Output array `out` may not be an alias of `x`, i.e. filtering may
 not be done in place.
 """
-filt!
+filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
+    filt!(out, coefb(f), coefa(f), x, si)
 
 """
     filt(f, x[, si])
@@ -26,15 +31,6 @@ to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
 interpreted as an FIR filter, and a naïve or FFT-based algorithm is
 selected based on the data and filter length.
 """
-filt
-
-## PolynomialRatio
-_zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
-
-filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
-    filt!(out, coefb(f), coefa(f), x, si)
-
 filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections

@@ -27,9 +27,6 @@ end
 ZeroPoleGain{Z,P,K}(f::ZeroPoleGain) where {Z,P,K} = ZeroPoleGain{Z,P,K}(f.z, f.p, f.k)
 ZeroPoleGain(f::ZeroPoleGain{Z,P,K}) where {Z,P,K} = ZeroPoleGain{Z,P,K}(f)
 
-ZeroPoleGain(::Type{Tr}, z::Vector{<:Number}, p::Vector{<:Number}, k::Number) where {Tr<:Real} =
-    ZeroPoleGain{Complex{Tr}, Complex{Tr}, Tr}(z, p, k)
-
 Base.promote_rule(::Type{ZeroPoleGain{Z1,P1,K1}}, ::Type{ZeroPoleGain{Z2,P2,K2}}) where {Z1,P1,K1,Z2,P2,K2} =
     ZeroPoleGain{promote_type(Z1,Z2),promote_type(P1,P2),promote_type(K1,K2)}
 
