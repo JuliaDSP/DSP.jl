@@ -45,41 +45,7 @@ Base.promote_rule(::Type{ZeroPoleGain{Z1,P1,K1}}, ::Type{ZeroPoleGain{Z2,P2,K2}}
 # Transfer function form
 #
 
-struct PolynomialRatio{T<:Number} <: FilterCoefficients
-    b::Poly{T}
-    a::Poly{T}
-
-    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:Number}
-        _polynomialratio_check_coeffs(b::Poly, a::Poly)
-        new(b / a[end], a / a[end])
-    end
-
-    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:Integer}
-        _polynomialratio_check_coeffs(b::Poly, a::Poly)
-        if a[end] != 1
-            throw(
-                ArgumentError(
-                    "PolynomialRatio{<:Integer} requires normalized " *
-                    "coefficients, i.e. a[end] must be 1"
-                )
-            )
-        end
-        new(b, a)
-    end
-end
-
-function _polynomialratio_check_coeffs(b::Poly, a::Poly)
-    if all(iszero, coeffs(b)) || all(iszero, coeffs(a))
-        throw(ArgumentError("filter must have non-zero numerator and denominator"))
-    end
-    nothing
-end
-
-# This allows users to easily specify coefficient data type while minimizing the
-# need for two sets of functions PolynomialRatio{T}(...) and
-# PolynomialRatio(...), by using standard default arguments and a sentinal
-# coefficient type Nothing to indicate that there is no desired coefficient type
-PolynomialRatio{T}(args...) where T = PolynomialRatio(args..., T)
+const NotClosedUnderDivision = Union{Integer, Complex{<:Integer}}
 
 """
     PolynomialRatio(b, a)
@@ -90,55 +56,111 @@ Filter representation in terms of the coefficients of the numerator
 H(s) = \\frac{\\verb!b[1]! s^{m-1} + \\ldots + \\verb!b[m]!}{\\verb!a[1]! s^{n-1} + \\ldots + \\verb!a[n]!}
 ```
 or equivalently:
-```math
+    ```math
 H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
 ```
 `b` and `a` may be specified as `Polynomial` objects or
 vectors ordered from highest power to lowest.
 """
-function PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number}
+struct PolynomialRatio{T<:Number} <: FilterCoefficients
+    b::Poly{T}
+    a::Poly{T}
+
+    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:Number}
+        _polynomialratio_check_nonzero(b::Poly, a::Poly)
+        new(b / a[end], a / a[end])
+    end
+
+    function PolynomialRatio{Ti}(b::Poly{Ti}, a::Poly{Ti}) where {Ti<:NotClosedUnderDivision}
+        _polynomialratio_check_nonzero(b::Poly, a::Poly)
+        _polynomialratio_check_normalized(a)
+        new(b, a)
+    end
+end
+
+function _polynomialratio_check_nonzero(b::Poly, a::Poly)
+    if all(iszero, coeffs(b)) || all(iszero, coeffs(a))
+        throw(ArgumentError("filter must have non-zero numerator and denominator"))
+    end
+    nothing
+end
+
+function _polynomialratio_check_normalized(a::Poly)
+    if a[end] != 1
+        throw(
+            ArgumentError(
+                "PolynomialRatio{<:$(NotClosedUnderDivision)} requires normalized " *
+                "coefficients, i.e. a[end] must be 1"
+            )
+        )
+    end
+    nothing
+end
+
+# This allows users to easily specify coefficient data type while minimizing the
+# need for two sets of functions PolynomialRatio{T}(...) and
+# PolynomialRatio(...), by using standard default arguments and a sentinal
+# coefficient type Nothing to indicate that there is no desired coefficient type
+#
+# New outer constructors of PolynomialRatio can take advantage of this interface
+# By defining new methods of `_polynomialratio(..., T = Nothing)`.
+PolynomialRatio(args...) = _polynomialratio(args...)
+PolynomialRatio{T}(args...) where T = _polynomialratio(args..., T)
+
+# Pull type parameter from inputs and call inner constructor
+function _polynomialratio(
+    b::Poly{T}, a::Poly{T}, ::Type{Nothing} = Nothing
+) where {T<:Number}
     PolynomialRatio{T}(b, a)
 end
 
-function PolynomialRatio(b::Poly, a::Poly, ::Type{T}) where {T<:Number}
-    PolynomialRatio{T}(convert(Poly{T}, b), convert(Poly{T}, a))
+# Type coercion
+function _polynomialratio(b::Poly, a::Poly, ::Type{T}) where {T<:Number}
+    _polynomialratio(convert(Poly{T}, b), convert(Poly{T}, a))
 end
 
-# Normalization for integers -- will convert PolynomialRatio to floats
+# Normalization for integers -- will convert PolynomialRatio to floats.
 # To keep integer coefficients, call PolynomolaiRatio{Int} explicitly with
 # already normalized coefficients
-function PolynomialRatio(
+function _polynomialratio(
     b::Poly{T}, a::Poly{T}, ::Type{Nothing} = Nothing
-) where {T<:Integer}
-    PolynomialRatio(b / a[end], a / a[end])
+) where {T<:NotClosedUnderDivision}
+    _polynomialratio(b / a[end], a / a[end])
 end
 
-function PolynomialRatio(
+# Type promotion
+function _polynomialratio(
     b::Poly{T}, a::Poly{S}, ::Type{Nothing} = Nothing
 ) where {T<:Number, S<:Number}
     P = promote_type(T,S)
-    PolynomialRatio{P}(b, a)
+    _polynomialratio(convert(Poly{P}, b), convert(Poly{P}, a))
 end
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
-function PolynomialRatio(
+function _polynomialratio(
     b::Union{Number,Vector{<:Number}},
     a::Union{Number,Vector{<:Number}},
     coeff_type::Type = Nothing
 )
-    PolynomialRatio(Poly(reverse(b)), Poly(reverse(a)), coeff_type)
+    _polynomialratio(Poly(reverse(b)), Poly(reverse(a)), coeff_type)
 end
 
-PolynomialRatio{T}(f::PolynomialRatio) where T<:Number = PolynomialRatio{T}(f.b, f.a)
-PolynomialRatio(f::T) where T<:PolynomialRatio = T(f.b, f.a)
+function _polynomialratio(f::PolynomialRatio, ::Type{T}) where T<:Number
+    _polynomialratio(f.b, f.a, T)
+end
+_polynomialratio(f::T) where T<:PolynomialRatio = T(f.b, f.a)
 
-Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
+function Base.promote_rule(
+    ::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}
+) where {T,S}
+    PolynomialRatio{promote_type(T,S)}
+end
 
-function PolynomialRatio(f::ZeroPoleGain, coeff_type::Type = Nothing)
+function _polynomialratio(f::ZeroPoleGain, coeff_type::Type = Nothing)
     b = f.k*poly(f.z)
     a = poly(f.p)
-    PolynomialRatio(Poly(real(b.a)), Poly(real(a.a)), coeff_type)
+    _polynomialratio(Poly(real(b.a)), Poly(real(a.a)), coeff_type)
 end
 
 
@@ -207,7 +229,7 @@ Base.promote_rule(::Type{Biquad{T}}, ::Type{Biquad{S}}) where {T,S} = Biquad{pro
 ZeroPoleGain{Z,P,K}(f::Biquad) where {Z,P,K} = ZeroPoleGain{Z,P,K}(PolynomialRatio(f))
 ZeroPoleGain(f::Biquad) = ZeroPoleGain(convert(PolynomialRatio, f))
 
-function PolynomialRatio(f::Biquad{T}, coeff_type::Type = Nothing) where T
+function _polynomialratio(f::Biquad{T}, coeff_type::Type = Nothing) where T
     if f.b2 == zero(T) && f.a2 == zero(T)
         if f.b1 == zero(T) && f.a1 == zero(T)
             b = T[f.b0]
@@ -221,7 +243,7 @@ function PolynomialRatio(f::Biquad{T}, coeff_type::Type = Nothing) where T
         a = T[one(T), f.a1, f.a2]
     end
 
-    PolynomialRatio(b, a, coeff_type)
+    _polynomialratio(b, a, coeff_type)
 end
 
 function Biquad{T}(f::PolynomialRatio) where T
@@ -293,8 +315,8 @@ function Biquad{T}(f::SecondOrderSections) where T
 end
 Biquad(f::SecondOrderSections{T,G}) where {T,G} = Biquad{promote_type(T,G)}(f)
 
-function PolynomialRatio(f::SecondOrderSections, coeff_type::Type = Nothing)
-    PolynomialRatio(ZeroPoleGain(f), coeff_type)
+function _polynomialratio(f::SecondOrderSections, coeff_type::Type = Nothing)
+    _polynomialratio(ZeroPoleGain(f), coeff_type)
 end
 
 # Group each pole in p with its closest zero in z
