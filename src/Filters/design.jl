@@ -11,9 +11,7 @@ abstract type FilterType end
 function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     n > 0 || error("n must be positive")
 
-    CT = Complex{T}
-
-    poles = zeros(CT, n)
+    poles = zeros(Complex{T}, n)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
         pole = complex(-sinpi(w), cospi(w))
@@ -23,7 +21,7 @@ function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     if isodd(n)
         poles[end] = -1
     end
-    ZeroPoleGain(CT[], poles, one(T))
+    ZeroPoleGain(Complex{T}[], poles, one(T))
 end
 
 """
@@ -38,9 +36,7 @@ Butterworth(n::Integer) = Butterworth(Float64, n)
 #
 
 function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
-    CT = Complex{T}
-
-    p = zeros(CT, n)
+    p = zeros(Complex{T}, n)
     μ = asinh(convert(T, 1)/ε)/n
     b = -sinh(μ)
     c = cosh(μ)
@@ -62,8 +58,6 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    CT = Complex{T}
-
     ε = sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
     k = one(T)
@@ -75,7 +69,7 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     else
         k *= real(-p[end])
     end
-    ZeroPoleGain(CT[], p, k)
+    ZeroPoleGain(Complex{T}[], p, k)
 end
 
 """
@@ -90,19 +84,17 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || error("n must be positive")
     ripple >= 0 || error("ripple must be non-negative")
 
-    CT = Complex{T}
-
     ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
     for i = 1:length(p)
         p[i] = inv(p[i])
     end
 
-    z = zeros(CT, n-isodd(n))
+    z = zeros(Complex{T}, n-isodd(n))
     k = one(T)
     for i = 1:div(n, 2)
         w = convert(T, 2i-1)/2n
-        ze = Complex(zero(T), -inv(cospi(w)))
+        ze = complex(zero(T), -inv(cospi(w)))
         z[2i-1] = ze
         z[2i] = conj(ze)
         k *= abs2(p[2i])/abs2(ze)
@@ -173,8 +165,6 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     rp > 0 || error("rp must be positive")
     rp < rs || error("rp must be less than rs")
 
-    CT = Complex{T}
-
     # Eq. (2)
     εp = sqrt(10^(convert(T, rp)/10)-1)
     εs = sqrt(10^(convert(T, rs)/10)-1)
@@ -201,8 +191,8 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     # Eq. (65)
     v0 = -im/n*asne(im/εp, k1)
 
-    z = Vector{CT}(undef, 2*div(n, 2))
-    p = Vector{CT}(undef, n)
+    z = Vector{Complex{T}}(undef, 2*div(n, 2))
+    p = Vector{Complex{T}}(undef, n)
     gain::T = one(T) # somehow this changes type ...
     for i = 1:div(n, 2)
         # Eq. (43)
