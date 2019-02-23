@@ -189,11 +189,11 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     k_landen = landen(k)
 
     # Eq. (65)
-    v0 = -im/n*asne(im/εp, k1)
+    v0 = -im/convert(T, n)*asne(im/εp, k1)
 
     z = Vector{Complex{T}}(undef, 2*div(n, 2))
     p = Vector{Complex{T}}(undef, n)
-    gain::T = one(T) # somehow this changes type ...
+    gain = one(T)
     for i = 1:div(n, 2)
         # Eq. (43)
         w = convert(T, 2i-1)/n
