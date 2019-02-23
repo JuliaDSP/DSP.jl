@@ -7,7 +7,7 @@ using DSP, Compat, Compat.Test, FilterTestHelpers
 @testset "Butterworth" begin
     # Poles of 20 pole Butterworth filter prototype from MATLAB 2013b (buttap(20))
     matlab_p = [-0.07845909572784487+0.996917333733128im,-0.07845909572784487-0.996917333733128im,-0.2334453638559053+0.9723699203976767im,-0.2334453638559053-0.9723699203976767im,-0.3826834323650897+0.9238795325112867im,-0.3826834323650897-0.9238795325112867im,-0.5224985647159488+0.8526401643540923im,-0.5224985647159488-0.8526401643540923im,-0.6494480483301835+0.760405965600031im,-0.6494480483301835-0.760405965600031im,-0.7604059656000308+0.6494480483301838im,-0.7604059656000308-0.6494480483301838im,-0.8526401643540922+0.5224985647159489im,-0.8526401643540922-0.5224985647159489im,-0.9238795325112867+0.3826834323650899im,-0.9238795325112867-0.3826834323650899im,-0.9723699203976766+0.2334453638559055im,-0.9723699203976766-0.2334453638559055im,-0.996917333733128+0.07845909572784507im,-0.996917333733128-0.07845909572784507im]
-    matlab_butter = ZeroPoleGain(Union{}[], matlab_p, 1)
+    matlab_butter = ZeroPoleGain(Float64[], matlab_p, 1)
 
     # Test that our answers are close to MATLAB's and at least as accurate
     butter = Butterworth(20)
@@ -18,8 +18,8 @@ using DSP, Compat, Compat.Test, FilterTestHelpers
     matlab_p = [-0.08257934547233227+0.9965844930066698im,-0.08257934547233227-0.9965844930066698im,-0.2454854871407991+0.9694002659393304im,-0.2454854871407991-0.9694002659393304im,-0.4016954246529694+0.9157733266550574im,-0.4016954246529694-0.9157733266550574im,-0.5469481581224267+0.8371664782625287im,-0.5469481581224267-0.8371664782625287im,-0.6772815716257409+0.7357239106731317im,-0.6772815716257409-0.7357239106731317im,-0.7891405093963935+0.6142127126896679im,-0.7891405093963935-0.6142127126896679im,-0.8794737512064892+0.4759473930370733im,-0.8794737512064892-0.4759473930370733im,-0.9458172417006346+0.3246994692046836im,-0.9458172417006346-0.3246994692046836im,-0.9863613034027224+0.1645945902807336im,-0.9863613034027224-0.1645945902807336im,-1+0im]
 
     # Test that our answers are close to MATLAB's and at least as accurate
-    zpkfilter_eq(Butterworth(19), ZeroPoleGain(Union{}[], matlab_p, 1))
-    zpkfilter_accuracy(Butterworth(19), ZeroPoleGain(Union{}[], matlab_p, 1), Butterworth(BigFloat, 19))
+    zpkfilter_eq(Butterworth(19), ZeroPoleGain(Float64[], matlab_p, 1))
+    zpkfilter_accuracy(Butterworth(19), ZeroPoleGain(Float64[], matlab_p, 1), Butterworth(BigFloat, 19))
 end
 
 #
@@ -35,8 +35,8 @@ end
     matlab_k = 3.748372513504540e-06
 
     # Test that our answers are close to MATLAB's and at least as accurate
-    zpkfilter_eq(Chebyshev1(20, 1), ZeroPoleGain(Union{}[], matlab_p, matlab_k))
-    zpkfilter_accuracy(Chebyshev1(20, 1), ZeroPoleGain(Union{}[], matlab_p, matlab_k), Chebyshev1(BigFloat, 20, 1))
+    zpkfilter_eq(Chebyshev1(20, 1), ZeroPoleGain(Float64[], matlab_p, matlab_k))
+    zpkfilter_accuracy(Chebyshev1(20, 1), ZeroPoleGain(Float64[], matlab_p, matlab_k), Chebyshev1(BigFloat, 20, 1))
 
     # Poles of 19 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
     #=
@@ -48,8 +48,8 @@ end
     matlab_k = 7.496745027009062e-06
 
     # Test that our answers are close to MATLAB's and at least as accurate
-    zpkfilter_eq(Chebyshev1(19, 1), ZeroPoleGain(Union{}[], matlab_p, matlab_k))
-    zpkfilter_accuracy(Chebyshev1(19, 1), ZeroPoleGain(Union{}[], matlab_p, matlab_k), Chebyshev1(BigFloat, 19, 1))
+    zpkfilter_eq(Chebyshev1(19, 1), ZeroPoleGain(Float64[], matlab_p, matlab_k))
+    zpkfilter_accuracy(Chebyshev1(19, 1), ZeroPoleGain(Float64[], matlab_p, matlab_k), Chebyshev1(BigFloat, 19, 1))
 end
 
 #
@@ -162,7 +162,7 @@ end
     # Output of [z, p, k] = buttap(20); [b, a] = zp2tf(z, p, k); tf2zpk(b, a)
     m_p = [-0.07845909573254482+0.9969173337335029im,-0.07845909573254482-0.9969173337335029im,-0.2334453637958131+0.9723699203918822im,-0.2334453637958131-0.9723699203918822im,-0.3826834327796701+0.9238795325396184im,-0.3826834327796701-0.9238795325396184im,-0.5224985628488221+0.8526401643454914im,-0.5224985628488221-0.8526401643454914im,-0.6494480541398985+0.7604059651905597im,-0.6494480541398985-0.7604059651905597im,-0.760405952587916+0.6494480502272874im,-0.760405952587916-0.6494480502272874im,-0.8526401859847815+0.5224985598169277im,-0.8526401859847815-0.5224985598169277im,-0.9238795057196649+0.3826834415328767im,-0.9238795057196649-0.3826834415328767im,-0.9969173244841298+0.07845911266921719im,-0.9969173244841298-0.07845911266921719im,-0.97236994351794+0.2334453500964366im,-0.97236994351794-0.2334453500964366im]
     # println(ComplexF64([sort(f.p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt) sort(m_p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt)]))
-    zpkfilter_accuracy(f, ZeroPoleGain(Union{}[], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, relerr=9)
+    zpkfilter_accuracy(f, ZeroPoleGain(Float64[], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, relerr=9)
 end
 
 #
@@ -176,7 +176,7 @@ end
         sprintf('%.16g%+.16gim,', [real(p) imag(p)]')
         sprintf('%.16g', k)
     =#
-    m_z = Union{}[]
+    m_z = Float64[]
     m_p = [-0.498458666866501+0.03922954786337574im,-0.498458666866501-0.03922954786337574im,-0.4861849601989526+0.1167226819283556im,-0.4861849601989526-0.1167226819283556im,-0.4619397662555457+0.191341716182291im,-0.4619397662555457-0.191341716182291im,-0.4263200821771486+0.2612492823580798im,-0.4263200821771486-0.2612492823580798im,-0.3802029827999479+0.3247240241651102im,-0.3802029827999479-0.3247240241651102im,-0.3247240241650893+0.3802029827999696im,-0.3247240241650893-0.3802029827999696im,-0.2612492823580033+0.4263200821770542im,-0.2612492823580033-0.4263200821770542im,-0.1913417161825348+0.461939766255657im,-0.1913417161825348-0.461939766255657im,-0.1167226819279489+0.486184960198832im,-0.1167226819279489-0.486184960198832im,-0.03922954786392431+0.4984586668665641im,-0.03922954786392431-0.4984586668665641im]
     m_k = 9.5367431640625e-07
     m_f = ZeroPoleGain(m_z, m_p, m_k)
@@ -529,4 +529,37 @@ end
     # firwin(129, [0.1, 0.2], nyq=.5, scale=False)
     winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandstop_scaled_fc0.1_0.2_fs1.0.txt"),'\t')
     @test winfirtaps_jl ≈ vec(winfirtaps_scipy)
+end
+
+# make sure typing is preserved
+# ie, user passes in F32, should get ZPK{CF32, CF32, F32}
+@testset "typing" begin
+    @testset "prototypes" begin
+        @test_throws MethodError Butterworth(ComplexF64, 4)
+        @test_throws MethodError Chebyshev1(ComplexF64, 4, 1.01)
+        @test_throws MethodError Chebyshev2(ComplexF64, 4, 1.01)
+        @test_throws MethodError Elliptic(ComplexF64, 4, 0.5, 1.01)
+
+        @test_throws MethodError Butterworth(Char, 4)
+        @test_throws MethodError Chebyshev1(Char, 4, 1.01)
+        @test_throws MethodError Chebyshev2(Char, 4, 1.01)
+        @test_throws MethodError Elliptic(Char, 4, 0.5, 1.01)
+
+        @testset "$T" for T in [BigFloat, Float16, Float32, Float64]
+            @test Butterworth(T, 4) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Chebyshev1(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Chebyshev2(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Elliptic(T, 5, 0.31, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+        end
+    end
+
+    @testset "transformed types" begin
+        @testset "$T & $R" for T in [BigFloat, Float16, Float32, Float64],
+                R in [Lowpass(0.4), Highpass(0.6), Bandpass(0.3, 0.6), Bandstop(0.7, 0.8)]
+            @test digitalfilter(R, Butterworth(T, 5)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev1(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev2(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Elliptic(T, 5, 0.31, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+        end
+    end
 end

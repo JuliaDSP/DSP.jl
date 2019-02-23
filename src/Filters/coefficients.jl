@@ -68,6 +68,7 @@ H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\l
 vectors ordered from highest power to lowest.
 """
 PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
+PolynomialRatio(b::Poly, a::Poly) = PolynomialRatio(promote(b, a)...)
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
