@@ -3,6 +3,7 @@
 using Compat, Compat.Test, DSP
 import DSP: filt, filt!, deconv, conv, conv2, xcorr
 
+
 @testset "filt" begin
     # Filter
     b = [1., 2., 3., 4.]
@@ -56,12 +57,48 @@ if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
     end
 end
 
+
 @testset "conv" begin
     # Convolution
     a = [1., 2., 1., 2.]
     b = [1., 2., 3.]
     @test conv(a, b) ≈ [1., 4., 8., 10., 7., 6.]
     @test conv(complex.(a, ones(4)), complex(b)) ≈ complex.([1., 4., 8., 10., 7., 6.], [1., 3., 6., 6., 5., 3.])
+end
+
+@testset "conv2" begin
+    a =[1 2 1;
+        2 3 1;
+        1 2 1]  
+    
+    b = [3 2;
+         0 1]
+    
+    expectation = [3 8 7 2;
+                   6 14 11 3;
+                   3 10 10 3;
+                   0 1 2 1]
+    im_expectation = [3 5 5 2;
+                      3 6 6 3;
+                      3 6 6 3;
+                      0 1 1 1]
+
+    # Integers
+    # Real Integers
+    @test conv2(a, b) == expectation
+    # Complex
+    @test conv2(complex.(a, 1), complex.(b)) == complex.(expectation,
+                                                             im_expectation)
+    # Floats
+    fa = convert(Matrix{Float64}, a)
+    fb = convert(Matrix{Float64}, b)
+    fexp = convert(Matrix{Float64}, expectation)
+    im_fexp = convert(Matrix{Float64}, im_expectation)
+    # Real
+    @test conv2(fa, fb) == fexp
+    # Complex
+    @test conv2(complex.(fa, 1), complex.(fb)) == complex.(fexp,
+                                                           im_fexp)
 end
 
 @testset "deconv" begin
