@@ -3,6 +3,7 @@
 using Compat, Compat.Test, DSP
 import DSP: filt, filt!, deconv, conv, conv2, xcorr
 
+
 @testset "filt" begin
     # Filter
     b = [1., 2., 3., 4.]
@@ -62,6 +63,30 @@ end
     b = [1., 2., 3.]
     @test conv(a, b) ≈ [1., 4., 8., 10., 7., 6.]
     @test conv(complex.(a, ones(4)), complex(b)) ≈ complex.([1., 4., 8., 10., 7., 6.], [1., 3., 6., 6., 5., 3.])
+end
+
+@testset "conv2" begin
+    
+    a =[1. 2. 1.;
+        2. 3. 1.;
+        1. 2. 1.]  
+
+    # [1, 0;
+    #  2, 3]
+    
+    b = [3. 2;
+         0. 1.]
+    
+    expectation = [3.0 8.0 7.0 2.0;
+                   6.0 14.0 11.0 3.0;
+                   3.0 10.0 10.0 3.0;
+                   0.0 1.0 2.0 1.0]
+    @test conv2(a, b) == expectation
+    @test conv2(complex.(a, ones(3,3)), complex.(b)) == complex.(expectation,
+                                                                 [3. 5. 5. 2.;
+                                                                  3. 6. 6. 3.;
+                                                                  3. 6. 6. 3.;
+                                                                  0. 1. 1. 1.])
 end
 
 @testset "deconv" begin
