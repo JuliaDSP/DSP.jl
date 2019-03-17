@@ -128,11 +128,17 @@ function _circ_conv(
     upad::StridedVector{T}, vpad::StridedVector{T}, np2::Integer
 ) where T<:Real
     p = plan_rfft(upad)
-    irfft((p*upad).*(p*vpad), np2)
+    uf = p*upad
+    vf = p*vpad
+    uf .*= vf # Multiply in place
+    irfft(uf, np2)
 end
 function _circ_conv(upad, vpad, ::Integer)
     p = plan_fft!(upad)
-    ifft!((p*upad).*(p*vpad))
+    uf = p*upad
+    vf = p*vpad
+    uf .*= vf # Multiply in place
+    ifft!(uf)
 end
 
 """
