@@ -117,27 +117,31 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-function _zeropad(u, ntot, nu = length(u))
-    padded = similar(u, ntot)
+function _zeropad!(padded, u, ntot, nu = length(u))
     copyto!(padded, 1, u, 1, nu)
     padded[nu + 1:ntot] .= 0
     padded
 end
+_zeropad(u, ntot, nu = length(u)) = _zeropad!(similar(u, ntot), u, ntot, nu)
 
-function _circ_conv(
-    upad::StridedVector{T}, vpad::StridedVector{T}, np2::Integer
+function _conv(
+    u::StridedVector{T}, v::StridedVector{T}, npad, nu, nv
 ) where T<:Real
-    p = plan_rfft(upad)
-    uf = p*upad
-    vf = p*vpad
-    uf .*= vf # Multiply in place
-    irfft(uf, np2)
+    padded = _zeropad(u, npad, nu)
+    p = plan_rfft(padded)
+    uf = p * padded
+    _zeropad!(padded, v, npad, nv)
+    vf = p * padded
+    uf .*= vf
+    irfft(uf, npad)
 end
-function _circ_conv(upad, vpad, ::Integer)
-    p = plan_fft!(upad)
-    uf = p*upad
-    vf = p*vpad
-    uf .*= vf # Multiply in place
+function _conv(u, v, npad, nu, nv)
+    padded = _zeropad(u, npad, nu)
+    p! = plan_fft!(padded)
+    uf = copy(p! * padded)
+    _zeropad!(padded, v, npad, nv)
+    p! * padded # Operates in place on padded
+    uf .*= padded
     ifft!(uf)
 end
 
@@ -151,9 +155,7 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     nv = length(v)
     n = nu + nv - 1
     np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
-    upad = _zeropad(u, np2, nu)
-    vpad = _zeropad(v, np2, nv)
-    y = _circ_conv(upad, vpad, np2)
+    y = _conv(u, v, np2, nu, nv)
     resize!(y, n)
     y
 end
