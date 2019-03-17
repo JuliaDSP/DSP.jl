@@ -148,7 +148,8 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     upad = _zeropad(u, np2, nu)
     vpad = _zeropad(v, np2, nv)
     y = _circ_conv(upad, vpad, np2)
-    return y[1:n]
+    resize!(y, n)
+    y
 end
 conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
 conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
