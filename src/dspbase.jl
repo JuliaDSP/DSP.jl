@@ -117,6 +117,24 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+function _zeropad(u, ntot, nu = length(u))
+    padded = similar(u, ntot)
+    copyto!(padded, 1, u, 1, nu)
+    padded[nu + 1:ntot] .= 0
+    padded
+end
+
+function _circ_conv(
+    upad::StridedVector{T}, vpad::StridedVector{T}, np2::Integer
+) where T<:Real
+    p = plan_rfft(upad)
+    irfft((p*upad).*(p*vpad), np2)
+end
+function _circ_conv(upad, vpad, ::Integer)
+    p = plan_fft!(upad)
+    ifft!((p*upad).*(p*vpad))
+end
+
 """
     conv(u,v)
 
@@ -127,15 +145,9 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     nv = length(v)
     n = nu + nv - 1
     np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
-    upad = [u; zeros(T, np2 - nu)]
-    vpad = [v; zeros(T, np2 - nv)]
-    if T <: Real
-        p = plan_rfft(upad)
-        y = irfft((p*upad).*(p*vpad), np2)
-    else
-        p = plan_fft!(upad)
-        y = ifft!((p*upad).*(p*vpad))
-    end
+    upad = _zeropad(u, np2, nu)
+    vpad = _zeropad(v, np2, nv)
+    y = _circ_conv(upad, vpad, np2)
     return y[1:n]
 end
 conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
