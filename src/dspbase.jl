@@ -136,13 +136,13 @@ function _conv(
     irfft(uf, npad)
 end
 function _conv(u, v, npad, nu, nv)
-    padded = _zeropad(u, npad, nu)
-    p! = plan_fft!(padded)
-    uf = copy(p! * padded)
-    _zeropad!(padded, v, npad, nv)
-    p! * padded # Operates in place on padded
-    uf .*= padded
-    ifft!(uf)
+    upad = _zeropad(u, npad, nu)
+    vpad = _zeropad(v, npad, nv)
+    p! = plan_fft!(upad)
+    p! * upad # Operates in place on upad
+    p! * vpad
+    upad .*= vpad
+    ifft!(upad)
 end
 
 """
