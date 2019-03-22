@@ -122,13 +122,15 @@ end
 
 Convolution of two Array using FFT algorithm
 """
-function conv(A::StridedArray{T}, B::StridedArray{T}) where T
-    dims = 1:length(size(A))
+function conv(A::StridedArray{T,N}, B::StridedArray{T, N}) where T where N
+    dims = 1:N
     ftshape = Tuple(size(A, i) + size(B, i) - 1 for i in dims)
-    At = zeros(T, ftshape); At[[1:size(A, i) for i in dims]...] = A
-    Bt = zeros(T, ftshape); Bt[[1:size(B, i) for i in dims]...] = B
-    p = plan_fft(At)
-    C = ifft((p * At) .* (p * Bt))
+    At = zeros(T, ftshape)
+    At[[1:size(A, i) for i in dims]...] = A
+    Bt = zeros(T, ftshape)
+    Bt[[1:size(B, i) for i in dims]...] = B
+    p = plan_fft(At, dims)
+    C = ifft((p * At) .* (p * Bt), dims)
     # TODO: this is awkward
     if T <: Real
         C = real(C)
@@ -138,6 +140,17 @@ function conv(A::StridedArray{T}, B::StridedArray{T}) where T
     end
     return convert(Array{T}, C)
 end
+
+function conv(A::StridedArray{T}, B::StridedArray{T}) where T
+    maxnd = max(ndims(A), ndims(B))
+    return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
+end
+
+# sA = size(A)
+#     sB = size(B)
+#     if dims == nothing
+#         dims = Tuple(1:min(length(sA), length(sB)))
+#     end
 
 
 """

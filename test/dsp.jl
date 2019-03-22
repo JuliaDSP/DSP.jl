@@ -127,16 +127,17 @@ end
         @test conv(a, b) == a
 
         
-        
-        # a = cat([fill(n, 3, 3) for in in 1:6]..., dims=3)
-        # b = ones(2 2)
-        # expf1 = conv(a[:, :, 1], b)
-        # exp = cat([expf1 * n for n in 1:6]..., dims=3)
-        # @test conv(a, b) = exp
+        a = cat([fill(n, 3, 3) for n in 1:6]..., dims=3)
+        b = ones(Int64, 2, 2)
+        expf1 = conv(a[:, :, 1], b)
+        exp = cat([expf1 * n for n in 1:6]..., dims=3)
+        @test conv(a, b) == exp
 
-        # a = ones(6, 6, 10)
-        # b = cat([fill(n, 2, 2) for n in 1:3], dims=3)
-        # exp = 
+        a = ones(Int64, 6, 6, 10)
+        b = cat([fill(n, 2, 2) for n in 1:3]..., dims=3)
+        exp = cat([cat([conv(a[:,:,1], b[:,:,n]) for n in 1:3]..., dims=3)
+                   for i in 1:10]..., dims=4)
+        @test conv(a, b, dims=(1,2)) == exp
     end
 end
 
