@@ -50,8 +50,8 @@ end
         @test conv(fa, fb) ≈ fexp
         @test conv(complex.(fa, 1.), complex(fb)) ≈ complex.(fexp, im_fexp)
         
-        @test_broken conv(fa, b) ≈ fexp
-        @test_broken conv(fb, a) ≈ fexp
+        @test conv(fa, b) ≈ fexp
+        @test conv(fb, a) ≈ fexp
         @test_broken conv(complex(fa, 1.), complex(b)) ≈ complex.(fexp, im_fexp)
     end
 
@@ -133,12 +133,6 @@ end
         exp = cat([expf1 * n for n in 1:6]..., dims=3)
         @test conv(a, b) == exp
 
-        # Currently not implemeted - but useful for CNNs, future idea?
-        a = ones(Int64, 6, 6, 10)
-        b = cat([fill(n, 2, 2) for n in 1:3]..., dims=3)
-        exp = cat([cat([conv(a[:,:,1], b[:,:,n]) for n in 1:3]..., dims=3)
-                   for i in 1:10]..., dims=4)
-        @test_broken conv(a, b, dims=(1,2)) == exp
     end
 end
 

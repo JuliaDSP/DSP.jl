@@ -120,7 +120,7 @@ end
 """
     conv(u,v)
 
-Convolution of two Array using FFT algorithm
+Convolution of two Arrays using FFT algorithm
 """
 function conv(A::StridedArray{T,N}, B::StridedArray{T, N}) where T where N
     dims = 1:N
@@ -147,6 +147,28 @@ function conv(A::StridedArray{T}, B::StridedArray{T}) where T
 end
 
 
+# 1D-conv left separate as temporary measure until #263 is addressed
+function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
+    nu = length(u)
+    nv = length(v)
+    n = nu + nv - 1
+    np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
+    upad = [u; zeros(T, np2 - nu)]
+    vpad = [v; zeros(T, np2 - nv)]
+    if T <: Real
+        p = plan_rfft(upad)
+        y = irfft((p*upad).*(p*vpad), np2)
+    else
+        p = plan_fft!(upad)
+        y = ifft!((p*upad).*(p*vpad))
+    end
+    return y[1:n]
+end
+conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
+conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
+conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
+
+
 """
     xcorr(u,v)
 
@@ -161,4 +183,3 @@ function xcorr(u, v)
     end
     conv(u, Compat.reverse(conj(v), dims=1))
 end
-
