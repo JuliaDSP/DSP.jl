@@ -4,6 +4,7 @@ using Compat, Compat.Test, DSP
 import DSP: filt, filt!, deconv, conv, conv, xcorr
 
 
+
 @testset "filt" begin
     # Filter
     b = [1., 2., 3., 4.]
@@ -161,7 +162,6 @@ if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
         end
     end
 end
-
 
 
 @testset "deconv" begin
