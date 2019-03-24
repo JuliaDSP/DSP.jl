@@ -146,12 +146,6 @@ function conv(A::StridedArray{T}, B::StridedArray{T}) where T
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
 
-# sA = size(A)
-#     sB = size(B)
-#     if dims == nothing
-#         dims = Tuple(1:min(length(sA), length(sB)))
-#     end
-
 
 """
     xcorr(u,v)
