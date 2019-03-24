@@ -95,6 +95,31 @@ end
         @test_broken conv(complex.(fa, 1.), complex.(b)) ≈ complex.(fexp, im_fexp)
     end
 
+    @testset "seperable conv" begin
+        u = [1, 2, 3, 2, 1]
+        v = [6, 7, 3, 2]
+        A = [1 2 3 4 5 6 7;
+             8 9 10 11 12 13 14;
+             15 16 17 18 19 20 21;
+             22 23 24 25 26 27 28]
+        exp = [6 19 35 53 71 89 107 77 33 14;
+               60 148 217 285 339 393 447 315 134 56;
+               204 478 658 822 930 1038 1146 798 338 140;
+               468 1062 1400 1684 1828 1972 2116 1456 614 252;
+               636 1426 1848 2188 2332 2476 2620 1792 754 308;
+               624 1388 1778 2082 2190 2298 2406 1638 688 280;
+               354 785 1001 1167 1221 1275 1329 903 379 154;
+               132 292 371 431 449 467 485 329 138 56]
+        @test_broken conv(u, v, A) == exp
+
+        fu = convert(Array{Float64}, u)
+        fv = convert(Array{Float64}, v)
+        fA = convert(Array{Float64}, A)
+        fexp = convert(Array{Float64}, exp)
+        @test conv(fu, fv, fA) ≈ fexp
+
+    end
+    
     @testset "conv-ND" begin
         # is it safe to assume that if conv works for
         # int/float/complex in 1 and 2 D, it does in ND?
