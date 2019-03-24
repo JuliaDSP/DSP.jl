@@ -138,7 +138,7 @@ function conv(A::StridedArray{T,N}, B::StridedArray{T, N}) where T where N
     if T <: Int || T<:Complex{Int}
         C = round.(C)
     end
-    return convert(Array{T}, C)
+    return convert(typeof(A), C)
 end
 
 function conv(A::StridedArray{T}, B::StridedArray{T}) where T

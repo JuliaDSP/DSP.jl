@@ -41,18 +41,18 @@ end
         expectation = [1, 4, 8, 10, 7, 6]
         im_expectation = [1, 3, 6, 6, 5, 3]
         @test conv(a, b) == expectation
-        @test conv(complex.(a, 1), complex(b)) == complex.(expectation,
+        @test conv(complex.(a, 1), complex.(b)) == complex.(expectation,
                                                            im_expectation)
         fa = convert(Array{Float64}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
         im_fexp = convert(Array{Float64}, im_expectation)
         @test conv(fa, fb) ≈ fexp
-        @test conv(complex.(fa, 1.), complex(fb)) ≈ complex.(fexp, im_fexp)
+        @test conv(complex.(fa, 1.), complex.(fb)) ≈ complex.(fexp, im_fexp)
         
         @test conv(fa, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
-        @test_broken conv(complex(fa, 1.), complex(b)) ≈ complex.(fexp, im_fexp)
+        @test_broken conv(complex.(fa, 1.), complex.(b)) ≈ complex.(fexp, im_fexp)
     end
 
 
@@ -91,7 +91,7 @@ end
                                                                im_fexp)
         @test_broken conv(fa, b) ≈ fexp
         @test_broken conv(fb, a) ≈ fexp
-        @test_broken conv(complex(fa, 1.), complex(b)) ≈ complex.(fexp, im_fexp)
+        @test_broken conv(complex.(fa, 1.), complex.(b)) ≈ complex.(fexp, im_fexp)
     end
 
     @testset "conv-ND" begin
@@ -154,9 +154,9 @@ if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
             x = rand(10)
             u = rand(10, 3)
             su = view(u, :, 1)
-            @test_broken size(@inferred(xcorr(su, x))) == (19,)
+            @test size(@inferred(xcorr(su, x))) == (19,)
             if VERSION >= v"0.7.0-DEV.1996"
-                @test_broken size(@inferred(xcorr(x, su))) == (19,)
+                @test size(@inferred(xcorr(x, su))) == (19,)
             end
         end
     end
