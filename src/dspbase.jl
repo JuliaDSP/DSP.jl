@@ -2,7 +2,6 @@
 
 import Base.trailingsize
 import Compat.LinearAlgebra.BLAS
-import Compat.cat
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
