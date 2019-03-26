@@ -45,6 +45,10 @@ if VERSION >= v"0.7.0-DEV.602"
     include("dspbase.jl")
 end
 
+if VERSION < v"0.7.0-DEV"
+    using Compat: cat
+end
+
 include("util.jl")
 include("unwrap.jl")
 include("windows.jl")
