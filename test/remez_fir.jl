@@ -84,14 +84,8 @@ h_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "remez_180_bpf.txt"),'\t'
 end
 
 @testset "remez_warn_no_converge_after_maxiter_iterations" begin
-    @static if VERSION ≥ v"0.7.0-DEV.2988"
-        @test_logs (:warn, r"filter is not converged") remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0)
-        @test_logs (:warn, r"filter is not converged") remez(180, [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]; Hz=2.0)
-    else
-        warn_check(msg) = contains(msg, "filter is not converged")
-        @test_warn warn_check remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0)
-        @test_warn warn_check remez(180, [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]; Hz=2.0)
-    end
+    @test_logs (:warn, r"filter is not converged") remez(180, [0, 0.375, 0.4, 0.5, 0.525, 1.0], [0.0, 1.0, 0.0]; Hz=2.0)
+    @test_logs (:warn, r"filter is not converged") remez(180, [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]; Hz=2.0)
 end
 
 @testset "remez_error_no_converge_transition_band_too_wide" begin

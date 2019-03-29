@@ -1,3 +1,4 @@
+julia 1.0
 Compat 1.2
 Polynomials 0.1.0
 Reexport

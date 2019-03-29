@@ -84,12 +84,6 @@ C CODE BANNER
  *********************************************************/
 
 =============================================#
-if v"0.7.0-DEV.5103" ≤ VERSION < v"0.7.0-beta2.22"
-    # work around JuliaLang/julia#28077 by inserting a no-op (`nothing`) after each label
-    macro label(sym)
-        :($(esc(Expr(:symboliclabel, sym))); nothing)
-    end
-end
 
 # RemezFilterType:
 #    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)

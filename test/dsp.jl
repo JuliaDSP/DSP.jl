@@ -50,9 +50,7 @@ if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
             u = rand(10, 3)
             su = view(u, :, 1)
             @test size(@inferred(xcorr(su, x))) == (19,)
-            if VERSION >= v"0.7.0-DEV.1996"
-                @test size(@inferred(xcorr(x, su))) == (19,)
-            end
+            @test size(@inferred(xcorr(x, su))) == (19,)
         end
     end
 end
@@ -103,14 +101,12 @@ end
 
 @testset "deconv" begin
     # Test for issue #188: deconv mutates inputs
-    if VERSION >= v"0.7.0-DEV.602"
-        let b = [4.0, 2.0, 1.0]; a = [2.0, 1.0]
-            bb = b[:]
-            aa = a[:]
-            c = deconv(b,a)
-            @test c == [2.0, 0.0]
-            @test a == aa
-            @test b == bb
-        end
+    let b = [4.0, 2.0, 1.0]; a = [2.0, 1.0]
+        bb = b[:]
+        aa = a[:]
+        c = deconv(b,a)
+        @test c == [2.0, 0.0]
+        @test a == aa
+        @test b == bb
     end
 end
