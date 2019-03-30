@@ -208,17 +208,17 @@ conv2(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) where {T<:I
     round.(Int, conv2(float(u), float(v), float(A)))
 
 function check_mode_kwarg(mode::Symbol, su::Integer, sv::Integer)
-    if mode == :default_full
+    if mode == :default_longest
         if su != sv
             Base.depwarn(
                 "The default behavior for xcorr has changed. For more " *
                 "details, see the documentation for xcorr. To avoid this " *
-                "warning, specify mode = :full or mode = :legacy where " *
+                "warning, specify mode = :full or mode = :longest where " *
                 "appropriate",
                 :xcorr
             )
         end
-        :full
+        :longest
     else
         mode
     end
@@ -229,14 +229,14 @@ end
 
 Compute the cross-correlation of two vectors. The size of the output depends on
 `mode` keyword argument: if `mode = :full` then the result will be the same size
-as [`conv`](@ref) of `u` and `v`. If `mode = :legacy` then the result will have
+as [`conv`](@ref) of `u` and `v`. If `mode = :longest` then the result will have
 length `2*max(length(X), length(Y))-1`, where the beginning of the result will
 be padded with zeros.
 """
-function xcorr(u, v; mode::Symbol = :default_full)
+function xcorr(u, v; mode::Symbol = :default_longest)
     su = size(u,1); sv = size(v,1)
     mode = check_mode_kwarg(mode, su, sv)
-    if mode == :legacy
+    if mode == :longest
         if su < sv
             u = [u;zeros(eltype(u),sv-su)]
         elseif sv < su
@@ -246,6 +246,6 @@ function xcorr(u, v; mode::Symbol = :default_full)
     elseif mode == :full
         conv(u, Compat.reverse(conj(v), dims=1))
     else
-        throw(ArgumentError("mode keyword argument must be either :full or :legacy"))
+        throw(ArgumentError("mode keyword argument must be either :full or :longest"))
     end
 end
