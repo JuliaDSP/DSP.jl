@@ -1,10 +1,9 @@
 module Util
-using ..DSP: @importffts, mul!, xcorr
+using ..DSP: mul!, xcorr
 import Base: *
-import Compat
-using Compat: copyto!, ComplexF64, selectdim, undef
-import Compat.LinearAlgebra.BLAS
-@importffts
+import LinearAlgebra.BLAS
+using AbstractFFTs
+using FFTW
 
 export  hilbert,
         Frequencies,
@@ -364,13 +363,13 @@ julia> finddelay([1, 2, 3], [0, 0, 1, 2, 3])
 function finddelay(x::AbstractVector{<: Real}, y::AbstractVector{<: Real})
     s = xcorr(y, x)
     max_corr = maximum(abs, s)
-    max_idxs = Compat.findall(x -> abs(x) == max_corr, s)
+    max_idxs = findall(x -> abs(x) == max_corr, s)
 
     center_idx = cld(length(s), 2)
     # Delay is position of peak cross-correlation relative to center.
     # If the maximum cross-correlation is not unique, use the position
     # closest to the center.
-    d_ind = Compat.argmin(abs.(center_idx .- max_idxs))
+    d_ind = argmin(abs.(center_idx .- max_idxs))
     d = center_idx - max_idxs[d_ind]
 end
 

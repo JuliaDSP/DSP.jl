@@ -3,7 +3,7 @@ module LPC
 
 using ..DSP: xcorr
 
-using Compat.LinearAlgebra: dot
+using LinearAlgebra: dot
 
 export lpc, LPCBurg, LPCLevinson
 

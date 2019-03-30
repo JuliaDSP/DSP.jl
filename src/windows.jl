@@ -1,12 +1,11 @@
 module Windows
-using ..DSP: @importffts, mul!, rmul!
+using ..DSP: mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
-import Compat
-using Compat: copyto!, undef, range
 using LinearAlgebra: Diagonal, SymTridiagonal, eigen!
 
-@importffts
+using AbstractFFTs
+using FFTW
 
 export  rect,
         hanning,
@@ -549,7 +548,7 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
 
     # Get tapers
     eigvec = eigen!(mat, n-ntapers+1:n).vectors
-    rv = Compat.reverse(eigvec, dims=2)::Matrix{Float64}
+    rv = reverse(eigvec, dims=2)::Matrix{Float64}
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(rv, 2))

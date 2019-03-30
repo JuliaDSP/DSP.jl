@@ -1,7 +1,7 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base.trailingsize
-import Compat.LinearAlgebra.BLAS
+import LinearAlgebra.BLAS
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -198,5 +198,5 @@ function xcorr(u, v)
     elseif sv < su
         v = [v;zeros(eltype(v),su-sv)]
     end
-    conv(u, Compat.reverse(conj(v), dims=1))
+    conv(u, reverse(conj(v), dims=1))
 end

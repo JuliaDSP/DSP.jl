@@ -3,14 +3,13 @@ using ..DSP: mul!, rmul!
 using ..Unwrap
 using Polynomials, ..Util
 import Base: *
-using Compat: copyto!, undef, argmin
-import Compat
-using Compat.LinearAlgebra: I
-using Compat.Statistics: middle
+using LinearAlgebra: I
+using Statistics: middle
 
 
-import ..DSP: @importffts, filt, filt!
-@importffts
+import ..DSP: filt, filt!
+using AbstractFFTs
+using FFTW
 
 include("coefficients.jl")
 export FilterCoefficients,

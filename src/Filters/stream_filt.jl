@@ -10,7 +10,7 @@ mutable struct FIRStandard{T} <: FIRKernel{T}
 end
 
 function FIRStandard(h::Vector)
-    h    = Compat.reverse(h, dims=1)
+    h    = reverse(h, dims=1)
     hLen = length(h)
     FIRStandard(h, hLen)
 end
@@ -48,7 +48,7 @@ mutable struct FIRDecimator{T} <: FIRKernel{T}
 end
 
 function FIRDecimator(h::Vector, decimation::Integer)
-    h            = Compat.reverse(h, dims=1)
+    h            = reverse(h, dims=1)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)

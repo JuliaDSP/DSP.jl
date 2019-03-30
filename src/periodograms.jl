@@ -3,12 +3,12 @@
 # of the methods is available at:
 # http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
 module Periodograms
-using ..DSP: @importffts, mul!
+using ..DSP: mul!
 using ..Util, ..Windows
-using Compat: AbstractRange, ComplexF32, ComplexF64, copyto!, Nothing, undef
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
-@importffts
+using AbstractFFTs
+using FFTW
 
 ## ARRAY SPLITTER
 

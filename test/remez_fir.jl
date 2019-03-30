@@ -1,5 +1,5 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
-using DSP, Compat, Compat.Test, Compat.DelimitedFiles, FilterTestHelpers
+using DSP, Test, DelimitedFiles, FilterTestHelpers
 
 @testset "remez_argument_check1" begin
     # bands not monotonically increasing
@@ -165,7 +165,7 @@ end
     L = 64
     
     Fs = 4800*L
-    f = Compat.range(0, stop=0.5, length=10000)
+    f = range(0, stop=0.5, length=10000)
 
     P = (π*f*Fs/4800) ./ sin.(π*f*Fs/4800)
     Pdb = 20*log10.(abs.(P))

@@ -1,13 +1,5 @@
 module Unwrap
-
-using Compat.Random
-
-import Compat
-import Compat: selectdim
-import Compat: CartesianIndices
-import Compat: Nothing
-import Compat.Random: GLOBAL_RNG
-
+using Random: GLOBAL_RNG, AbstractRNG
 export unwrap, unwrap!
 
 """
@@ -36,7 +28,7 @@ function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, ran
         dims = 1
     end
     if dims isa Integer
-        Compat.accumulate!(unwrap_kernel(range), y, m, dims=dims)
+        accumulate!(unwrap_kernel(range), y, m, dims=dims)
     elseif dims == 1:N
         unwrap_nd!(y, m; range=range, kwargs...)
     else
@@ -303,7 +295,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
                 @inbounds pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts_border, range)
             end
             # second border
-            pixel_shifts_border = Compat.copyto!(pixel_shifts_border, pixel_shifts)
+            pixel_shifts_border = copyto!(pixel_shifts_border, pixel_shifts)
             for (idx_ps, ps) in enumerate(pixel_shifts_border)
                 # if the pixel shift goes out of bounds, we make the shift wrap, this time to the other side
                 if ps[idx_dim] == -1

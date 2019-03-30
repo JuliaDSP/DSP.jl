@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-using Compat, Compat.Test, DSP
+using Test, DSP
 import DSP: filt, filt!, deconv, conv, conv2, xcorr
 
 
