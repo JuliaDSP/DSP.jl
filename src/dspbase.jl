@@ -211,10 +211,13 @@ function check_mode_kwarg(mode::Symbol, su::Integer, sv::Integer)
     if mode == :default_longest
         if su != sv
             Base.depwarn(
-                "The default behavior for xcorr has changed. For more " *
-                "details, see the documentation for xcorr. To avoid this " *
-                "warning, specify mode = :full or mode = :longest where " *
-                "appropriate",
+            """
+            The default behavior for xcorr will changed in future versions.
+            For more details, see the documentation for xcorr. To avoid this
+            warning, specify mode = :full or mode = :longest where
+            appropriate
+            """
+                ,
                 :xcorr
             )
         end
@@ -225,13 +228,13 @@ function check_mode_kwarg(mode::Symbol, su::Integer, sv::Integer)
 end
 
 """
-    xcorr(u,v; mode = :full)
+    xcorr(u,v; mode = :longest)
 
 Compute the cross-correlation of two vectors. The size of the output depends on
 `mode` keyword argument: if `mode = :full` then the result will be the same size
 as [`conv`](@ref) of `u` and `v`. If `mode = :longest` then the result will have
 length `2*max(length(X), length(Y))-1`, where the beginning of the result will
-be padded with zeros.
+be padded with zeros. If `mode = :full`, it will be `length(X) - length(Y) - 1`.
 """
 function xcorr(u, v; mode::Symbol = :default_longest)
     su = size(u,1); sv = size(v,1)
