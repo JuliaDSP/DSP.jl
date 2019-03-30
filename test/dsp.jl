@@ -35,11 +35,11 @@ if :xcorr in names(DSP) # VERSION >= v"0.7.0-DEV.602"
     @testset "xcorr" begin
         @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
         @test xcorr([1, 2, 3], [4, 5]) == [0, 5, 14, 23, 12]
-        @test xcorr([1, 2, 3], [4, 5], mode = :longest) == [0, 5, 14, 23, 12]
-        @test xcorr([1, 2, 3], [4, 5], mode = :none) == [5, 14, 23, 12]
+        @test xcorr([1, 2, 3], [4, 5], padmode = :longest) == [0, 5, 14, 23, 12]
+        @test xcorr([1, 2, 3], [4, 5], padmode = :none) == [5, 14, 23, 12]
         @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
-        @test xcorr([1, 2], [3, 4, 5], mode = :longest) == [5, 14, 11, 6, 0]
-        @test xcorr([1, 2], [3, 4, 5], mode = :none) == [5, 14, 11, 6]
+        @test xcorr([1, 2], [3, 4, 5], padmode = :longest) == [5, 14, 11, 6, 0]
+        @test xcorr([1, 2], [3, 4, 5], padmode = :none) == [5, 14, 11, 6]
         @test xcorr([1.0im], [1.0im]) == [1]
         @test xcorr([1, 2, 3]*1.0im, ComplexF64[4, 5]) ≈ [0, 5, 14, 23, 12]*im
         @test xcorr([1, 2]*1.0im, ComplexF64[3, 4, 5]) ≈ [5, 14, 11, 6, 0]*im
