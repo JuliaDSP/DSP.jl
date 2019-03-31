@@ -84,8 +84,8 @@ end
         # Complex
         @test conv(complex.(fa, 1), complex.(fb)) == complex.(fexp,
                                                                im_fexp)
-        @test_broken conv(fa, b) ≈ fexp
-        @test_broken conv(fb, a) ≈ fexp
+        @test conv(fa, b) ≈ fexp
+        @test conv(fb, a) ≈ fexp
     end
 
     @testset "seperable conv" begin
