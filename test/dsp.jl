@@ -34,7 +34,7 @@ end
 
 
 @testset "conv" begin
-        
+
     @testset "conv-1D" begin
         # Convolution
         a = [1, 2, 1, 2]
@@ -48,7 +48,7 @@ end
         im_fexp = convert(Array{Float64}, im_expectation)
         @test conv(fa, fb) ≈ fexp
         @test conv(complex.(fa, 1.), complex.(fb)) ≈ complex.(fexp, im_fexp)
-        
+
         @test conv(fa, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
     end
@@ -57,11 +57,11 @@ end
     @testset "conv-2D" begin
         a =[1 2 1;
             2 3 1;
-            1 2 1]  
-        
+            1 2 1]
+
         b = [3 2;
              0 1]
-        
+
         expectation = [3 8 7 2;
                        6 14 11 3;
                        3 10 10 3;
@@ -112,7 +112,7 @@ end
         @test conv(fu, fv, fA) ≈ fexp
 
     end
-    
+
     @testset "conv-ND" begin
         # is it safe to assume that if conv works for
         # int/float/complex in 1 and 2 D, it does in ND?
@@ -122,18 +122,18 @@ end
                                       5, 12, 16, 9,
                                       11, 24, 28, 15,
                                       7, 15, 17, 9,
-                                      
+
                                       11, 24, 28, 15,
                                       28, 60, 68, 36,
                                       40, 84, 92, 48,
                                       23, 48, 52, 27,
                                       29, 60, 64, 33,
-                       
+
                                       64, 132, 140, 72,
                                       76, 156, 164, 84,
                                       41, 84, 88, 45,
                                       19, 39, 41, 21,
-                                      
+
                                       41, 84, 88, 45,
                                       47, 96,  100, 51,
                                       25, 51, 53, 27], (4, 4, 4)))
@@ -145,7 +145,7 @@ end
         b = ones(1, 1, 1, 1, 1, 1)
         @test conv(a, b) == a
 
-        
+
         a = cat([fill(n, 3, 3) for n in 1:6]..., dims=3)
         b = ones(Int64, 2, 2)
         expf1 = conv(a[:, :, 1], b)
