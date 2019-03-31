@@ -1,7 +1,8 @@
 module Util
-using ..DSP: mul!, xcorr
+using ..DSP: xcorr
 import Base: *
 import LinearAlgebra.BLAS
+using LinearAlgebra: mul!
 using AbstractFFTs
 using FFTW
 

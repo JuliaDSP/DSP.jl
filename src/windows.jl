@@ -1,8 +1,7 @@
 module Windows
-using ..DSP: mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
-using LinearAlgebra: Diagonal, SymTridiagonal, eigen!
+using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
 
 using AbstractFFTs
 using FFTW

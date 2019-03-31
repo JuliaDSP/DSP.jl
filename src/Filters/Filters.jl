@@ -1,9 +1,8 @@
 module Filters
-using ..DSP: mul!, rmul!
 using ..Unwrap
 using Polynomials, ..Util
 import Base: *
-using LinearAlgebra: I
+using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 
 
