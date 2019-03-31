@@ -42,8 +42,6 @@ end
         expectation = [1, 4, 8, 10, 7, 6]
         im_expectation = [1, 3, 6, 6, 5, 3]
         @test conv(a, b) == expectation
-        @test conv(complex.(a, 1), complex.(b)) == complex.(expectation,
-                                                           im_expectation)
         fa = convert(Array{Float64}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
@@ -53,7 +51,6 @@ end
         
         @test conv(fa, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
-        @test_broken conv(complex.(fa, 1.), complex.(b)) ≈ complex.(fexp, im_fexp)
     end
 
 
@@ -77,9 +74,6 @@ end
         # Integers
         # Real Integers
         @test conv(a, b) == expectation
-        # Complex
-        @test conv(complex.(a, 1), complex.(b)) == complex.(expectation,
-                                                             im_expectation)
         # Floats
         fa = convert(Array{Float64}, a)
         fb = convert(Array{Float64}, b)
@@ -92,7 +86,6 @@ end
                                                                im_fexp)
         @test_broken conv(fa, b) ≈ fexp
         @test_broken conv(fb, a) ≈ fexp
-        @test_broken conv(complex.(fa, 1.), complex.(b)) ≈ complex.(fexp, im_fexp)
     end
 
     @testset "seperable conv" begin
