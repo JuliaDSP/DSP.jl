@@ -117,6 +117,52 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+function _zeropad!(padded, u, ntot, nu = length(u))
+    copyto!(padded, 1, u, 1, nu)
+    padded[nu + 1:ntot] .= 0
+    padded
+end
+_zeropad(u, ntot, nu = length(u)) = _zeropad!(similar(u, ntot), u, ntot, nu)
+
+function _conv(
+    u::StridedVector{T}, v::StridedVector{T}, npad, nu, nv
+) where T<:Real
+    padded = _zeropad(u, npad, nu)
+    p = plan_rfft(padded)
+    uf = p * padded
+    _zeropad!(padded, v, npad, nv)
+    vf = p * padded
+    uf .*= vf
+    irfft(uf, npad)
+end
+function _conv(u, v, npad, nu, nv)
+    upad = _zeropad(u, npad, nu)
+    vpad = _zeropad(v, npad, nv)
+    p! = plan_fft!(upad)
+    p! * upad # Operates in place on upad
+    p! * vpad
+    upad .*= vpad
+    ifft!(upad)
+end
+
+"""
+conv(u,v)
+
+Convolution of two vectors. Uses FFT algorithm.
+"""
+function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
+    nu = length(u)
+    nv = length(v)
+    n = nu + nv - 1
+    np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
+    y = _conv(u, v, np2, nu, nv)
+    resize!(y, n)
+    y
+end
+conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
+conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
+conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
+
 """
     conv(u,v,A)
 
@@ -167,28 +213,6 @@ function conv(A::StridedArray{T}, B::StridedArray{T}) where T
     maxnd = max(ndims(A), ndims(B))
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
-
-
-# 1D-conv left separate as temporary measure until #263 is addressed
-function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
-    nu = length(u)
-    nv = length(v)
-    n = nu + nv - 1
-    np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
-    upad = [u; zeros(T, np2 - nu)]
-    vpad = [v; zeros(T, np2 - nv)]
-    if T <: Real
-        p = plan_rfft(upad)
-        y = irfft((p*upad).*(p*vpad), np2)
-    else
-        p = plan_fft!(upad)
-        y = ifft!((p*upad).*(p*vpad))
-    end
-    return y[1:n]
-end
-conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
-conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
-conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
 
 
 """
