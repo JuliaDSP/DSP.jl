@@ -386,11 +386,13 @@ function filt_stepstate(f::SecondOrderSections{T}) where T
     si
 end
 
+const SMALL_FILT_CUTOFF = 15
+
 #
 # filt implementation for FIR filters (faster than Base)
 #
 
-for n = 2:15
+for n = 2:SMALL_FILT_CUTOFF
     silen = n-1
     si = [Symbol("si$i") for i = 1:silen]
     @eval function filt!(out, b::NTuple{$n,T}, x) where T
@@ -412,7 +414,7 @@ for n = 2:15
 end
 
 let chain = :(throw(ArgumentError("invalid tuple size")))
-    for n = 15:-1:2
+    for n = SMALL_FILT_CUTOFF:-1:2
         chain = quote
             if length(h) == $n
                 filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
@@ -452,7 +454,7 @@ end
 function _tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
-    elseif length(h) <= 15
+    elseif length(h) <= SMALL_FILT_CUTOFF
         return small_filt!(out, h, x)
     end
 
