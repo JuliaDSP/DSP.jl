@@ -262,9 +262,9 @@ function xcorr(u, v; padmode::Symbol = :default_longest)
     padmode = check_padmode_kwarg(padmode, su, sv)
     if padmode == :longest
         if su < sv
-            u = _zeropad(u, sv, su)
+            u = _zeropad(u, sv)
         elseif sv < su
-            v = _zeropad(v, su, sv)
+            v = _zeropad(v, su)
         end
         conv(u, Compat.reverse(conj(v), dims=1))
     elseif padmode == :none
