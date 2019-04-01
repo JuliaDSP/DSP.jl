@@ -167,7 +167,7 @@ _conv_clip!(y::AbstractVector, minpad) = resize!(y, minpad[1])
 _conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
 
 """
-conv(u,v)
+    conv(u,v)
 
 Convolution of two arrays. Uses FFT algorithm.
 """
