@@ -117,27 +117,45 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-function _zeropad!(padded, u, ntot, nu = length(u))
-    copyto!(padded, 1, u, 1, nu)
-    padded[nu + 1:ntot] .= 0
+function _zeropad!(padded::AbstractVector, u::AbstractVector)
+    ulen = length(u)
+    padlen = length(padded)
+    copyto!(padded, 1, u, 1, ulen)
+    padded[ulen + 1:padlen] .= 0
     padded
 end
-_zeropad(u, ntot, nu = length(u)) = _zeropad!(similar(u, ntot), u, ntot, nu)
+function _zeropad!(padded::AbstractArray{<:Any, N}, u::AbstractArray{<:Any, N}) where N
+    datainds = CartesianIndices(u)
+    copyto!(padded, datainds, u, datainds)
+    pad_ranges = Vector{UnitRange{Int}}(undef, N)
+    pad_ranges .= axes(padded)
+    for i = N:-1:1
+        nu = size(u, i)
+        pad_ranges[i] = nu + 1:size(padded, i)
+        padinds = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
+        padded[padinds] .= 0
+        pad_ranges[i] = 1:nu
+    end
+    padded
+end
+function _zeropad(u, padded_size)
+    _zeropad!(similar(u, padded_size), u)
+end
 
 function _conv(
-    u::StridedVector{T}, v::StridedVector{T}, npad, nu, nv
-) where T<:Real
-    padded = _zeropad(u, npad, nu)
+    u::StridedArray{T, N}, v::StridedArray{T, N}, paddims
+) where {T<:Real, N}
+    padded = _zeropad(u, paddims)
     p = plan_rfft(padded)
     uf = p * padded
-    _zeropad!(padded, v, npad, nv)
+    _zeropad!(padded, v)
     vf = p * padded
     uf .*= vf
-    irfft(uf, npad)
+    irfft(uf, paddims[1])
 end
-function _conv(u, v, npad, nu, nv)
-    upad = _zeropad(u, npad, nu)
-    vpad = _zeropad(v, npad, nv)
+function _conv(u, v, paddims)
+    upad = _zeropad(u, paddims)
+    vpad = _zeropad(v, paddims)
     p! = plan_fft!(upad)
     p! * upad # Operates in place on upad
     p! * vpad
@@ -145,23 +163,41 @@ function _conv(u, v, npad, nu, nv)
     ifft!(upad)
 end
 
+_conv_clip!(y::AbstractVector, minpad) = resize!(y, minpad[1])
+_conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
+
 """
 conv(u,v)
 
-Convolution of two vectors. Uses FFT algorithm.
+Convolution of two arrays. Uses FFT algorithm.
 """
-function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
-    nu = length(u)
-    nv = length(v)
-    n = nu + nv - 1
-    np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
-    y = _conv(u, v, np2, nu, nv)
-    resize!(y, n)
-    y
+function conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:BLAS.BlasFloat, N}
+    su = size(u)
+    sv = size(v)
+    minpad = su .+ sv .- 1
+    nfft = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
+    padsize = NTuple{N, Int}(nfft)
+    y = _conv(u, v, padsize)
+    _conv_clip!(y, minpad)
 end
-conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
-conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
-conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}) = conv(u, float(v))
+
+conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:Integer, N} =
+    round.(Int, conv(float(u), float(v)))
+function conv(
+    u::StridedArray{<:Integer, N}, v::StridedArray{<:BLAS.BlasFloat, N}
+) where N
+    conv(float(u), v)
+end
+function conv(
+    u::StridedArray{<:BLAS.BlasFloat, N}, v::StridedArray{<:Integer, N}
+) where N
+    conv(u, float(v))
+end
+
+function conv(A::StridedArray{T}, B::StridedArray{T}) where T
+    maxnd = max(ndims(A), ndims(B))
+    return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
+end
 
 """
     conv(u,v,A)
@@ -182,36 +218,6 @@ function conv(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) whe
         return real(C)
     end
     return C
-end
-
-
-"""
-    conv(u,v)
-
-Convolution of two Arrays using FFT algorithm
-"""
-function conv(A::StridedArray{T,N}, B::StridedArray{T, N}) where T where N
-    dims = 1:N
-    ftshape = Tuple(size(A, i) + size(B, i) - 1 for i in dims)
-    At = zeros(T, ftshape)
-    At[[1:size(A, i) for i in dims]...] = A
-    Bt = zeros(T, ftshape)
-    Bt[[1:size(B, i) for i in dims]...] = B
-    p = plan_fft(At, dims)
-    C = ifft((p * At) .* (p * Bt), dims)
-    # TODO: this is awkward
-    if T <: Real
-        C = real(C)
-    end
-    if T <: Int || T<:Complex{Int}
-        C = round.(C)
-    end
-    return convert(typeof(A), C)
-end
-
-function conv(A::StridedArray{T}, B::StridedArray{T}) where T
-    maxnd = max(ndims(A), ndims(B))
-    return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
 
 
