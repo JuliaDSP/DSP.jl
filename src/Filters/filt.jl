@@ -607,14 +607,10 @@ function filt_choose_alg!(
     x::AbstractArray{<:Real}
 )
     nb = length(b)
-    nx = size(x, 1)
 
-    filtops_per_sample = min(nx, nb)
-
-    nfft = optimalfftfiltlength(nb, nx)
-    fftops_per_sample = os_fft_complexity(log2(nfft), nb)
-
-    if filtops_per_sample > fftops_per_sample
+    if nb > SMALL_FILT_CUTOFF
+        nx = size(x, 1)
+        nfft = optimalfftfiltlength(nb, nx)
         _fftfilt!(out, b, x, nfft)
     else
         _tdfilt!(out, b, x)
