@@ -252,9 +252,9 @@ function xcorr(u, v; padmode::Symbol = :default_longest)
         elseif sv < su
             v = _zeropad(v, su, sv)
         end
-        conv(u, Compat.reverse(conj(v), dims=1))
+        conv(u, reverse(conj(v), dims=1))
     elseif padmode == :none
-        conv(u, Compat.reverse(conj(v), dims=1))
+        conv(u, reverse(conj(v), dims=1))
     else
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
