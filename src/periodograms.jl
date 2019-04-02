@@ -7,7 +7,6 @@ using LinearAlgebra: mul!
 using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
-using AbstractFFTs
 using FFTW
 
 ## ARRAY SPLITTER
@@ -225,15 +224,15 @@ See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-AbstractFFTs.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
+FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
-AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-AbstractFFTs.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
+FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -449,9 +448,9 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     freq::F
     time::FloatRange{Float64}
 end
-AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-AbstractFFTs.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
+FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
 
 """
     time(p)

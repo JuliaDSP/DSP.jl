@@ -3,7 +3,7 @@ using ..Util
 import SpecialFunctions: besseli
 using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
 
-using AbstractFFTs
+
 using FFTW
 
 export  rect,

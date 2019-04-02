@@ -4,7 +4,6 @@ module DSP
 
 # We want to be very sure we don't pull in Base names unless we're very sure we want them
 # This macro will be called in each submodule herein to do the appropriate imports
-using AbstractFFTs
 using FFTW
 using LinearAlgebra: mul!, rmul!
 
