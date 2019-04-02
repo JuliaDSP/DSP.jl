@@ -1,4 +1,4 @@
-using DSP,  Test
+using DSP, Test
 using Statistics: mean
 
 @testset "hilbert" begin

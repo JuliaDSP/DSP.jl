@@ -14,7 +14,7 @@
 #  close(fid)
 #end
 
-using DSP,  Test
+using DSP, Test
 using Statistics: mean
 
 @testset "matlab ref" begin
