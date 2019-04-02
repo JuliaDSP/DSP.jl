@@ -391,11 +391,10 @@ const SMALL_FILT_CUTOFF = 15
 #
 # filt implementation for FIR filters (faster than Base)
 #
-
-for n = 2:SMALL_FILT_CUTOFF
-    silen = n-1
+@generated function filt!(out, b::NTuple{N,T}, x) where {N, T}
+    silen = N-1
     si = [Symbol("si$i") for i = 1:silen]
-    @eval function filt!(out, b::NTuple{$n,T}, x) where T
+    return quote
         size(x) != size(out) && error("out size must match x")
         ncols = Base.trailingsize(x, 2)
         for col = 0:ncols-1
