@@ -117,6 +117,34 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+function _zeropad!(padded, u, ntot, nu = length(u))
+    copyto!(padded, 1, u, 1, nu)
+    padded[nu + 1:ntot] .= 0
+    padded
+end
+_zeropad(u, ntot, nu = length(u)) = _zeropad!(similar(u, ntot), u, ntot, nu)
+
+function _conv(
+    u::StridedVector{T}, v::StridedVector{T}, npad, nu, nv
+) where T<:Real
+    padded = _zeropad(u, npad, nu)
+    p = plan_rfft(padded)
+    uf = p * padded
+    _zeropad!(padded, v, npad, nv)
+    vf = p * padded
+    uf .*= vf
+    irfft(uf, npad)
+end
+function _conv(u, v, npad, nu, nv)
+    upad = _zeropad(u, npad, nu)
+    vpad = _zeropad(v, npad, nv)
+    p! = plan_fft!(upad)
+    p! * upad # Operates in place on upad
+    p! * vpad
+    upad .*= vpad
+    ifft!(upad)
+end
+
 """
     conv(u,v)
 
@@ -127,16 +155,9 @@ function conv(u::StridedVector{T}, v::StridedVector{T}) where T<:BLAS.BlasFloat
     nv = length(v)
     n = nu + nv - 1
     np2 = n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n)
-    upad = [u; zeros(T, np2 - nu)]
-    vpad = [v; zeros(T, np2 - nv)]
-    if T <: Real
-        p = plan_rfft(upad)
-        y = irfft((p*upad).*(p*vpad), np2)
-    else
-        p = plan_fft!(upad)
-        y = ifft!((p*upad).*(p*vpad))
-    end
-    return y[1:n]
+    y = _conv(u, v, np2, nu, nv)
+    resize!(y, n)
+    y
 end
 conv(u::StridedVector{T}, v::StridedVector{T}) where {T<:Integer} = round.(Int, conv(float(u), float(v)))
 conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}) = conv(float(u), v)
@@ -186,17 +207,55 @@ conv2(A::StridedMatrix{T}, B::StridedMatrix{T}) where {T<:Integer} =
 conv2(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) where {T<:Integer} =
     round.(Int, conv2(float(u), float(v), float(A)))
 
-"""
-    xcorr(u,v)
-
-Compute the cross-correlation of two vectors.
-"""
-function xcorr(u, v)
-    su = size(u,1); sv = size(v,1)
-    if su < sv
-        u = [u;zeros(eltype(u),sv-su)]
-    elseif sv < su
-        v = [v;zeros(eltype(v),su-sv)]
+function check_padmode_kwarg(padmode::Symbol, su::Integer, sv::Integer)
+    if padmode == :default_longest
+        if su != sv
+            Base.depwarn(
+            """
+            The default value of `padmode` will be changing from `:longest` to
+            `:none` in a future release of DSP. In preparation for this change,
+            leaving `padmode` unspecified is currently deprecated. To keep
+            current behavior specify `padmode=:longest`. To avoid this warning,
+            specify padmode = :none or padmode = :longest where appropriate.
+            """
+                ,
+                :xcorr
+            )
+        end
+        :longest
+    else
+        padmode
     end
-    conv(u, reverse(conj(v), dims=1))
+end
+
+"""
+    xcorr(u,v; padmode = :longest)
+
+Compute the cross-correlation of two vectors. The size of the output depends on
+the padmode keyword argument: with padmode = :none the length of the
+result will be length(u) + length(v) - 1, as with conv. With
+padmode = :longest the shorter of the arguments will be padded so they
+are equal length. This gives a result with length 2*max(length(u), length(v))-1,
+with the zero-lag condition at the center.
+
+!!! warning
+    The default value of `padmode` will be changing from `:longest` to `:none`
+    in a future release of DSP. In preparation for this change, leaving
+    `padmode` unspecified is currently deprecated.
+"""
+function xcorr(u, v; padmode::Symbol = :default_longest)
+    su = size(u,1); sv = size(v,1)
+    padmode = check_padmode_kwarg(padmode, su, sv)
+    if padmode == :longest
+        if su < sv
+            u = _zeropad(u, sv, su)
+        elseif sv < su
+            v = _zeropad(v, su, sv)
+        end
+        conv(u, Compat.reverse(conj(v), dims=1))
+    elseif padmode == :none
+        conv(u, Compat.reverse(conj(v), dims=1))
+    else
+        throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
+    end
 end
