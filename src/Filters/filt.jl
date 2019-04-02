@@ -386,7 +386,7 @@ function filt_stepstate(f::SecondOrderSections{T}) where T
     si
 end
 
-const SMALL_FILT_CUTOFF = 15
+const SMALL_FILT_CUTOFF = 54
 
 #
 # filt implementation for FIR filters (faster than Base)
