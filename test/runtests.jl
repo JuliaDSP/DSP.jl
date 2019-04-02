@@ -1,4 +1,4 @@
-using  DSP, FFTW. FFTW, Test
+using  DSP, FFTW, Test
 
 using Random: seed!
 
