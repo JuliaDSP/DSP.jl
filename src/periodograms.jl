@@ -42,14 +42,9 @@ function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
     end
     x.buf
 end
-if isdefined(Base, :iterate)
-    function Base.iterate(x::ArraySplit, i::Int = 1)
-        i > x.k ? nothing : (x[i], i+1)
-    end
-else
-    Base.start(x::ArraySplit) = 1
-    Base.next(x::ArraySplit, i::Int) = (x[i], i+1)
-    Base.done(x::ArraySplit, i::Int) = i > x.k
+
+function Base.iterate(x::ArraySplit, i::Int = 1)
+    i > x.k ? nothing : (x[i], i+1)
 end
 Base.size(x::ArraySplit) = (x.k,)
 
