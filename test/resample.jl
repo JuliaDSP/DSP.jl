@@ -1,5 +1,5 @@
 using DSP
-using  Test
+using Test
 
 @testset "rational ratio" begin
     # AM Modulator
