@@ -2,8 +2,6 @@
 
 - Addition of `lpc_burg` and `lpc_levinson` methods to calculate the Linear
   Predictive Coefficients describing a signal.
-- dropping support for julia 0.6
-- removing conv2 in favor of n-dimensional conv function
 
 # DSP v0.0.8 Release Notes
 
