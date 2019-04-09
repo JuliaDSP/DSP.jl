@@ -539,9 +539,12 @@ end
 
 function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
     kernel              = self.kernel
+    bufLen              = length(buffer)
     xLen                = length(x)
     history::Vector{Tx} = self.history
     bufIdx              = 0
+
+    bufLen >= xLen || error("buffer length must be >= x length")
 
     if xLen < kernel.inputDeficit
         self.history = shiftin!(history, x)
@@ -600,13 +603,20 @@ function update(kernel::FIRArbitrary)
     kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
 end
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRArbitrary{Th}},
+    x::AbstractVector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
+    bufLen              = length(buffer)
     xLen                = length(x)
     bufIdx              = 0
     history::Vector{Tx} = self.history
+
+    bufLen >= xLen || error("buffer length must be >= x length")
 
     # Do we have enough input samples to produce one or more output samples?
     if xLen < kernel.inputDeficit
