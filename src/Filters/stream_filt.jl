@@ -544,8 +544,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
     history::Vector{Tx} = self.history
     bufIdx              = 0
 
-    bufLen >= xLen || error("buffer length must be >= x length")
-
     if xLen < kernel.inputDeficit
         self.history = shiftin!(history, x)
         kernel.inputDeficit -= xLen
@@ -554,6 +552,9 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
 
     outLen              = outputlength(self, xLen)
     inputIdx            = kernel.inputDeficit
+
+    nbufout = fld(xLen - inputIdx, kernel.decimation)
+    bufLen >= nbufout || error("buffer length insufficient")
 
     while inputIdx <= xLen
         bufIdx += 1
@@ -616,8 +617,6 @@ function filt!(
     bufIdx              = 0
     history::Vector{Tx} = self.history
 
-    bufLen >= xLen || error("buffer length must be >= x length")
-
     # Do we have enough input samples to produce one or more output samples?
     if xLen < kernel.inputDeficit
         self.history = shiftin!(history, x)
@@ -642,7 +641,9 @@ function filt!(
             yUpper = unsafe_dot(dpfb, kernel.ϕIdx, x, kernel.xIdx)
         end
 
-        @inbounds buffer[bufIdx] = yLower + yUpper * kernel.α
+        # Used to have @inbounds. Restore @inbounds if buffer length
+        # can be verified prior to access.
+        buffer[bufIdx] = yLower + yUpper * kernel.α
         update(kernel)
     end
 
