@@ -42,6 +42,7 @@ end
         im_expectation = [1, 3, 6, 6, 5, 3]
         @test conv(a, b) == expectation
         fa = convert(Array{Float64}, a)
+        f32a = convert(Array{Float32}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
         im_fexp = convert(Array{Float64}, im_expectation)
@@ -49,6 +50,7 @@ end
         @test conv(complex.(fa, 1.), complex.(fb)) ≈ complex.(fexp, im_fexp)
 
         @test conv(fa, b) ≈ fexp
+        @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
         offset_arr = OffsetArray{Int}(undef, -1:2)
@@ -79,6 +81,7 @@ end
         @test conv(a, b) == expectation
         # Floats
         fa = convert(Array{Float64}, a)
+        f32a = convert(Array{Float32}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
         im_fexp = convert(Array{Float64}, im_expectation)
@@ -88,6 +91,7 @@ end
         @test conv(complex.(fa, 1), complex.(fb)) == complex.(fexp,
                                                                im_fexp)
         @test conv(fa, b) ≈ fexp
+        @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
         offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)

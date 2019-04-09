@@ -180,7 +180,8 @@ _conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
 
 Convolution of two arrays. Uses FFT algorithm.
 """
-function conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
+function conv(u::AbstractArray{T, N},
+              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
     su = size(u)
     sv = size(v)
     minpad = su .+ sv .- 1
@@ -188,16 +189,22 @@ function conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:BLAS.Bla
     y = _conv(u, v, padsize)
     _conv_clip!(y, minpad)
 end
-
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
+    fu, fv = promote(u, v)
+    conv(fu, fv)
+end
+conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
+    conv(float(u), float(v))
 conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Integer, N} =
     round.(Int, conv(float(u), float(v)))
 function conv(
-    u::AbstractArray{<:Integer, N}, v::AbstractArray{<:BLAS.BlasFloat, N}
+    u::AbstractArray{<:Number, N}, v::AbstractArray{<:BLAS.BlasFloat, N}
 ) where N
     conv(float(u), v)
 end
 function conv(
-    u::AbstractArray{<:BLAS.BlasFloat, N}, v::AbstractArray{<:Integer, N}
+    u::AbstractArray{<:BLAS.BlasFloat, N}, v::AbstractArray{<:Number, N}
 ) where N
     conv(u, float(v))
 end
