@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 # TODO: parameterize conv tests
-using Test, DSP
+using Test, DSP, OffsetArrays
 import DSP: filt, filt!, deconv, conv, xcorr
 
 
@@ -50,6 +50,10 @@ end
 
         @test conv(fa, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
+
+        offset_arr = OffsetArray{Int}(undef, -1:2)
+        offset_arr[:] = a
+        @test conv(offset_arr, 1:3) == expectation
     end
 
 
@@ -85,6 +89,10 @@ end
                                                                im_fexp)
         @test conv(fa, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
+
+        offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)
+        offset_arr[:] = a
+        @test conv(offset_arr, b) == expectation
     end
 
     @testset "seperable conv" begin

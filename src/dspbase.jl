@@ -120,21 +120,30 @@ end
 function _zeropad!(padded::AbstractVector, u::AbstractVector)
     ulen = length(u)
     padlen = length(padded)
-    copyto!(padded, 1, u, 1, ulen)
-    padded[ulen + 1:padlen] .= 0
+    pad_inds = axes(padded, 1)
+    first_padded_i = first(pad_inds)
+    copyto!(padded, first_padded_i, u, first(axes(u, 1)), ulen)
+    padded[first_padded_i + ulen:last(pad_inds)] .= 0
     padded
 end
-function _zeropad!(padded::AbstractArray{<:Any, N}, u::AbstractArray{<:Any, N}) where N
+function _zeropad!(padded::AbstractArray{<:Any, N},
+                   u::AbstractArray{<:Any, N}) where N
+    padax = axes(padded)
+    padfirst = first.(padax)
+    datasize = size(u)
+    pad_dest = CartesianIndices(range.(padfirst, padfirst .+ datasize .- 1))
     datainds = CartesianIndices(u)
-    copyto!(padded, datainds, u, datainds)
+    copyto!(padded, pad_dest, u, datainds)
+
     pad_ranges = Vector{UnitRange{Int}}(undef, N)
-    pad_ranges .= axes(padded)
+    pad_ranges .= padax
     for i = N:-1:1
         nu = size(u, i)
-        pad_ranges[i] = nu + 1:size(padded, i)
+        first_pad_i = first(pad_ranges[i])
+        pad_ranges[i] = first_pad_i + nu :last(pad_ranges[i])
         padinds = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
         padded[padinds] .= 0
-        pad_ranges[i] = 1:nu
+        pad_ranges[i] = first_pad_i: first_pad_i + nu - 1
     end
     padded
 end
@@ -143,7 +152,7 @@ function _zeropad(u, padded_size)
 end
 
 function _conv(
-    u::StridedArray{T, N}, v::StridedArray{T, N}, paddims
+    u::AbstractArray{T, N}, v::AbstractArray{T, N}, paddims
 ) where {T<:Real, N}
     padded = _zeropad(u, paddims)
     p = plan_rfft(padded)
@@ -171,7 +180,7 @@ _conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
 
 Convolution of two arrays. Uses FFT algorithm.
 """
-function conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:BLAS.BlasFloat, N}
+function conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
     su = size(u)
     sv = size(v)
     minpad = su .+ sv .- 1
@@ -180,20 +189,20 @@ function conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:BLAS.BlasF
     _conv_clip!(y, minpad)
 end
 
-conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:Integer, N} =
+conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Integer, N} =
     round.(Int, conv(float(u), float(v)))
 function conv(
-    u::StridedArray{<:Integer, N}, v::StridedArray{<:BLAS.BlasFloat, N}
+    u::AbstractArray{<:Integer, N}, v::AbstractArray{<:BLAS.BlasFloat, N}
 ) where N
     conv(float(u), v)
 end
 function conv(
-    u::StridedArray{<:BLAS.BlasFloat, N}, v::StridedArray{<:Integer, N}
+    u::AbstractArray{<:BLAS.BlasFloat, N}, v::AbstractArray{<:Integer, N}
 ) where N
     conv(u, float(v))
 end
 
-function conv(A::StridedArray{T}, B::StridedArray{T}) where T
+function conv(A::AbstractArray{T}, B::AbstractArray{T}) where T
     maxnd = max(ndims(A), ndims(B))
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
@@ -205,7 +214,7 @@ end
 the vectors `u` and `v`.
 Uses 2-D FFT algorithm.
 """
-function conv(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) where T
+function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
     m = length(u)+size(A,1)-1
     n = length(v)+size(A,2)-1
     B = zeros(T, m, n)
