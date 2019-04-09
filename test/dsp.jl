@@ -1,7 +1,8 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
+# TODO: parameterize conv tests
+using Compat, Compat.Test, DSP
+import DSP: filt, filt!, deconv, conv, xcorr
 
-using Test, DSP
-import DSP: filt, filt!, deconv, conv, conv2, xcorr
 
 
 @testset "filt" begin
@@ -31,6 +32,128 @@ import DSP: filt, filt!, deconv, conv, conv2, xcorr
     @test_throws ArgumentError filt!([1, 2], [1], [1], [1])
 end
 
+@testset "conv" begin
+
+    @testset "conv-1D" begin
+        # Convolution
+        a = [1, 2, 1, 2]
+        b = [1, 2, 3]
+        expectation = [1, 4, 8, 10, 7, 6]
+        im_expectation = [1, 3, 6, 6, 5, 3]
+        @test conv(a, b) == expectation
+        fa = convert(Array{Float64}, a)
+        fb = convert(Array{Float64}, b)
+        fexp = convert(Array{Float64}, expectation)
+        im_fexp = convert(Array{Float64}, im_expectation)
+        @test conv(fa, fb) ≈ fexp
+        @test conv(complex.(fa, 1.), complex.(fb)) ≈ complex.(fexp, im_fexp)
+
+        @test conv(fa, b) ≈ fexp
+        @test conv(fb, a) ≈ fexp
+    end
+
+
+    @testset "conv-2D" begin
+        a =[1 2 1;
+            2 3 1;
+            1 2 1]
+
+        b = [3 2;
+             0 1]
+
+        expectation = [3 8 7 2;
+                       6 14 11 3;
+                       3 10 10 3;
+                       0 1 2 1]
+        im_expectation = [3 5 5 2;
+                          3 6 6 3;
+                          3 6 6 3;
+                          0 1 1 1]
+
+        # Integers
+        # Real Integers
+        @test conv(a, b) == expectation
+        # Floats
+        fa = convert(Array{Float64}, a)
+        fb = convert(Array{Float64}, b)
+        fexp = convert(Array{Float64}, expectation)
+        im_fexp = convert(Array{Float64}, im_expectation)
+        # Real
+        @test conv(fa, fb) == fexp
+        # Complex
+        @test conv(complex.(fa, 1), complex.(fb)) == complex.(fexp,
+                                                               im_fexp)
+        @test conv(fa, b) ≈ fexp
+        @test conv(fb, a) ≈ fexp
+    end
+
+    @testset "seperable conv" begin
+        u = [1, 2, 3, 2, 1]
+        v = [6, 7, 3, 2]
+        A = [1 2 3 4 5 6 7;
+             8 9 10 11 12 13 14;
+             15 16 17 18 19 20 21;
+             22 23 24 25 26 27 28]
+        exp = [6 19 35 53 71 89 107 77 33 14;
+               60 148 217 285 339 393 447 315 134 56;
+               204 478 658 822 930 1038 1146 798 338 140;
+               468 1062 1400 1684 1828 1972 2116 1456 614 252;
+               636 1426 1848 2188 2332 2476 2620 1792 754 308;
+               624 1388 1778 2082 2190 2298 2406 1638 688 280;
+               354 785 1001 1167 1221 1275 1329 903 379 154;
+               132 292 371 431 449 467 485 329 138 56]
+        @test_broken conv(u, v, A) == exp
+
+        fu = convert(Array{Float64}, u)
+        fv = convert(Array{Float64}, v)
+        fA = convert(Array{Float64}, A)
+        fexp = convert(Array{Float64}, exp)
+        @test conv(fu, fv, fA) ≈ fexp
+
+    end
+
+    @testset "conv-ND" begin
+        # is it safe to assume that if conv works for
+        # int/float/complex in 1 and 2 D, it does in ND?
+        a = convert(Array, reshape(1:27, (3, 3, 3)))
+        b = ones(Int64, 2, 2, 2)
+        exp = convert(Array, reshape([1, 3, 5, 3,
+                                      5, 12, 16, 9,
+                                      11, 24, 28, 15,
+                                      7, 15, 17, 9,
+
+                                      11, 24, 28, 15,
+                                      28, 60, 68, 36,
+                                      40, 84, 92, 48,
+                                      23, 48, 52, 27,
+                                      29, 60, 64, 33,
+
+                                      64, 132, 140, 72,
+                                      76, 156, 164, 84,
+                                      41, 84, 88, 45,
+                                      19, 39, 41, 21,
+
+                                      41, 84, 88, 45,
+                                      47, 96,  100, 51,
+                                      25, 51, 53, 27], (4, 4, 4)))
+        @test conv(a, b) == exp
+
+
+        #6D, trivial, just to see if it works
+        a = ones(2, 2, 2, 2, 2, 2)
+        b = ones(1, 1, 1, 1, 1, 1)
+        @test conv(a, b) == a
+
+
+        a = cat([fill(n, 3, 3) for n in 1:6]..., dims=3)
+        b = ones(Int64, 2, 2)
+        expf1 = conv(a[:, :, 1], b)
+        exp = cat([expf1 * n for n in 1:6]..., dims=3)
+        @test conv(a, b) == exp
+
+    end
+end
+
 @testset "xcorr" begin
     @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
     @test xcorr([1, 2, 3], [4, 5]) == [0, 5, 14, 23, 12]
@@ -55,51 +178,6 @@ end
         @test size(@inferred(xcorr(su, x))) == (19,)
         @test size(@inferred(xcorr(x, su))) == (19,)
     end
-end
-
-
-
-@testset "conv" begin
-    # Convolution
-    a = [1., 2., 1., 2.]
-    b = [1., 2., 3.]
-    @test conv(a, b) ≈ [1., 4., 8., 10., 7., 6.]
-    @test conv(complex.(a, ones(4)), complex(b)) ≈ complex.([1., 4., 8., 10., 7., 6.], [1., 3., 6., 6., 5., 3.])
-end
-
-@testset "conv2" begin
-    a =[1 2 1;
-        2 3 1;
-        1 2 1]
-
-    b = [3 2;
-         0 1]
-
-    expectation = [3 8 7 2;
-                   6 14 11 3;
-                   3 10 10 3;
-                   0 1 2 1]
-    im_expectation = [3 5 5 2;
-                      3 6 6 3;
-                      3 6 6 3;
-                      0 1 1 1]
-
-    # Integers
-    # Real Integers
-    @test conv2(a, b) == expectation
-    # Complex
-    @test conv2(complex.(a, 1), complex.(b)) == complex.(expectation,
-                                                             im_expectation)
-    # Floats
-    fa = convert(Matrix{Float64}, a)
-    fb = convert(Matrix{Float64}, b)
-    fexp = convert(Matrix{Float64}, expectation)
-    im_fexp = convert(Matrix{Float64}, im_expectation)
-    # Real
-    @test conv2(fa, fb) == fexp
-    # Complex
-    @test conv2(complex.(fa, 1), complex.(fb)) == complex.(fexp,
-                                                           im_fexp)
 end
 
 @testset "deconv" begin
