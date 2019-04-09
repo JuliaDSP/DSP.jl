@@ -1,5 +1,5 @@
-using DSP, Compat, Compat.Test
-using Compat.Statistics: mean
+using DSP, Test
+using Statistics: mean
 
 @testset "hilbert" begin
     # Testing hilbert transform

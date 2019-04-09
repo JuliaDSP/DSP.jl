@@ -1,4 +1,4 @@
-using DSP, Compat, Compat.Test
+using DSP, Test
 
 # Naive rational resampler
 function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)

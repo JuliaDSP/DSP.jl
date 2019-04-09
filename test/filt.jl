@@ -1,5 +1,5 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
-using DSP, Compat, Compat.Test, Compat.Random, FilterTestHelpers
+using DSP, Test, Random, FilterTestHelpers
 #
 # filt with different filter forms
 #

@@ -1,4 +1,4 @@
-using DSP, Compat, Compat.Test
+using DSP, Test
 
 @testset "Unwrap 1D" begin
     @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
@@ -39,14 +39,14 @@ using DSP, Compat, Compat.Test
     # test generically typed unwrapping
     types = (Float32, Float64, BigFloat)
     for T in types
-        A_unwrapped = collect(Compat.range(0, stop=4convert(T, π), length=10))
+        A_unwrapped = collect(range(0, stop=4convert(T, π), length=10))
         A_wrapped = A_unwrapped .% (2convert(T, π))
 
         @test unwrap(A_wrapped) ≈ A_unwrapped
         unwrap!(A_wrapped)
         @test A_wrapped ≈ A_unwrapped
 
-        A_unwrapped_range = collect(Compat.range(0, stop=4, length=10))
+        A_unwrapped_range = collect(range(0, stop=4, length=10))
         test_range = convert(T, 2)
         A_wrapped_range = A_unwrapped_range .% test_range
         @test unwrap(A_wrapped_range; range=test_range) ≈ A_unwrapped_range
@@ -57,7 +57,7 @@ end
 @testset "Unwrap 2D" begin
     types = (Float32, Float64, BigFloat)
     for T in types
-        v_unwrapped = collect(Compat.range(0, stop=4convert(T, π), length=7))
+        v_unwrapped = collect(range(0, stop=4convert(T, π), length=7))
         A_unwrapped = v_unwrapped .+ v_unwrapped'
         A_wrapped = A_unwrapped .% (2convert(T, π))
 
@@ -68,7 +68,7 @@ end
         d = first(A_unwrapped) - first(A_wrapped)
         @test (A_wrapped .+ d) ≈ A_unwrapped
 
-        v_unwrapped_range = collect(Compat.range(0, stop=4, length=7))
+        v_unwrapped_range = collect(range(0, stop=4, length=7))
         A_unwrapped_range = v_unwrapped_range .+ v_unwrapped_range'
         test_range = convert(T, 2)
         A_wrapped_range = A_unwrapped_range .% test_range
@@ -81,7 +81,7 @@ end
         # after unwrapping, pixels at borders should be equal to corresponding pixels
         # on other side
         circular_dims = (true, true)
-        wa_vec = Compat.range(0, stop=4convert(T, π), length=10)
+        wa_vec = range(0, stop=4convert(T, π), length=10)
         wa_uw = wa_vec .+ zeros(10)'
         # make periodic
         wa_uw[end, :] = wa_uw[1, :]
@@ -104,7 +104,7 @@ end
     f_wraparound2(x, y, z) = 5*sin(x) + 2*cos(y) + z
     f_wraparound3(x, y, z) = 5*sin(x) + 2*cos(y) - 4*cos(z)
     for T in types
-        grid = Compat.range(zero(T), stop=2convert(T, π), length=11)
+        grid = range(zero(T), stop=2convert(T, π), length=11)
         f_uw = f.(grid, grid', reshape(grid, 1, 1, :))
         f_wr = f_uw .% (2convert(T, π))
         uw_test = unwrap(f_wr, dims=1:3)

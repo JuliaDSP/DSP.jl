@@ -1,18 +1,11 @@
 module Filters
-using ..DSP: @importffts, mul!, rmul!
 using ..Unwrap
 using Polynomials, ..Util
 import Base: *
-using Compat: copyto!, undef, argmin
-import Compat
-using Compat.LinearAlgebra: I
-using Compat.Statistics: middle
-@importffts
-if VERSION >= v"0.7.0-DEV.602"
-    import ..DSP: filt, filt!
-else
-    import Base: filt, filt!
-end
+using LinearAlgebra: I, mul!, rmul!
+using Statistics: middle
+import ..DSP: filt, filt!
+using FFTW
 
 include("coefficients.jl")
 export FilterCoefficients,

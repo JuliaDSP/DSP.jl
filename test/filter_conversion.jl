@@ -1,5 +1,5 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
-using DSP, Compat, Compat.Test, FilterTestHelpers, Polynomials
+using DSP, Test, FilterTestHelpers, Polynomials
 
 @testset "convert to SOS" begin
     # Test conversion to SOS against MATLAB
