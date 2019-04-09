@@ -118,31 +118,34 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
 end
 
 function _zeropad!(padded::AbstractVector, u::AbstractVector)
-    ulen = length(u)
-    padlen = length(padded)
-    pad_inds = axes(padded, 1)
-    first_padded_i = first(pad_inds)
-    copyto!(padded, first_padded_i, u, first(axes(u, 1)), ulen)
-    padded[first_padded_i + ulen:last(pad_inds)] .= 0
+    u_len = length(u)
+    # Use axes to accommodate arrays that do not start at index 1
+    pad_ax = axes(padded, 1)
+    first_padded_i = first(pad_ax)
+    first_u_i = first(axes(u, 1))
+    copyto!(padded, first_padded_i, u, first_u_i, u_len)
+    padded[first_padded_i + u_len:last(pad_ax)] .= 0
     padded
 end
 function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
-    padax = axes(padded)
-    padfirst = first.(padax)
+    pad_ax = axes(padded)
+    pad_first_I = first.(pad_ax)
     datasize = size(u)
-    pad_dest = CartesianIndices(range.(padfirst, padfirst .+ datasize .- 1))
-    datainds = CartesianIndices(u)
-    copyto!(padded, pad_dest, u, datainds)
+    pad_data_range = CartesianIndices(
+        range.(pad_first_I, pad_first_I .+ datasize .- 1)
+    )
+    data_range = CartesianIndices(u)
+    copyto!(padded, pad_data_range, u, data_range)
 
     pad_ranges = Vector{UnitRange{Int}}(undef, N)
-    pad_ranges .= padax
+    pad_ranges .= pad_ax
     for i = N:-1:1
         nu = size(u, i)
         first_pad_i = first(pad_ranges[i])
         pad_ranges[i] = first_pad_i + nu :last(pad_ranges[i])
-        padinds = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
-        padded[padinds] .= 0
+        pad_range = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
+        padded[pad_range] .= 0
         pad_ranges[i] = first_pad_i: first_pad_i + nu - 1
     end
     padded
@@ -198,14 +201,12 @@ conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
     conv(float(u), float(v))
 conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Integer, N} =
     round.(Int, conv(float(u), float(v)))
-function conv(
-    u::AbstractArray{<:Number, N}, v::AbstractArray{<:BLAS.BlasFloat, N}
-) where N
+function conv(u::AbstractArray{<:Number, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
     conv(float(u), v)
 end
-function conv(
-    u::AbstractArray{<:BLAS.BlasFloat, N}, v::AbstractArray{<:Number, N}
-) where N
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:Number, N}) where N
     conv(u, float(v))
 end
 
