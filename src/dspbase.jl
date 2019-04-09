@@ -175,8 +175,7 @@ function conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:BLAS.BlasF
     su = size(u)
     sv = size(v)
     minpad = su .+ sv .- 1
-    nfft = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
-    padsize = NTuple{N, Int}(nfft)
+    padsize = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
     y = _conv(u, v, padsize)
     _conv_clip!(y, minpad)
 end
