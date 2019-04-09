@@ -14,8 +14,8 @@
 #  close(fid)
 #end
 
-using DSP, Compat, Compat.Test
-using Compat.Statistics: mean
+using DSP, Test
+using Statistics: mean
 
 @testset "matlab ref" begin
     x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))

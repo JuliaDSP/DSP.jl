@@ -1,4 +1,4 @@
-using DSP, Compat, Compat.Test
+using DSP, Test
 
 @testset "esprit" begin
     # create a sum of sinusoids in noise, and estimate their frequencies

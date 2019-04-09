@@ -31,7 +31,7 @@ end
 Frequency response of a digital `filter` at normalised frequency
 or frequencies `w` in radians/sample.
 """
-function freqz(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
+function freqz(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     [freqz(filter, i) for i = w]
 end
 
@@ -52,7 +52,7 @@ end
 Phase response of a digital `filter` at normalised frequency
 or frequencies `w` in radians/sample.
 """
-function phasez(filter::FilterCoefficients, w = Compat.range(0, stop=π, length=250))
+function phasez(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     h = freqz(filter, w)
     unwrap(-atan.(imag(h), real(h)); dims=ndims(h))
 end

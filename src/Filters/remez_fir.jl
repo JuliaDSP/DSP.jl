@@ -84,12 +84,6 @@ C CODE BANNER
  *********************************************************/
 
 =============================================#
-if v"0.7.0-DEV.5103" ≤ VERSION < v"0.7.0-beta2.22"
-    # work around JuliaLang/julia#28077 by inserting a no-op (`nothing`) after each label
-    macro label(sym)
-        :($(esc(Expr(:symboliclabel, sym))); nothing)
-    end
-end
 
 # RemezFilterType:
 #    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)
@@ -450,7 +444,7 @@ function remez(numtaps::Integer, band_defs;
         iext[nzz] = ngrid + 1
         niter += 1
         if niter > maxiter
-            Compat.@warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
+            @warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
             # the filter is returned in its current, unconverged state.
             break
         end

@@ -1,15 +1,8 @@
 module Windows
-using ..DSP: @importffts, mul!, rmul!
 using ..Util
 import SpecialFunctions: besseli
-import Compat
-using Compat: copyto!, undef, range
-if VERSION < v"0.7.0-DEV.5211"
-    using Compat.LinearAlgebra: Diagonal, SymTridiagonal, eigfact!
-else
-    using LinearAlgebra: Diagonal, SymTridiagonal, eigen!
-end
-@importffts
+using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
+using FFTW
 
 export  rect,
         hanning,
@@ -551,14 +544,8 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
     mat = SymTridiagonal(dv, ev)
 
     # Get tapers
-    @static if VERSION < v"0.7.0-DEV.3159"
-        eigvec = eigfact!(mat, n-ntapers+1:n)[:vectors]::Matrix{Float64}
-    elseif VERSION < v"0.7.0-DEV.5211"
-        eigvec = eigfact!(mat, n-ntapers+1:n).vectors
-    else
-        eigvec = eigen!(mat, n-ntapers+1:n).vectors
-    end
-    rv = Compat.reverse(eigvec, dims=2)::Matrix{Float64}
+    eigvec = eigen!(mat, n-ntapers+1:n).vectors
+    rv = reverse(eigvec, dims=2)::Matrix{Float64}
 
     # Slepian's convention; taper starts with a positive element
     sgn = ones(size(rv, 2))

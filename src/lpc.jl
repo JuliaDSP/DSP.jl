@@ -1,10 +1,9 @@
 module LPC
 
-if VERSION >= v"0.7.0-DEV.602"
-    using ..DSP: xcorr
-end
 
-using Compat.LinearAlgebra: dot
+using ..DSP: xcorr
+
+using LinearAlgebra: dot
 
 export lpc, LPCBurg, LPCLevinson
 
