@@ -1,4 +1,4 @@
-using FFTW, DSP, Compat, Compat.Test, Compat.DelimitedFiles
+using FFTW, DSP, Test, DelimitedFiles
 
 # not exported, but used for some internal testing
 using DSP.Windows: makewindow

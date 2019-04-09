@@ -1,7 +1,7 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base.trailingsize
-import Compat.LinearAlgebra.BLAS
+import LinearAlgebra.BLAS
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -266,9 +266,9 @@ function xcorr(u, v; padmode::Symbol = :default_longest)
         elseif sv < su
             v = _zeropad(v, su)
         end
-        conv(u, Compat.reverse(conj(v), dims=1))
+        conv(u, reverse(conj(v), dims=1))
     elseif padmode == :none
-        conv(u, Compat.reverse(conj(v), dims=1))
+        conv(u, reverse(conj(v), dims=1))
     else
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
