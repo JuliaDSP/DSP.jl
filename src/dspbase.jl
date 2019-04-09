@@ -257,7 +257,9 @@ with the zero-lag condition at the center.
     in a future release of DSP. In preparation for this change, leaving
     `padmode` unspecified is currently deprecated.
 """
-function xcorr(u, v; padmode::Symbol = :default_longest)
+function xcorr(
+    u::AbstractVector, v::AbstractVector; padmode::Symbol = :default_longest
+)
     su = size(u,1); sv = size(v,1)
     padmode = check_padmode_kwarg(padmode, su, sv)
     if padmode == :longest
