@@ -170,7 +170,6 @@ end
     @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [0, 5, 14, 23, 12]
     @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6, 0]
 
-
     # Base Julia issue #17351
     let
         x = rand(10)

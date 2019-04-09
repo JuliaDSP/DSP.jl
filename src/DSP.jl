@@ -5,15 +5,9 @@ module DSP
 using FFTW
 using LinearAlgebra: mul!, rmul!
 
-
-
 export conv, conv2, deconv, filt, filt!, xcorr
 
 include("dspbase.jl")
-
-if VERSION < v"0.7.0-DEV"
-    using Compat: cat
-end
 
 include("util.jl")
 include("unwrap.jl")
