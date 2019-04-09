@@ -178,6 +178,9 @@ end
         @test size(@inferred(xcorr(su, x))) == (19,)
         @test size(@inferred(xcorr(x, su))) == (19,)
     end
+
+    # xcorr only supports 1d inputs at the moment
+    @test_throws MethodError xcorr(rand(2, 2), rand(2, 2))
 end
 
 @testset "deconv" begin
