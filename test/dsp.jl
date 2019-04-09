@@ -1,7 +1,7 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 # TODO: parameterize conv tests
 using Compat, Compat.Test, DSP
-import DSP: filt, filt!, deconv, conv, conv, xcorr
+import DSP: filt, filt!, deconv, conv, xcorr
 
 
 
