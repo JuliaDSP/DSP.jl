@@ -222,6 +222,8 @@ the vectors `u` and `v`.
 Uses 2-D FFT algorithm.
 """
 function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
+    # Arbitrary indexing offsets not implemented
+    @assert !Base.has_offset_axes(u, v, A)
     m = length(u)+size(A,1)-1
     n = length(v)+size(A,2)-1
     B = zeros(T, m, n)
