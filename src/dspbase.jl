@@ -163,7 +163,7 @@ function _conv(u, v, paddims)
     ifft!(upad)
 end
 
-_conv_clip!(y::AbstractVector, minpad) = resize!(y, minpad[1])
+_conv_clip!(y::AbstractVector, minpad) = sizehint!(resize!(y, minpad[1]), minpad[1])
 _conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
 
 """
