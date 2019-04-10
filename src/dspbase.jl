@@ -197,8 +197,29 @@ function _conv(u, v, paddims)
     ifft!(upad)
 end
 
-_conv_clip!(y::AbstractVector, minpad) = sizehint!(resize!(y, minpad[1]), minpad[1])
-_conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
+function _conv_clip!(
+    y::AbstractVector,
+    minpad,
+    ::NTuple{<:Any, Base.OneTo{Int}},
+    ::NTuple{<:Any, Base.OneTo{Int}}
+)
+    sizehint!(resize!(y, minpad[1]), minpad[1])
+end
+function _conv_clip!(
+    y::AbstractArray,
+    minpad,
+    ::NTuple{<:Any, Base.OneTo{Int}},
+    ::NTuple{<:Any, Base.OneTo{Int}}
+)
+    y[CartesianIndices(minpad)]
+end
+# For arrays with weird offsets
+function _conv_clip!(y::AbstractArray, minpad, axesu, axesv)
+    out_offsets = first.(axesu) .+ first.(axesv)
+    out_axes = range.(out_offsets, out_offsets .+ minpad .- 1)
+    out = similar(y, out_axes)
+    copyto!(out, CartesianIndices(out), y, CartesianIndices(range.(1, minpad)))
+end
 
 """
     conv(u,v)
@@ -212,7 +233,7 @@ function conv(u::AbstractArray{T, N},
     minpad = su .+ sv .- 1
     padsize = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
     y = _conv(u, v, padsize)
-    _conv_clip!(y, minpad)
+    _conv_clip!(y, minpad, axes(u), axes(v))
 end
 function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N

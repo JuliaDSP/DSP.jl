@@ -55,7 +55,7 @@ end
 
         offset_arr = OffsetArray{Int}(undef, -1:2)
         offset_arr[:] = a
-        @test conv(offset_arr, 1:3) == expectation
+        @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
     end
 
 
@@ -96,7 +96,7 @@ end
 
         offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
-        @test conv(offset_arr, b) == expectation
+        @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
     end
 
     @testset "seperable conv" begin
