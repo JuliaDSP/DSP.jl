@@ -167,10 +167,13 @@ end
 end
 
 @testset "xcorr" begin
+    a = [1, 2, 3]
+    b = [4, 5]
+    exp = [5, 14, 23, 12]
     @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
-    @test xcorr([1, 2, 3], [4, 5]) == [0, 5, 14, 23, 12]
-    @test xcorr([1, 2, 3], [4, 5], padmode = :longest) == [0, 5, 14, 23, 12]
-    @test xcorr([1, 2, 3], [4, 5], padmode = :none) == [5, 14, 23, 12]
+    @test xcorr(a, b) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b, padmode = :longest) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b, padmode = :none) == exp
     @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :longest) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :none) == [5, 14, 11, 6]
@@ -193,6 +196,10 @@ end
 
     # xcorr only supports 1d inputs at the moment
     @test_throws MethodError xcorr(rand(2, 2), rand(2, 2))
+
+    off_a = OffsetVector(a, -1:1)
+    off_b = OffsetVector(b, 0:1)
+    @test xcorr(off_a, off_b, padmode = :none) == OffsetVector(exp, -2:1)
 end
 
 @testset "deconv" begin

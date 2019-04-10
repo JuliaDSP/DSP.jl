@@ -303,6 +303,16 @@ function check_padmode_kwarg(padmode::Symbol, su::Integer, sv::Integer)
     end
 end
 
+dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
+function dsp_reverse(v, vaxes)
+    vsize = length(v)
+    reflected_start = - first(vaxes[1]) - vsize + 1
+    reflected_axes = (range(reflected_start, reflected_start + vsize - 1),)
+    out = similar(v, reflected_axes)
+    copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
+end
+
+
 """
     xcorr(u,v; padmode = :longest)
 
@@ -329,9 +339,9 @@ function xcorr(
         elseif sv < su
             v = _zeropad(v, su)
         end
-        conv(u, reverse(conj(v), dims=1))
+        conv(u, dsp_reverse(conj(v), axes(v)))
     elseif padmode == :none
-        conv(u, reverse(conj(v), dims=1))
+        conv(u, dsp_reverse(conj(v), axes(v)))
     else
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
