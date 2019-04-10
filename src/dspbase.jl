@@ -129,6 +129,7 @@ function _zeropad!(padded::AbstractVector, u::AbstractVector)
 end
 function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
+    # Copy the data to the beginning of the padded array
     pad_ax = axes(padded)
     pad_first_I = first.(pad_ax)
     datasize = size(u)
@@ -138,14 +139,37 @@ function _zeropad!(padded::AbstractArray{<:Any, N},
     data_range = CartesianIndices(u)
     copyto!(padded, pad_data_range, u, data_range)
 
+    # Step through each dimension, and fill the trailing indices in that
+    # dimension with zeros.
+    #
+    # This is accomplished by going from the last to the first dimension, and
+    # for each dimension, finding the biggest rectangular region that needs to
+    # be zero padded. This region corresponds to the  trailing indices after the
+    # data in the selected dimension, all the indices in lower dimensions, and
+    # the same indices as the data for higher dimensions, corresponding to
+    # regions that were missed in that dimension. This should allow column-major
+    # friendly access to the array.
+    #
+    # Geometric intuition for two dimensions:
+    #   1 1 1 0 0     1 1 1    0 0
+    #   1 1 1 0 0     1 1 1    0 0
+    #   1 1 1 0 0  =  1 1 1    0 0
+    #   0 0 0 0 0              0 0
+    #   0 0 0 0 0     0 0 0    0 0
+    #                 0 0 0
+
     pad_ranges = Vector{UnitRange{Int}}(undef, N)
-    pad_ranges .= pad_ax
+    pad_ranges .= pad_ax # Initially select the entire dimension
     for i = N:-1:1
+        # Get the trailing indices for this dimension
         nu = size(u, i)
         first_pad_i = first(pad_ranges[i])
         pad_ranges[i] = first_pad_i + nu :last(pad_ranges[i])
+
+        # Make the rectangular region and set it to zero
         pad_range = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
         padded[pad_range] .= 0
+        # Set this dimension to be just the portion that was missed (same as data)
         pad_ranges[i] = first_pad_i: first_pad_i + nu - 1
     end
     padded
