@@ -118,26 +118,24 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
 end
 
 function _zeropad!(padded::AbstractVector, u::AbstractVector)
-    u_len = length(u)
+    datasize = length(u)
     # Use axes to accommodate arrays that do not start at index 1
     pad_ax = axes(padded, 1)
-    first_padded_i = first(pad_ax)
-    first_u_i = first(axes(u, 1))
-    copyto!(padded, first_padded_i, u, first_u_i, u_len)
-    padded[first_padded_i + u_len:last(pad_ax)] .= 0
+    pad_first_i = first(pad_ax)
+    data_first_i = first(axes(u, 1))
+    copyto!(padded, pad_first_i, u, data_first_i, datasize)
+    padded[pad_first_i + datasize:last(pad_ax)] .= 0
     padded
 end
+
 function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
     # Copy the data to the beginning of the padded array
     pad_ax = axes(padded)
     pad_first_I = first.(pad_ax)
     datasize = size(u)
-    pad_data_range = CartesianIndices(
-        range.(pad_first_I, pad_first_I .+ datasize .- 1)
-    )
-    data_range = CartesianIndices(u)
-    copyto!(padded, pad_data_range, u, data_range)
+    pad_data_ranges = range.(pad_first_I, pad_first_I .+ datasize .- 1)
+    copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
 
     # Step through each dimension, and fill the trailing indices in that
     # dimension with zeros.
@@ -161,16 +159,15 @@ function _zeropad!(padded::AbstractArray{<:Any, N},
     pad_ranges = Vector{UnitRange{Int}}(undef, N)
     pad_ranges .= pad_ax # Initially select the entire dimension
     for i = N:-1:1
-        # Get the trailing indices for this dimension
-        nu = size(u, i)
-        first_pad_i = first(pad_ranges[i])
-        pad_ranges[i] = first_pad_i + nu :last(pad_ranges[i])
+        # Trailing indices for this dimension
+        pad_ranges[i] = pad_first_I[i] + datasize[i] :last(pad_ax[i])
 
         # Make the rectangular region and set it to zero
-        pad_range = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
-        padded[pad_range] .= 0
+        pad_region = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
+        padded[pad_region] .= 0
+
         # Set this dimension to be just the portion that was missed (same as data)
-        pad_ranges[i] = first_pad_i: first_pad_i + nu - 1
+        pad_ranges[i] = pad_data_ranges[i]
     end
     padded
 end
