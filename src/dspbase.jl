@@ -117,24 +117,25 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+# padded must start at index 1, but u can have arbitrary offset
 function _zeropad!(padded::AbstractVector, u::AbstractVector)
     datasize = length(u)
     # Use axes to accommodate arrays that do not start at index 1
-    pad_ax = axes(padded, 1)
-    pad_first_i = first(pad_ax)
+    padsize = length(padded)
     data_first_i = first(axes(u, 1))
-    copyto!(padded, pad_first_i, u, data_first_i, datasize)
-    padded[pad_first_i + datasize:last(pad_ax)] .= 0
+    copyto!(padded, 1, u, data_first_i, datasize)
+    padded[1 + datasize:padsize] .= 0
     padded
 end
 
+# padded must start at index 1, but u can have arbitrary offset
 function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
     # Copy the data to the beginning of the padded array
+    padsize = size(padded)
     pad_ax = axes(padded)
-    pad_first_I = first.(pad_ax)
     datasize = size(u)
-    pad_data_ranges = range.(pad_first_I, pad_first_I .+ datasize .- 1)
+    pad_data_ranges = range.(1, datasize)
     copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
 
     # Step through each dimension, and fill the trailing indices in that
@@ -160,7 +161,7 @@ function _zeropad!(padded::AbstractArray{<:Any, N},
     pad_ranges .= pad_ax # Initially select the entire dimension
     for i = N:-1:1
         # Trailing indices for this dimension
-        pad_ranges[i] = pad_first_I[i] + datasize[i] :last(pad_ax[i])
+        pad_ranges[i] = datasize[i] + 1 : padsize[i]
 
         # Make the rectangular region and set it to zero
         pad_region = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
