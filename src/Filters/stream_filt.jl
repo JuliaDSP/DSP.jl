@@ -539,6 +539,7 @@ end
 
 function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
     kernel              = self.kernel
+    bufLen              = length(buffer)
     xLen                = length(x)
     history::Vector{Tx} = self.history
     bufIdx              = 0
@@ -551,6 +552,9 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
 
     outLen              = outputlength(self, xLen)
     inputIdx            = kernel.inputDeficit
+
+    nbufout = fld(xLen - inputIdx, kernel.decimation) + 1
+    bufLen >= nbufout || throw(ArgumentError("buffer length insufficient"))
 
     while inputIdx <= xLen
         bufIdx += 1
@@ -600,7 +604,11 @@ function update(kernel::FIRArbitrary)
     kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
 end
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRArbitrary{Th}},
+    x::AbstractVector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
@@ -632,7 +640,9 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRArbitrary{Th}}, x:
             yUpper = unsafe_dot(dpfb, kernel.ϕIdx, x, kernel.xIdx)
         end
 
-        @inbounds buffer[bufIdx] = yLower + yUpper * kernel.α
+        # Used to have @inbounds. Restore @inbounds if buffer length
+        # can be verified prior to access.
+        buffer[bufIdx] = yLower + yUpper * kernel.α
         update(kernel)
     end
 
