@@ -612,7 +612,6 @@ function filt!(
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
-    bufLen              = length(buffer)
     xLen                = length(x)
     bufIdx              = 0
     history::Vector{Tx} = self.history
