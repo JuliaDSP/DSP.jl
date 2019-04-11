@@ -283,8 +283,8 @@ end
     xcorr(u,v; padmode = :longest)
 
 Compute the cross-correlation of two vectors, by calculating the similarity
-between `u` and `v` with various offsets of `v`. `v` is reversed, so delaying
-`u` relative to `v` will shift the result to the right.
+between `u` and `v` with various offsets of `v`. Delaying `u` relative to `v`
+will shift the result to the right.
 
 The size of the output depends on the padmode keyword argument: with padmode =
 :none the length of the result will be length(u) + length(v) - 1, as with conv.
