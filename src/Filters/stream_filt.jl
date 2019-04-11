@@ -554,7 +554,7 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
     inputIdx            = kernel.inputDeficit
 
     nbufout = fld(xLen - inputIdx, kernel.decimation)
-    bufLen >= nbufout || error("buffer length insufficient")
+    bufLen >= nbufout || throw(ArgumentError("buffer length insufficient"))
 
     while inputIdx <= xLen
         bufIdx += 1
