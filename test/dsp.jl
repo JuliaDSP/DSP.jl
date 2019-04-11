@@ -40,7 +40,9 @@ end
         b = [1, 2, 3]
         expectation = [1, 4, 8, 10, 7, 6]
         im_expectation = [1, 3, 6, 6, 5, 3]
+        a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a32, b) == expectation
         fa = convert(Array{Float64}, a)
         f32a = convert(Array{Float32}, a)
         fb = convert(Array{Float64}, b)
@@ -78,7 +80,9 @@ end
 
         # Integers
         # Real Integers
+        a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a32, b) == expectation
         # Floats
         fa = convert(Array{Float64}, a)
         f32a = convert(Array{Float32}, a)

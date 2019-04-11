@@ -132,44 +132,10 @@ end
 function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
     # Copy the data to the beginning of the padded array
-    padsize = size(padded)
-    pad_ax = axes(padded)
-    datasize = size(u)
-    pad_data_ranges = range.(1, datasize)
+    fill!(padded, zero(eltype(padded)))
+    pad_data_ranges = range.(1, size(u))
     copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
 
-    # Step through each dimension, and fill the trailing indices in that
-    # dimension with zeros.
-    #
-    # This is accomplished by going from the last to the first dimension, and
-    # for each dimension, finding the biggest rectangular region that needs to
-    # be zero padded. This region corresponds to the  trailing indices after the
-    # data in the selected dimension, all the indices in lower dimensions, and
-    # the same indices as the data for higher dimensions, corresponding to
-    # regions that were missed in that dimension. This should allow column-major
-    # friendly access to the array.
-    #
-    # Geometric intuition for two dimensions:
-    #   1 1 1 0 0     1 1 1    0 0
-    #   1 1 1 0 0     1 1 1    0 0
-    #   1 1 1 0 0  =  1 1 1    0 0
-    #   0 0 0 0 0              0 0
-    #   0 0 0 0 0     0 0 0    0 0
-    #                 0 0 0
-
-    pad_ranges = Vector{UnitRange{Int}}(undef, N)
-    pad_ranges .= pad_ax # Initially select the entire dimension
-    for i = N:-1:1
-        # Trailing indices for this dimension
-        pad_ranges[i] = datasize[i] + 1 : padsize[i]
-
-        # Make the rectangular region and set it to zero
-        pad_region = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
-        padded[pad_region] .= 0
-
-        # Set this dimension to be just the portion that was missed (same as data)
-        pad_ranges[i] = pad_data_ranges[i]
-    end
     padded
 end
 function _zeropad(u, padded_size)
@@ -242,7 +208,7 @@ function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
 end
 conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
     conv(float(u), float(v))
-conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Integer, N} =
+conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
     round.(Int, conv(float(u), float(v)))
 function conv(u::AbstractArray{<:Number, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
@@ -307,7 +273,7 @@ dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
 function dsp_reverse(v, vaxes)
     vsize = length(v)
     reflected_start = - first(vaxes[1]) - vsize + 1
-    reflected_axes = (range(reflected_start, reflected_start + vsize - 1),)
+    reflected_axes = (reflected_start : reflected_start + vsize - 1,)
     out = similar(v, reflected_axes)
     copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
 end
@@ -316,11 +282,14 @@ end
 """
     xcorr(u,v; padmode = :longest)
 
-Compute the cross-correlation of two vectors. The size of the output depends on
-the padmode keyword argument: with padmode = :none the length of the
-result will be length(u) + length(v) - 1, as with conv. With
-padmode = :longest the shorter of the arguments will be padded so they
-are equal length. This gives a result with length 2*max(length(u), length(v))-1,
+Compute the cross-correlation of two vectors, by calculating the similarity
+between `u` and `v` with various offsets of `v`. `v` is reversed, so delaying
+`u` relative to `v` will shift the result to the right.
+
+The size of the output depends on the padmode keyword argument: with padmode =
+:none the length of the result will be length(u) + length(v) - 1, as with conv.
+With padmode = :longest the shorter of the arguments will be padded so they are
+equal length. This gives a result with length 2*max(length(u), length(v))-1,
 with the zero-lag condition at the center.
 
 !!! warning
