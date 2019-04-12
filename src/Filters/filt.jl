@@ -487,32 +487,6 @@ filt(h::AbstractArray, x::AbstractArray) =
 # fftfilt and filt
 #
 
-# Rough estimate of number of multiplications per output sample
-os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
-
-# Determine optimal length of the FFT for fftfilt
-function optimalfftfiltlength(nb, nx)
-    first_pow2 = ceil(Int, log2(nb))
-    last_pow2 = ceil(Int, log2(nx + nb - 1))
-    last_complexity = os_fft_complexity(2 ^ first_pow2, nb)
-    pow2 = first_pow2 + 1
-    while pow2 <= last_pow2
-        new_complexity = os_fft_complexity(2 ^ pow2, nb)
-        new_complexity > last_complexity && break
-        last_complexity = new_complexity
-        pow2 += 1
-    end
-    nfft = pow2 > last_pow2 ? 2 ^ last_pow2 : 2 ^ (pow2 - 1)
-
-    L = nfft - nb + 1
-    if L > nx
-        # If L > nx, better to find next fast power
-        nfft = nextfastfft(nx + nb - 1)
-    end
-
-    nfft
-end
-
 """
     fftfilt(h, x)
 
