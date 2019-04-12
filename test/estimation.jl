@@ -16,7 +16,6 @@ using DSP, Test
     x += noise
     M = 300
     p = 2                  # number of sinusoids to estimate
-    frequencies_estimated = esprit(x, M, p, Fs)
+    frequencies_estimated = sort(esprit(x, M, p, Fs))
     @test isapprox(frequencies', frequencies_estimated; atol = 1e-2)
 end
-

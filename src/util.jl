@@ -361,11 +361,11 @@ julia> finddelay([1, 2, 3], [0, 0, 1, 2, 3])
 ```
 """
 function finddelay(x::AbstractVector{<: Real}, y::AbstractVector{<: Real})
-    s = xcorr(y, x)
+    s = xcorr(y, x, padmode=:none)
     max_corr = maximum(abs, s)
     max_idxs = findall(x -> abs(x) == max_corr, s)
 
-    center_idx = cld(length(s), 2)
+    center_idx = length(x)
     # Delay is position of peak cross-correlation relative to center.
     # If the maximum cross-correlation is not unique, use the position
     # closest to the center.
