@@ -170,90 +170,417 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-# padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(padded::AbstractVector, u::AbstractVector)
-    datasize = length(u)
+"""
+    _zeropad!(padded::AbstractVector,
+              u::AbstractVector,
+              data_dest::Tuple = (1,),
+              data_region = CartesianIndices(u))
+
+Place the portion of `u` specified by `data_region` into `padded` starting at
+location `data_dest`, and set the rest of `padded` to zero. This will mutate
+`padded`.
+
+`padded` must start at index 1, but `u` can have arbitrary axes.
+"""
+@inline function _zeropad!(padded::AbstractVector,
+                           u::AbstractVector,
+                           data_dest::Tuple = (1,), # Tuple to be consistent with ND case
+                           data_region = CartesianIndices(u))
+    datasize = length(data_region)
+    start_i = data_dest[1]
+
     # Use axes to accommodate arrays that do not start at index 1
-    padsize = length(padded)
-    data_first_i = first(axes(u, 1))
-    copyto!(padded, 1, u, data_first_i, datasize)
-    padded[1 + datasize:padsize] .= 0
+    data_first_i = first(data_region)[1]
+    copyto!(padded, start_i, u, data_first_i, datasize)
+
+    padded[1:start_i - 1] .= 0
+    padded[start_i + datasize:end] .= 0
+
     padded
 end
 
 # padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(padded::AbstractArray{<:Any, N},
-                   u::AbstractArray{<:Any, N}) where N
+@inline function _zeropad!(padded::AbstractArray{<:Any, N},
+                           u::AbstractArray{<:Any, N},
+                           data_dest::Tuple = ntuple(::Integer -> 1, N),
+                           data_region = CartesianIndices(u)) where N
     # Copy the data to the beginning of the padded array
     fill!(padded, zero(eltype(padded)))
-    pad_data_ranges = UnitRange.(1, size(u))
-    copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
+    pad_dest_axes = UnitRange.(data_dest, data_dest .+ size(data_region) .- 1)
+    copyto!(padded, CartesianIndices(pad_dest_axes), u, data_region)
 
     padded
 end
-function _zeropad(u, padded_size)
-    _zeropad!(similar(u, padded_size), u)
+
+# Make the padded buffer, and then place u into it. See _zeropad!
+@inline _zeropad(u, padded_size, args...) =
+    _zeropad!(similar(u, padded_size), u, args...)
+
+"""
+Estimate the number of floating point multiplications per output sample for an
+overlap-save algorithm with fft size `nfft`, and filter size `nb`.
+"""
+os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
+
+"""
+Determine the length of FFT that minimizes the number of multiplications per
+output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
+"""
+function optimalfftfiltlength(nb, nx)
+    nfull = nb + nx - 1
+    # Swap inputs if necessary to make nv the smaller of the two
+    nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
+
+    # Step through possible nffts and find the nfft that minimizes complexity
+    # Assumes that complexity is convex
+    first_pow2 = ceil(Int, log2(nv))
+    prev_pow2 = ceil(Int, log2(nfull))
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, nv)
+    pow2 = first_pow2 + 1
+    while pow2 <= prev_pow2
+        new_complexity = os_fft_complexity(2 ^ pow2, nv)
+        new_complexity > prev_complexity && break
+        prev_complexity = new_complexity
+        pow2 += 1
+    end
+    nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
+
+    # L is the number of usable samples produced by each block
+    L = nfft - nv + 1
+    if L > nu
+        # If L > nx, better to find next fast power
+        nfft = nextfastfft(nfull)
+    end
+
+    nfft
 end
 
-function _conv(
-    u::AbstractArray{T, N}, v::AbstractArray{T, N}, paddims
-) where {T<:Real, N}
-    padded = _zeropad(u, paddims)
+"""
+Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
+fdbuff may be an alias of each other, because complex convolution only requires
+one buffer. The plans are mutating where possible, and the inverse plan is
+unnormalized.
+"""
+@inline function os_prepare_conv(u::AbstractArray{T, N},
+                                 nffts) where {T<:Real, N}
+    tdbuff = similar(u, nffts)
+    bufsize = ntuple(i -> i == 1 ? nffts[i] >> 1 + 1 : nffts[i], N)
+    fdbuff = similar(u, Complex{T}, NTuple{N, Int}(bufsize))
+
+    p = plan_rfft(tdbuff)
+    ip = plan_brfft(fdbuff, nffts[1])
+
+    tdbuff, fdbuff, p, ip
+end
+
+@inline function os_prepare_conv(u::AbstractArray{<:Complex}, nffts)
+    buff = similar(u, nffts)
+
+    p = plan_fft!(buff)
+    ip = plan_bfft!(buff)
+
+    buff, buff, p, ip # Only one buffer for complex
+end
+
+"""
+Transform the smaller convolution input to frequency domain, and return it in a
+new array. However, the contents of `buff` may be modified.
+"""
+@inline function os_filter_transform!(buff::AbstractArray{<:Real}, p)
+    p * buff
+end
+
+@inline function os_filter_transform!(buff::AbstractArray{<:Complex}, p!)
+    copy(p! * buff) # p operates in place on buff
+end
+
+"""
+Take a block of data, and convolve it with the smaller convolution input. This
+may modify the contents of `tdbuff` and `fdbuff`, and the result will be in
+`tdbuff`.
+"""
+@inline function os_conv_block!(tdbuff::AbstractArray{<:Real},
+                                fdbuff::AbstractArray,
+                                filter_fd,
+                                p,
+                                ip)
+    mul!(fdbuff, p, tdbuff)
+    fdbuff .*= filter_fd
+    mul!(tdbuff, ip, fdbuff)
+end
+
+"Like the real version, but only operates on one buffer"
+@inline function os_conv_block!(buff::AbstractArray{<:Complex},
+                                ::AbstractArray, # Only one buffer for complex
+                                filter_fd,
+                                p!,
+                                ip!)
+    p! * buff # p! operates in place on buff
+    buff .*= filter_fd
+    ip! * buff # ip! operates in place on buff
+end
+
+# Used by `_conv_kern_os!` to handle blocks of input data that need to be padded.
+#
+# This needs to be a separate function for subsets to generate tuple elements, 
+# which is only the case if the number of edges is a Val{n} type. Iterating over
+# the number of edges with Val{n} is inherently type unstable, so this function
+# boundary allows dispatch to make efficient code for each number of edge
+# dimensions.
+function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
+                             tdbuff,
+                             fdbuff,
+                             edge_range,
+                             p,
+                             ip,
+                             n_edges::Val,
+                             u,
+                             filter_fd,
+                             center_block_ranges,
+                             edge_blocks,
+                             all_dims,
+                             save_blocksize,
+                             sout_deficit,
+                             su,
+                             sv,
+                             nffts,
+                             out_start,
+                             out_stop,
+                             u_start) where N
+    # Iterate over all possible combinations of edges for a number of edges
+    for edge_dims in subsets(all_dims, n_edges)
+        # Find the portion of the input not on an edge for the remaining
+        # dimensions
+        center_dims = setdiff(all_dims, edge_dims)
+        edge_dims_arr = collect(edge_dims)
+        for dim in center_dims
+            edge_range[dim] = center_block_ranges[dim]
+        end
+
+        # Select the indices that need to be padded for each edge dimension.
+        # There can be one to three such blocks for each dimension.
+        these_blocks = getindex.(Ref(edge_blocks), edge_dims)
+
+        # Visit each block that needs to be padded for these edge dimensions
+        for edge_block_nos in Iterators.ProductIterator(these_blocks)
+            # This, combined with the center block ranges above, specifies a
+            # rectangular region of block numbers that need to be padded
+            edge_range[edge_dims_arr] .= UnitRange.(
+                edge_block_nos, edge_block_nos
+            )
+            # Region of block indices, not data indices!
+            block_region = CartesianIndices(
+                NTuple{N, UnitRange{Int}}(edge_range)
+            )
+            for block_pos in block_region
+                # Figure out which portion of the input data should be transformed
+                block_idx = convert(NTuple{N, Int}, block_pos)
+                data_offset = save_blocksize .* (block_idx .- 1)
+                pad_before = max.(0, sv .- data_offset .- 1)
+                data_ideal_stop = data_offset .+ save_blocksize
+                pad_after = max.(0, data_ideal_stop .- su)
+
+                # Data indices, not block indices
+                data_region = CartesianIndices(
+                    UnitRange.(
+                        u_start .+ data_offset .- sv .+ pad_before .+ 1,
+                        u_start .+ data_ideal_stop .- pad_after .- 1
+                    )
+                )
+
+                # Convolve portion of input
+                _zeropad!(tdbuff, u, pad_before .+ 1, data_region)
+                os_conv_block!(tdbuff, fdbuff, filter_fd, p, ip)
+
+                # Save convolved result to output
+                block_out_stop = min.(
+                    out_start .+ data_offset .+ save_blocksize .- 1,
+                    out_stop
+                )
+                block_out_region = CartesianIndices(
+                    UnitRange.(out_start .+ data_offset, block_out_stop)
+                )
+                u_deficit = max.(0, pad_after .- sv .+ 1)
+                valid_buff_region = CartesianIndices(
+                    UnitRange.(sv, nffts .- u_deficit .- sout_deficit)
+                )
+                copyto!(out, block_out_region, tdbuff, valid_buff_region)
+            end
+        end
+    end
+end
+
+# Assumes u is larger than, or the same size as, v
+function _conv_kern_os!(out,
+                        u::AbstractArray{<:Any, N},
+                        v,
+                        su,
+                        sv,
+                        sout,
+                        nffts) where N
+    u_start = first.(axes(u))
+    out_axes = axes(out)
+    out_start = first.(out_axes)
+    out_stop = last.(out_axes)
+    ideal_save_blocksize = nffts .- sv .+ 1
+    sout_deficit = max.(0, ideal_save_blocksize .- sout)
+    save_blocksize = ideal_save_blocksize .- sout_deficit
+    nblocks = cld.(sout, save_blocksize)
+
+    # Pre-allocation
+    tdbuff, fdbuff, p, ip = os_prepare_conv(u, nffts)
+
+    # Transform the smaller filter
+    _zeropad!(tdbuff, v)
+    filter_fd = os_filter_transform!(tdbuff, p)
+    filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
+
+    last_full_blocks = fld.(su, save_blocksize)
+    center_block_ranges = UnitRange.(2, last_full_blocks)
+    edge_blocks = map(nblocks, last_full_blocks) do nblock, lastfull
+        nblock > 1 ? vcat(1, lastfull + 1 : nblock) : [1]
+    end
+    all_dims = 1:N
+    edge_range = Vector{UnitRange}(undef, N)
+    for n_edges in all_dims
+        _conv_kern_os_edge!(out,
+                            tdbuff,
+                            fdbuff,
+                            edge_range,
+                            p,
+                            ip,
+                            Val{n_edges}(),
+                            u,
+                            filter_fd,
+                            center_block_ranges,
+                            edge_blocks,
+                            all_dims,
+                            save_blocksize,
+                            sout_deficit,
+                            su,
+                            sv,
+                            nffts,
+                            out_start,
+                            out_stop,
+                            u_start)
+    end
+
+    tdbuff_region = CartesianIndices(tdbuff)
+    # Portion of buffer with valid result of convolution
+    valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
+    # Iterate over block indices (not data indices) that do not need to be padded
+    for block_pos in CartesianIndices(center_block_ranges)
+        # Calculate portion of data to transform
+        block_idx = convert(NTuple{N, Int}, block_pos)
+        data_offset = save_blocksize .* (block_idx .- 1)
+        data_stop = data_offset .+ save_blocksize
+        data_region = CartesianIndices(
+            UnitRange.(u_start .+ data_offset .- sv .+ 1, u_start .+ data_stop .- 1)
+        )
+
+        # Convolve this portion of the data
+        copyto!(tdbuff, tdbuff_region, u, data_region)
+        os_conv_block!(tdbuff, fdbuff, filter_fd, p, ip)
+
+        # Save convolved result to output
+        block_out_region = CartesianIndices(
+            UnitRange.(data_offset .+ out_start, data_stop .+ out_start .- 1)
+        )
+        copyto!(out, block_out_region, tdbuff, valid_buff_region)
+    end
+
+    out
+end
+
+function _conv_kern_fft!(out,
+                         u::AbstractArray{T, N},
+                         v::AbstractArray{T, N},
+                         su,
+                         sv,
+                         outsize,
+                         nffts) where {T<:Real, N}
+    padded = _zeropad(u, nffts)
     p = plan_rfft(padded)
     uf = p * padded
     _zeropad!(padded, v)
     vf = p * padded
     uf .*= vf
-    irfft(uf, paddims[1])
+    raw_out = irfft(uf, nffts[1])
+    copyto!(out,
+            CartesianIndices(out),
+            raw_out,
+            CartesianIndices(UnitRange.(1, outsize)))
 end
-function _conv(u, v, paddims)
-    upad = _zeropad(u, paddims)
-    vpad = _zeropad(v, paddims)
+function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
+    upad = _zeropad(u, nffts)
+    vpad = _zeropad(v, nffts)
     p! = plan_fft!(upad)
     p! * upad # Operates in place on upad
     p! * vpad
     upad .*= vpad
     ifft!(upad)
+    copyto!(out,
+            CartesianIndices(out),
+            upad,
+            CartesianIndices(UnitRange.(1, outsize)))
 end
 
-function _conv_clip!(
-    y::AbstractVector,
-    minpad,
-    ::NTuple{<:Any, Base.OneTo{Int}},
-    ::NTuple{<:Any, Base.OneTo{Int}}
-)
-    sizehint!(resize!(y, minpad[1]), minpad[1])
+function _conv_fft!(out, u, v, su, sv, outsize)
+    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
+    if any(os_nffts .< outsize)
+        _conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
+    else
+        nffts = nextfastfft(outsize)
+        _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
+    end
 end
-function _conv_clip!(
-    y::AbstractArray,
-    minpad,
-    ::NTuple{<:Any, Base.OneTo{Int}},
-    ::NTuple{<:Any, Base.OneTo{Int}}
-)
-    y[CartesianIndices(minpad)]
-end
+
+
 # For arrays with weird offsets
-function _conv_clip!(y::AbstractArray, minpad, axesu, axesv)
+function _conv_similar(u, outsize, axesu, axesv)
     out_offsets = first.(axesu) .+ first.(axesv)
-    out_axes = UnitRange.(out_offsets, out_offsets .+ minpad .- 1)
-    out = similar(y, out_axes)
-    copyto!(out, CartesianIndices(out), y, CartesianIndices(UnitRange.(1, minpad)))
+    out_axes = UnitRange.(out_offsets, out_offsets .+ outsize .- 1)
+    similar(u, out_axes)
+end
+function _conv_similar(
+    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}, ::NTuple{<:Any, Base.OneTo{Int}}
+)
+    similar(u, outsize)
+end
+_conv_similar(u, v, outsize) = _conv_similar(u, outsize, axes(u), axes(v))
+
+# Does convolution, will not switch argument order
+function _conv!(out, u, v, su, sv, outsize)
+    # TODO: Add spatial / time domain algorithm
+    _conv_fft!(out, u, v, su, sv, outsize)
 end
 
+# Does convolution, will not switch argument order
+function _conv(u, v, su, sv)
+    outsize = su .+ sv .- 1
+    out = _conv_similar(u, v, outsize)
+    _conv!(out, u, v, su, sv, outsize)
+end
+
+# May switch argument order
 """
     conv(u,v)
 
-Convolution of two arrays. Uses FFT algorithm.
+Convolution of two arrays. Uses either FFT convolution or overlap-save,
+depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
+with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
 function conv(u::AbstractArray{T, N},
               v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
     su = size(u)
     sv = size(v)
-    minpad = su .+ sv .- 1
-    padsize = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
-    y = _conv(u, v, padsize)
-    _conv_clip!(y, minpad, axes(u), axes(v))
+    if prod(su) >= prod(sv)
+        _conv(u, v, su, sv)
+    else
+        _conv(v, u, sv, su)
+    end
 end
+
 function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
     fu, fv = promote(u, v)
