@@ -117,25 +117,25 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+# padded must start at index 1, but u can have arbitrary offset
 function _zeropad!(padded::AbstractVector, u::AbstractVector)
-    ulen = length(u)
-    padlen = length(padded)
-    copyto!(padded, 1, u, 1, ulen)
-    padded[ulen + 1:padlen] .= 0
+    datasize = length(u)
+    # Use axes to accommodate arrays that do not start at index 1
+    padsize = length(padded)
+    data_first_i = first(axes(u, 1))
+    copyto!(padded, 1, u, data_first_i, datasize)
+    padded[1 + datasize:padsize] .= 0
     padded
 end
-function _zeropad!(padded::AbstractArray{<:Any, N}, u::AbstractArray{<:Any, N}) where N
-    datainds = CartesianIndices(u)
-    copyto!(padded, datainds, u, datainds)
-    pad_ranges = Vector{UnitRange{Int}}(undef, N)
-    pad_ranges .= axes(padded)
-    for i = N:-1:1
-        nu = size(u, i)
-        pad_ranges[i] = nu + 1:size(padded, i)
-        padinds = CartesianIndices(NTuple{N, UnitRange{Int}}(pad_ranges))
-        padded[padinds] .= 0
-        pad_ranges[i] = 1:nu
-    end
+
+# padded must start at index 1, but u can have arbitrary offset
+function _zeropad!(padded::AbstractArray{<:Any, N},
+                   u::AbstractArray{<:Any, N}) where N
+    # Copy the data to the beginning of the padded array
+    fill!(padded, zero(eltype(padded)))
+    pad_data_ranges = UnitRange.(1, size(u))
+    copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
+
     padded
 end
 function _zeropad(u, padded_size)
@@ -143,7 +143,7 @@ function _zeropad(u, padded_size)
 end
 
 function _conv(
-    u::StridedArray{T, N}, v::StridedArray{T, N}, paddims
+    u::AbstractArray{T, N}, v::AbstractArray{T, N}, paddims
 ) where {T<:Real, N}
     padded = _zeropad(u, paddims)
     p = plan_rfft(padded)
@@ -163,37 +163,63 @@ function _conv(u, v, paddims)
     ifft!(upad)
 end
 
-_conv_clip!(y::AbstractVector, minpad) = sizehint!(resize!(y, minpad[1]), minpad[1])
-_conv_clip!(y::AbstractArray, minpad) = y[CartesianIndices(minpad)]
+function _conv_clip!(
+    y::AbstractVector,
+    minpad,
+    ::NTuple{<:Any, Base.OneTo{Int}},
+    ::NTuple{<:Any, Base.OneTo{Int}}
+)
+    sizehint!(resize!(y, minpad[1]), minpad[1])
+end
+function _conv_clip!(
+    y::AbstractArray,
+    minpad,
+    ::NTuple{<:Any, Base.OneTo{Int}},
+    ::NTuple{<:Any, Base.OneTo{Int}}
+)
+    y[CartesianIndices(minpad)]
+end
+# For arrays with weird offsets
+function _conv_clip!(y::AbstractArray, minpad, axesu, axesv)
+    out_offsets = first.(axesu) .+ first.(axesv)
+    out_axes = UnitRange.(out_offsets, out_offsets .+ minpad .- 1)
+    out = similar(y, out_axes)
+    copyto!(out, CartesianIndices(out), y, CartesianIndices(UnitRange.(1, minpad)))
+end
 
 """
     conv(u,v)
 
 Convolution of two arrays. Uses FFT algorithm.
 """
-function conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:BLAS.BlasFloat, N}
+function conv(u::AbstractArray{T, N},
+              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
     su = size(u)
     sv = size(v)
     minpad = su .+ sv .- 1
     padsize = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
     y = _conv(u, v, padsize)
-    _conv_clip!(y, minpad)
+    _conv_clip!(y, minpad, axes(u), axes(v))
 end
-
-conv(u::StridedArray{T, N}, v::StridedArray{T, N}) where {T<:Integer, N} =
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
+    fu, fv = promote(u, v)
+    conv(fu, fv)
+end
+conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
+    conv(float(u), float(v))
+conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
     round.(Int, conv(float(u), float(v)))
-function conv(
-    u::StridedArray{<:Integer, N}, v::StridedArray{<:BLAS.BlasFloat, N}
-) where N
+function conv(u::AbstractArray{<:Number, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
     conv(float(u), v)
 end
-function conv(
-    u::StridedArray{<:BLAS.BlasFloat, N}, v::StridedArray{<:Integer, N}
-) where N
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:Number, N}) where N
     conv(u, float(v))
 end
 
-function conv(A::StridedArray{T}, B::StridedArray{T}) where T
+function conv(A::AbstractArray{T}, B::AbstractArray{T}) where T
     maxnd = max(ndims(A), ndims(B))
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
@@ -205,7 +231,9 @@ end
 the vectors `u` and `v`.
 Uses 2-D FFT algorithm.
 """
-function conv(u::StridedVector{T}, v::StridedVector{T}, A::StridedMatrix{T}) where T
+function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
+    # Arbitrary indexing offsets not implemented
+    @assert !Base.has_offset_axes(u, v, A)
     m = length(u)+size(A,1)-1
     n = length(v)+size(A,2)-1
     B = zeros(T, m, n)
@@ -241,14 +269,27 @@ function check_padmode_kwarg(padmode::Symbol, su::Integer, sv::Integer)
     end
 end
 
+dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
+function dsp_reverse(v, vaxes)
+    vsize = length(v)
+    reflected_start = - first(vaxes[1]) - vsize + 1
+    reflected_axes = (reflected_start : reflected_start + vsize - 1,)
+    out = similar(v, reflected_axes)
+    copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
+end
+
+
 """
     xcorr(u,v; padmode = :longest)
 
-Compute the cross-correlation of two vectors. The size of the output depends on
-the padmode keyword argument: with padmode = :none the length of the
-result will be length(u) + length(v) - 1, as with conv. With
-padmode = :longest the shorter of the arguments will be padded so they
-are equal length. This gives a result with length 2*max(length(u), length(v))-1,
+Compute the cross-correlation of two vectors, by calculating the similarity
+between `u` and `v` with various offsets of `v`. Delaying `u` relative to `v`
+will shift the result to the right.
+
+The size of the output depends on the padmode keyword argument: with padmode =
+:none the length of the result will be length(u) + length(v) - 1, as with conv.
+With padmode = :longest the shorter of the arguments will be padded so they are
+equal length. This gives a result with length 2*max(length(u), length(v))-1,
 with the zero-lag condition at the center.
 
 !!! warning
@@ -267,9 +308,9 @@ function xcorr(
         elseif sv < su
             v = _zeropad(v, su)
         end
-        conv(u, reverse(conj(v), dims=1))
+        conv(u, dsp_reverse(conj(v), axes(v)))
     elseif padmode == :none
-        conv(u, reverse(conj(v), dims=1))
+        conv(u, dsp_reverse(conj(v), axes(v)))
     else
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end

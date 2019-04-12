@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 # TODO: parameterize conv tests
-using Test, DSP
+using Test, DSP, OffsetArrays
 import DSP: filt, filt!, deconv, conv, xcorr
 
 
@@ -40,8 +40,11 @@ end
         b = [1, 2, 3]
         expectation = [1, 4, 8, 10, 7, 6]
         im_expectation = [1, 3, 6, 6, 5, 3]
+        a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a32, b) == expectation
         fa = convert(Array{Float64}, a)
+        f32a = convert(Array{Float32}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
         im_fexp = convert(Array{Float64}, im_expectation)
@@ -49,7 +52,12 @@ end
         @test conv(complex.(fa, 1.), complex.(fb)) ≈ complex.(fexp, im_fexp)
 
         @test conv(fa, b) ≈ fexp
+        @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
+
+        offset_arr = OffsetArray{Int}(undef, -1:2)
+        offset_arr[:] = a
+        @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
     end
 
 
@@ -72,9 +80,12 @@ end
 
         # Integers
         # Real Integers
+        a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a32, b) == expectation
         # Floats
         fa = convert(Array{Float64}, a)
+        f32a = convert(Array{Float32}, a)
         fb = convert(Array{Float64}, b)
         fexp = convert(Array{Float64}, expectation)
         im_fexp = convert(Array{Float64}, im_expectation)
@@ -84,7 +95,12 @@ end
         @test conv(complex.(fa, 1), complex.(fb)) == complex.(fexp,
                                                                im_fexp)
         @test conv(fa, b) ≈ fexp
+        @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
+
+        offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)
+        offset_arr[:] = a
+        @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
     end
 
     @testset "seperable conv" begin
@@ -155,10 +171,13 @@ end
 end
 
 @testset "xcorr" begin
+    a = [1, 2, 3]
+    b = [4, 5]
+    exp = [5, 14, 23, 12]
     @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
-    @test xcorr([1, 2, 3], [4, 5]) == [0, 5, 14, 23, 12]
-    @test xcorr([1, 2, 3], [4, 5], padmode = :longest) == [0, 5, 14, 23, 12]
-    @test xcorr([1, 2, 3], [4, 5], padmode = :none) == [5, 14, 23, 12]
+    @test xcorr(a, b) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b, padmode = :longest) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b, padmode = :none) == exp
     @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :longest) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :none) == [5, 14, 11, 6]
@@ -181,6 +200,10 @@ end
 
     # xcorr only supports 1d inputs at the moment
     @test_throws MethodError xcorr(rand(2, 2), rand(2, 2))
+
+    off_a = OffsetVector(a, -1:1)
+    off_b = OffsetVector(b, 0:1)
+    @test xcorr(off_a, off_b, padmode = :none) == OffsetVector(exp, -2:1)
 end
 
 @testset "deconv" begin
