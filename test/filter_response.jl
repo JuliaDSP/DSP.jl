@@ -151,6 +151,29 @@ end
 #
 #######################################
 @testset "freqs" begin
+    w = 10 .^ range(-1, stop=1, length=50)
+    for (b, a, H) in (
+            ([1, 0], [1], w*im), # s
+            ([1], [1, 0], 1 ./ (w*im)), # 1/s
+            ([0, 0, 1], [2, 10], 1 ./ (2*w*im .+ 10)), # 1/(2s + 10)
+            ([1, 0, 1], [2, 10], (1 .- w.^2) ./ (2*w*im .+ 10)), # (s^2 + 1)/(2s + 10)
+        )
+        @test freqs(PolynomialRatio{:s}(b, a), w) ≈ H
+        @test freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w) ≈ H
+        if isone(a[1]) && length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+            @test freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+        else
+            # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
+            @test_broken freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+        end
+        if length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+            @test freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+        else
+            # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
+            @test_broken freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+        end
+    end
+
     # Julia
     a = [1.0, 0.4, 1.0]
     b = [0.2, 0.3, 1.0]
