@@ -278,17 +278,17 @@ end
 
         bs = [0, 1, 0, 0, 0]
         B = SecondOrderSections(repeat([Biquad(bs...)], 2), 1)
-        @test coefb(B) == [1]
-        @test coefa(B) == [1, 0, 0]
+        @test coefb(B) == [0, 0, 1]
+        @test coefa(B) == [1]
     end
 
     @testset "ZeroPoleGain" begin
         f = ZeroPoleGain([0], [-1, 1], 1)
         @test coefa(f) == [1, 0, -1]
-        @test coefb(f) == [1, 0]
+        @test coefb(f) == [0, 1]
 
         f = ZeroPoleGain(Int[], [-0.25, 0.25], 1)
         @test coefa(f) == [1.0, 0, -1/16]
-        @test coefb(f) == [1.0]
+        @test coefb(f) == [0.0, 0.0, 1.0]
     end
 end

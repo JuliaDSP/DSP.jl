@@ -77,6 +77,17 @@ end
 #
 #######################################
 @testset "impz, stepz, freqz, phasez" begin
+    Hdelay = PolynomialRatio{:z}([0, 1], [1])
+    W = range(0, stop=2π, length=100)
+    for Tf in (PolynomialRatio, ZeroPoleGain, Biquad, SecondOrderSections)
+        H = convert(Tf, Hdelay)
+        @test freqz(H, W) ≈ exp.(-W*im)
+        @test phasez(H, W) ≈ -W
+        @test grpdelayz(H, W) ≈ fill(1.0, length(W))
+        @test impz(H, 10) == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        @test stepz(H, 10) == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    end
+
     matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
     b0 = 0.05634
     b1 = [1,  1]

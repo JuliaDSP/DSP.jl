@@ -4,11 +4,11 @@
 # Frequency response of a digital filter
 #
 
-using ..DSP: conv
+using ..DSP: xcorr
 
 function freqz(filter::FilterCoefficients{:z}, w::Number)
     filter = convert(PolynomialRatio, filter)
-    ejw = exp(-im * w)
+    ejw = exp(im * w)
     filter.b(ejw) ./ filter.a(ejw)
 end
 
@@ -56,7 +56,7 @@ or frequencies `w` in radians/sample.
 """
 function phasez(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
     h = freqz(filter, w)
-    unwrap(-atan.(imag(h), real(h)); dims=ndims(h))
+    unwrap(angle.(h); dims=ndims(h))
 end
 
 
@@ -68,14 +68,14 @@ or frequencies 'w' in radians/sample.
 """
 function grpdelayz(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
     filter = convert(PolynomialRatio, filter)
-    b, a = coefb(filter), filter.a.coeffs # reversed a
+    b, a = coefb(filter), coefa(filter)
 
     # Linear Phase FIR
     if (length(a) == 1) & (_is_sym(b) | _is_anti_sym(b))
         return fill((length(b)-1)/2, length(w))
     end
 
-    c = conv(b, conj(a))
+    c = xcorr(b, a; padmode = :none)
     cr = range(0, stop=length(c)-1) .* c
     ejw = exp.(-im .* w)
     num = Polynomial(cr).(ejw)

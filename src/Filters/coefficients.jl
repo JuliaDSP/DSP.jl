@@ -83,11 +83,20 @@ function PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Numbe
     end
     PolynomialRatio{:s,T}(Polynomial(reverse(b), :s), Polynomial(reverse(a), :s))
 end
-function PolynomialRatio{D,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D,T}
-    if all(iszero, b) || all(iszero, a)
-        throw(ArgumentError("filter must have non-zero numerator and denominator"))
+function PolynomialRatio{:z,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T}
+    if all(iszero, a)
+        throw(ArgumentError("filter must have non-zero denominator"))
     end
-    PolynomialRatio{D,T}(Polynomial(reverse(b)), Polynomial(reverse(a)))
+    b, a = pad_to_same_length(b, a)
+    PolynomialRatio{:z,T}(Polynomial(reverse(b), :z), Polynomial(reverse(a), :z))
+end
+function pad_to_same_length(b, a)
+    if length(a) < length(b)
+        a = [a; zeros(eltype(a), length(b)-length(a))]
+    elseif length(b) < length(a)
+        b = [b; zeros(eltype(b), length(a)-length(b))]
+    end
+    return b, a
 end
 PolynomialRatio{D}(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {D,T<:Number,S<:Number} =
     PolynomialRatio{D,promote_type(T,S)}(b, a)
@@ -133,7 +142,8 @@ end
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio) = reverse(coeffs(f.b))
+coefb(f::PolynomialRatio{:s}) = reverse(coeffs(f.b))
+coefb(f::PolynomialRatio{:z}) = strip_trailing_zeros(reverse(pad_to_same_length(coeffs(f.b), coeffs(f.a))[1]))
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -142,8 +152,19 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio) = reverse(coeffs(f.a))
+coefa(f::PolynomialRatio{:s}) = reverse(coeffs(f.a))
+coefa(f::PolynomialRatio{:z}) = strip_trailing_zeros(reverse(pad_to_same_length(coeffs(f.b), coeffs(f.a))[2]))
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
+
+function strip_trailing_zeros(x)
+    last_nz = findlast(!iszero, x)
+    if last_nz == length(x)
+        return x
+    elseif last_nz == nothing
+        last_nz = 1
+    end
+    return x[1:last_nz]
+end
 
 #
 # Biquad filter in transfer function form
