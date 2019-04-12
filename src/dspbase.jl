@@ -133,7 +133,7 @@ function _zeropad!(padded::AbstractArray{<:Any, N},
                    u::AbstractArray{<:Any, N}) where N
     # Copy the data to the beginning of the padded array
     fill!(padded, zero(eltype(padded)))
-    pad_data_ranges = range.(1, size(u))
+    pad_data_ranges = UnitRange.(1, size(u))
     copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
 
     padded
@@ -182,9 +182,9 @@ end
 # For arrays with weird offsets
 function _conv_clip!(y::AbstractArray, minpad, axesu, axesv)
     out_offsets = first.(axesu) .+ first.(axesv)
-    out_axes = range.(out_offsets, out_offsets .+ minpad .- 1)
+    out_axes = UnitRange.(out_offsets, out_offsets .+ minpad .- 1)
     out = similar(y, out_axes)
-    copyto!(out, CartesianIndices(out), y, CartesianIndices(range.(1, minpad)))
+    copyto!(out, CartesianIndices(out), y, CartesianIndices(UnitRange.(1, minpad)))
 end
 
 """
