@@ -60,7 +60,7 @@ end
     @test freqz(sos, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
     @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
-    @test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
+    @test freqz(SecondOrderSections(Biquad{:z,Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
 end
 
 #######################################
@@ -156,7 +156,7 @@ end
     b = [0.2, 0.3, 1.0]
     w = 10 .^ range(-1, stop=1, length=50)
 
-    h        = freqs(PolynomialRatio(b, a), w)
+    h        = freqs(PolynomialRatio{:s}(b, a), w)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
@@ -171,8 +171,8 @@ end
     @test mag ≈ matlab_mag
     @test phasedeg ≈ matlab_phasedeg
 
-    @test h ≈ freqs(ZeroPoleGain(PolynomialRatio(b, a)), w)
-    @test h ≈ freqs(SecondOrderSections(PolynomialRatio(b, a)), w)
+    @test h ≈ freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
+    @test h ≈ freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
 
     #=using Winston=#
     #=figure = loglog(w, mag)=#
@@ -203,7 +203,7 @@ end
     fs = 8192
     hz = range(0, stop=fs, length=50)
 
-    h        = freqs(PolynomialRatio(b, a), hz, fs)
+    h        = freqs(PolynomialRatio{:s}(b, a), hz, fs)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
