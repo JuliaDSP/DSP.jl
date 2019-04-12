@@ -178,7 +178,7 @@ end
     x = randn(100)
     f1 = digitalfilter(Lowpass(0.3), Butterworth(2))
     y = filt(f1, x)
-    for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    for ty in (ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections)
         @test filt(3*convert(ty, f1), x) ≈ 3*y
         @test filt(convert(ty, f1)*3, x) ≈ 3*y
     end
@@ -186,13 +186,13 @@ end
     # Test composing filters
     f2 = digitalfilter(Highpass(0.5), Butterworth(1))
     y = filt(f2, y)
-    for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    for ty in (ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections)
         @test filt(convert(ty, f1)*convert(ty, f2), x) ≈ y
     end
 
     f3 = digitalfilter(Bandstop(0.35, 0.4), Butterworth(1))
     y = filt(f3, y)
-    for ty in (ZPKFilter, PolynomialRatio, Biquad, SecondOrderSections)
+    for ty in (ZeroPoleGain, PolynomialRatio, Biquad, SecondOrderSections)
         @test filt(convert(ty, f1)*convert(ty, f2)*convert(ty, f3), x) ≈ y
     end
     @test filt(convert(Biquad, f1)*(convert(Biquad, f2)*convert(Biquad, f3)), x) ≈ y
@@ -236,8 +236,8 @@ end
     empty!(f.b.a)
     empty!(f.a.a)
     @test_throws ArgumentError convert(Biquad, f)
-    @test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
-    @test_throws ArgumentError convert(SOSFilter, ZPKFilter([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
 
     @test promote_type(SecondOrderSections{Float64,Float32}, SecondOrderSections{Float32,Float64}) == SecondOrderSections{Float64,Float64}
     @test convert(SecondOrderSections{Float32,Float32}, convert(SecondOrderSections, b)).biquads == convert(SecondOrderSections, convert(Biquad{Float32}, b)).biquads
