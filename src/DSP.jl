@@ -2,6 +2,7 @@ module DSP
 
 using FFTW
 using LinearAlgebra: mul!, rmul!
+using IterTools: subsets
 
 export conv, conv2, deconv, filt, filt!, xcorr
 

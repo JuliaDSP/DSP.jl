@@ -10,6 +10,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 
 [compat]
 FFTW = "1.1"
@@ -18,6 +19,7 @@ Polynomials = "0.6"
 Reexport = "0.2"
 SpecialFunctions = "0.8"
 julia = "1"
+IterTools = "1"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
