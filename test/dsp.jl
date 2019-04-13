@@ -167,7 +167,7 @@ end
         exp = cat([expf1 * n for n in 1:6]..., dims=3)
         @test conv(a, b) == exp
         fb = convert(Array{Float64}, b)
-        @test conv(a, fb) == convert(Array{Float64}, exp)
+        @test conv(a, fb) ≈ convert(Array{Float64}, exp)
     end
 end
 
