@@ -160,13 +160,14 @@ end
         b = ones(1, 1, 1, 1, 1, 1)
         @test conv(a, b) == a
 
-
+        # promote dims to largest
         a = cat([fill(n, 3, 3) for n in 1:6]..., dims=3)
         b = ones(Int64, 2, 2)
         expf1 = conv(a[:, :, 1], b)
         exp = cat([expf1 * n for n in 1:6]..., dims=3)
         @test conv(a, b) == exp
-
+        fb = convert(Array{Float64}, b)
+        @test conv(a, fb) ≈ convert(Array{Float64}, exp)
     end
 end
 
