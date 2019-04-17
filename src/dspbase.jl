@@ -389,10 +389,11 @@ function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
 end
 
 function _conv_fft!(out, u, v, su, sv, outsize)
-    nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
-    if any(nffts .< su .+ sv .- 1) 
-        _conv_kern_os!(out, u, v, su, sv, outsize, nffts)
+    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
+    if any(os_nffts .< outsize)
+        _conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
     else
+        nffts = nextfastfft(outsize)
         _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
     end
 end
