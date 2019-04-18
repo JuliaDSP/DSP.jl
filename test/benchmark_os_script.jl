@@ -15,11 +15,11 @@ struct BenchTestSet
     results::Vector{BenchTestResult}
 end
 
-volume_pow2s = 2:28
+volume_pow2s = 2:20
 
 function prepare_test_objects(N, edge_pow_u, edge_pow_v)
-    su = ntuple(i -> edge_pow_u ^ 2, N)
-    sv = ntuple(i -> edge_pow_v ^ 2, N)
+    su = ntuple(i -> 2 ^ edge_pow_u, N)
+    sv = ntuple(i -> 2 ^ edge_pow_v, N)
     sout = su .+ sv .- 1
     u = rand(Float64, su)
     v = rand(Float64, sv)
@@ -51,3 +51,34 @@ for N = 1:4
     end
     dimresults[N] = BenchTestSet(N, results)
 end
+
+per_arr = Matrix{Float64}(undef, 19, 19)
+
+fig, axs = subplots(nrows = 2, ncols = 2, figsize = (6.4, 5.5))
+
+I = nothing
+for N = 1:4
+
+    fill!(per_arr, NaN)
+    pos = N == 1 ? (1, 1) :
+        N == 2 ? (2, 1) :
+        N == 3 ? (1, 2) :
+        N == 4 ? (2, 2) :
+        error()
+
+    idx = CartesianIndex(pos)
+
+    for res in dimresults[N].results
+        upos = round(Int, log2(prod(res.usize))) - 1
+        vpos = round(Int, log2(prod(res.vsize))) - 1
+        per_arr[vpos, upos] = 100 * (res.os_memory / res.fft_memory)
+    end
+    global I = axs[idx].imshow(per_arr, cmap = "RdBu_r", vmin = 0, vmax = 200, origin = "lower", extent = [1.5, 20.5, 1.5, 20.5])
+    axs[idx].set_title("N = $N")
+end
+fig.tight_layout(rect = [0.02, 0.06, .98, .94])
+fig.colorbar(I, ax = axs[:])
+hth = fig.text(0.5, 0.05, "\$log_2(length(u))\$", ha = "center")
+htv = fig.text(0.05, 0.5, "\$log_2(length(v))\$", va = "center", rotation = "vertical")
+htt = fig.suptitle("Overlap-Save Memory Usage (% of FFT)")
+fig.savefig("os_grid.png")

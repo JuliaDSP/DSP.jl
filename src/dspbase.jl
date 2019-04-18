@@ -310,8 +310,11 @@ function _conv_kern_os!(out, u::AbstractArray{<:Any, N}, v, su, sv, sout, nffts)
     filter_fd = os_filter_transform!(tdbuff, p)
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
-    center_block_ranges = UnitRange.(2, nblocks .- 1)
-    edge_blocks = map(nblock -> nblock > 1 ? [1, nblock] : [1], nblocks)
+    last_full_blocks = fld.(su, save_blocksize)
+    center_block_ranges = UnitRange.(2, last_full_blocks)
+    edge_blocks = map(nblocks, last_full_blocks) do nblock, lastfull
+        nblock > 1 ? vcat(1, lastfull + 1 : nblock) : [1]
+    end
     all_dims = 1:N
     edge_range = Vector{UnitRange}(undef, N)
     for n_edges in all_dims
