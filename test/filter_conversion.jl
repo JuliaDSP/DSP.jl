@@ -200,6 +200,21 @@ end
     @test filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) ≈ y
 end
 
+@testset "types" begin
+    # normalizes and promotes to result type of division
+    @test @inferred(PolynomialRatio{:z}([1, 2], [3, 4])) isa PolynomialRatio{:z,Float64}
+    # does not normalize, keeps type
+    @test @inferred(PolynomialRatio{:z,Int}([1, 2], [1, 4])) isa PolynomialRatio{:z,Int}
+    # normalizes, keeps type
+    @test @inferred(PolynomialRatio{:z,Int}([2, 4], [2, 8])) isa PolynomialRatio{:z,Int}
+    # throws because normalization is impossible within Int
+    @test_throws InexactError PolynomialRatio{:z,Int}([1, 2], [3, 4])
+    # throws because normalization is impossible for a0 = 0
+    @test_throws ArgumentError PolynomialRatio{:z,Float64}([1.0, 2.0], [0.0, 4.0])
+    # does not normalize, uses type from input
+    @test @inferred(PolynomialRatio{:s}([1, 2], [3, 4])) isa PolynomialRatio{:s,Int}
+end
+
 @testset "misc" begin
     f1 = digitalfilter(Lowpass(0.3), Butterworth(2))
     f2 = digitalfilter(Highpass(0.5), Butterworth(1))
