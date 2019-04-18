@@ -158,21 +158,19 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
-    # Note: these are in the Polynomials.jl convention, which is
-    # reversed WRT the usual DSP convention
-    b = coeffs(f.coef.b)
-    a = coeffs(f.coef.a)
+    b = coefb(f.coef)
+    a = coefa(f.coef)
     n = length(b)
     if n == 1
         mul!(out, x, b[1])
     else
         @inbounds for i=1:length(x)
             xi = x[i]
-            val = si[1] + b[n]*xi
-            for j=1:n-2
-                si[j] = si[j+1] + b[n-j]*xi - a[n-j]*val
+            val = si[1] + b[1]*xi
+            for j=2:n-1
+                si[j-1] = si[j] + b[j]*xi - a[j]*val
             end
-            si[n-1] = b[1]*xi - a[1]*val
+            si[n-1] = b[n]*xi - a[n]*val
             out[i] = val
         end
     end
