@@ -160,10 +160,10 @@ os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
 
 # Determine optimal length of the FFT for fftfilt
 @inline function optimalfftfiltlength(nb, nx)
-    nu, nv = ifelse(nb <= nx, (nb, nx), (nx, nb))
-    first_pow2 = ceil(Int, log2(nu))
+    nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
+    first_pow2 = ceil(Int, log2(nv))
     last_pow2 = ceil(Int, log2(nv + nu - 1))
-    complexities = os_fft_complexity.(first_pow2:last_pow2, nu)
+    complexities = os_fft_complexity.(first_pow2:last_pow2, nv)
 
     # Find power of 2 with least complexity relative to the first power of 2
     relative_ind_best_pow2 = argmin(complexities)
@@ -171,9 +171,9 @@ os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
     best_pow2 = first_pow2 + relative_ind_best_pow2 - 1
     nfft = 2 ^ best_pow2
 
-    L = nfft - nu + 1
-    if L > nv
-        # If L > nv, better to find next fast power
+    L = nfft - nv + 1
+    if L > nu
+        # If L > nu, better to find next fast power
         nfft = nextfastfft(nv + nu - 1)
     end
 
