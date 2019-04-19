@@ -117,10 +117,8 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-last_aligned_location(padded, u) = size(padded) .- size(u) .+ 1
-
 # padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(
+@inline function _zeropad!(
     padded::AbstractVector,
     u::AbstractVector,
     data_dest = (1,),
@@ -140,7 +138,7 @@ function _zeropad!(
 end
 
 # padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(
+@inline function _zeropad!(
     padded::AbstractArray{<:Any, N}, u::AbstractArray{<:Any, N},
     data_dest = ntuple(::Integer -> 1, N),
     data_region = CartesianIndices(u)
@@ -152,12 +150,12 @@ function _zeropad!(
 
     padded
 end
-_zeropad(u, padded_size, args...) = _zeropad!(similar(u, padded_size), u, args...)
+@inline _zeropad(u, padded_size, args...) = _zeropad!(similar(u, padded_size), u, args...)
 
 os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 
 # Determine optimal length of the FFT for fftfilt
-@inline function optimalfftfiltlength(nb, nx)
+function optimalfftfiltlength(nb, nx)
     nfull = nb + nx - 1
     nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
     first_pow2 = ceil(Int, log2(nv))
@@ -217,6 +215,7 @@ end
     fdbuff .*= filter_fd
     mul!(tdbuff, ip, fdbuff)
 end
+
 @inline function os_conv_block!(
     buff::AbstractArray{<:Complex, <:Any}, ::AbstractArray, filter_fd, p!, ip!
 )
