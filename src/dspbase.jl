@@ -154,27 +154,28 @@ function _zeropad!(
 end
 _zeropad(u, padded_size, args...) = _zeropad!(similar(u, padded_size), u, args...)
 
-# Number of real operations required for overlap-save with nfft = 2^pow2 and filter
-# length nb
-os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
+os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 
 # Determine optimal length of the FFT for fftfilt
 @inline function optimalfftfiltlength(nb, nx)
+    nfull = nb + nx - 1
     nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
     first_pow2 = ceil(Int, log2(nv))
-    last_pow2 = ceil(Int, log2(nv + nu - 1))
-    complexities = os_fft_complexity.(first_pow2:last_pow2, nv)
-
-    # Find power of 2 with least complexity relative to the first power of 2
-    relative_ind_best_pow2 = argmin(complexities)
-
-    best_pow2 = first_pow2 + relative_ind_best_pow2 - 1
-    nfft = 2 ^ best_pow2
+    last_pow2 = ceil(Int, log2(nfull))
+    last_complexity = os_fft_complexity(2 ^ first_pow2, nv)
+    pow2 = first_pow2 + 1
+    while pow2 <= last_pow2
+        new_complexity = os_fft_complexity(2 ^ pow2, nv)
+        new_complexity > last_complexity && break
+        last_complexity = new_complexity
+        pow2 += 1
+    end
+    nfft = pow2 > last_pow2 ? 2 ^ last_pow2 : 2 ^ (pow2 - 1)
 
     L = nfft - nv + 1
     if L > nu
-        # If L > nu, better to find next fast power
-        nfft = nextfastfft(nv + nu - 1)
+        # If L > nx, better to find next fast power
+        nfft = nextfastfft(nfull)
     end
 
     nfft
@@ -191,6 +192,7 @@ end
 
     tdbuff, fdbuff, p, ip
 end
+
 @inline function os_prepare_conv(u::AbstractArray{<:Complex, <:Any}, nffts)
     buff = similar(u, nffts)
 
@@ -203,6 +205,7 @@ end
 @inline function os_filter_transform!(buff::AbstractArray{<:Real, <:Any}, p)
     p * buff
 end
+
 @inline function os_filter_transform!(buff::AbstractArray{<:Complex, <:Any}, p!)
     copy(p! * buff) # p operates in place on buff
 end
