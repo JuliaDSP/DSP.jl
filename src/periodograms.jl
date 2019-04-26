@@ -1,7 +1,5 @@
 # The periodogram module contains functions which compute non-parametric
-# estimates of the periodogram P[s] of a signal s.  An overview of some
-# of the methods is available at:
-# http://www.ee.lamar.edu/gleb/adsp/Lecture%2008%20-%20Nonparametric%20SE.pdf
+# estimates of the periodogram P[s] of a signal s.
 module Periodograms
 using LinearAlgebra: mul!
 using ..Util, ..Windows
