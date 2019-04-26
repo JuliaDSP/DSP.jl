@@ -118,12 +118,10 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
 end
 
 # padded must start at index 1, but u can have arbitrary offset
-@inline function _zeropad!(
-    padded::AbstractVector,
-    u::AbstractVector,
-    data_dest = (1,),
-    data_region = CartesianIndices(u)
-)
+@inline function _zeropad!(padded::AbstractVector,
+                           u::AbstractVector,
+                           data_dest::Tuple = (1,),
+                           data_region = CartesianIndices(u))
     datasize = length(data_region)
     start_i = data_dest[1]
 
@@ -138,11 +136,10 @@ end
 end
 
 # padded must start at index 1, but u can have arbitrary offset
-@inline function _zeropad!(
-    padded::AbstractArray{<:Any, N}, u::AbstractArray{<:Any, N},
-    data_dest = ntuple(::Integer -> 1, N),
-    data_region = CartesianIndices(u)
-) where N
+@inline function _zeropad!(padded::AbstractArray{<:Any, N},
+                           u::AbstractArray{<:Any, N},
+                           data_dest::Tuple = ntuple(::Integer -> 1, N),
+                           data_region = CartesianIndices(u)) where N
     # Copy the data to the beginning of the padded array
     fill!(padded, zero(eltype(padded)))
     pad_dest_axes = UnitRange.(data_dest, data_dest .+ size(data_region) .- 1)
@@ -150,7 +147,9 @@ end
 
     padded
 end
-@inline _zeropad(u, padded_size, args...) = _zeropad!(similar(u, padded_size), u, args...)
+
+@inline _zeropad(u, padded_size, args...) =
+    _zeropad!(similar(u, padded_size), u, args...)
 
 os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 
@@ -179,11 +178,11 @@ function optimalfftfiltlength(nb, nx)
     nfft
 end
 
-@inline function os_prepare_conv(u::AbstractArray{T, N}, nffts) where {T<:Real, N}
+@inline function os_prepare_conv(u::AbstractArray{T, N},
+                                 nffts) where {T<:Real, N}
     tdbuff = similar(u, nffts)
-    size_arr = collect(nffts)
-    size_arr[1] = size_arr[1] >> 1 + 1
-    fdbuff = similar(u, Complex{T}, NTuple{N, Int}(size_arr))
+    bufsize = ntuple(i -> i == 1 ? nffts[i] >> 1 + 1 : nffts[i], N)
+    fdbuff = similar(u, Complex{T}, NTuple{N, Int}(bufsize))
 
     p = plan_rfft(tdbuff)
     ip = plan_brfft(fdbuff, nffts[1])
@@ -191,7 +190,7 @@ end
     tdbuff, fdbuff, p, ip
 end
 
-@inline function os_prepare_conv(u::AbstractArray{<:Complex, <:Any}, nffts)
+@inline function os_prepare_conv(u::AbstractArray{<:Complex}, nffts)
     buff = similar(u, nffts)
 
     p = plan_fft!(buff)
@@ -200,51 +199,53 @@ end
     buff, buff, p, ip
 end
 
-@inline function os_filter_transform!(buff::AbstractArray{<:Real, <:Any}, p)
+@inline function os_filter_transform!(buff::AbstractArray{<:Real}, p)
     p * buff
 end
 
-@inline function os_filter_transform!(buff::AbstractArray{<:Complex, <:Any}, p!)
+@inline function os_filter_transform!(buff::AbstractArray{<:Complex}, p!)
     copy(p! * buff) # p operates in place on buff
 end
 
-@inline function os_conv_block!(
-    tdbuff::AbstractArray{<:Real, <:Any}, fdbuff::AbstractArray, filter_fd, p, ip
-)
+@inline function os_conv_block!(tdbuff::AbstractArray{<:Real},
+                                fdbuff::AbstractArray,
+                                filter_fd,
+                                p,
+                                ip)
     mul!(fdbuff, p, tdbuff)
     fdbuff .*= filter_fd
     mul!(tdbuff, ip, fdbuff)
 end
 
-@inline function os_conv_block!(
-    buff::AbstractArray{<:Complex, <:Any}, ::AbstractArray, filter_fd, p!, ip!
-)
+@inline function os_conv_block!(buff::AbstractArray{<:Complex},
+                                ::AbstractArray,
+                                filter_fd,
+                                p!,
+                                ip!)
     p! * buff
     buff .*= filter_fd
     ip! * buff
 end
 
-function _conv_kern_os_edge!(
-    out::AbstractArray{<:Any, N},
-    tdbuff,
-    fdbuff,
-    edge_range,
-    p,
-    ip,
-    n_edges,
-    u,
-    filter_fd,
-    center_block_ranges,
-    edge_blocks,
-    all_dims,
-    save_blocksize,
-    su,
-    sv,
-    nffts,
-    out_start,
-    out_stop,
-    u_start
-) where N
+function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
+                             tdbuff,
+                             fdbuff,
+                             edge_range,
+                             p,
+                             ip,
+                             n_edges,
+                             u,
+                             filter_fd,
+                             center_block_ranges,
+                             edge_blocks,
+                             all_dims,
+                             save_blocksize,
+                             su,
+                             sv,
+                             nffts,
+                             out_start,
+                             out_stop,
+                             u_start) where N
     for edge_dims in subsets(all_dims, n_edges)
         center_dims = setdiff(all_dims, edge_dims)
         edge_dims_arr = collect(edge_dims)
@@ -296,7 +297,13 @@ function _conv_kern_os_edge!(
 end
 
 # Assumes u is larger, or same size, as v
-function _conv_kern_os!(out, u::AbstractArray{<:Any, N}, v, su, sv, sout, nffts) where N
+function _conv_kern_os!(out,
+                        u::AbstractArray{<:Any, N},
+                        v,
+                        su,
+                        sv,
+                        sout,
+                        nffts) where N
     u_start = first.(axes(u))
     out_axes = axes(out)
     out_start = first.(out_axes)
@@ -320,27 +327,25 @@ function _conv_kern_os!(out, u::AbstractArray{<:Any, N}, v, su, sv, sout, nffts)
     all_dims = 1:N
     edge_range = Vector{UnitRange}(undef, N)
     for n_edges in all_dims
-        _conv_kern_os_edge!(
-            out,
-            tdbuff,
-            fdbuff,
-            edge_range,
-            p,
-            ip,
-            Val{n_edges}(),
-            u,
-            filter_fd,
-            center_block_ranges,
-            edge_blocks,
-            all_dims,
-            save_blocksize,
-            su,
-            sv,
-            nffts,
-            out_start,
-            out_stop,
-            u_start
-        )
+        _conv_kern_os_edge!(out,
+                            tdbuff,
+                            fdbuff,
+                            edge_range,
+                            p,
+                            ip,
+                            Val{n_edges}(),
+                            u,
+                            filter_fd,
+                            center_block_ranges,
+                            edge_blocks,
+                            all_dims,
+                            save_blocksize,
+                            su,
+                            sv,
+                            nffts,
+                            out_start,
+                            out_stop,
+                            u_start)
     end
 
     tdbuff_region = CartesianIndices(tdbuff)
@@ -368,9 +373,13 @@ function _conv_kern_os!(out, u::AbstractArray{<:Any, N}, v, su, sv, sout, nffts)
     out
 end
 
-function _conv_kern_fft!(
-    out, u::AbstractArray{T, N}, v::AbstractArray{T, N}, su, sv, outsize, nffts
-) where {T<:Real, N}
+function _conv_kern_fft!(out,
+                         u::AbstractArray{T, N},
+                         v::AbstractArray{T, N},
+                         su,
+                         sv,
+                         outsize,
+                         nffts) where {T<:Real, N}
     padded = _zeropad(u, nffts)
     p = plan_rfft(padded)
     uf = p * padded
@@ -378,7 +387,9 @@ function _conv_kern_fft!(
     vf = p * padded
     uf .*= vf
     raw_out = irfft(uf, nffts[1])
-    copyto!(out, CartesianIndices(out), raw_out,
+    copyto!(out,
+            CartesianIndices(out),
+            raw_out,
             CartesianIndices(UnitRange.(1, outsize)))
 end
 function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
@@ -389,7 +400,9 @@ function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
     p! * vpad
     upad .*= vpad
     ifft!(upad)
-    copyto!(out, CartesianIndices(out), upad,
+    copyto!(out,
+            CartesianIndices(out),
+            upad,
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
