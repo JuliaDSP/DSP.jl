@@ -131,7 +131,7 @@ location `data_dest`, and set the rest of `padded` to zero. This will mutate
 """
 @inline function _zeropad!(padded::AbstractVector,
                            u::AbstractVector,
-                           data_dest::Tuple = (1,),
+                           data_dest::Tuple = (1,), # Tuple to be consistent with ND case
                            data_region = CartesianIndices(u))
     datasize = length(data_region)
     start_i = data_dest[1]
