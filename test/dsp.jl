@@ -2,6 +2,8 @@
 # TODO: parameterize conv tests
 using Test, DSP, OffsetArrays
 import DSP: filt, filt!, deconv, conv, xcorr
+using DSP: optimalfftfiltlength, _conv_kern_os!, _conv_kern_fft!, _conv_similar,
+    nextfastfft
 
 
 
@@ -170,6 +172,53 @@ end
         @test conv(a, b) == exp
         fb = convert(Array{Float64}, b)
         @test conv(a, fb) ≈ convert(Array{Float64}, exp)
+    end
+
+    @testset "Overlap-Save" begin
+        to_sizetuple = (diml, N) -> ntuple(_ -> diml, N)
+        function os_test_data(eltype, diml, N)
+            s = to_sizetuple(diml, N)
+            arr = rand(eltype, s)
+            s, arr
+        end
+        function test_os(eltype, nu, nv, N, nfft)
+            nffts = to_sizetuple(nfft, N)
+            su, u = os_test_data(eltype, nu, N)
+            sv, v = os_test_data(eltype, nv, N)
+            sout = su .+ sv .- 1
+            out = _conv_similar(u, sout, axes(u), axes(v))
+            _conv_kern_os!(out, u, v, su, sv, sout, nffts)
+            os_out = copy(out)
+            fft_nfft = nextfastfft(sout)
+            _conv_kern_fft!(out, u, v, su, sv, sout, fft_nfft)
+            @test out ≈ os_out
+        end
+        Ns = [1, 2, 3]
+        eltypes = [Float32, Float64, Complex{Float64}]
+        nlarge = 128
+
+        regular_nsmall = [12, 16, 30, 128]
+        for numdim in Ns
+            for elt in eltypes
+                for nsmall in regular_nsmall
+                    nfft = optimalfftfiltlength(nlarge, nsmall)
+                    test_os(elt, nlarge, nsmall, Val{numdim}(), nfft)
+                end
+            end
+        end
+
+        # small = 12, fft = 256 exercises output being smaller than the normal
+        # valid region of OS convolution block
+        #
+        # small = 13, fft = 32 makes sout evenly divisble by nfft - sv + 1
+        # small = 12, fft = 32 does not
+        adversarial_nsmall_nfft = [(12, 256), (13, 32), (12, 32)]
+        for (nsmall, nfft) in adversarial_nsmall_nfft
+            test_os(Float64, nlarge, nsmall, Val{1}(), nfft)
+        end
+
+        # three blocks need to be padded in the following case:
+        test_os(Float64, 25, 4, Val{1}(), 16)
     end
 end
 
