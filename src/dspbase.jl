@@ -117,7 +117,18 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-# padded must start at index 1, but u can have arbitrary offset
+"""
+    _zeropad!(padded::AbstractVector,
+              u::AbstractVector,
+              data_dest::Tuple = (1,),
+              data_region = CartesianIndices(u))
+
+Place the portion of `u` specified by `data_region` into `padded` starting at
+location `data_dest`, and set the rest of `padded` to zero. This will mutate
+`padded`.
+
+`padded` must start at index 1, but `u` can have arbitrary axes.
+"""
 @inline function _zeropad!(padded::AbstractVector,
                            u::AbstractVector,
                            data_dest::Tuple = (1,),
@@ -148,27 +159,40 @@ end
     padded
 end
 
+# Make the padded buffer, and then place u into it. See _zeropad!
 @inline _zeropad(u, padded_size, args...) =
     _zeropad!(similar(u, padded_size), u, args...)
 
+"""
+Estimate the number of floating point multiplications per output sample for an
+overlap-save algorithm with fft size `nfft`, and filter size `nb`.
+"""
 os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 
-# Determine optimal length of the FFT for fftfilt
+"""
+Determine the length of FFT that minimizes the number of multiplications per
+output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
+"""
 function optimalfftfiltlength(nb, nx)
     nfull = nb + nx - 1
+    # Swap inputs if necessary to make nv the smaller of the two
     nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
+
+    # Step through possible nffts and find the nfft that minimizes complexity
+    # Assumes that complexity is convex
     first_pow2 = ceil(Int, log2(nv))
-    last_pow2 = ceil(Int, log2(nfull))
-    last_complexity = os_fft_complexity(2 ^ first_pow2, nv)
+    prev_pow2 = ceil(Int, log2(nfull))
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, nv)
     pow2 = first_pow2 + 1
-    while pow2 <= last_pow2
+    while pow2 <= prev_pow2
         new_complexity = os_fft_complexity(2 ^ pow2, nv)
-        new_complexity > last_complexity && break
-        last_complexity = new_complexity
+        new_complexity > prev_complexity && break
+        prev_complexity = new_complexity
         pow2 += 1
     end
-    nfft = pow2 > last_pow2 ? 2 ^ last_pow2 : 2 ^ (pow2 - 1)
+    nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
+    # L is the number of usable samples produced by each block
     L = nfft - nv + 1
     if L > nu
         # If L > nx, better to find next fast power
@@ -178,6 +202,12 @@ function optimalfftfiltlength(nb, nx)
     nfft
 end
 
+"""
+Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
+fdbuff may be an alias of each other, because complex convolution only requires
+one buffer. The plans are mutating where possible, and the inverse plan is
+unnormalized.
+"""
 @inline function os_prepare_conv(u::AbstractArray{T, N},
                                  nffts) where {T<:Real, N}
     tdbuff = similar(u, nffts)
@@ -196,9 +226,13 @@ end
     p = plan_fft!(buff)
     ip = plan_bfft!(buff)
 
-    buff, buff, p, ip
+    buff, buff, p, ip # Only one buffer for complex
 end
 
+"""
+Transform the smaller convolution input to frequency domain, and return it in a
+new array. However, the contents of `buff` may be modified.
+"""
 @inline function os_filter_transform!(buff::AbstractArray{<:Real}, p)
     p * buff
 end
@@ -207,6 +241,11 @@ end
     copy(p! * buff) # p operates in place on buff
 end
 
+"""
+Take a block of data, and convolve it with the smaller convolution input. This
+may modify the contents of `tdbuff` and `fdbuff`, and the result will be in
+`tdbuff`.
+"""
 @inline function os_conv_block!(tdbuff::AbstractArray{<:Real},
                                 fdbuff::AbstractArray,
                                 filter_fd,
@@ -217,23 +256,31 @@ end
     mul!(tdbuff, ip, fdbuff)
 end
 
+"Like the real version, but only operates on one buffer"
 @inline function os_conv_block!(buff::AbstractArray{<:Complex},
-                                ::AbstractArray,
+                                ::AbstractArray, # Only one buffer for complex
                                 filter_fd,
                                 p!,
                                 ip!)
-    p! * buff
+    p! * buff # p! operates in place on buff
     buff .*= filter_fd
-    ip! * buff
+    ip! * buff # ip! operates in place on buff
 end
 
+# Used by `_conv_kern_os!` to handle blocks of input data that need to be padded.
+#
+# This needs to be a separate function for subsets to generate tuple elements, 
+# which is only the case if the number of edges is a Val{n} type. Iterating over
+# the number of edges with Val{n} is inherently type unstable, so this function
+# boundary allows dispatch to make efficient code for each number of edge
+# dimensions.
 function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                              tdbuff,
                              fdbuff,
                              edge_range,
                              p,
                              ip,
-                             n_edges,
+                             n_edges::Val,
                              u,
                              filter_fd,
                              center_block_ranges,
@@ -246,27 +293,40 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                              out_start,
                              out_stop,
                              u_start) where N
+    # Iterate over all possible combinations of edges for a number of edges
     for edge_dims in subsets(all_dims, n_edges)
+        # Find the portion of the input not on an edge for the remaining
+        # dimensions
         center_dims = setdiff(all_dims, edge_dims)
         edge_dims_arr = collect(edge_dims)
         for dim in center_dims
             edge_range[dim] = center_block_ranges[dim]
         end
+
+        # Select the indices that need to be padded for each edge dimension.
+        # There can be one to three such blocks for each dimension.
         these_blocks = getindex.(Ref(edge_blocks), edge_dims)
+
+        # Visit each block that needs to be padded for these edge dimensions
         for edge_block_nos in Iterators.ProductIterator(these_blocks)
+            # This, combined with the center block ranges above, specifies a
+            # rectangular region of block numbers that need to be padded
             edge_range[edge_dims_arr] .= UnitRange.(
                 edge_block_nos, edge_block_nos
             )
+            # Region of block indices, not data indices!
             block_region = CartesianIndices(
                 NTuple{N, UnitRange{Int}}(edge_range)
             )
             for block_pos in block_region
-                # Figure out which portion of the input needs to be transformed
+                # Figure out which portion of the input data should be transformed
                 block_idx = convert(NTuple{N, Int}, block_pos)
                 data_offset = save_blocksize .* (block_idx .- 1)
                 pad_before = max.(0, sv .- data_offset .- 1)
                 data_ideal_stop = data_offset .+ save_blocksize
                 pad_after = max.(0, data_ideal_stop .- su)
+
+                # Data indices, not block indices
                 data_region = CartesianIndices(
                     UnitRange.(
                         u_start .+ data_offset .- sv .+ pad_before .+ 1,
@@ -296,7 +356,7 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
     end
 end
 
-# Assumes u is larger, or same size, as v
+# Assumes u is larger than, or the same size as, v
 function _conv_kern_os!(out,
                         u::AbstractArray{<:Any, N},
                         v,
@@ -349,7 +409,9 @@ function _conv_kern_os!(out,
     end
 
     tdbuff_region = CartesianIndices(tdbuff)
+    # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
+    # Iterate over block indices (not data indices) that do not need to be padded
     for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
         block_idx = convert(NTuple{N, Int}, block_pos)
