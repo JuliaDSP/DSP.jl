@@ -287,6 +287,7 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                              edge_blocks,
                              all_dims,
                              save_blocksize,
+                             sout_deficit,
                              su,
                              sv,
                              nffts,
@@ -346,9 +347,9 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                 block_out_region = CartesianIndices(
                     UnitRange.(out_start .+ data_offset, block_out_stop)
                 )
-                deficit = max.(0, pad_after .- sv .+ 1)
+                u_deficit = max.(0, pad_after .- sv .+ 1)
                 valid_buff_region = CartesianIndices(
-                    UnitRange.(sv, nffts .- deficit)
+                    UnitRange.(sv, nffts .- u_deficit .- sout_deficit)
                 )
                 copyto!(out, block_out_region, tdbuff, valid_buff_region)
             end
@@ -368,7 +369,9 @@ function _conv_kern_os!(out,
     out_axes = axes(out)
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
-    save_blocksize = min.(sout, nffts .- sv .+ 1)
+    ideal_save_blocksize = nffts .- sv .+ 1
+    sout_deficit = max.(0, ideal_save_blocksize .- sout)
+    save_blocksize = ideal_save_blocksize .- sout_deficit
     nblocks = cld.(sout, save_blocksize)
 
     # Pre-allocation
@@ -400,6 +403,7 @@ function _conv_kern_os!(out,
                             edge_blocks,
                             all_dims,
                             save_blocksize,
+                            sout_deficit,
                             su,
                             sv,
                             nffts,
