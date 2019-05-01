@@ -551,6 +551,19 @@ function conv(A::AbstractArray, B::AbstractArray)
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
 
+function conv(A::AbstractArray...)
+    maxnd = max([ndims(a) for a in A]...)
+    return conv([cat(a, dims=maxnd) for a in A]...)
+end
+conv(A::AbstractArray{<:Union{Complex{<:Number}, <:Number}, N}) where {N} =
+    conv(promote(A...)...)
+conv(A::AbstractArray{<:Integer}...) = conv([float(a) for a in A]...)
+function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
+    return conv(A[1], conv(A[2:end]...))
+end
+
+
+
 """
     conv(u,v,A)
 
