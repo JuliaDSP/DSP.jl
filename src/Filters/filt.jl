@@ -485,31 +485,6 @@ filt(h::AbstractArray, x::AbstractArray) =
 # fftfilt and filt
 #
 
-# Number of real operations required for overlap-save with nfft = 2^pow2 and filter
-# length nb
-os_fft_complexity(pow2, nb) = 4 * (2 ^ pow2 * (pow2 + 1)) / (2 ^ pow2 - nb + 1)
-
-# Determine optimal length of the FFT for fftfilt
-function optimalfftfiltlength(nb, nx)
-    first_pow2 = ceil(Int, log2(nb))
-    last_pow2 = ceil(Int, log2(nx + nb - 1))
-    complexities = os_fft_complexity.(first_pow2:last_pow2, nb)
-
-    # Find power of 2 with least complexity relative to the first power of 2
-    relative_ind_best_pow2 = argmin(complexities)
-
-    best_pow2 = first_pow2 + relative_ind_best_pow2 - 1
-    nfft = 2 ^ best_pow2
-
-    L = nfft - nb + 1
-    if L > nx
-        # If L > nx, better to find next fast power
-        nfft = nextfastfft(nx + nb - 1)
-    end
-
-    nfft
-end
-
 """
     fftfilt(h, x)
 
