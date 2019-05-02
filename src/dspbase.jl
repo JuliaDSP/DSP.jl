@@ -440,73 +440,80 @@ function _conv_kern_os!(out,
 end
 
 function _conv_kern_fft!(out,
-                         u::AbstractArray{T, N},
-                         v::AbstractArray{T, N},
-                         su,
-                         sv,
+                         A::NTuple{<:Any, AbstractArray{T, N}},
                          outsize,
                          nffts) where {T<:Real, N}
-    padded = _zeropad(u, nffts)
-    p = plan_rfft(padded)
-    uf = p * padded
-    _zeropad!(padded, v)
-    vf = p * padded
-    uf .*= vf
-    raw_out = irfft(uf, nffts[1])
+    padded = _zeropad(A[1], nffts)
+    p = plan_rfft(padded) 
+    ftA = p * padded
+    for a in A[2:end]
+        _zeropad!(padded, a)
+        ftA .*= p * padded
+    end
+    raw_out = irfft(ftA, nffts[1])
     copyto!(out,
             CartesianIndices(out),
             raw_out,
             CartesianIndices(UnitRange.(1, outsize)))
 end
-function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
-    upad = _zeropad(u, nffts)
-    vpad = _zeropad(v, nffts)
-    p! = plan_fft!(upad)
-    p! * upad # Operates in place on upad
-    p! * vpad
-    upad .*= vpad
-    ifft!(upad)
+
+function _conv_kern_fft!(out, A::NTuple{<:Any, AbstractArray{T, N}},
+                         outsize, nffts) where {T<:Complex{<:Real}, N}
+    Apad = [_zeropad(a, nffts) for a in A]
+    p! = plan_fft!(Apad[1])
+    for a in Apad
+        p! * a
+    end
+    Apad[1] .*= .*(Apad[2:end]...)
+    ifft!(Apad[1])
     copyto!(out,
             CartesianIndices(out),
-            upad,
+            Apad[1],
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
-function _conv_fft!(out, u, v, su, sv, outsize)
-    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
+function _conv_fft!(out, A, S, outsize)
+    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
     if any(os_nffts .< outsize)
-        _conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
+        temp_out = _conv_similar(A[1], A[2], S[1] .+ S[2] -1)
+        _conv_kern_os!(temp_out,
+                       A[1], A[2], S[1], S[2],
+                       outsize, os_nffts)
+        _conv_fft!(out, [temp_out, A[3:end]...])
     else
         nffts = nextfastfft(outsize)
-        _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
+        _conv_kern_fft!(out, A, outsize, nffts)
     end
 end
 
 
 # For arrays with weird offsets
-function _conv_similar(u, outsize, axesu, axesv)
-    out_offsets = first.(axesu) .+ first.(axesv)
-    out_axes = UnitRange.(out_offsets, out_offsets .+ outsize .- 1)
+function _conv_similar(u, outsize, axes)
+    out_offsets = .+([first.(ax) for ax in axes])
+    out_axes = UnitRange.(out_offsets, out_offsets .+ outsize
+                          .- (length(outsize) -1))
     similar(u, out_axes)
 end
+
+# what is the point of these
 function _conv_similar(
-    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}, ::NTuple{<:Any, Base.OneTo{Int}}
-)
+    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}...)
     similar(u, outsize)
 end
-_conv_similar(u, v, outsize) = _conv_similar(u, outsize, axes(u), axes(v))
+_conv_similar(A, outsize) = _conv_similar(A[1], outsize,
+                                          [axes(u) for u in A]...)
 
 # Does convolution, will not switch argument order
-function _conv!(out, u, v, su, sv, outsize)
+function _conv!(out, A, S, outsize)
     # TODO: Add spatial / time domain algorithm
-    _conv_fft!(out, u, v, su, sv, outsize)
+    _conv_fft!(out, A, S, outsize)
 end
 
 # Does convolution, will not switch argument order
-function _conv(u, v, su, sv)
-    outsize = su .+ sv .- 1
-    out = _conv_similar(u, v, outsize)
-    _conv!(out, u, v, su, sv, outsize)
+function _conv(A, S)
+    outsize = .+([prod(s) for s in S]...) - (length(S) -1)
+    out = _conv_similar(A, outsize)
+    _conv!(out, A, S, outsize)
 end
 
 # May switch argument order
@@ -517,24 +524,6 @@ Convolution of two arrays. Uses either FFT convolution or overlap-save,
 depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
-function conv(u::AbstractArray{T, N},
-              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
-    su = size(u)
-    sv = size(v)
-    if prod(su) >= prod(sv)
-        _conv(u, v, su, sv)
-    else
-        _conv(v, u, sv, su)
-    end
-end
-
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
-    fu, fv = promote(u, v)
-    conv(fu, fv)
-end
-
-
 function conv(A::AbstractArray...)
     maxnd = max([ndims(a) for a in A]...)
     return conv([cat(a, dims=maxnd) for a in A]...)
@@ -543,11 +532,9 @@ conv(A::AbstractArray{<:Union{Complex{<:Number}, <:Number}, N}) where {N} =
     conv(promote(A...)...)
 conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
-    if length(A) < 2:
-        A
-    else
-        conv(conv(A[1], A[2]), A[3:end]...)
-    end
+    sizes = [size(a) for a in A]
+    order = reverse(sortperm([prod(s) for s in sizes]))
+    _conv(A[order], sizes[order])
 end
 
 
