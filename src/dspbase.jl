@@ -376,7 +376,6 @@ function _conv_kern_os_edge!(
         #
         # Start with the dimensions not on an edge:
         center_dims = setdiff(all_dims, edge_dims)
-        edge_dims_arr = collect(edge_dims)
         for dim in center_dims
             edge_range[dim] = center_block_ranges[dim]
         end
@@ -394,6 +393,7 @@ function _conv_kern_os_edge!(
         # Visit each combination of edge blocks for the edge dimensions chosen.
         # For a 3d cube with n_edges = 1 and edge_dims = (1,), this will visit
         # the top face, and then the bottom face.
+        edge_dims_arr = collect(edge_dims) # Need array for assignment
         for edge_block_nos in Iterators.ProductIterator(selected_edge_block_indices)
             # The center region for non-edge dimensions has been specified above,
             # so finish specifying the region of the perimeter for this edge
