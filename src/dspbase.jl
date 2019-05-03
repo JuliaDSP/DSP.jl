@@ -322,31 +322,41 @@ end
 
 # Used by `_conv_kern_os!` to handle blocks of input data that need to be padded.
 #
-# This needs to be a separate function for subsets to generate tuple elements, 
+# This needs to be a separate function for subsets to generate tuple elements,
 # which is only the case if the number of edges is a Val{n} type. Iterating over
 # the number of edges with Val{n} is inherently type unstable, so this function
 # boundary allows dispatch to make efficient code for each number of edge
 # dimensions.
-function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
-                             tdbuff,
-                             fdbuff,
-                             edge_range,
-                             p,
-                             ip,
-                             n_edges::Val,
-                             u,
-                             filter_fd,
-                             center_block_ranges,
-                             edge_blocks,
-                             all_dims,
-                             save_blocksize,
-                             sout_deficit,
-                             su,
-                             sv,
-                             nffts,
-                             out_start,
-                             out_stop,
-                             u_start) where N
+function _conv_kern_os_edge!(
+    # These arrays and buffers will be mutated
+    out::AbstractArray{<:Any, N},
+    tdbuff,
+    fdbuff,
+    edge_range,
+    # Number of edge dimensions to pad and convolve
+    n_edges::Val,
+    # Data to be convolved
+    u,
+    filter_fd,
+    # FFTW plans
+    p,
+    ip,
+    # Sizes, ranges, and other pre-calculated constants
+    #
+    ## ranges listing center and edge blocks
+    edge_blocks,
+    center_block_ranges,
+    ## size and axis information
+    all_dims, # 1:N
+    su,
+    u_start,
+    sv,
+    nffts,
+    out_start,
+    out_stop,
+    save_blocksize,
+    sout_deficit, # How many output samples are missing if nffts > sout
+) where N
     # Iterate over all possible combinations of edges for a number of edges
     for edge_dims in subsets(all_dims, n_edges)
         # Find the portion of the input not on an edge for the remaining
@@ -443,26 +453,35 @@ function _conv_kern_os!(out,
     all_dims = 1:N
     edge_range = Vector{UnitRange}(undef, N)
     for n_edges in all_dims
-        _conv_kern_os_edge!(out,
-                            tdbuff,
-                            fdbuff,
-                            edge_range,
-                            p,
-                            ip,
-                            Val{n_edges}(),
-                            u,
-                            filter_fd,
-                            center_block_ranges,
-                            edge_blocks,
-                            all_dims,
-                            save_blocksize,
-                            sout_deficit,
-                            su,
-                            sv,
-                            nffts,
-                            out_start,
-                            out_stop,
-                            u_start)
+        _conv_kern_os_edge!(
+            # These arrays and buffers will be mutated
+            out,
+            tdbuff,
+            fdbuff,
+            edge_range,
+            # Number of edge dimensions to pad and convolve
+            Val{n_edges}(),
+            # Data to be convolved
+            u,
+            filter_fd,
+            # FFTW plans
+            p,
+            ip,
+            # Sizes, ranges, and other pre-calculated constants
+            #
+            ## ranges listing center and edge blocks
+            edge_blocks,
+            center_block_ranges,
+            ## size and axis information
+            all_dims, # 1:N
+            su,
+            u_start,
+            sv,
+            nffts,
+            out_start,
+            out_stop,
+            save_blocksize,
+            sout_deficit) # How many output samples are missing if nffts > sout
     end
 
     tdbuff_region = CartesianIndices(tdbuff)
