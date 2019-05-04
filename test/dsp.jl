@@ -197,7 +197,7 @@ end
         eltypes = [Float32, Float64, Complex{Float64}]
         nlarge = 128
 
-        regular_nsmall = [12, 16, 30, 128]
+        regular_nsmall = [12, 128]
         for numdim in Ns
             for elt in eltypes
                 for nsmall in regular_nsmall
