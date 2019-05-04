@@ -320,7 +320,7 @@ end
     ip! * buff # ip! operates in place on buff
 end
 
-# Used by `_conv_kern_os!` to handle blocks of input data that need to be padded.
+# Used by `unsafe_conv_kern_os!` to handle blocks of input data that need to be padded.
 #
 # For a given number of edge dimensions, convolve all regions along the
 # perimeter that have that number of edge dimensions
@@ -333,7 +333,7 @@ end
 # the number of edges with Val{n} is inherently type unstable, so this function
 # boundary allows dispatch to make efficient code for each number of edge
 # dimensions.
-function _conv_kern_os_edge!(
+function unsafe_conv_kern_os_edge!(
     # These arrays and buffers will be mutated
     out::AbstractArray{<:Any, N},
     tdbuff,
@@ -450,7 +450,7 @@ function _conv_kern_os_edge!(
 end
 
 # Assumes u is larger than, or the same size as, v
-function _conv_kern_os!(out,
+function unsafe_conv_kern_os!(out,
                         u::AbstractArray{<:Any, N},
                         v,
                         su,
@@ -503,7 +503,7 @@ function _conv_kern_os!(out,
     #                         3 | Corners of Cube
     #
     for n_edges in all_dims
-        _conv_kern_os_edge!(
+        unsafe_conv_kern_os_edge!(
             # These arrays and buffers will be mutated
             out,
             tdbuff,
@@ -602,7 +602,7 @@ end
 function _conv_fft!(out, u, v, su, sv, outsize)
     os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
     if any(os_nffts .< outsize)
-        _conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
+        unsafe_conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
     else
         nffts = nextfastfft(outsize)
         _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)

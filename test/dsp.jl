@@ -2,7 +2,7 @@
 # TODO: parameterize conv tests
 using Test, DSP, OffsetArrays
 import DSP: filt, filt!, deconv, conv, xcorr
-using DSP: optimalfftfiltlength, _conv_kern_os!, _conv_kern_fft!, _conv_similar,
+using DSP: optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!, _conv_similar,
     nextfastfft
 
 
@@ -187,7 +187,7 @@ end
             sv, v = os_test_data(eltype, nv, N)
             sout = su .+ sv .- 1
             out = _conv_similar(u, sout, axes(u), axes(v))
-            _conv_kern_os!(out, u, v, su, sv, sout, nffts)
+            unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
             os_out = copy(out)
             fft_nfft = nextfastfft(sout)
             _conv_kern_fft!(out, u, v, su, sv, sout, fft_nfft)
