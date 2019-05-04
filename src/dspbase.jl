@@ -510,7 +510,7 @@ function _conv_kern_os!(out,
             fdbuff,
             perimeter_range,
             # Number of edge dimensions to pad and convolve
-            Val{n_edges}(),
+            Val(n_edges),
             # Data to be convolved
             u,
             filter_fd,
