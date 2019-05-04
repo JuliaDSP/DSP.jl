@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-import Base.trailingsize
+import Base: trailingsize
 import LinearAlgebra.BLAS
 
 const SMALL_FILT_CUTOFF = 58
@@ -338,7 +338,7 @@ function _conv_kern_os_edge!(
     out::AbstractArray{<:Any, N},
     tdbuff,
     fdbuff,
-    edge_range,
+    perimeter_range,
     # Number of edge dimensions to pad and convolve
     n_edges::Val,
     # Data to be convolved
@@ -350,7 +350,7 @@ function _conv_kern_os_edge!(
     # Sizes, ranges, and other pre-calculated constants
     #
     ## ranges listing center and edge blocks
-    edge_blocks,
+    edge_ranges,
     center_block_ranges,
     ## size and axis information
     all_dims, # 1:N
@@ -374,38 +374,35 @@ function _conv_kern_os_edge!(
         # each dimension on an edge, and the central blocks for dimensions not
         # on an edge.
         #
-        # Start with the dimensions not on an edge:
-        center_dims = setdiff(all_dims, edge_dims)
-        for dim in center_dims
-            edge_range[dim] = center_block_ranges[dim]
-        end
+        # First make all entries equal to the center blocks:
+        @inbounds copyto!(perimeter_range, 1, center_block_ranges, 1, N)
 
         # For the dimensions chosen to be on an edge (edge_dims), get the
-        # indices of the blocks that would need to be padded (lie on an edge)
+        # ranges of the blocks that would need to be padded (lie on an edge)
         # in that dimension.
         #
-        # There can be one to three such blocks for each dimension, because with
-        # some inputs sizes the whole convolution is just one block
-        # (one edge block), or the padding at the trailing portion of the
-        # dimensions can spill into two blocks (three edge blocks in total)
-        selected_edge_block_indices = getindex.(Ref(edge_blocks), edge_dims)
+        # There can be one to two such ranges for each dimension, because with
+        # some inputs sizes the whole convolution is just one range
+        # (one edge block), or the padding will be needed at both the leading
+        # and trailing side of that dimension
+        selected_edge_ranges = getindex.(Ref(edge_ranges), edge_dims)
 
-        # Visit each combination of edge blocks for the edge dimensions chosen.
+        # Visit each combination of edge ranges for the edge dimensions chosen.
         # For a 3d cube with n_edges = 1 and edge_dims = (1,), this will visit
         # the top face, and then the bottom face.
-        edge_dims_arr = collect(edge_dims) # Need array for assignment
-        for edge_block_nos in Iterators.ProductIterator(selected_edge_block_indices)
+        for perimeter_edge_ranges in Iterators.ProductIterator(selected_edge_ranges)
             # The center region for non-edge dimensions has been specified above,
             # so finish specifying the region of the perimeter for this edge
             # block
-            edge_range[edge_dims_arr] .= UnitRange.(
-                edge_block_nos, edge_block_nos
-            )
+            @inbounds for (i, dim) in enumerate(edge_dims)
+                perimeter_range[dim] = perimeter_edge_ranges[i]
+            end
+
             # Region of block indices, not data indices!
             block_region = CartesianIndices(
-                NTuple{N, UnitRange{Int}}(edge_range)
+                NTuple{N, UnitRange{Int}}(perimeter_range)
             )
-            for block_pos in block_region
+            @inbounds for block_pos in block_region
                 # Figure out which portion of the input data should be transformed
 
                 block_idx = convert(NTuple{N, Int}, block_pos)
@@ -483,13 +480,15 @@ function _conv_kern_os!(out,
     last_full_blocks = fld.(su, save_blocksize)
     # block indices for center blocks, which need no padding
     center_block_ranges = UnitRange.(2, last_full_blocks)
-    # block indices for edge blocks, which need to be padded
-    edge_blocks = map(nblocks, last_full_blocks) do nblock, lastfull
-        nblock > 1 ? vcat(1, lastfull + 1 : nblock) : [1]
+    # block index ranges for blocks that need to be padded
+    # Corresponds to the leading and trailing side of a dimension, or if there
+    # are no center blocks, corresponds to the whole dimension
+    edge_ranges = map(nblocks, last_full_blocks) do nblock, lastfull
+        lastfull > 1 ? [1:1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
     # Buffer to store ranges of indices for a single region of the perimeter
-    edge_range = Vector{UnitRange}(undef, N)
+    perimeter_range = Vector{UnitRange{Int}}(undef, N)
 
     # Convolve all blocks that require padding.
     #
@@ -509,7 +508,7 @@ function _conv_kern_os!(out,
             out,
             tdbuff,
             fdbuff,
-            edge_range,
+            perimeter_range,
             # Number of edge dimensions to pad and convolve
             Val{n_edges}(),
             # Data to be convolved
@@ -521,7 +520,7 @@ function _conv_kern_os!(out,
             # Sizes, ranges, and other pre-calculated constants
             #
             ## ranges listing center and edge blocks
-            edge_blocks,
+            edge_ranges,
             center_block_ranges,
             ## size and axis information
             all_dims, # 1:N
@@ -539,7 +538,7 @@ function _conv_kern_os!(out,
     # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
     # Iterate over block indices (not data indices) that do not need to be padded
-    for block_pos in CartesianIndices(center_block_ranges)
+    @inbounds for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
 
         block_idx = convert(NTuple{N, Int}, block_pos)
