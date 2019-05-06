@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-import Base.trailingsize
+import Base: trailingsize
 import LinearAlgebra.BLAS
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
@@ -267,67 +267,102 @@ end
     ip! * buff # ip! operates in place on buff
 end
 
-# Used by `_conv_kern_os!` to handle blocks of input data that need to be padded.
+# Used by `unsafe_conv_kern_os!` to handle blocks of input data that need to be padded.
 #
-# This needs to be a separate function for subsets to generate tuple elements, 
+# For a given number of edge dimensions, convolve all regions along the
+# perimeter that have that number of edge dimensions
+#
+# For a 3d cube, if n_edges = 1, this means all faces. If n_edges = 2, then
+# all edges. Finally, if n_edges = 3, then all corners.
+#
+# This needs to be a separate function for subsets to generate tuple elements,
 # which is only the case if the number of edges is a Val{n} type. Iterating over
 # the number of edges with Val{n} is inherently type unstable, so this function
 # boundary allows dispatch to make efficient code for each number of edge
 # dimensions.
-function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
-                             tdbuff,
-                             fdbuff,
-                             edge_range,
-                             p,
-                             ip,
-                             n_edges::Val,
-                             u,
-                             filter_fd,
-                             center_block_ranges,
-                             edge_blocks,
-                             all_dims,
-                             save_blocksize,
-                             sout_deficit,
-                             su,
-                             sv,
-                             nffts,
-                             out_start,
-                             out_stop,
-                             u_start) where N
-    # Iterate over all possible combinations of edges for a number of edges
+function unsafe_conv_kern_os_edge!(
+    # These arrays and buffers will be mutated
+    out::AbstractArray{<:Any, N},
+    tdbuff,
+    fdbuff,
+    perimeter_range,
+    # Number of edge dimensions to pad and convolve
+    n_edges::Val,
+    # Data to be convolved
+    u,
+    filter_fd,
+    # FFTW plans
+    p,
+    ip,
+    # Sizes, ranges, and other pre-calculated constants
+    #
+    ## ranges listing center and edge blocks
+    edge_ranges,
+    center_block_ranges,
+    ## size and axis information
+    all_dims, # 1:N
+    su,
+    u_start,
+    sv,
+    nffts,
+    out_start,
+    out_stop,
+    save_blocksize,
+    sout_deficit, # How many output samples are missing if nffts > sout
+) where N
+    # Iterate over all possible combinations of edge dimensions for a number of
+    # edges
+    #
+    # For a 3d cube with n_edges = 1, this will specify the top and bottom faces
+    # (edge_dims = (1,)), then the left and right faces (edge_dims = (2,)), then
+    # the front and back faces (edge_dims = (3,))
     for edge_dims in subsets(all_dims, n_edges)
-        # Find the portion of the input not on an edge for the remaining
-        # dimensions
-        center_dims = setdiff(all_dims, edge_dims)
-        edge_dims_arr = collect(edge_dims)
-        for dim in center_dims
-            edge_range[dim] = center_block_ranges[dim]
-        end
+        # Specify a region on the perimeter by combining an edge block index for
+        # each dimension on an edge, and the central blocks for dimensions not
+        # on an edge.
+        #
+        # First make all entries equal to the center blocks:
+        @inbounds copyto!(perimeter_range, 1, center_block_ranges, 1, N)
 
-        # Select the indices that need to be padded for each edge dimension.
-        # There can be one to three such blocks for each dimension.
-        these_blocks = getindex.(Ref(edge_blocks), edge_dims)
+        # For the dimensions chosen to be on an edge (edge_dims), get the
+        # ranges of the blocks that would need to be padded (lie on an edge)
+        # in that dimension.
+        #
+        # There can be one to two such ranges for each dimension, because with
+        # some inputs sizes the whole convolution is just one range
+        # (one edge block), or the padding will be needed at both the leading
+        # and trailing side of that dimension
+        selected_edge_ranges = getindex.(Ref(edge_ranges), edge_dims)
 
-        # Visit each block that needs to be padded for these edge dimensions
-        for edge_block_nos in Iterators.ProductIterator(these_blocks)
-            # This, combined with the center block ranges above, specifies a
-            # rectangular region of block numbers that need to be padded
-            edge_range[edge_dims_arr] .= UnitRange.(
-                edge_block_nos, edge_block_nos
-            )
+        # Visit each combination of edge ranges for the edge dimensions chosen.
+        # For a 3d cube with n_edges = 1 and edge_dims = (1,), this will visit
+        # the top face, and then the bottom face.
+        for perimeter_edge_ranges in Iterators.ProductIterator(selected_edge_ranges)
+            # The center region for non-edge dimensions has been specified above,
+            # so finish specifying the region of the perimeter for this edge
+            # block
+            @inbounds for (i, dim) in enumerate(edge_dims)
+                perimeter_range[dim] = perimeter_edge_ranges[i]
+            end
+
             # Region of block indices, not data indices!
             block_region = CartesianIndices(
-                NTuple{N, UnitRange{Int}}(edge_range)
+                NTuple{N, UnitRange{Int}}(perimeter_range)
             )
-            for block_pos in block_region
+            @inbounds for block_pos in block_region
                 # Figure out which portion of the input data should be transformed
+
                 block_idx = convert(NTuple{N, Int}, block_pos)
+                ## data_offset is NOT the beginning of the region that will be
+                ## convolved, but is instead the beginning of the unaliased data.
                 data_offset = save_blocksize .* (block_idx .- 1)
+                ## How many zeros will need to be added before the data
                 pad_before = max.(0, sv .- data_offset .- 1)
                 data_ideal_stop = data_offset .+ save_blocksize
+                ## How many zeros will need to be added after the data
                 pad_after = max.(0, data_ideal_stop .- su)
 
-                # Data indices, not block indices
+                ## Data indices, not block indices
                 data_region = CartesianIndices(
                     UnitRange.(
                         u_start .+ data_offset .- sv .+ pad_before .+ 1,
@@ -336,10 +371,12 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                 )
 
                 # Convolve portion of input
+
                 _zeropad!(tdbuff, u, pad_before .+ 1, data_region)
                 os_conv_block!(tdbuff, fdbuff, filter_fd, p, ip)
 
                 # Save convolved result to output
+
                 block_out_stop = min.(
                     out_start .+ data_offset .+ save_blocksize .- 1,
                     out_stop
@@ -347,6 +384,8 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
                 block_out_region = CartesianIndices(
                     UnitRange.(out_start .+ data_offset, block_out_stop)
                 )
+                ## If the input could not fill tdbuff, account for that before
+                ## copying the convolution result to the output
                 u_deficit = max.(0, pad_after .- sv .+ 1)
                 valid_buff_region = CartesianIndices(
                     UnitRange.(sv, nffts .- u_deficit .- sout_deficit)
@@ -358,7 +397,7 @@ function _conv_kern_os_edge!(out::AbstractArray{<:Any, N},
 end
 
 # Assumes u is larger than, or the same size as, v
-function _conv_kern_os!(out,
+function unsafe_conv_kern_os!(out,
                         u::AbstractArray{<:Any, N},
                         v,
                         su,
@@ -370,7 +409,10 @@ function _conv_kern_os!(out,
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
     ideal_save_blocksize = nffts .- sv .+ 1
+    # Number of samples that are "missing" if the valid portion of the
+    # convolution is smaller than the output
     sout_deficit = max.(0, ideal_save_blocksize .- sout)
+    # Size of the valid portion of the convolution result
     save_blocksize = ideal_save_blocksize .- sout_deficit
     nblocks = cld.(sout, save_blocksize)
 
@@ -383,42 +425,72 @@ function _conv_kern_os!(out,
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
     last_full_blocks = fld.(su, save_blocksize)
+    # block indices for center blocks, which need no padding
     center_block_ranges = UnitRange.(2, last_full_blocks)
-    edge_blocks = map(nblocks, last_full_blocks) do nblock, lastfull
-        nblock > 1 ? vcat(1, lastfull + 1 : nblock) : [1]
+    # block index ranges for blocks that need to be padded
+    # Corresponds to the leading and trailing side of a dimension, or if there
+    # are no center blocks, corresponds to the whole dimension
+    edge_ranges = map(nblocks, last_full_blocks) do nblock, lastfull
+        lastfull > 1 ? [1:1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
-    edge_range = Vector{UnitRange}(undef, N)
+    # Buffer to store ranges of indices for a single region of the perimeter
+    perimeter_range = Vector{UnitRange{Int}}(undef, N)
+
+    # Convolve all blocks that require padding.
+    #
+    # This is accomplished by dividing the perimeter of the volume into
+    # subsections, where the division is done by the number of edge dimensions.
+    # For a 3d cube, this convolves the perimeter in the following order:
+    #
+    # Number of Edge Dimensions | Convolved Region
+    # --------------------------+-----------------
+    #                         1 | Faces of Cube
+    #                         2 | Edges of Cube
+    #                         3 | Corners of Cube
+    #
     for n_edges in all_dims
-        _conv_kern_os_edge!(out,
-                            tdbuff,
-                            fdbuff,
-                            edge_range,
-                            p,
-                            ip,
-                            Val{n_edges}(),
-                            u,
-                            filter_fd,
-                            center_block_ranges,
-                            edge_blocks,
-                            all_dims,
-                            save_blocksize,
-                            sout_deficit,
-                            su,
-                            sv,
-                            nffts,
-                            out_start,
-                            out_stop,
-                            u_start)
+        unsafe_conv_kern_os_edge!(
+            # These arrays and buffers will be mutated
+            out,
+            tdbuff,
+            fdbuff,
+            perimeter_range,
+            # Number of edge dimensions to pad and convolve
+            Val(n_edges),
+            # Data to be convolved
+            u,
+            filter_fd,
+            # FFTW plans
+            p,
+            ip,
+            # Sizes, ranges, and other pre-calculated constants
+            #
+            ## ranges listing center and edge blocks
+            edge_ranges,
+            center_block_ranges,
+            ## size and axis information
+            all_dims, # 1:N
+            su,
+            u_start,
+            sv,
+            nffts,
+            out_start,
+            out_stop,
+            save_blocksize,
+            sout_deficit) # How many output samples are missing if nffts > sout
     end
 
     tdbuff_region = CartesianIndices(tdbuff)
     # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
     # Iterate over block indices (not data indices) that do not need to be padded
-    for block_pos in CartesianIndices(center_block_ranges)
+    @inbounds for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
+
         block_idx = convert(NTuple{N, Int}, block_pos)
+        ## data_offset is NOT the beginning of the region that will be
+        ## convolved, but is instead the beginning of the unaliased data.
         data_offset = save_blocksize .* (block_idx .- 1)
         data_stop = data_offset .+ save_blocksize
         data_region = CartesianIndices(
@@ -426,10 +498,12 @@ function _conv_kern_os!(out,
         )
 
         # Convolve this portion of the data
+
         copyto!(tdbuff, tdbuff_region, u, data_region)
         os_conv_block!(tdbuff, fdbuff, filter_fd, p, ip)
 
         # Save convolved result to output
+
         block_out_region = CartesianIndices(
             UnitRange.(data_offset .+ out_start, data_stop .+ out_start .- 1)
         )
@@ -438,6 +512,11 @@ function _conv_kern_os!(out,
 
     out
 end
+
+
+# May switch argument order
+
+
 
 function _conv_kern_fft!(out,
                          A::NTuple{<:Any, AbstractArray{T, N}},

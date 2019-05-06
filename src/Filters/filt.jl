@@ -387,11 +387,13 @@ function filt_stepstate(f::SecondOrderSections{T}) where T
     si
 end
 
+const SMALL_FILT_CUTOFF = 54
+
 #
 # filt implementation for FIR filters (faster than Base)
 #
 
-for n = 2:15
+for n = 2:SMALL_FILT_CUTOFF
     silen = n-1
     si = [Symbol("si$i") for i = 1:silen]
     @eval function filt!(out, b::NTuple{$n,T}, x) where T
@@ -413,7 +415,7 @@ for n = 2:15
 end
 
 let chain = :(throw(ArgumentError("invalid tuple size")))
-    for n = 15:-1:2
+    for n = SMALL_FILT_CUTOFF:-1:2
         chain = quote
             if length(h) == $n
                 filt!(out, ($([:(h[$i]) for i = 1:n]...),), x)
@@ -453,7 +455,7 @@ end
 function _tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
     if length(h) == 1
         return mul!(out, h[1], x)
-    elseif length(h) <= 15
+    elseif length(h) <= SMALL_FILT_CUTOFF
         return small_filt!(out, h, x)
     end
 
@@ -581,14 +583,10 @@ function filt_choose_alg!(
     x::AbstractArray{<:Real}
 )
     nb = length(b)
-    nx = size(x, 1)
 
-    filtops_per_sample = min(nx, nb)
-
-    nfft = optimalfftfiltlength(nb, nx)
-    fftops_per_sample = os_fft_complexity(log2(nfft), nb)
-
-    if filtops_per_sample > fftops_per_sample
+    if nb > SMALL_FILT_CUTOFF
+        nx = size(x, 1)
+        nfft = optimalfftfiltlength(nb, nx)
         _fftfilt!(out, b, x, nfft)
     else
         _tdfilt!(out, b, x)
