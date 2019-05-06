@@ -2,8 +2,7 @@
 # TODO: parameterize conv tests
 using Test, DSP, OffsetArrays
 import DSP: filt, filt!, deconv, conv, xcorr
-using DSP: optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!, _conv_similar,
-    nextfastfft
+using DSP: optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!, _conv_similar, nextfastfft
 
 
 
@@ -33,6 +32,8 @@ using DSP: optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!, _conv_si
 
     @test_throws ArgumentError filt!([1, 2], [1], [1], [1])
 end
+
+
 
 @testset "conv" begin
 

@@ -554,11 +554,20 @@ end
 function _conv_fft!(out, A, S, outsize)
     os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
     if any(os_nffts .< outsize)
-        temp_out = _conv_similar(A[1], A[2], S[1] .+ S[2] .- 1)
-        _conv_kern_os!(temp_out,
-                       A[1], A[2], S[1], S[2],
-                       outsize, os_nffts)
-        _conv_fft!(out, [temp_out, A[3:end]...])
+        if length(A) > 2
+            temp_size = S[1] .+ S[2] .- 1
+            temp_out = _conv_similar((A[1], A[2]), temp_size)
+            unsafe_conv_kern_os!(temp_out,
+                                 A[1], A[2], S[1], S[2],
+                                 temp_size, os_nffts)
+            _conv_fft!(out,
+                       [temp_out, A[3:end]...], [size(temp_out), S[3:end]...],
+                       outsize)
+        else
+            unsafe_conv_kern_os!(out,
+                                 A[1], A[2], S[1], S[2],
+                                 outsize, os_nffts)
+        end
     else
         nffts = nextfastfft(outsize)
         _conv_kern_fft!(out, A, outsize, nffts)
@@ -567,11 +576,9 @@ end
 
 
 # For arrays with weird offsets
-function _conv_similar(u, outsize, axes)
-    out_offsets = .+([first.(ax) for ax in axes])
-    out_axes = UnitRange.(out_offsets,
-                          convert.(Int, out_offsets .+ outsize
-                                   .- (length(outsize) -1)))
+function _conv_similar(u, outsize, axes...)
+    out_offsets = .+([first.(ax) for ax in axes]...)
+    out_axes = UnitRange.(out_offsets, out_offsets .+ outsize .- 1)
     similar(u, out_axes)
 end
 
@@ -591,17 +598,18 @@ end
 
 # Does convolution, will not switch argument order
 function _conv(A, S)
-    outsize = .+([prod(s) for s in S]...) - (length(S) -1)
+    outsize = .+(S...) .- (length(S) - 1)
     out = _conv_similar(A, outsize)
     _conv!(out, A, S, outsize)
 end
 
 # May switch argument order
 """
-    conv(u,v)
+    conv(u, v, ...)
 
 Convolution of two arrays. Uses either FFT convolution or overlap-save,
-depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
+depending on the size of the input. Accepts any number of arrays to convolve 
+together can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
 function conv(A::AbstractArray...)
