@@ -475,7 +475,7 @@ end
 function _conv_fft!(out, A, S, outsize)
     os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
     if any(os_nffts .< outsize)
-        temp_out = _conv_similar(A[1], A[2], S[1] .+ S[2] -1)
+        temp_out = _conv_similar(A[1], A[2], S[1] .+ S[2] .- 1)
         _conv_kern_os!(temp_out,
                        A[1], A[2], S[1], S[2],
                        outsize, os_nffts)
@@ -490,8 +490,9 @@ end
 # For arrays with weird offsets
 function _conv_similar(u, outsize, axes)
     out_offsets = .+([first.(ax) for ax in axes])
-    out_axes = UnitRange.(out_offsets, out_offsets .+ outsize
-                          .- (length(outsize) -1))
+    out_axes = UnitRange.(out_offsets,
+                          convert.(Int, out_offsets .+ outsize
+                                   .- (length(outsize) -1)))
     similar(u, out_axes)
 end
 
@@ -528,8 +529,10 @@ function conv(A::AbstractArray...)
     maxnd = max([ndims(a) for a in A]...)
     return conv([cat(a, dims=maxnd) for a in A]...)
 end
-conv(A::AbstractArray{<:Union{Complex{<:Number}, <:Number}, N}) where {N} =
-    conv(promote(A...)...)
+# TODO: not the most concise notation, make base julia issue?
+conv(A::Union{AbstractArray{Complex{<:Number}, N},
+                AbstractArray{<:Number, N}}...) where {N} =
+                    conv(promote(A...)...)
 conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
     sizes = [size(a) for a in A]
