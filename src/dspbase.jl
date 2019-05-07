@@ -553,9 +553,9 @@ end
 
 function _conv_fft!(out, A, S, outsize)
     os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
-    if any(os_nffts .< outsize)
+    temp_size = S[1] .+ S[2] .- 1
+    if any(os_nffts .< temp_size)
         if length(A) > 2
-            temp_size = S[1] .+ S[2] .- 1
             temp_out = _conv_similar((A[1], A[2]), temp_size)
             unsafe_conv_kern_os!(temp_out,
                                  A[1], A[2], S[1], S[2],
@@ -628,7 +628,7 @@ function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
 end
 
 
-
+# TODO: deprecationwarning
 # """
 #     conv(u,v,A)
 
