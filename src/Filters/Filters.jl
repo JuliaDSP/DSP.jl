@@ -4,7 +4,7 @@ using Polynomials, ..Util
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
-import ..DSP: filt, filt!
+import ..DSP: filt, filt!, SMALL_FILT_CUTOFF
 using FFTW
 
 include("coefficients.jl")
