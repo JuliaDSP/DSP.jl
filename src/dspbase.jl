@@ -546,7 +546,7 @@ end
 
 # v should be smaller than u for good performance
 function _conv_fft!(out, u, v, su, sv, outsize)
-    os_nffts = map((nv, nu)-> optimalfftfiltlength(nv, nu), sv, su)
+    os_nffts = map(optimalfftfiltlength, sv, su)
     if any(os_nffts .< outsize)
         unsafe_conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
     else
