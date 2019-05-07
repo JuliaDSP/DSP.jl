@@ -175,17 +175,15 @@ output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
 """
 function optimalfftfiltlength(nb, nx)
     nfull = nb + nx - 1
-    # Swap inputs if necessary to make nv the smaller of the two
-    nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
 
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
-    first_pow2 = ceil(Int, log2(nv))
+    first_pow2 = ceil(Int, log2(nb))
     prev_pow2 = ceil(Int, log2(nfull))
-    prev_complexity = os_fft_complexity(2 ^ first_pow2, nv)
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
     pow2 = first_pow2 + 1
     while pow2 <= prev_pow2
-        new_complexity = os_fft_complexity(2 ^ pow2, nv)
+        new_complexity = os_fft_complexity(2 ^ pow2, nb)
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
@@ -193,8 +191,8 @@ function optimalfftfiltlength(nb, nx)
     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
     # L is the number of usable samples produced by each block
-    L = nfft - nv + 1
-    if L > nu
+    L = nfft - nb + 1
+    if L > nx
         # If L > nx, better to find next fast power
         nfft = nextfastfft(nfull)
     end
@@ -546,8 +544,9 @@ function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
+# v should be smaller than u for good performance
 function _conv_fft!(out, u, v, su, sv, outsize)
-    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), su, sv)
+    os_nffts = map((nv, nu)-> optimalfftfiltlength(nv, nu), sv, su)
     if any(os_nffts .< outsize)
         unsafe_conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
     else

@@ -36,6 +36,8 @@ end
 
 @testset "conv" begin
 
+    @test optimalfftfiltlength(3, 1) == 3 # Should be at least the first input
+
     @testset "conv-1D" begin
         # Convolution
         a = [1, 2, 1, 2]
@@ -216,6 +218,9 @@ end
         for (nsmall, nfft) in adversarial_nsmall_nfft
             test_os(Float64, nlarge, nsmall, Val{1}(), nfft)
         end
+
+        # Should not bug:
+        conv(zeros(4, 7, 1), zeros(3, 3, 3))
 
         # three blocks need to be padded in the following case:
         test_os(Float64, 25, 4, Val{1}(), 16)
