@@ -136,7 +136,7 @@ end
         function compare_to_naive(arrs...)
             function ncv(arrs...)
                 if length(arrs) == 1
-                    arrs
+                    arrs[1]
                 else
                     ncv(conv(arrs[1], arrs[2]), arrs[3:end]...)
                 end
