@@ -158,6 +158,9 @@ end
                          15 16 17 18 19 20 21;
                          22 23 24 25 26 27 28])
         compare_to_naive(u, transpose(v), A, fu, fv, fA, fexp)
+        compare_to_naive(u, transpose(v), A, fu, fv, fA, fexp)
+        compare_to_naive(u, v, A)
+        compare_to_naive(fu, fv, fA)
     end
 
     @testset "conv-ND" begin
