@@ -514,85 +514,85 @@ end
 
 # May switch argument order
 
-
-
 function _conv_kern_fft!(out,
-                         A::NTuple{<:Any, AbstractArray{T, N}},
+                         u::AbstractArray{T, N},
+                         v::AbstractArray{T, N},
+                         su,
+                         sv,
                          outsize,
                          nffts) where {T<:Real, N}
-    padded = _zeropad(A[1], nffts)
-    p = plan_rfft(padded) 
-    ftA = p * padded
-    for a in A[2:end]
-        _zeropad!(padded, a)
-        ftA .*= p * padded
-    end
-    raw_out = irfft(ftA, nffts[1])
+    padded = _zeropad(u, nffts)
+    p = plan_rfft(padded)
+    uf = p * padded
+    _zeropad!(padded, v)
+    vf = p * padded
+    uf .*= vf
+    raw_out = irfft(uf, nffts[1])
     copyto!(out,
             CartesianIndices(out),
             raw_out,
             CartesianIndices(UnitRange.(1, outsize)))
 end
-
-function _conv_kern_fft!(out, A::NTuple{<:Any, AbstractArray{T, N}},
-                         outsize, nffts) where {T<:Complex{<:Real}, N}
-    Apad = [_zeropad(a, nffts) for a in A]
-    p! = plan_fft!(Apad[1])
-    for a in Apad
-        p! * a
-    end
-    Apad[1] .*= .*(Apad[2:end]...)
-    ifft!(Apad[1])
+function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
+    upad = _zeropad(u, nffts)
+    vpad = _zeropad(v, nffts)
+    p! = plan_fft!(upad)
+    p! * upad # Operates in place on upad
+    p! * vpad
+    upad .*= vpad
+    ifft!(upad)
     copyto!(out,
             CartesianIndices(out),
-            Apad[1],
+            upad,
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
-
-function _conv_fft!(out, A::Tuple{<:AbstractArray, <:AbstractArray}, S, outsize)
-    os_nffts = map(optimalfftfiltlength, S[2], S[1])
+# v should be smaller than u for good performance
+function _conv_fft!(out, u, v, su, sv, outsize)
+    os_nffts = map(optimalfftfiltlength, sv, su)
     if any(os_nffts .< outsize)
-        unsafe_conv_kern_os!(out, A[1], A[2], S[1], S[2], outsize, os_nffts)
+        unsafe_conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
     else
         nffts = nextfastfft(outsize)
-        _conv_kern_fft!(out, A, outsize, nffts)
+        _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
     end
-end
-    
-# A should be in ascending order of size for best performance
-function _conv_fft!(out, A, S, outsize)
-    nffts = nextfastfft(outsize)
-    _conv_kern_fft!(out, A, outsize, nffts)
 end
 
 
 # For arrays with weird offsets
-function _conv_similar(u, outsize, axes...)
-    out_offsets = .+([first.(ax) for ax in axes]...)
+function _conv_similar(u, outsize, axesu, axesv)
+    out_offsets = first.(axesu) .+ first.(axesv)
     out_axes = UnitRange.(out_offsets, out_offsets .+ outsize .- 1)
     similar(u, out_axes)
 end
-
-# what is the point of these
 function _conv_similar(
-    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}...)
+    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}, ::NTuple{<:Any, Base.OneTo{Int}}
+)
     similar(u, outsize)
 end
-_conv_similar(A, outsize) = _conv_similar(A[1], outsize,
-                                          [axes(u) for u in A]...)
+_conv_similar(u, v, outsize) = _conv_similar(u, outsize, axes(u), axes(v))
 
 # Does convolution, will not switch argument order
-function _conv!(out, A, S, outsize)
+function _conv!(out, u, v, su, sv, outsize)
     # TODO: Add spatial / time domain algorithm
-    _conv_fft!(out, A, S, outsize)
+    _conv_fft!(out, u, v, su, sv, outsize)
 end
 
 # Does convolution, will not switch argument order
-function _conv(A, S)
-    outsize = .+(S...) .- (length(S) - 1)
-    out = _conv_similar(A, outsize)
-    _conv!(out, A, S, outsize)
+function _conv(u, v, su, sv)
+    outsize = su .+ sv .- 1
+    out = _conv_similar(u, v, outsize)
+    return _conv!(out, u, v, su, sv, outsize), outsize
+end
+
+
+function _conv_recurse(A::Tuple{AbstractArray, AbstractArray}, S)
+    return _conv(A..., S...)[1]
+end
+
+function _conv_recurse(A, S)
+    convout, shp = _conv(A[1], A[2], S[1], S[2])
+    return _conv_recurse((convout, A[3:end]...), (shp, S[3:end]...))
 end
 
 # May switch argument order
@@ -614,9 +614,10 @@ conv(A::Union{AbstractArray{Complex{<:Number}, N},
                     conv(promote(A...)...)
 conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
+       
     sizes = [size(a) for a in A]
     order = reverse(sortperm([prod(s) for s in sizes]))
-    _conv(A[order], sizes[order])
+    _conv_recurse(A[order], sizes[order])
 end
 
 
