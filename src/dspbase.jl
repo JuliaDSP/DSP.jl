@@ -175,17 +175,15 @@ output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
 """
 function optimalfftfiltlength(nb, nx)
     nfull = nb + nx - 1
-    # Swap inputs if necessary to make nv the smaller of the two
-    nv, nu = ifelse(nb <= nx, (nb, nx), (nx, nb))
 
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
-    first_pow2 = ceil(Int, log2(nv))
+    first_pow2 = ceil(Int, log2(nb))
     prev_pow2 = ceil(Int, log2(nfull))
-    prev_complexity = os_fft_complexity(2 ^ first_pow2, nv)
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
     pow2 = first_pow2 + 1
     while pow2 <= prev_pow2
-        new_complexity = os_fft_complexity(2 ^ pow2, nv)
+        new_complexity = os_fft_complexity(2 ^ pow2, nb)
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
@@ -193,8 +191,8 @@ function optimalfftfiltlength(nb, nx)
     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
     # L is the number of usable samples produced by each block
-    L = nfft - nv + 1
-    if L > nu
+    L = nfft - nb + 1
+    if L > nx
         # If L > nx, better to find next fast power
         nfft = nextfastfft(nfull)
     end
@@ -322,7 +320,7 @@ function unsafe_conv_kern_os_edge!(
         # on an edge.
         #
         # First make all entries equal to the center blocks:
-        @inbounds copyto!(perimeter_range, 1, center_block_ranges, 1, N)
+        copyto!(perimeter_range, 1, center_block_ranges, 1, N)
 
         # For the dimensions chosen to be on an edge (edge_dims), get the
         # ranges of the blocks that would need to be padded (lie on an edge)
@@ -341,7 +339,7 @@ function unsafe_conv_kern_os_edge!(
             # The center region for non-edge dimensions has been specified above,
             # so finish specifying the region of the perimeter for this edge
             # block
-            @inbounds for (i, dim) in enumerate(edge_dims)
+            for (i, dim) in enumerate(edge_dims)
                 perimeter_range[dim] = perimeter_edge_ranges[i]
             end
 
@@ -349,7 +347,7 @@ function unsafe_conv_kern_os_edge!(
             block_region = CartesianIndices(
                 NTuple{N, UnitRange{Int}}(perimeter_range)
             )
-            @inbounds for block_pos in block_region
+            for block_pos in block_region
                 # Figure out which portion of the input data should be transformed
 
                 block_idx = convert(NTuple{N, Int}, block_pos)
@@ -485,7 +483,7 @@ function unsafe_conv_kern_os!(out,
     # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
     # Iterate over block indices (not data indices) that do not need to be padded
-    @inbounds for block_pos in CartesianIndices(center_block_ranges)
+    for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
 
         block_idx = convert(NTuple{N, Int}, block_pos)
@@ -551,23 +549,29 @@ function _conv_kern_fft!(out, A::NTuple{<:Any, AbstractArray{T, N}},
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
+
+function _conv_fft(out, A::Tuple{AbstractArray, AbstractArray}, S, outsize)
+    os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
+    if any(os_nffts .< outsize)
+        unsafe_conv_kern_os!(out, A[1], A[2], S[1], S[2], outsize, os_nffts)
+    else
+        nffts = nextfastfft(outsize)
+        _conv_kern_fft!(out, A, outsize, nffts)
+    end
+end
+    
+# A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
     os_nffts = map((nu, nv)-> optimalfftfiltlength(nu, nv), S[1], S[2])
     temp_size = S[1] .+ S[2] .- 1
     if any(os_nffts .< temp_size)
-        if length(A) > 2
-            temp_out = _conv_similar((A[1], A[2]), temp_size)
-            unsafe_conv_kern_os!(temp_out,
-                                 A[1], A[2], S[1], S[2],
-                                 temp_size, os_nffts)
-            _conv_fft!(out,
-                       [temp_out, A[3:end]...], [size(temp_out), S[3:end]...],
-                       outsize)
-        else
-            unsafe_conv_kern_os!(out,
-                                 A[1], A[2], S[1], S[2],
-                                 outsize, os_nffts)
-        end
+        temp_out = _conv_similar((A[1], A[2]), temp_size)
+        unsafe_conv_kern_os!(temp_out,
+                             A[1], A[2], S[1], S[2],
+                             temp_size, os_nffts)
+        _conv_fft!(out,
+                   [temp_out, A[3:end]...], [size(temp_out), S[3:end]...],
+                   outsize)
     else
         nffts = nextfastfft(outsize)
         _conv_kern_fft!(out, A, outsize, nffts)
