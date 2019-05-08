@@ -218,7 +218,7 @@ end
             unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
             os_out = copy(out)
             fft_nfft = nextfastfft(sout)
-            _conv_kern_fft!(out, u, v, su, sv, sout, fft_nfft)
+            _conv_kern_fft!(out, (u, v), sout, fft_nfft)
             @test out ≈ os_out
         end
         Ns = [1, 2, 3]

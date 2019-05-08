@@ -562,20 +562,8 @@ end
     
 # A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
-    os_nffts = map(optimalfftfiltlength, S[2], S[1])
-    temp_size = S[1] .+ S[2] .- 1
-    if any(os_nffts .< temp_size)
-        temp_out = _conv_similar((A[1], A[2]), temp_size)
-        unsafe_conv_kern_os!(temp_out,
-                             A[1], A[2], S[1], S[2],
-                             temp_size, os_nffts)
-        _conv_fft!(out,
-                   (temp_out, A[3:end]...), (size(temp_out), S[3:end]...),
-                   outsize)
-    else
-        nffts = nextfastfft(outsize)
-        _conv_kern_fft!(out, A, outsize, nffts)
-    end
+    nffts = nextfastfft(outsize)
+    _conv_kern_fft!(out, A, outsize, nffts)
 end
 
 
