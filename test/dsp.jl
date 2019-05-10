@@ -219,7 +219,7 @@ end
             sv, v = os_test_data(eltype, nv, N)
             sout = su .+ sv .- 1
             out = _conv_similar(u, sout, axes(u), axes(v))
-            unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
+            unsafe_conv_kern_os!(out, u, v, (), su, sv, sout, nffts)
             os_out = copy(out)
             fft_nfft = nextfastfft(sout)
             _conv_kern_fft!(out, (u, v), sout, fft_nfft)

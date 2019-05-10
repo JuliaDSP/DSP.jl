@@ -173,17 +173,18 @@ os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 Determine the length of FFT that minimizes the number of multiplications per
 output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
 """
-function optimalfftfiltlength(nb, nx)
-    nfull = nb + nx - 1
+
+function optimalfftfiltlength(N...)
+    nfull = +(N...) - (length(N) -1)
 
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
-    first_pow2 = ceil(Int, log2(nb))
+    first_pow2 = ceil(Int, log2(N[1]))
     prev_pow2 = ceil(Int, log2(nfull))
-    prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, N[1])
     pow2 = first_pow2 + 1
     while pow2 <= prev_pow2
-        new_complexity = os_fft_complexity(2 ^ pow2, nb)
+        new_complexity = os_fft_complexity(2 ^ pow2, N[1])
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
@@ -191,8 +192,8 @@ function optimalfftfiltlength(nb, nx)
     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
     # L is the number of usable samples produced by each block
-    L = nfft - nb + 1
-    if L > nx
+
+    if nfft > nfull 
         # If L > nx, better to find next fast power
         nfft = nextfastfft(nfull)
     end
@@ -231,12 +232,14 @@ end
 Transform the smaller convolution input to frequency domain, and return it in a
 new array. However, the contents of `buff` may be modified.
 """
-@inline function os_filter_transform!(buff::AbstractArray{<:Real}, p)
-    p * buff
+@inline function os_filter_transform!(A::NTuple{<:Any, AbstractArray{<:Real}}, p)
+    fA = (p * a for a in A)
+    .*(fA...)
 end
 
-@inline function os_filter_transform!(buff::AbstractArray{<:Complex}, p!)
-    copy(p! * buff) # p operates in place on buff
+@inline function os_filter_transform!(A::NTuple{<:Any, AbstractArray{<:Complex}}, p!)
+    fA = (copy(p! * a) for a in A) # p operates in place on buff
+    .*(fA...)
 end
 
 """
@@ -245,7 +248,7 @@ may modify the contents of `tdbuff` and `fdbuff`, and the result will be in
 `tdbuff`.
 """
 @inline function os_conv_block!(tdbuff::AbstractArray{<:Real},
-                                fdbuff::AbstractArray,
+                                fdbuff::AbstractArray,                                
                                 filter_fd,
                                 p,
                                 ip)
@@ -396,12 +399,13 @@ end
 
 # Assumes u is larger than, or the same size as, v
 function unsafe_conv_kern_os!(out,
-                        u::AbstractArray{<:Any, N},
-                        v,
-                        su,
-                        sv,
-                        sout,
-                        nffts) where N
+                              u::AbstractArray{<:Any, N},
+                              v,
+                              A,
+                              su,
+                              sv,
+                              sout,
+                              nffts) where N
     u_start = first.(axes(u))
     out_axes = axes(out)
     out_start = first.(out_axes)
@@ -419,7 +423,7 @@ function unsafe_conv_kern_os!(out,
 
     # Transform the smaller filter
     _zeropad!(tdbuff, v)
-    filter_fd = os_filter_transform!(tdbuff, p)
+    filter_fd = os_filter_transform!((tdbuff, A...), p)
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
     last_full_blocks = fld.(su, save_blocksize)
@@ -514,85 +518,92 @@ end
 
 # May switch argument order
 
+
+
 function _conv_kern_fft!(out,
-                         u::AbstractArray{T, N},
-                         v::AbstractArray{T, N},
-                         su,
-                         sv,
+                         A::NTuple{<:Any, AbstractArray{T, N}},
                          outsize,
                          nffts) where {T<:Real, N}
-    padded = _zeropad(u, nffts)
-    p = plan_rfft(padded)
-    uf = p * padded
-    _zeropad!(padded, v)
-    vf = p * padded
-    uf .*= vf
-    raw_out = irfft(uf, nffts[1])
+    padded = _zeropad(A[1], nffts)
+    p = plan_rfft(padded) 
+    ftA = p * padded
+    for a in A[2:end]
+        _zeropad!(padded, a)
+        ftA .*= p * padded
+    end
+    raw_out = irfft(ftA, nffts[1])
     copyto!(out,
             CartesianIndices(out),
             raw_out,
             CartesianIndices(UnitRange.(1, outsize)))
 end
-function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
-    upad = _zeropad(u, nffts)
-    vpad = _zeropad(v, nffts)
-    p! = plan_fft!(upad)
-    p! * upad # Operates in place on upad
-    p! * vpad
-    upad .*= vpad
-    ifft!(upad)
+
+function _conv_kern_fft!(out, A::NTuple{<:Any, AbstractArray{T, N}},
+                         outsize, nffts) where {T<:Complex{<:Real}, N}
+    Apad = [_zeropad(a, nffts) for a in A]
+    p! = plan_fft!(Apad[1])
+    for a in Apad
+        p! * a
+    end
+    Apad[1] .*= .*(Apad[2:end]...)
+    ifft!(Apad[1])
     copyto!(out,
             CartesianIndices(out),
-            upad,
+            Apad[1],
             CartesianIndices(UnitRange.(1, outsize)))
 end
 
-# v should be smaller than u for good performance
-function _conv_fft!(out, u, v, su, sv, outsize)
-    os_nffts = map(optimalfftfiltlength, sv, su)
+
+function _conv_fft!(out, A::Tuple{<:AbstractArray, <:AbstractArray}, S, outsize)
+    os_nffts = map(optimalfftfiltlength, S[2], S[1])
     if any(os_nffts .< outsize)
-        unsafe_conv_kern_os!(out, u, v, su, sv, outsize, os_nffts)
+        unsafe_conv_kern_os!(out, A[1], A[2], (), S[1], S[2], outsize, os_nffts)
     else
         nffts = nextfastfft(outsize)
-        _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
+        _conv_kern_fft!(out, A, outsize, nffts)
+    end
+end
+    
+# A should be in ascending order of size for best performance
+function _conv_fft!(out, A, S, outsize)
+    os_nffts = map(optimalfftfiltlength, S...)
+    if any(os_nffts .< outsize)
+        unsafe_conv_kern_os!(out,
+                             A[1], A[2], A[3:end], S[1], S[2],
+                             outsize, os_nffts)
+    else
+        nffts = nextfastfft(outsize)
+        _conv_kern_fft!(out, A, outsize, nffts)
     end
 end
 
 
 # For arrays with weird offsets
-function _conv_similar(u, outsize, axesu, axesv)
-    out_offsets = first.(axesu) .+ first.(axesv)
+function _conv_similar(u, outsize, axes...)
+    out_offsets = .+([first.(ax) for ax in axes]...)
     out_axes = UnitRange.(out_offsets, out_offsets .+ outsize .- 1)
     similar(u, out_axes)
 end
+
+# what is the point of these
 function _conv_similar(
-    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}, ::NTuple{<:Any, Base.OneTo{Int}}
-)
+    u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}...)
     similar(u, outsize)
 end
-_conv_similar(u, v, outsize) = _conv_similar(u, outsize, axes(u), axes(v))
+_conv_similar(A, outsize) = _conv_similar(A[1], outsize,
+                                          [axes(u) for u in A]...)
 
 # Does convolution, will not switch argument order
-function _conv!(out, u, v, su, sv, outsize)
+function _conv!(out, A, S, outsize)
     # TODO: Add spatial / time domain algorithm
-    _conv_fft!(out, u, v, su, sv, outsize)
+    _conv_fft!(out, A, S, outsize)
 end
 
 # Does convolution, will not switch argument order
-function _conv(u, v, su, sv)
-    outsize = su .+ sv .- 1
-    out = _conv_similar(u, v, outsize)
-    return _conv!(out, u, v, su, sv, outsize), outsize
-end
-
-
-function _conv_recurse(A::Tuple{AbstractArray, AbstractArray}, S)
-    return _conv(A..., S...)[1]
-end
-
-function _conv_recurse(A, S)
-    convout, shp = _conv(A[1], A[2], S[1], S[2])
-    return _conv_recurse((convout, A[3:end]...), (shp, S[3:end]...))
+function _conv(A, S)
+    outsize = .+(S...) .- (length(S) - 1)
+    out = _conv_similar(A, outsize)
+    _conv!(out, A, S, outsize)
 end
 
 # May switch argument order
@@ -614,37 +625,19 @@ conv(A::Union{AbstractArray{Complex{<:Number}, N},
                     conv(promote(A...)...)
 conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
-       
     sizes = [size(a) for a in A]
     order = reverse(sortperm([prod(s) for s in sizes]))
-    _conv_recurse(A[order], sizes[order])
+    _conv(A[order], sizes[order])
 end
 
 
-# TODO: deprecationwarning
-# """
-#     conv(u,v,A)
-
-# 2-D convolution of the matrix `A` with the 2-D separable kernel generated by
-# the vectors `u` and `v`.
-# Uses 2-D FFT algorithm.
-# """
-# function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
-#     # Arbitrary indexing offsets not implemented
-#     @assert !Base.has_offset_axes(u, v, A)
-#     m = length(u)+size(A,1)-1
-#     n = length(v)+size(A,2)-1
-#     B = zeros(T, m, n)
-#     B[1:size(A,1),1:size(A,2)] = A
-#     u = fft([u;zeros(T,m-length(u))])
-#     v = fft([v;zeros(T,n-length(v))])
-#     C = ifft(fft(B) .* (u * transpose(v)))
-#     if T <: Real
-#         return real(C)
-#     end
-#     return C
-# end
-
+# warn about old conv(u, v, A)
+function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
+    @warn "seperable convolution as conv(u::Vector, v::Vector, A::Matrix) is "\
+    "no longer supported, use conv(u, transpose(v), A ) if that is what"\
+    "you intend"
+    conv(cat(u, dims=2), cat(v, dims=2), A)
+end
 
 function check_padmode_kwarg(padmode::Symbol, su::Integer, sv::Integer)
     if padmode == :default_longest
