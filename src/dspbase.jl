@@ -174,17 +174,17 @@ Determine the length of FFT that minimizes the number of multiplications per
 output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
 """
 
-function optimalfftfiltlength(N...)
-    nfull = +(N...) - (length(N) -1)
+function optimalfftfiltlength(nb, nx)
+    nfull = nb + nx - 1
 
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
-    first_pow2 = ceil(Int, log2(N[1]))
+    first_pow2 = ceil(Int, log2(nb))
     prev_pow2 = ceil(Int, log2(nfull))
-    prev_complexity = os_fft_complexity(2 ^ first_pow2, N[1])
+    prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
     pow2 = first_pow2 + 1
     while pow2 <= prev_pow2
-        new_complexity = os_fft_complexity(2 ^ pow2, N[1])
+        new_complexity = os_fft_complexity(2 ^ pow2, nb)
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
@@ -192,14 +192,42 @@ function optimalfftfiltlength(N...)
     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
     # L is the number of usable samples produced by each block
-
-    if nfft > nfull 
+    L = nfft - nb + 1
+    if L > nx
+        # if nfft > nfull
         # If L > nx, better to find next fast power
         nfft = nextfastfft(nfull)
     end
 
     nfft
 end
+
+# function optimalfftfiltlength(N...)
+#     nfull = +(N...) - (length(N) -1)
+
+#     # Step through possible nffts and find the nfft that minimizes complexity
+#     # Assumes that complexity is convex
+#     first_pow2 = ceil(Int, log2(N[1]))
+#     prev_pow2 = ceil(Int, log2(nfull))
+#     prev_complexity = os_fft_complexity(2 ^ first_pow2, N[1])
+#     pow2 = first_pow2 + 1
+#     while pow2 <= prev_pow2
+#         new_complexity = os_fft_complexity(2 ^ pow2, N[1])
+#         new_complexity > prev_complexity && break
+#         prev_complexity = new_complexity
+#         pow2 += 1
+#     end
+#     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
+
+#     # L is the number of usable samples produced by each block
+
+#     if nfft > nfull 
+#         # If L > nx, better to find next fast power
+#         nfft = nextfastfft(nfull)
+#     end
+
+#     nfft
+# end
 
 """
 Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
@@ -423,7 +451,9 @@ function unsafe_conv_kern_os!(out,
 
     # Transform the smaller filter
     _zeropad!(tdbuff, v)
-    filter_fd = os_filter_transform!((tdbuff, A...), p)
+    filter_fd = os_filter_transform!((tdbuff,
+                                      (_zeropad(a, size(tdbuff))
+                                       for a in A)...), p)
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
     last_full_blocks = fld.(su, save_blocksize)
@@ -566,7 +596,10 @@ end
     
 # A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
-    os_nffts = map(optimalfftfiltlength, S...)
+    max(v...) = maximum(v)
+    sx = map(max, S[2:end]...)
+    os_nffts = map(optimalfftfiltlength, sx, S[1])
+    print(os_nffts)
     if any(os_nffts .< outsize)
         unsafe_conv_kern_os!(out,
                              A[1], A[2], A[3:end], S[1], S[2],
