@@ -3,6 +3,8 @@
 import Base.trailingsize
 import LinearAlgebra.BLAS
 
+const SMALL_FILT_CUTOFF = 58
+
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
 """
@@ -66,6 +68,8 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         si = initial_si[:, N > 1 ? col : 1]
         if as > 1
             _filt_iir!(out, b, a, x, si, col)
+        elseif bs <= SMALL_FILT_CUTOFF
+            _small_filt_fir!(out, b, x, si, col)
         else
             _filt_fir!(out, b, x, si, col)
         end
@@ -73,29 +77,78 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     return out
 end
 
+# Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
     silen = length(si)
     @inbounds for i=1:size(x, 1)
         xi = x[i,col]
-        val = si[1] + b[1]*xi
+        val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
-            si[j] = si[j+1] + b[j+1]*xi - a[j+1]*val
+            si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
-        si[silen] = b[silen+1]*xi - a[silen+1]*val
+        si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
         out[i,col] = val
     end
 end
 
+# Transposed direct form II
 function _filt_fir!(out, b, x, si, col)
     silen = length(si)
     @inbounds for i=1:size(x, 1)
         xi = x[i,col]
-        val = si[1] + b[1]*xi
+        val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
-            si[j] = si[j+1] + b[j+1]*xi
+            si[j] = muladd(xi, b[j+1], si[j+1])
         end
         si[silen] = b[silen+1]*xi
         out[i,col] = val
+    end
+end
+
+#
+# filt implementation for FIR filters (faster than Base)
+#
+
+for n = 2:SMALL_FILT_CUTOFF
+    silen = n-1
+    si = [Symbol("si$i") for i = 1:silen]
+    # Transposed direct form II
+    @eval function _filt_fir!(out, b::NTuple{$n,T}, x, siarr, col) where {T}
+        offset = (col - 1) * size(x, 1)
+
+        $(Expr(:block, [:(@inbounds $(si[i]) = siarr[$i]) for i = 1:silen]...))
+        @inbounds for i=1:size(x, 1)
+            xi = x[i+offset]
+            val = muladd(xi, b[1], $(si[1]))
+            $(Expr(:block, [:($(si[j]) = muladd(xi, b[$(j+1)], $(si[j+1]))) for j = 1:(silen-1)]...))
+            $(si[silen]) = b[$(silen+1)]*xi
+            out[i+offset] = val
+        end
+    end
+end
+
+# Convert array filter tap input to tuple for small-filtering
+let chain = :(throw(ArgumentError("invalid tuple size")))
+    for n = SMALL_FILT_CUTOFF:-1:2
+        chain = quote
+            if length(h) == $n
+                _filt_fir!(
+                    out,
+                    ($([:(@inbounds(h[$i])) for i = 1:n]...),),
+                    x,
+                    si,
+                    col
+                )
+            else
+                $chain
+            end
+        end
+    end
+
+    @eval function _small_filt_fir!(
+        out::AbstractArray, h::AbstractVector{T}, x::AbstractArray, si, col
+    ) where T
+        $chain
     end
 end
 
