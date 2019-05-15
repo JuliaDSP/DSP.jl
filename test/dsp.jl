@@ -59,8 +59,6 @@ end
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
-        conv(zeros(25), zeros(4))
-
         offset_arr = OffsetArray{Int}(undef, -1:2)
         offset_arr[:] = a
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
