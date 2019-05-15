@@ -50,27 +50,6 @@ using Statistics: mean
 end
 
 @testset "fft helpers" begin
-    ## FFTFREQ
-    @test fftfreq(1) ≈ [0.]
-    @test fftfreq(2) ≈ [0., -1/2]
-    @test fftfreq(2, 1/2) ≈ [0., -1/4]
-    @test fftfreq(3) ≈ [0., 1/3, -1/3]
-    @test fftfreq(3, 1/2) ≈ [0., 1/6, -1/6]
-    @test fftfreq(6) ≈ [0., 1/6, 1/3, -1/2, -1/3, -1/6]
-    @test fftfreq(7) ≈ [0., 1/7, 2/7, 3/7, -3/7, -2/7, -1/7]
-
-    @test rfftfreq(1) ≈ [0.]
-    @test rfftfreq(2) ≈ [0., 1/2]
-    @test rfftfreq(2, 1/2) ≈ [0., 1/4]
-    @test rfftfreq(3) ≈ [0., 1/3]
-    @test rfftfreq(3, 1/2) ≈ [0., 1/6]
-    @test rfftfreq(6) ≈ [0., 1/6, 1/3, 1/2]
-    @test rfftfreq(7) ≈ [0., 1/7, 2/7, 3/7]
-
-    for n = 1:7
-        @test fftshift(fftfreq(n)) ≈ fftshift([fftfreq(n);])
-    end
-
     @test meanfreq(sin.(2*π*10*(0:1e-3:10*π)),1e3) ≈ 10.0 rtol=1e-3
 
     # nextfastfft

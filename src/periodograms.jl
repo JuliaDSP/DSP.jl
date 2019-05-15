@@ -6,6 +6,7 @@ using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 using FFTW
+import FFTW: Frequencies, fftfreq, rfftfreq
 
 ## ARRAY SPLITTER
 
@@ -218,11 +219,11 @@ See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
 FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
-    Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
+    Periodogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
 FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
 FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
-    Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
+    Periodogram2(p.freq1.n_nonnegative == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
 FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
 FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
@@ -442,7 +443,7 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
     time::FloatRange{Float64}
 end
 FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
-    Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
+    Spectrogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
 FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
 
 """
