@@ -6,6 +6,7 @@ using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
        spectrogram, power, freq, stft
 using FFTW
+import FFTW: Frequencies, fftfreq, rfftfreq
 
 ## ARRAY SPLITTER
 

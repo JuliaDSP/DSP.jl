@@ -108,6 +108,9 @@ fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
+@deprecate Frequencies(nreal::Int, n::Int, multiplier::Float64) FFTW.Frequencies(nreal, n, multiplier)
+@deprecate fftfreq(n::Int, fs::Real=1) FFTW.fftfreq(n, fs)
+@deprecate rfftfreq(n::Int, fs::Real=1) FFTW.rfftfreq(n, fs)
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]

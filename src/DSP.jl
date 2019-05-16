@@ -19,6 +19,7 @@ include("lpc.jl")
 include("estimation.jl")
 
 using Reexport
+import .Util: Frequencies, fftfreq, rfftfreq
 @reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation
 
 include("deprecated.jl")
