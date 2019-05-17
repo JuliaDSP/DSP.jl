@@ -202,32 +202,6 @@ function optimalfftfiltlength(nb, nx)
     nfft
 end
 
-# function optimalfftfiltlength(N...)
-#     nfull = +(N...) - (length(N) -1)
-
-#     # Step through possible nffts and find the nfft that minimizes complexity
-#     # Assumes that complexity is convex
-#     first_pow2 = ceil(Int, log2(N[1]))
-#     prev_pow2 = ceil(Int, log2(nfull))
-#     prev_complexity = os_fft_complexity(2 ^ first_pow2, N[1])
-#     pow2 = first_pow2 + 1
-#     while pow2 <= prev_pow2
-#         new_complexity = os_fft_complexity(2 ^ pow2, N[1])
-#         new_complexity > prev_complexity && break
-#         prev_complexity = new_complexity
-#         pow2 += 1
-#     end
-#     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
-
-#     # L is the number of usable samples produced by each block
-
-#     if nfft > nfull 
-#         # If L > nx, better to find next fast power
-#         nfft = nextfastfft(nfull)
-#     end
-
-#     nfft
-# end
 
 """
 Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
@@ -410,15 +384,38 @@ function unsafe_conv_kern_os_edge!(
                     out_start .+ data_offset .+ save_blocksize .- 1,
                     out_stop
                 )
+                # print("data offset", data_offset, "\n")
+                # print("    save blocksize", save_blocksize, "\n")
+                # print("    out stop    ", out_stop, "\n")
                 block_out_region = CartesianIndices(
                     UnitRange.(out_start .+ data_offset, block_out_stop)
                 )
+                # print("    block out stop  ", block_out_stop, "\n")
+                # print("    data offset   ", data_offset, " \n")
                 ## If the input could not fill tdbuff, account for that before
                 ## copying the convolution result to the output
                 u_deficit = max.(0, pad_after .- sv .+ 1)
+                # print("   pad after", pad_after, "\n")
                 valid_buff_region = CartesianIndices(
                     UnitRange.(sv, nffts .- u_deficit .- sout_deficit)
                 )
+                # print("    u_deficit    ", u_deficit, "\n")
+                # print("  sout_deficit   ", sout_deficit, "\n")
+                # print("     sx     ", sv)
+                # print("         valid_buf_region         ", 
+                #       #UnitRange.(sv, nffts .- u_deficit .- sout_deficit))
+                #       size(valid_buff_region))
+                # print("      block_out_region           ",
+                #       # UnitRange.(out_start .+ data_offset, block_out_stop))
+                #       size(block_out_region))
+                # print("   bor   ", block_out_region)
+                # print("   vbr   ", valid_buff_region)
+                # print("       out     ", size(out),
+                #       "       buf     ", size(tdbuff))
+                # print("   sout_deficit    ",
+                #       sout_deficit)
+                # print("   out_stop    ",
+                #       out_stop)
                 copyto!(out, block_out_region, tdbuff, valid_buff_region)
             end
         end
@@ -438,6 +435,7 @@ function unsafe_conv_kern_os!(out,
     out_axes = axes(out)
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
+    sv = sout .- su .+ 1
     ideal_save_blocksize = nffts .- sv .+ 1
     # Number of samples that are "missing" if the valid portion of the
     # convolution is smaller than the output
@@ -596,13 +594,12 @@ end
     
 # A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
-    max(v...) = maximum(v)
-    sx = map(max, S[2:end]...)
-    os_nffts = map(optimalfftfiltlength, sx, S[1])
-    print(os_nffts)
+    # max(v...) = maximum(v)
+    # sx = map(max, S[2:end]...)
+    os_nffts = map(optimalfftfiltlength, outsize .- S[1] .+ 1, S[1])
     if any(os_nffts .< outsize)
         unsafe_conv_kern_os!(out,
-                             A[1], A[2], A[3:end], S[1], S[2],
+                             A[1], A[2], A[3:end], S[1], sx,
                              outsize, os_nffts)
     else
         nffts = nextfastfft(outsize)
