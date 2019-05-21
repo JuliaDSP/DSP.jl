@@ -437,38 +437,15 @@ function unsafe_conv_kern_os_edge!(
                     out_start .+ data_offset .+ save_blocksize .- 1,
                     out_stop
                 )
-                # print("data offset", data_offset, "\n")
-                # print("    save blocksize", save_blocksize, "\n")
-                # print("    out stop    ", out_stop, "\n")
                 block_out_region = CartesianIndices(
                     UnitRange.(out_start .+ data_offset, block_out_stop)
                 )
-                # print("    block out stop  ", block_out_stop, "\n")
-                # print("    data offset   ", data_offset, " \n")
                 ## If the input could not fill tdbuff, account for that before
                 ## copying the convolution result to the output
                 u_deficit = max.(0, pad_after .- sv .+ 1)
-                # print("   pad after", pad_after, "\n")
                 valid_buff_region = CartesianIndices(
                     UnitRange.(sv, nffts .- u_deficit .- sout_deficit)
                 )
-                # print("    u_deficit    ", u_deficit, "\n")
-                # print("  sout_deficit   ", sout_deficit, "\n")
-                # print("     sx     ", sv)
-                # print("         valid_buf_region         ", 
-                #       #UnitRange.(sv, nffts .- u_deficit .- sout_deficit))
-                #       size(valid_buff_region))
-                # print("      block_out_region           ",
-                #       # UnitRange.(out_start .+ data_offset, block_out_stop))
-                #       size(block_out_region))
-                # print("   bor   ", block_out_region)
-                # print("   vbr   ", valid_buff_region)
-                # print("       out     ", size(out),
-                #       "       buf     ", size(tdbuff))
-                # print("   sout_deficit    ",
-                #       sout_deficit)
-                # print("   out_stop    ",
-                #       out_stop)
                 copyto!(out, block_out_region, tdbuff, valid_buff_region)
             end
         end
