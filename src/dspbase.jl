@@ -226,7 +226,6 @@ os_fft_complexity(nfft, nb) =  (nfft * log2(nfft) + nfft) / (nfft - nb + 1)
 Determine the length of FFT that minimizes the number of multiplications per
 output sample for an overlap-save convolution of vectors of size `nb` and `nx`.
 """
-
 function optimalfftfiltlength(nb, nx)
     nfull = nb + nx - 1
 
@@ -247,14 +246,12 @@ function optimalfftfiltlength(nb, nx)
     # L is the number of usable samples produced by each block
     L = nfft - nb + 1
     if L > nx
-        # if nfft > nfull
         # If L > nx, better to find next fast power
         nfft = nextfastfft(nfull)
     end
 
     nfft
 end
-
 
 """
 Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
@@ -303,7 +300,7 @@ may modify the contents of `tdbuff` and `fdbuff`, and the result will be in
 `tdbuff`.
 """
 @inline function os_conv_block!(tdbuff::AbstractArray{<:Real},
-                                fdbuff::AbstractArray,                                
+                                fdbuff::AbstractArray,
                                 filter_fd,
                                 p,
                                 ip)
@@ -572,16 +569,13 @@ function unsafe_conv_kern_os!(out,
 
     out
 end
-# May switch argument order
-
-
 
 function _conv_kern_fft!(out,
                          A::NTuple{<:Any, AbstractArray{T, N}},
                          outsize,
                          nffts) where {T<:Real, N}
     padded = _zeropad(A[1], nffts)
-    p = plan_rfft(padded) 
+    p = plan_rfft(padded)
     ftA = p * padded
     for a in A[2:end]
         _zeropad!(padded, a)
@@ -619,7 +613,7 @@ function _conv_fft!(out, A::Tuple{<:AbstractArray, <:AbstractArray}, S, outsize)
         _conv_kern_fft!(out, A, outsize, nffts)
     end
 end
-    
+
 # A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
     # max(v...) = maximum(v)
@@ -643,7 +637,6 @@ function _conv_similar(u, outsize, axes...)
     similar(u, out_axes)
 end
 
-# what is the point of these
 function _conv_similar(
     u, outsize, ::NTuple{<:Any, Base.OneTo{Int}}...)
     similar(u, outsize)
@@ -669,7 +662,7 @@ end
     conv(u, v, ...)
 
 Convolution of two arrays. Uses either FFT convolution or overlap-save,
-depending on the size of the input. Accepts any number of arrays to convolve 
+depending on the size of the input. Accepts any number of arrays to convolve
 together can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """

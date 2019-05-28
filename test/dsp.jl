@@ -236,7 +236,7 @@ end
             @test rconv ≈ rncv
             @test tconv < tncv
         end
-        
+
        compare_to_naive([1 2 1;
                          2 3 1;
                          1 2 1],
