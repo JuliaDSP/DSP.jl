@@ -462,7 +462,6 @@ function unsafe_conv_kern_os!(out,
     out_axes = axes(out)
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
-    sv = sout .- su .+ 1
     ideal_save_blocksize = nffts .- sv .+ 1
     # Number of samples that are "missing" if the valid portion of the
     # convolution is smaller than the output
