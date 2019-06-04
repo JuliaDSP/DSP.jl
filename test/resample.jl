@@ -59,6 +59,16 @@ end
     idxUpper = idxLower*2
     yDelta   = abs.(y[idxLower:idxUpper].-yy[idxLower:idxUpper])
     @test all(map(delta -> abs(delta) < 0.005, yDelta))
+
+    # Test Float32 ratio (#302)
+    f32_ratio = convert(Float32, ratio)
+    f32_y     = resample(x, f32_ratio)
+    ty        = range(0, stop =cycles, length =yLen)
+    yy        = sinpi.(2*ty)
+    idxLower  = round(Int, yLen/3)
+    idxUpper  = idxLower*2
+    yDelta    = abs.(f32_y[idxLower:idxUpper].-yy[idxLower:idxUpper])
+    @test all(map(delta -> abs(delta) < 0.005, yDelta))
 end
 
 @testset "resample_filter" begin
