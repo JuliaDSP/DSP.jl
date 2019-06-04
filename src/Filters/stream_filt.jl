@@ -105,7 +105,9 @@ mutable struct FIRArbitrary{T} <: FIRKernel{T}
     hLen::Int
 end
 
-function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
+function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
+    rate         = convert(Float64, rate_in)
+    Nϕ           = convert(Int, Nϕ_in)
     dh           = [diff(h); zero(eltype(h))]
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
@@ -117,7 +119,20 @@ function FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer)
     inputDeficit = 1
     xIdx         = 1
     hLen         = length(h)
-    FIRArbitrary(rate, pfb, dpfb, Nϕ, tapsPerϕ, ϕAccumulator, ϕIdx, α, Δ, inputDeficit, xIdx, hLen)
+    FIRArbitrary(
+        rate,
+        pfb,
+        dpfb,
+        Nϕ,
+        tapsPerϕ,
+        ϕAccumulator,
+        ϕIdx,
+        α,
+        Δ,
+        inputDeficit,
+        xIdx,
+        hLen
+    )
 end
 
 
