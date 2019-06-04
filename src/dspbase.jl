@@ -170,20 +170,37 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
-# padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(padded::AbstractVector, u::AbstractVector)
+function _zeropad!(
+    padded::AbstractVector, u::AbstractVector, ::Tuple{Base.OneTo{Int}}
+)
     datasize = length(u)
     # Use axes to accommodate arrays that do not start at index 1
     padsize = length(padded)
     data_first_i = first(axes(u, 1))
     copyto!(padded, 1, u, data_first_i, datasize)
     padded[1 + datasize:padsize] .= 0
+
     padded
 end
 
-# padded must start at index 1, but u can have arbitrary offset
-function _zeropad!(padded::AbstractArray{<:Any, N},
-                   u::AbstractArray{<:Any, N}) where N
+function _zeropad!(
+    padded::AbstractVector, u::AbstractVector, pad_axes
+)
+    datasize = length(u)
+    # Use axes to accommodate arrays that do not start at index 1
+    data_first_i = first(axes(u, 1))
+    pad_first_i = first(pad_axes[1])
+    copyto!(padded, pad_first_i, u, data_first_i, datasize)
+    padded[pad_first_i + datasize : last(pad_axes[1])] .= 0
+
+    padded
+end
+
+function _zeropad!(
+    padded::AbstractArray{<:Any, N},
+    u::AbstractArray{<:Any, N},
+    ::NTuple{<:Any, Base.OneTo{Int}}
+) where N
     # Copy the data to the beginning of the padded array
     fill!(padded, zero(eltype(padded)))
     pad_data_ranges = UnitRange.(1, size(u))
@@ -191,9 +208,40 @@ function _zeropad!(padded::AbstractArray{<:Any, N},
 
     padded
 end
+
+function _zeropad!(
+    padded::AbstractArray{<:Any, N},
+    u::AbstractArray{<:Any, N},
+    pad_axes
+) where N
+    # Copy the data to the beginning of the padded array
+    fill!(padded, zero(eltype(padded)))
+    pad_first_i = first.(pad_axes)
+    pad_data_ranges = UnitRange.(pad_first_i, pad_first_i .+ size(u) .- 1)
+    copyto!(padded, CartesianIndices(pad_data_ranges), u, CartesianIndices(u))
+
+    padded
+end
+
+_zeropad!(padded, u) = _zeropad!(padded, u, axes(padded))
+
 function _zeropad(u, padded_size)
     _zeropad!(similar(u, padded_size), u)
 end
+
+function _zeropad_keep_offset(u, padded_size, ::NTuple{<:Any, Base.OneTo{Int}})
+    _zeropad(u, padded_size)
+end
+
+function _zeropad_keep_offset(u, padded_size, axes_u)
+    ax_starts = first.(axes_u)
+    new_axes = UnitRange.(ax_starts, ax_starts .+ padded_size .- 1)
+    _zeropad!(similar(u, new_axes), u, new_axes)
+end
+
+_zeropad_keep_offset(u, padded_size) = _zeropad_keep_offset(
+    u, padded_size, axes(u)
+)
 
 function _conv(
     u::AbstractArray{T, N}, v::AbstractArray{T, N}, paddims
@@ -357,9 +405,9 @@ function xcorr(
     padmode = check_padmode_kwarg(padmode, su, sv)
     if padmode == :longest
         if su < sv
-            u = _zeropad(u, sv)
+            u = _zeropad_keep_offset(u, sv)
         elseif sv < su
-            v = _zeropad(v, su)
+            v = _zeropad_keep_offset(v, su)
         end
         conv(u, dsp_reverse(conj(v), axes(v)))
     elseif padmode == :none
