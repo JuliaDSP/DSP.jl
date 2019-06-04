@@ -205,6 +205,9 @@ end
     off_a = OffsetVector(a, -1:1)
     off_b = OffsetVector(b, 0:1)
     @test xcorr(off_a, off_b, padmode = :none) == OffsetVector(exp, -2:1)
+
+    # Issue #288
+    @test xcorr(off_a, off_b, padmode = :longest) == OffsetVector(vcat(0, exp), -3:1)
 end
 
 @testset "deconv" begin
