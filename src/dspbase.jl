@@ -674,8 +674,10 @@ _conv(A::AbstractArray{<:Number, N}...) where {N} = conv(promote(A...)...)
 _conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function _conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
     sizes = size.(A)
-    order = sortperm([p for p in prod.(sizes)], rev=true)
-    _conv_sz(A[order], sizes[order])
+    # TODO: either delete comment or bring sorting back
+    # order = sortperm([p for p in prod.(sizes)], rev=true)
+    # _conv_sz(A[order], sizes[order])
+    _conv_sz(A, sizes)
 end
 
 # conv must have at least 2 inputs
