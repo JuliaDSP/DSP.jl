@@ -650,7 +650,7 @@ function _conv!(out, A, S, outsize)
 end
 
 # Does convolution, will not switch argument order
-function _conv(A, S)
+function _conv_sz(A, S)
     outsize = .+(S...) .- (length(S) - 1)
     out = _conv_similar(A, outsize)
     _conv!(out, A, S, outsize)
@@ -665,24 +665,26 @@ depending on the size of the input. Accepts any number of arrays to convolve
 together can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
-function conv(A::AbstractArray...)
+function _conv(A::AbstractArray...)
     maxnd = max([ndims(a) for a in A]...)
     return conv([cat(a, dims=maxnd) for a in A]...)
 end
 # TODO: not the most concise notation, make base julia issue?
-conv(A::Union{AbstractArray{Complex{<:Number}, N},
-                AbstractArray{<:Number, N}}...) where {N} =
-                    conv(promote(A...)...)
-conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
-function conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
-    sizes = [size(a) for a in A]
-    order = reverse(sortperm([prod(s) for s in sizes]))
-    _conv(A[order], sizes[order])
+_conv(A::AbstractArray{<:Number, N}...) where {N} = conv(promote(A...)...)
+_conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
+function _conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
+    sizes = size.(A)
+    order = sortperm([p for p in prod.(sizes)], rev=true)
+    _conv_sz(A[order], sizes[order])
 end
+
+# conv must have at least 2 inputs
+conv(A::AbstractArray, B::AbstractArray, C::AbstractArray...) = _conv(A, B, C...)
 
 
 # warn about old conv(u, v, A)
 function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T
+    # TODO this is inefficient
     @warn "seperable convolution as conv(u::Vector, v::Vector, A::Matrix) is "\
     "no longer supported, use conv(u, transpose(v), A ) if that is what"\
     "you intend"
