@@ -183,11 +183,11 @@ end
 
 ## PERIODOGRAMS
 abstract type TFR{T} end
-struct Periodogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
+struct Periodogram{T,F<:Union{Util.Frequencies,AbstractRange}} <: TFR{T}
     power::Vector{T}
     freq::F
 end
-struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies,AbstractRange}} <: TFR{T}
+struct Periodogram2{T,F1<:Union{Util.Frequencies,AbstractRange},F2<:Union{Util.Frequencies,AbstractRange}} <: TFR{T}
     power::Matrix{T}
     freq1::F1
     freq2::F2
@@ -217,13 +217,13 @@ See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:Util.Frequencies} =
     Periodogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
 FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
 # 2-d
-FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Util.Frequencies,F2<:Util.Frequencies} =
     Periodogram2(p.freq1.nreal == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Util.Frequencies} =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
 FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
 
@@ -337,7 +337,7 @@ function periodogram(s::AbstractMatrix{T};
         s_fft = rfft(input)
         out = zeros(fftabs2type(T), nmin>>1 + 1)
         fft2pow2radial!(out,s_fft,nfft...,fs*norm2, ptype)
-        return Periodogram(out, Frequencies(length(out), length(out), fs/nmin))
+        return Periodogram(out, Util.Frequencies(length(out), length(out), fs/nmin))
     end
 end
 
@@ -436,12 +436,12 @@ end
     const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
 end
 
-struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
+struct Spectrogram{T,F<:Union{Util.Frequencies,AbstractRange}} <: TFR{T}
     power::Matrix{T}
     freq::F
     time::FloatRange{Float64}
 end
-FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Util.Frequencies} =
     Spectrogram(p.freq.nreal == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
 FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
 
