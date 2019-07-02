@@ -284,14 +284,28 @@ end
 Transform the smaller convolution input to frequency domain, and return it in a
 new array. However, the contents of `buff` may be modified.
 """
-@inline function os_filter_transform!(A::NTuple{<:Any, AbstractArray{<:Real}}, p)
-    fA = (p * a for a in A)
-    .*(fA...)
+@inline function os_filter_transform!(buff, A::NTuple{<:Any, AbstractArray{<:Real}}, p)
+    fA = p * A[1]
+    for a in A[2:end]
+        mul!.(fA, (p * a))
+    end
+    return fA
+end
+
+@inline function os_filter_transform!(buff::Tuple{AbstractArray{<:Real}}, p)
+    p * buff[1]
 end
 
 @inline function os_filter_transform!(A::NTuple{<:Any, AbstractArray{<:Complex}}, p!)
-    fA = (copy(p! * a) for a in A) # p operates in place on buff
-    .*(fA...)
+    fA = p! * A[1]
+    for a in A[2:end]
+        mul!.(fA, (p! * a))
+    end
+    return copy(fA)
+end
+
+@inline function os_filter_transform!(buff::Tuple{AbstractArray{<:Complex}}, p!)
+    copy(p! * buff[1])
 end
 
 """
