@@ -615,12 +615,11 @@ end
 
 # A should be in ascending order of size for best performance
 function _conv_fft!(out, A, S, outsize)
-    # max(v...) = maximum(v)
-    # sx = map(max, S[2:end]...)
-    os_nffts = map(optimalfftfiltlength, outsize .- S[1] .+ 1, S[1])
+    sv = outsize .- S[1] .+ 1
+    os_nffts = map(optimalfftfiltlength, sv, S[1])
     if any(os_nffts .< outsize)
         unsafe_conv_kern_os!(out,
-                             A[1], A[2], A[3:end], S[1], sx,
+                             A[1], A[2], A[3:end], S[1], sv,
                              outsize, os_nffts)
     else
         nffts = nextfastfft(outsize)
