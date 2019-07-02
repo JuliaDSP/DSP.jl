@@ -231,10 +231,9 @@ end
                     ncv(conv(arrs[1], arrs[2]), arrs[3:end]...)
                 end
             end
-            tncv = @elapsed  rncv = ncv(arrs...)
             tconv = @elapsed rconv = conv(arrs...)
+            tncv = @elapsed  rncv = ncv(arrs...)
             @test rconv ≈ rncv
-            @test tconv < tncv
         end
 
        compare_to_naive([1 2 1;
@@ -258,7 +257,8 @@ end
                          A, exp, fv, u)
         compare_to_naive(repeat(complex.(fexp, 140), 30),
                          A, exp, fv, u)
-
+        compare_to_naive(repeat([1, 2, 3, 4, 5, 5, 6, 7 ,9, 10], 100000),
+                         [1, 2, 3, 4], [5, 6, 7, 8])
     end
 
 end
