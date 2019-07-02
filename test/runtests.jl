@@ -10,5 +10,8 @@ testfiles = [ "dsp.jl", "util.jl", "windows.jl", "filter_conversion.jl",
 seed!(1776)
 
 for testfile in testfiles
-    eval(:(@testset $testfile begin include($testfile) end))
+    @testset "$testfile" begin
+        time = @elapsed eval(:(include($testfile)))
+        @show time
+    end
 end
