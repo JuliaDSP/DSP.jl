@@ -13,6 +13,7 @@ DSP.jl provides a number of common [digital signal processing](https://en.wikipe
 - [Linear Predictive Coding](https://juliadsp.github.io/DSP.jl/stable/lpc)
 - [Window functions](https://juliadsp.github.io/DSP.jl/stable/windows)
 - [Utility functions](https://juliadsp.github.io/DSP.jl/stable/util)
+- [Eye diagrams](https://juliadsp.github.io/DSP.jl/stable/eyediag)
 
 More details can be found in the [Online Documentation](https://juliadsp.github.io/DSP.jl/stable/contents/).
 
