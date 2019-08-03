@@ -289,41 +289,50 @@ function _conv_clip!(y::AbstractArray, minpad, axesu, axesv)
 end
 
 """
-    conv(u,v)
+    conv(u,v; mode = "full")
 
-Convolution of two arrays. Uses FFT algorithm.
+Convolution of two arrays. Passing "full" mode is FFT algorithm, "same" mode is 
+output of length max(M, N), and "valid" is output where all signals are 
+overlapped. This is an adaptation from the Python numpy convolve function.
+
 """
-function conv(u::AbstractArray{T, N},
-              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
-    su = size(u)
-    sv = size(v)
-    minpad = su .+ sv .- 1
-    padsize = map(n -> n > 1024 ? nextprod([2,3,5], n) : nextpow(2, n), minpad)
-    y = _conv(u, v, padsize)
-    _conv_clip!(y, minpad, axes(u), axes(v))
+function conv(u::StridedVector{T}, v::StridedVector{T}; mode="full") where
+        T<:BLAS.BlasFloat
+    nu = length(u)
+    nv = length(v)
+    if nu==0||nv==0
+        throw( DomainError("parameter u or v",
+            "Argument vectors are supposed to be non-empty.") )
+    elseif nv>nu
+        u, v = v, u
+        nu, nv = nv, nu
+    end
+    if mode=="full"
+        n = nu+nv-1
+        return [u[max(1, i+1-nv):min(i,nu)]'*v[i<nv ? 
+                    (i:-1:1) : (end:-1:max(1,(i)-(n-nv)))]
+                    for i in 1:n]
+    elseif mode=="same"
+        n = nu+nv-1
+        res_n = max(nu,nv)
+        start = div(n-res_n,2)+1
+        return [u[max(1, start+i-nv):min(start+i-1,nu)]'*v[start+i-1<nv ? 
+                    (start+i-1:-1:1) : (end:-1:max(1,(start+i-1)-(n-nv)))] 
+                    for i in 1:res_n]
+    elseif mode=="valid"
+        n = nu-nv+1
+        if n < 1
+            return []
+        end
+        return [u[i:i+nv-1]'*v[end:-1:1] for i in 1:n]
+    else
+        throw(DomainError("\"$mode\"", "Parameter mode is not valid."))
+    end
 end
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
-    fu, fv = promote(u, v)
-    conv(fu, fv)
-end
-conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
-    conv(float(u), float(v))
-conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
-    round.(Int, conv(float(u), float(v)))
-function conv(u::AbstractArray{<:Number, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
-    conv(float(u), v)
-end
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:Number, N}) where N
-    conv(u, float(v))
-end
+conv(u::StridedVector{T}, v::StridedVector{T}; mode = "full") where {T<:Integer} = round.(Int, conv(float(u), float(v), mode=mode))
+conv(u::StridedVector{<:Integer}, v::StridedVector{<:BLAS.BlasFloat}; mode = "full") = conv(float(u), v, mode=mode)
+conv(u::StridedVector{<:BLAS.BlasFloat}, v::StridedVector{<:Integer}; mode = "full") = conv(u, float(v), mode=mode)
 
-function conv(A::AbstractArray, B::AbstractArray)
-    maxnd = max(ndims(A), ndims(B))
-    return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
-end
 
 """
     conv(u,v,A)
