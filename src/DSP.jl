@@ -1,10 +1,7 @@
-__precompile__()
-
 module DSP
 
 using FFTW
 using LinearAlgebra: mul!, rmul!
-using Compat: range
 
 export conv, conv2, deconv, filt, filt!, xcorr
 
