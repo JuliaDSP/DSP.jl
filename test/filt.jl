@@ -152,6 +152,19 @@ end
     @test x2_matlab ≈ filtfilt(b, a, x)
 end
 
+# Make sure above doesn't crash for real coeffs & complex data.
+@testset "filtfilt 1D Complex" begin
+    x2_matlab = readdlm(joinpath(dirname(@__FILE__), "data", "filtfilt_output.txt"),'\t')
+
+    b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
+    a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
+    x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
+
+    y = x .+ 1im .* randn(size(x, 1))
+
+    @test x2_matlab ≈ real.(filtfilt(b, a, y))
+end
+
 #######################################
 #
 # Test 2d filtfilt against matlab results
