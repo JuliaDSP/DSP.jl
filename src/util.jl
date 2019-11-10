@@ -108,53 +108,6 @@ fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
-## FREQUENCY VECTOR
-
-struct Frequencies <: AbstractVector{Float64}
-    nreal::Int
-    n::Int
-    multiplier::Float64
-end
-
-unsafe_getindex(x::Frequencies, i::Int) =
-    (i-1+ifelse(i <= x.nreal, 0, -x.n))*x.multiplier
-function Base.getindex(x::Frequencies, i::Int)
-    (i >= 1 && i <= x.n) || throw(BoundsError())
-    unsafe_getindex(x, i)
-end
-if isdefined(Base, :iterate)
-    function Base.iterate(x::Frequencies, i::Int=1)
-        i > x.n ? nothing : (unsafe_getindex(x,i), i + 1)
-    end
-else
-    Base.start(x::Frequencies) = 1
-    Base.next(x::Frequencies, i::Int) = (unsafe_getindex(x, i), i+1)
-    Base.done(x::Frequencies, i::Int) = i > x.n
-end
-Base.size(x::Frequencies) = (x.n,)
-Base.step(x::Frequencies) = x.multiplier
-
-"""
-    fftfreq(n, fs=1)
-
-Return discrete fourier transform sample frequencies. The returned
-Frequencies object is an AbstractVector containing the frequency
-bin centers at every sample point. `fs` is the sample rate of the
-input signal.
-"""
-fftfreq(n::Int, fs::Real=1) = Frequencies(((n-1) >> 1)+1, n, fs/n)
-
-"""
-    rfftfreq(n, fs=1)
-
-Return discrete fourier transform sample frequencies for use with
-`rfft`. The returned Frequencies object is an AbstractVector
-containing the frequency bin centers at every sample point. `fs`
-is the sample rate of the input signal.
-"""
-rfftfreq(n::Int, fs::Real=1) = Frequencies((n >> 1)+1, (n >> 1)+1, fs/n)
-FFTW.fftshift(x::Frequencies) = (x.nreal-x.n:x.nreal-1)*x.multiplier
-
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = [2, 3, 5, 7]
 """

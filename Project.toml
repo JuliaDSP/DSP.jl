@@ -1,6 +1,6 @@
 name = "DSP"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.6.0"
+version = "0.6.1"
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
@@ -12,7 +12,11 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Polynomials = ">= 0.1.0"
+FFTW = "1.1"
+OffsetArrays = "0.11"
+Polynomials = "0.6"
+Reexport = "0.2"
+SpecialFunctions = "0.8"
 julia = "1"
 
 [extras]

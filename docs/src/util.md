@@ -9,8 +9,6 @@ end
 unwrap
 unwrap!
 hilbert
-fftfreq
-rfftfreq
 nextfastfft
 pow2db
 amp2db
