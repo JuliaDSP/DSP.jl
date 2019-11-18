@@ -283,10 +283,8 @@ function optimalfftfiltlength(nb, nx)
     end
     nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
 
-    # L is the number of usable samples produced by each block
-    L = nfft - nb + 1
-    if L > nx
-        # If L > nx, better to find next fast power
+    if nfft > nfull
+        # If nfft > nfull, then it's better to find next fast power
         nfft = nextfastfft(nfull)
     end
 
