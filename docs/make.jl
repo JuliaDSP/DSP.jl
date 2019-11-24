@@ -1,5 +1,7 @@
 using Documenter, DSP
 
+DocMeta.setdocmeta!(DSP, :DocTestSetup, :(using DSP); recursive=true)
+
 makedocs(
     modules = [DSP],
     format = Documenter.HTML(),
