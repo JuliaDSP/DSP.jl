@@ -213,8 +213,6 @@ Spectrogram object.
 
 Returns a tuple of frequency bin centers for a given Periodogram2
 object.
-
-See also: [`fftfreq`](@ref), [`rfftfreq`](@ref)
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
