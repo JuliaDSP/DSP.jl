@@ -1,7 +1,7 @@
 module Filters
 using ..Unwrap
 using Polynomials, ..Util
-import Base: *
+import Base: *, ^
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 import ..DSP: filt, filt!, SMALL_FILT_CUTOFF
