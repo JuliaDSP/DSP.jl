@@ -36,7 +36,7 @@ end
 
 @testset "conv" begin
 
-    @test optimalfftfiltlength(3, 1) == 3 # Should be at least the first input
+    @test optimalfftfiltlength(1, 3) == 1 # Should be at least the first input
 
     @testset "conv-1D" begin
         # Convolution
@@ -201,7 +201,7 @@ end
         for numdim in Ns
             for elt in eltypes
                 for nsmall in regular_nsmall
-                    nfft = optimalfftfiltlength(nlarge, nsmall)
+                    nfft = optimalfftfiltlength(nsmall, nlarge)
                     test_os(elt, nlarge, nsmall, Val{numdim}(), nfft)
                 end
             end
