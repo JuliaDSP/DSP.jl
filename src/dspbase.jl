@@ -174,16 +174,14 @@ end
 """
     _zeropad!(padded::AbstractVector,
               u::AbstractVector,
+              padded_axes = axes(padded),
               data_dest::Tuple = (1,),
-              data_region = CartesianIndices(u),
-              ::Tuple{Base.OneTo{Int}})
+              data_region = CartesianIndices(u))
 
-Place the portion of `u` specified by `data_region` into `padded` starting at
-location `data_dest`, and set the rest of `padded` to zero. This will mutate
-`padded`.
+Place the portion of `u` specified by `data_region` into `padded`, starting at
+location `data_dest`. Sets the rest of `padded` to zero. This will mutate
+`padded`. `padded_axes` must correspond to the axes of `padded`.
 
-This method handles the case where `padded` uses 1-based indexing, but `u` can
-have arbitrary axes.
 """
 @inline function _zeropad!(
     padded::AbstractVector,
@@ -272,16 +270,16 @@ function optimalfftfiltlength(nb, nx)
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
     first_pow2 = ceil(Int, log2(nb))
-    prev_pow2 = ceil(Int, log2(nfull))
+    max_pow2 = ceil(Int, log2(nfull))
     prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
     pow2 = first_pow2 + 1
-    while pow2 <= prev_pow2
+    while pow2 <= max_pow2
         new_complexity = os_fft_complexity(2 ^ pow2, nb)
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
     end
-    nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
+    nfft = pow2 > max_pow2 ? 2 ^ max_pow2 : 2 ^ (pow2 - 1)
 
     if nfft > nfull
         # If nfft > nfull, then it's better to find next fast power
@@ -487,6 +485,7 @@ function unsafe_conv_kern_os_edge!(
 end
 
 # Assumes u is larger than, or the same size as, v
+# nfft should be greater than or equal to 2*sv-1
 function unsafe_conv_kern_os!(out,
                         u::AbstractArray{<:Any, N},
                         v,
@@ -499,8 +498,8 @@ function unsafe_conv_kern_os!(out,
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
     ideal_save_blocksize = nffts .- sv .+ 1
-    # Number of samples that are "missing" if the valid portion of the
-    # convolution is smaller than the output
+    # Number of samples that are "missing" if the output is smaller than the
+    # valid portion of the convolution
     sout_deficit = max.(0, ideal_save_blocksize .- sout)
     # Size of the valid portion of the convolution result
     save_blocksize = ideal_save_blocksize .- sout_deficit
@@ -515,14 +514,16 @@ function unsafe_conv_kern_os!(out,
     filter_fd = os_filter_transform!(tdbuff, p)
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
-    last_full_blocks = fld.(su, save_blocksize)
     # block indices for center blocks, which need no padding
-    center_block_ranges = UnitRange.(2, last_full_blocks)
+    first_center_blocks = cld.(sv .- 1, save_blocksize) .+ 1
+    last_center_blocks = fld.(su, save_blocksize)
+    center_block_ranges = UnitRange.(first_center_blocks, last_center_blocks)
+
     # block index ranges for blocks that need to be padded
     # Corresponds to the leading and trailing side of a dimension, or if there
     # are no center blocks, corresponds to the whole dimension
-    edge_ranges = map(nblocks, last_full_blocks) do nblock, lastfull
-        lastfull > 1 ? [1:1, lastfull + 1 : nblock] : [1:nblock]
+    edge_ranges = map(nblocks, first_center_blocks, last_center_blocks) do nblock, firstfull, lastfull
+        lastfull > 1 ? [1:firstfull - 1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
     # Buffer to store ranges of indices for a single region of the perimeter
