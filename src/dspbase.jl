@@ -255,7 +255,6 @@ array.
 function _zeropad_keep_offset(u, padded_size, args...)
     _zeropad_keep_offset(u, padded_size, axes(u), args...)
 end
->>>>>>> master
 
 """
 Estimate the number of floating point multiplications per output sample for an
