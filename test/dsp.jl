@@ -36,7 +36,7 @@ end
 
 @testset "conv" begin
 
-    @test optimalfftfiltlength(3, 1) == 3 # Should be at least the first input
+    @test optimalfftfiltlength(1, 3) == 1 # Should be at least the first input
 
     @testset "conv-1D" begin
         # Convolution
@@ -177,7 +177,7 @@ end
         for numdim in Ns
             for elt in eltypes
                 for nsmall in regular_nsmall
-                    nfft = optimalfftfiltlength(nlarge, nsmall)
+                    nfft = optimalfftfiltlength(nsmall, nlarge)
                     test_os(elt, nlarge, nsmall, Val{numdim}(), nfft)
                 end
             end
@@ -199,6 +199,7 @@ end
         # three blocks need to be padded in the following case:
         test_os(Float64, 25, 4, Val{1}(), 16)
     end
+
 
     @testset "N-arg-conv" begin
         u = [1, 2, 3, 2, 1]
@@ -261,6 +262,7 @@ end
                          [1, 2, 3, 4], [5, 6, 7, 8])
     end
 
+
 end
 
 @testset "xcorr" begin
@@ -297,6 +299,9 @@ end
     off_a = OffsetVector(a, -1:1)
     off_b = OffsetVector(b, 0:1)
     @test xcorr(off_a, off_b, padmode = :none) == OffsetVector(exp, -2:1)
+
+    # Issue #288
+    @test xcorr(off_a, off_b, padmode = :longest) == OffsetVector(vcat(0, exp), -3:1)
 end
 
 @testset "deconv" begin

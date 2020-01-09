@@ -170,51 +170,92 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     filt(b, a, x)
 end
 
+
+
 """
     _zeropad!(padded::AbstractVector,
               u::AbstractVector,
+              padded_axes = axes(padded),
               data_dest::Tuple = (1,),
               data_region = CartesianIndices(u))
 
-Place the portion of `u` specified by `data_region` into `padded` starting at
-location `data_dest`, and set the rest of `padded` to zero. This will mutate
-`padded`.
+Place the portion of `u` specified by `data_region` into `padded`, starting at
+location `data_dest`. Sets the rest of `padded` to zero. This will mutate
+`padded`. `padded_axes` must correspond to the axes of `padded`.
 
-`padded` must start at index 1, but `u` can have arbitrary axes.
 """
-@inline function _zeropad!(padded::AbstractVector,
-                           u::AbstractVector,
-                           data_dest::Tuple = (1,), # Tuple to be consistent with ND case
-                           data_region = CartesianIndices(u))
+@inline function _zeropad!(
+    padded::AbstractVector,
+    u::AbstractVector,
+    padded_axes = axes(padded),
+    data_dest::Tuple = (first(padded_axes[1]),),
+    data_region = CartesianIndices(u),
+)
     datasize = length(data_region)
-    start_i = data_dest[1]
-
     # Use axes to accommodate arrays that do not start at index 1
     data_first_i = first(data_region)[1]
-    copyto!(padded, start_i, u, data_first_i, datasize)
-
-    padded[1:start_i - 1] .= 0
-    padded[start_i + datasize:end] .= 0
+    dest_first_i = data_dest[1]
+    copyto!(padded, dest_first_i, u, data_first_i, datasize)
+    padded[first(padded_axes[1]):dest_first_i - 1] .= 0
+    padded[dest_first_i + datasize : end] .= 0
 
     padded
 end
 
-# padded must start at index 1, but u can have arbitrary offset
-@inline function _zeropad!(padded::AbstractArray{<:Any, N},
-                           u::AbstractArray{<:Any, N},
-                           data_dest::Tuple = ntuple(::Integer -> 1, N),
-                           data_region = CartesianIndices(u)) where N
-    # Copy the data to the beginning of the padded array
+@inline function _zeropad!(
+    padded::AbstractArray,
+    u::AbstractArray,
+    padded_axes = axes(padded),
+    data_dest::Tuple = first.(padded_axes),
+    data_region = CartesianIndices(u),
+)
     fill!(padded, zero(eltype(padded)))
-    pad_dest_axes = UnitRange.(data_dest, data_dest .+ size(data_region) .- 1)
-    copyto!(padded, CartesianIndices(pad_dest_axes), u, data_region)
+    dest_axes = UnitRange.(data_dest, data_dest .+ size(data_region) .- 1)
+    dest_region = CartesianIndices(dest_axes)
+    copyto!(padded, dest_region, u, data_region)
 
     padded
 end
 
-# Make the padded buffer, and then place u into it. See _zeropad!
-@inline _zeropad(u, padded_size, args...) =
-    _zeropad!(similar(u, padded_size), u, args...)
+
+"""
+    _zeropad(u, padded_size, [data_dest, data_region])
+
+Creates and returns a new base-1 index array of size `padded_size`, with the
+section of `u` specified by `data_region` copied into the region of the new
+ array as specified by `data_dest`. All other values will be initialized to
+ zero.
+
+If either `data_dest` or `data_region` is not specified, then the defaults
+described in [`_zeropad!`](@ref) will be used.
+"""
+function _zeropad(u, padded_size, args...)
+    padded = similar(u, padded_size)
+    _zeropad!(padded, u, axes(padded), args...)
+end
+
+function _zeropad_keep_offset(u, padded_size, u_axes, args...)
+    ax_starts = first.(u_axes)
+    new_axes = UnitRange.(ax_starts, ax_starts .+ padded_size .- 1)
+    _zeropad!(similar(u, new_axes), u, args...)
+end
+
+function _zeropad_keep_offset(
+    u, padded_size, ::NTuple{<:Any, Base.OneTo{Int}}, args...
+)
+    _zeropad(u, padded_size, args...)
+end
+
+"""
+    _zeropad_keep_offset(u, padded_size, [data_dest, dat_region])
+
+Like [`_zeropad`](@ref), but retains the first index of `u` when creating a new
+array.
+"""
+function _zeropad_keep_offset(u, padded_size, args...)
+    _zeropad_keep_offset(u, padded_size, axes(u), args...)
+end
+>>>>>>> master
 
 """
 Estimate the number of floating point multiplications per output sample for an
@@ -232,21 +273,19 @@ function optimalfftfiltlength(nb, nx)
     # Step through possible nffts and find the nfft that minimizes complexity
     # Assumes that complexity is convex
     first_pow2 = ceil(Int, log2(nb))
-    prev_pow2 = ceil(Int, log2(nfull))
+    max_pow2 = ceil(Int, log2(nfull))
     prev_complexity = os_fft_complexity(2 ^ first_pow2, nb)
     pow2 = first_pow2 + 1
-    while pow2 <= prev_pow2
+    while pow2 <= max_pow2
         new_complexity = os_fft_complexity(2 ^ pow2, nb)
         new_complexity > prev_complexity && break
         prev_complexity = new_complexity
         pow2 += 1
     end
-    nfft = pow2 > prev_pow2 ? 2 ^ prev_pow2 : 2 ^ (pow2 - 1)
+    nfft = pow2 > max_pow2 ? 2 ^ max_pow2 : 2 ^ (pow2 - 1)
 
-    # L is the number of usable samples produced by each block
-    L = nfft - nb + 1
-    if L > nx
-        # If L > nx, better to find next fast power
+    if nfft > nfull
+        # If nfft > nfull, then it's better to find next fast power
         nfft = nextfastfft(nfull)
     end
 
@@ -284,6 +323,7 @@ end
 Transform the smaller convolution input to frequency domain, and return it in a
 new array. However, the contents of `buff` may be modified.
 """
+
 @inline function os_filter_transform!(A::NTuple{<:Any, AbstractArray{<:Real}}, p)
     fA = p * A[1]
     for a in A[2:end]
@@ -306,6 +346,7 @@ end
 
 @inline function os_filter_transform!(buff::Tuple{AbstractArray{<:Complex}}, p!)
     copy(p! * buff[1])
+
 end
 
 """
@@ -332,6 +373,7 @@ end
     p! * buff # p! operates in place on buff
     buff .*= filter_fd
     ip! * buff # ip! operates in place on buff
+
 end
 
 # Used by `unsafe_conv_kern_os!` to handle blocks of input data that need to be padded.
@@ -376,6 +418,7 @@ function unsafe_conv_kern_os_edge!(
     out_stop,
     save_blocksize,
     sout_deficit, # How many output samples are missing if nffts > sout
+    tdbuff_axes,
 ) where N
     # Iterate over all possible combinations of edge dimensions for a number of
     # edges
@@ -389,7 +432,7 @@ function unsafe_conv_kern_os_edge!(
         # on an edge.
         #
         # First make all entries equal to the center blocks:
-        copyto!(perimeter_range, 1, center_block_ranges, 1, N)
+        @inbounds copyto!(perimeter_range, 1, center_block_ranges, 1, N)
 
         # For the dimensions chosen to be on an edge (edge_dims), get the
         # ranges of the blocks that would need to be padded (lie on an edge)
@@ -408,7 +451,7 @@ function unsafe_conv_kern_os_edge!(
             # The center region for non-edge dimensions has been specified above,
             # so finish specifying the region of the perimeter for this edge
             # block
-            for (i, dim) in enumerate(edge_dims)
+            @inbounds for (i, dim) in enumerate(edge_dims)
                 perimeter_range[dim] = perimeter_edge_ranges[i]
             end
 
@@ -416,7 +459,7 @@ function unsafe_conv_kern_os_edge!(
             block_region = CartesianIndices(
                 NTuple{N, UnitRange{Int}}(perimeter_range)
             )
-            for block_pos in block_region
+            @inbounds for block_pos in block_region
                 # Figure out which portion of the input data should be transformed
 
                 block_idx = convert(NTuple{N, Int}, block_pos)
@@ -439,7 +482,7 @@ function unsafe_conv_kern_os_edge!(
 
                 # Convolve portion of input
 
-                _zeropad!(tdbuff, u, pad_before .+ 1, data_region)
+                _zeropad!(tdbuff, u, tdbuff_axes, pad_before .+ 1, data_region)
                 os_conv_block!(tdbuff, fdbuff, filter_fd, p, ip)
 
                 # Save convolved result to output
@@ -464,21 +507,22 @@ function unsafe_conv_kern_os_edge!(
 end
 
 # Assumes u is larger than, or the same size as, v
+# nfft should be greater than or equal to 2*sv-1
 function unsafe_conv_kern_os!(out,
-                              u::AbstractArray{<:Any, N},
-                              v,
-                              A,
-                              su,
-                              sv,
-                              sout,
-                              nffts) where N
+                        u::AbstractArray{<:Any, N},
+                        v,
+                        A,
+                        su,
+                        sv,
+                        sout,
+                        nffts) where N
     u_start = first.(axes(u))
     out_axes = axes(out)
     out_start = first.(out_axes)
     out_stop = last.(out_axes)
     ideal_save_blocksize = nffts .- sv .+ 1
-    # Number of samples that are "missing" if the valid portion of the
-    # convolution is smaller than the output
+    # Number of samples that are "missing" if the output is smaller than the
+    # valid portion of the convolution
     sout_deficit = max.(0, ideal_save_blocksize .- sout)
     # Size of the valid portion of the convolution result
     save_blocksize = ideal_save_blocksize .- sout_deficit
@@ -486,6 +530,7 @@ function unsafe_conv_kern_os!(out,
 
     # Pre-allocation
     tdbuff, fdbuff, p, ip = os_prepare_conv(u, nffts)
+    tdbuff_axes = axes(tdbuff)
 
     # Transform the smaller filter
     _zeropad!(tdbuff, v)
@@ -494,14 +539,16 @@ function unsafe_conv_kern_os!(out,
                                        for a in A)...), p)
     filter_fd .*= 1 / prod(nffts) # Normalize once for brfft
 
-    last_full_blocks = fld.(su, save_blocksize)
     # block indices for center blocks, which need no padding
-    center_block_ranges = UnitRange.(2, last_full_blocks)
+    first_center_blocks = cld.(sv .- 1, save_blocksize) .+ 1
+    last_center_blocks = fld.(su, save_blocksize)
+    center_block_ranges = UnitRange.(first_center_blocks, last_center_blocks)
+
     # block index ranges for blocks that need to be padded
     # Corresponds to the leading and trailing side of a dimension, or if there
     # are no center blocks, corresponds to the whole dimension
-    edge_ranges = map(nblocks, last_full_blocks) do nblock, lastfull
-        lastfull > 1 ? [1:1, lastfull + 1 : nblock] : [1:nblock]
+    edge_ranges = map(nblocks, first_center_blocks, last_center_blocks) do nblock, firstfull, lastfull
+        lastfull > 1 ? [1:firstfull - 1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
     # Buffer to store ranges of indices for a single region of the perimeter
@@ -548,14 +595,15 @@ function unsafe_conv_kern_os!(out,
             out_start,
             out_stop,
             save_blocksize,
-            sout_deficit) # How many output samples are missing if nffts > sout
+            sout_deficit,
+            tdbuff_axes) # How many output samples are missing if nffts > sout
     end
 
     tdbuff_region = CartesianIndices(tdbuff)
     # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
     # Iterate over block indices (not data indices) that do not need to be padded
-    for block_pos in CartesianIndices(center_block_ranges)
+    @inbounds for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
 
         block_idx = convert(NTuple{N, Int}, block_pos)
@@ -615,8 +663,6 @@ function _conv_kern_fft!(out, A::NTuple{<:Any, AbstractArray{T, N}},
             Apad[1],
             CartesianIndices(UnitRange.(1, outsize)))
 end
-
-
 function _conv_fft!(out, A::Tuple{<:AbstractArray, <:AbstractArray}, S, outsize)
     os_nffts = map(optimalfftfiltlength, S[2], S[1])
     if any(os_nffts .< outsize)
@@ -640,8 +686,6 @@ function _conv_fft!(out, A, S, outsize)
         _conv_kern_fft!(out, A, outsize, nffts)
     end
 end
-
-
 # For arrays with weird offsets
 function _conv_similar(u, outsize, axes...)
     out_offsets = .+([first.(ax) for ax in axes]...)
@@ -667,7 +711,8 @@ function _conv_sz(A, S)
     outsize = .+(S...) .- (length(S) - 1)
     out = _conv_similar(A, outsize)
     _conv!(out, A, S, outsize)
-end
+
+
 
 # May switch argument order
 """
@@ -682,14 +727,11 @@ function _conv(A::AbstractArray...)
     maxnd = max([ndims(a) for a in A]...)
     return conv([cat(a, dims=maxnd) for a in A]...)
 end
-# TODO: not the most concise notation, make base julia issue?
+
 _conv(A::AbstractArray{<:Number, N}...) where {N} = conv(promote(A...)...)
 _conv(A::AbstractArray{<:Integer}...) = round.(Int, conv([float(a) for a in A]...))
 function _conv(A::AbstractArray{<:BLAS.BlasFloat, N}...) where N
     sizes = size.(A)
-    # TODO: either delete comment or bring sorting back
-    # order = sortperm([p for p in prod.(sizes)], rev=true)
-    # _conv_sz(A[order], sizes[order])
     _conv_sz(A, sizes)
 end
 
@@ -763,9 +805,9 @@ function xcorr(
     padmode = check_padmode_kwarg(padmode, su, sv)
     if padmode == :longest
         if su < sv
-            u = _zeropad(u, sv)
+            u = _zeropad_keep_offset(u, sv)
         elseif sv < su
-            v = _zeropad(v, su)
+            v = _zeropad_keep_offset(v, su)
         end
         conv(u, dsp_reverse(conj(v), axes(v)))
     elseif padmode == :none

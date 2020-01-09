@@ -1,8 +1,10 @@
 using Documenter, DSP
 
+DocMeta.setdocmeta!(DSP, :DocTestSetup, :(using DSP); recursive=true)
+
 makedocs(
     modules = [DSP],
-    format = :html,
+    format = Documenter.HTML(),
     sitename = "DSP.jl",
     pages = Any[
         "Contents" => "contents.md",

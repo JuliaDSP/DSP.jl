@@ -237,9 +237,9 @@ end
 # Zero phase digital filtering by processing data in forward and reverse direction
 function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zi = filt_stepstate(b, a)
-    zitmp = copy(zi)
     pad_length = 3 * (max(length(a), length(b)) - 1)
     t = Base.promote_eltype(b, a, x)
+    zitmp = similar(zi, t)
     extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
@@ -312,9 +312,9 @@ end
 # Zero phase digital filtering for second order sections
 function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S}
     zi = filt_stepstate(f)
-    zitmp = similar(zi)
     pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
+    zitmp = similar(zi, t)
     extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
