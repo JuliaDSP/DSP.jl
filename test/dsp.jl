@@ -64,6 +64,13 @@ end
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
     end
 
+    @testset "old-style-seperable-warns" begin
+        a = [1, 2]
+        b = [3, 4]
+        c = [1 2; 3 4]
+        @test_warn "seperable" conv(a, b, c)
+        @test conv(a, b, c) == conv(conv(a, b), c)
+    end
 
     @testset "conv-2D" begin
         a =[1 2 1;
