@@ -710,7 +710,7 @@ function _conv_sz(A, S)
     outsize = .+(S...) .- (length(S) - 1)
     out = _conv_similar(A, outsize)
     _conv!(out, A, S, outsize)
-
+end
 
 
 # May switch argument order
