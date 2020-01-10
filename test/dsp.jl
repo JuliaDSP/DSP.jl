@@ -68,7 +68,7 @@ end
         a = [1, 2]
         b = [3, 4]
         c = [1 2; 3 4]
-        @test_warn "seperable" conv(a, b, c)
+        @test_warn conv(a, b, c)
         @test conv(a, b, c) == conv(conv(a, b), c)
     end
 
