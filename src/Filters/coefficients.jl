@@ -380,11 +380,11 @@ SecondOrderSections(f::FilterCoefficients) = SecondOrderSections(ZeroPoleGain(f)
 *(f1::Biquad, fs::Biquad...) = SecondOrderSections([f1, fs...], 1)
 *(f1::SecondOrderSections, f2::Biquad) = SecondOrderSections([f1.biquads; f2], f1.g)
 *(f1::Biquad, f2::SecondOrderSections) = SecondOrderSections([f1; f2.biquads], f2.g)
-inv(f::FilterCoefficients) = begin
+function inv(f::FilterCoefficients)
     filt_pr = PolynomialRatio(f)
     return typeof(f)(PolynomialRatio(filt_pr.a, filt_pr.b))
 end
-^(f::FilterCoefficients, n::Integer) = begin
+function ^(f::FilterCoefficients, n::Integer)
     filt_copy = deepcopy(f)
     if abs(n) > 1
         filt_copy = *(fill(f, abs(n))...)
