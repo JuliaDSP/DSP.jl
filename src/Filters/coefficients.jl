@@ -385,14 +385,8 @@ function inv(f::FilterCoefficients)
     return typeof(f)(PolynomialRatio(filt_pr.a, filt_pr.b))
 end
 function ^(f::FilterCoefficients, n::Integer)
-    filt_copy = deepcopy(f)
-    if abs(n) > 1
-        filt_copy = *(fill(f, abs(n))...)
-    elseif n == 0
-        filt_copy = PolynomialRatio(Complex[1], Complex[1])
-    end
-    if sign(n) == -1
-        filt_copy = inv(filt_copy)
-    end
+    filt_copy = PolynomialRatio(f)
+    filt_copy = PolynomialRatio(filt_copy.b^(abs(n)), filt_copy.a^(abs(n)))
+    (sign(n) == -1) && (filt_copy = inv(filt_copy))
     return typeof(f)(filt_copy)
 end

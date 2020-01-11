@@ -221,3 +221,20 @@ end
         @test b == bb
     end
 end
+
+@testset "exponent" begin
+    # Issue #235
+    first_order = PolynomialRatio(Butterworth(1))
+    for order = -5:5
+        #== Test that taking the exponent of a filter causes its numerator and
+            denominator to be exponentiated ==#
+        test_filter = first_order^order
+        if sign(order) != -1
+            @test test_filter.a == first_order.a ^ order
+            @test test_filter.b == first_order.b ^ order
+        else
+            @test test_filter.b == first_order.a ^ abs(order)
+            @test test_filter.a == first_order.b ^ abs(order)
+        end
+    end
+end
