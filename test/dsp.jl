@@ -62,6 +62,8 @@ end
         offset_arr = OffsetArray{Int}(undef, -1:2)
         offset_arr[:] = a
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
+        # Issue #352
+        @test conv([1//2, 1//3, 1//4], [1, 2]) ≈ [1//2, 4//3, 11//12, 1//2]
     end
 
 
