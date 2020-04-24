@@ -701,14 +701,18 @@ function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
     fu, fv = promote(u, v)
     conv(fu, fv)
 end
-conv(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T<:Number, N} =
-    conv(float(u), float(v))
+
 conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
     round.(Int, conv(float(u), float(v)))
+
+conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
+    conv(float(u), float(v))
+
 function conv(u::AbstractArray{<:Number, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
     conv(float(u), v)
 end
+
 function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
               v::AbstractArray{<:Number, N}) where N
     conv(u, float(v))
