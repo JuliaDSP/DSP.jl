@@ -1,6 +1,8 @@
 module Filters
 using ..Unwrap
 using Polynomials, ..Util
+using Polynomials.PolyCompat
+
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
