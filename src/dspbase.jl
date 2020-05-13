@@ -718,7 +718,8 @@ function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
     conv(u, float(v))
 end
 
-function conv(A::AbstractArray, B::AbstractArray)
+function conv(A::AbstractArray{<:Number, N},
+              B::AbstractArray{<:Number, P}) where {N, P}
     maxnd = max(ndims(A), ndims(B))
     return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
 end
