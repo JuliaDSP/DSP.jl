@@ -42,11 +42,11 @@ Base.promote_rule(::Type{ZeroPoleGain{Z1,P1,K1}}, ::Type{ZeroPoleGain{Z2,P2,K2}}
 #
 
 struct PolynomialRatio{T<:Number} <: FilterCoefficients
-    b::Poly{T}
-    a::Poly{T}
+    b::Polynomial{T}
+    a::Polynomial{T}
 
-    PolynomialRatio{Ti}(b::Poly, a::Poly) where {Ti<:Number} =
-        new{Ti}(convert(Poly{Ti}, b/a[end]), convert(Poly{Ti}, a/a[end]))
+    PolynomialRatio{Ti}(b::Polynomial, a::Polynomial) where {Ti<:Number} =
+        new{Ti}(convert(Polynomial{Ti}, b/a[end]), convert(Polynomial{Ti}, a/a[end]))
 end
 """
     PolynomialRatio(b, a)
@@ -63,8 +63,8 @@ H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\l
 `b` and `a` may be specified as `Polynomial` objects or
 vectors ordered from highest power to lowest.
 """
-PolynomialRatio(b::Poly{T}, a::Poly{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
-PolynomialRatio(b::Poly, a::Poly) = PolynomialRatio(promote(b, a)...)
+PolynomialRatio(b::Polynomial{T}, a::Polynomial{T}) where {T<:Number} = PolynomialRatio{T}(b, a)
+PolynomialRatio(b::Polynomial, a::Polynomial) = PolynomialRatio(promote(b, a)...)
 
 # The DSP convention is highest power first. The Polynomials.jl
 # convention is lowest power first.
@@ -72,7 +72,7 @@ function PolynomialRatio{T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,V
     if all(iszero, b) || all(iszero, a)
         throw(ArgumentError("filter must have non-zero numerator and denominator"))
     end
-    PolynomialRatio{T}(Poly(reverse(b)), Poly(reverse(a)))
+    PolynomialRatio{T}(Polynomial(reverse(b)), Polynomial(reverse(a)))
 end
 PolynomialRatio(b::Union{T,Vector{T}}, a::Union{S,Vector{S}}) where {T<:Number,S<:Number} =
     PolynomialRatio{promote_type(T,S)}(b, a)
@@ -83,9 +83,9 @@ PolynomialRatio(f::PolynomialRatio{T}) where {T} = PolynomialRatio{T}(f)
 Base.promote_rule(::Type{PolynomialRatio{T}}, ::Type{PolynomialRatio{S}}) where {T,S} = PolynomialRatio{promote_type(T,S)}
 
 function PolynomialRatio{T}(f::ZeroPoleGain) where T<:Real
-    b = f.k*poly(f.z)
-    a = poly(f.p)
-    PolynomialRatio{T}(Poly(real(b.a)), Poly(real(a.a)))
+    b = f.k * fromroots(f.z)
+    a = fromroots(f.p)
+    PolynomialRatio{T}(Polynomial(real(coeffs(b))), Polynomial(real(coeffs(a))))
 end
 PolynomialRatio(f::ZeroPoleGain{Z,P,K}) where {Z,P,K} =
     PolynomialRatio{promote_type(real(Z),real(P),K)}(f)
@@ -108,7 +108,7 @@ ZeroPoleGain(f::PolynomialRatio{T}) where {T} =
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio) = reverse(f.b.a)
+coefb(f::PolynomialRatio) = reverse(coeffs(f.b))
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -117,7 +117,7 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio) = reverse(f.a.a)
+coefa(f::PolynomialRatio) = reverse(coeffs(f.a))
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #

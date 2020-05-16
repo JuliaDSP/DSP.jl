@@ -7,7 +7,7 @@
 function freqz(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     ejw = exp(-im * w)
-    polyval(filter.b, ejw) ./ polyval(filter.a, ejw)
+    filter.b(ejw) ./ filter.a(ejw)
 end
 
 function freqz(filter::ZeroPoleGain, w::Number)
@@ -88,7 +88,7 @@ or frequencies `w` in radians/sample.
 function freqs(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     s = im * w
-    polyval(filter.b, s) ./ polyval(filter.a, s)
+    filter.b(s) ./ filter.a(s)
 end
 
 function freqs(filter::ZeroPoleGain, w::Number)
