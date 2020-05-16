@@ -1,6 +1,6 @@
 module Filters
 using ..Unwrap
-using Polynomials, ..Util
+using ..Util
 using Polynomials: Polynomial, coeffs, roots, fromroots
 
 import Base: *
