@@ -160,8 +160,8 @@ function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}},
     si = f.state
     # Note: these are in the Polynomials.jl convention, which is
     # reversed WRT the usual DSP convention
-    b = f.coef.b.a
-    a = f.coef.a.a
+    b = coeffs(f.coef.b)
+    a = coeffs(f.coef.a)
     n = length(b)
     if n == 1
         mul!(out, x, b[1])

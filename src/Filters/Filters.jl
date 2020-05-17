@@ -1,7 +1,7 @@
 module Filters
 using ..Unwrap
-using Polynomials, ..Util
-using Polynomials.PolyCompat
+using ..Util
+using Polynomials: Polynomial, coeffs, roots, fromroots
 
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
