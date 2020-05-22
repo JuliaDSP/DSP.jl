@@ -721,10 +721,10 @@ end
 function conv(A::AbstractArray{<:Number, M},
               B::AbstractArray{<:Number, N}) where {M, N}
     if (M < N)
-        conv(cat(A, dims=N), B)
+        conv(cat(A, dims=N)::AbstractArray{eltype(A), N}, B)
     else
         @assert M > N
-        conv(A, cat(B, dims=M))
+        conv(A, cat(B, dims=M)::AbstractArray{eltype(B), M})
     end
 end
 
