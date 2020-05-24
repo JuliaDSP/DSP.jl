@@ -301,8 +301,9 @@ unnormalized.
     bufsize = ntuple(i -> i == 1 ? nffts[i] >> 1 + 1 : nffts[i], N)
     fdbuff = similar(u, Complex{T}, NTuple{N, Int}(bufsize))
 
-    p = plan_rfft(tdbuff)
-    ip = plan_brfft(fdbuff, nffts[1])
+    # PATIENT flag needed if Julia has more than one thread (See #339)
+    p = plan_rfft(tdbuff, flags = FFTW.PATIENT)
+    ip = plan_brfft(fdbuff, nffts[1], flags = FFTW.PATIENT)
 
     tdbuff, fdbuff, p, ip
 end
@@ -310,8 +311,9 @@ end
 @inline function os_prepare_conv(u::AbstractArray{<:Complex}, nffts)
     buff = similar(u, nffts)
 
-    p = plan_fft!(buff)
-    ip = plan_bfft!(buff)
+    # PATIENT flag needed if Julia has more than one thread (See #339)
+    p = plan_fft!(buff, flags = FFTW.PATIENT)
+    ip = plan_bfft!(buff, flags = FFTW.PATIENT)
 
     buff, buff, p, ip # Only one buffer for complex
 end
