@@ -87,6 +87,8 @@ end
     tukey_jl = tukey(128, 0.4)
     tukey_ml = readdlm(joinpath(dirname(@__FILE__), "data", "tukey128,0.4.txt"), '\t')
     @test tukey_jl ≈ tukey_ml
+    
+    @test tukey(128, 0) == rect(128)
 
     lanczos_jl = lanczos(128)
     lanczos_ref = readdlm(joinpath(dirname(@__FILE__), "data", "lanczos128.txt"), '\t')
