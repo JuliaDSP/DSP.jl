@@ -64,6 +64,8 @@ end
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
         # Issue #352
         @test conv([1//2, 1//3, 1//4], [1, 2]) ≈ [1//2, 4//3, 11//12, 1//2]
+        # Non-numerical arrays should not be convolved
+        @test_throws MethodError conv([sin], [cos])
     end
 
 
