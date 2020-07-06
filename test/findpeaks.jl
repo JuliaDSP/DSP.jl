@@ -1,7 +1,9 @@
 using DSP
 using Test
 
-@testset "Findpeaks: Findpeaks: Single Gaussian peak" begin
+const NAME = "Findpeaks: "
+
+@testset "$NAME Single Gaussian peak" begin
     gaussian(x,μ,σ) = 1/sqrt(2*π)/σ*exp(-((x-μ)^2)/2/σ^2)
     x = collect(range(1,stop=1000,length=1000))
     μ = rand(x)
@@ -17,7 +19,7 @@ using Test
 end
 
 
-@testset "Findpeaks: Prominence" begin
+@testset "$NAME Prominence" begin
     gaussian(x,μ,σ) = exp(-((x-μ)^2)/2/σ^2)
 
     x = range(0., stop = 1., length = 1000) |> collect
@@ -42,7 +44,7 @@ end
     @test abs(peaks[2] - expected_peak_2) < 20
 end
 
-@testset "Findpeaks: Threshold" begin
+@testset "$NAME Threshold" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
     @test Set(findpeaks(y, threshold=3.1)) == Set([])
@@ -52,7 +54,7 @@ end
     @test Set(findpeaks(y, threshold=0.0)) == Set([3, 6, 10])
 end
 
-@testset "Findpeaks: Min. Distance" begin
+@testset "$NAME Min. Distance" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
     @test Set(findpeaks(y, min_dist=4)) == Set([6])
@@ -62,7 +64,7 @@ end
     @test Set(findpeaks(y, min_dist=0)) == Set([3, 6, 10])
 end
 
-@testset "Findpeaks: Min. Height" begin
+@testset "$NAME Min. Height" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
     @test Set(findpeaks(y, min_height=6.)) == Set([])
@@ -71,4 +73,24 @@ end
 end
 
 
+@testset "$NAME Empty inputs" begin
+    y1 = Float64[]
+    x1 = Int64[]
+
+    @test isempty(findpeaks(y1))
+    @test findpeaks(y1, x1) == empty(x1)
+
+    y2 = Integer[]
+    x2 = String[]
+
+    @test isempty(findpeaks(y2))
+    @test findpeaks(y2, x2) == empty(x2)
+end
+
+@testset "$NAME Non-equal data lengths" begin
+    y = [1.0, 2.0, 1.0]
+    x = [2.0]
+
+    @test_throws ArgumentError findpeaks(y, x)
+end
 

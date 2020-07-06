@@ -24,11 +24,22 @@ function findpeaks(
                    y :: AbstractVector{T},
                    x :: AbstractVector{S} = collect(1:length(y))
                    ;
-                   min_height :: T = minimum(y),
-                   min_prom :: T = zero(y[1]),
-                   min_dist :: S = zero(x[1]),
-                   threshold :: T = zero(y[1]),
-                  ) where {T <: Real, S}
+                   kwargs...
+                  ) where {T, S}
+
+    if isempty(y)
+        return empty(x)
+    end
+
+    if length(x) != length(y)
+        lx, ly = length(x), length(y)
+        throw(ArgumentError("`x` and `y` need to have the same length: x($lx) y($ly)"))
+    end
+
+    min_height = get(kwargs, :min_height, minimum(y))
+    min_prom   = get(kwargs, :min_prom,   zero(y[1]))
+    min_dist   = get(kwargs, :min_dist,   zero(x[1]))
+    threshold  = get(kwargs, :threshold,  zero(y[1]))
 
     dy = diff(y)
 
