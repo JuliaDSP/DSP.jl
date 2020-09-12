@@ -4,6 +4,8 @@
 # Frequency response of a digital filter
 #
 
+using ..DSP: conv
+
 function freqz(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     ejw = exp(-im * w)
