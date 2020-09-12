@@ -59,6 +59,25 @@ end
 
 
 """
+    grpdelay(fliter, w = range(0, stop=π, length=250))
+
+Group delay of a digital 'filter' at normalized frequency
+or frequencies 'w' in radians/sample.
+"""
+function grpdelay(filter::FilterCoefficients, w = range(0, stop=π, length=250))
+    filter = convert(PolynomialRatio, filter)
+    b, a = coefb(filter), filter.a.coeffs # reversed a
+    c = conv(b, conj(a))
+    cr = range(0, stop=length(c)-1) .* c
+    ejw = exp.(-im * w)
+    num = Polynomial(cr).(ejw)
+    den = Polynomial(c).(ejw)
+    gd = real(num ./ den) .- length(a) .+ 1
+    [x == Inf ? 0 : x for x in gd] # Set Infs to zeros
+end
+
+
+"""
     impz(filter, n=100)
 
 Impulse response of a digital `filter` with `n` points.
