@@ -213,3 +213,29 @@ end
     #=xlabel("Frequency (Hz)")=#
     #=file(figure, "MATLAB-freqs-hz.png", width=1200, height=800)=#
 end
+
+# ######################################
+#
+#  Test grpdelay
+#
+#  Data from Matlab using b,a and a from above:
+#  [gd, w] = grpdelay(b, a, 512)
+#  all = [w gd]
+#  dlmwrite('grpdelay_eg1.txt', all, 'delimiter', '\t', 'precision', '%.12f')
+#
+# ######################################
+@testset "grpdelay" begin
+    matlab_delay = readdlm(joinpath(dirname(@__FILE__), "data", "grpdelay_eg1.txt"),'\t')
+    b0 = 0.05634
+    b1 = [1,  1]
+    b2 = [1, -1.0166, 1]
+    a1 = [1, -0.683]
+    a2 = [1, -1.4461, 0.7957]
+    b = b0*conv(b1, b2)
+    a = conv(a1, a2)
+    df = PolynomialRatio(b, a)
+    w = matlab_delay[:, 1]
+
+    grpdelay_matlab = matlab_delay[:, 2]
+    @test grpdelay(df, w) ≈ grpdelay_matlab
+end
