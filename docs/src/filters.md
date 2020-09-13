@@ -114,6 +114,7 @@ iirnotch
 ```@docs
 freqz
 phasez
+grpdelay
 impz
 stepz
 freqs
