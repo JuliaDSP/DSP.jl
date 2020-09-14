@@ -71,7 +71,7 @@ function grpdelay(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     b, a = coefb(filter), filter.a.coeffs # reversed a
     c = conv(b, conj(a))
     cr = range(0, stop=length(c)-1) .* c
-    ejw = exp.(-im * w)
+    ejw = exp.(-im .* w)
     num = Polynomial(cr).(ejw)
     den = Polynomial(c).(ejw)
     gd = real(num ./ den) .- length(a) .+ 1
