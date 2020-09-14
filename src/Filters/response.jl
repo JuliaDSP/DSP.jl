@@ -75,7 +75,6 @@ function grpdelay(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     num = Polynomial(cr).(ejw)
     den = Polynomial(c).(ejw)
     gd = real(num ./ den) .- length(a) .+ 1
-    [x == Inf ? 0 : x for x in gd] # Set Infs to zeros
 end
 
 
