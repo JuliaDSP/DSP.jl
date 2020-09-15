@@ -216,7 +216,7 @@ end
 
 # ######################################
 #
-#  Test grpdelay
+#  Test grpdelayz
 #
 #  Data from Matlab using b,a and a from above:
 #  [gd, w] = grpdelay(b, a, 512)
@@ -224,7 +224,7 @@ end
 #  dlmwrite('grpdelay_eg1.txt', all, 'delimiter', '\t', 'precision', '%.12f')
 #
 # ######################################
-@testset "grpdelay" begin
+@testset "grpdelayz" begin
     matlab_delay = readdlm(joinpath(dirname(@__FILE__), "data", "grpdelay_eg1.txt"),'\t')
     b0 = 0.05634
     b1 = [1,  1]
@@ -237,5 +237,5 @@ end
     w = matlab_delay[:, 1]
 
     grpdelay_matlab = matlab_delay[:, 2]
-    @test grpdelay(df, w) ≈ grpdelay_matlab
+    @test grpdelayz(df, w) ≈ grpdelay_matlab
 end

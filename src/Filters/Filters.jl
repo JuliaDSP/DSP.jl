@@ -47,7 +47,7 @@ include("response.jl")
 export  freqs,
         freqz,
         phasez,
-        grpdelay,
+        grpdelayz,
         impz,
         stepz
 
