@@ -74,7 +74,7 @@ function grpdelayz(filter::FilterCoefficients, w = range(0, stop=π, length=250)
     ejw = exp.(-im .* w)
     num = Polynomial(cr).(ejw)
     den = Polynomial(c).(ejw)
-    gd = real(num ./ den) .- length(a) .+ 1
+    return real.(num ./ den) .- (length(a) - 1)
 end
 
 
