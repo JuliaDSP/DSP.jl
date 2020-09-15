@@ -238,4 +238,10 @@ end
 
     grpdelay_matlab = matlab_delay[:, 2]
     @test grpdelayz(df, w) ≈ grpdelay_matlab
+
+    # Test with IIR filters types I-IV
+    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1], [1])) ≈ fill(2.0, 250)
+    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
+    @test grpdelayz(PolynomialRatio([1, 0, -1], [1])) ≈ fill(0.5, 250)
+    @test grpdelayz(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
 end
