@@ -69,6 +69,12 @@ or frequencies 'w' in radians/sample.
 function grpdelayz(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     filter = convert(PolynomialRatio, filter)
     b, a = coefb(filter), filter.a.coeffs # reversed a
+
+    # Linear Phase FIR
+    if (length(a) == 1) & (_is_sym(b) | _is_anti_sym(b))
+        return fill((length(b)-1)/2, length(w))
+    end
+
     c = conv(b, conj(a))
     cr = range(0, stop=length(c)-1) .* c
     ejw = exp.(-im .* w)
@@ -147,4 +153,14 @@ end
 
 function hz_to_radians_per_second(hz, fs)
     hz * ((2 * pi) / fs)
+end
+
+function _is_sym(x::AbstractArray)
+    n = length(x) ÷ 2
+    return all([x[begin+i] == x[end-i] for i in 0:n])
+end
+
+function _is_anti_sym(x::AbstractArray)
+    n = length(x) ÷ 2
+    return all([x[begin+i] == -x[end-i] for i in 0:n])
 end
