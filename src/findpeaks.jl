@@ -49,6 +49,8 @@ in 1D array of real numbers. Similar to MATLAB's findpeaks().\n
 
 The order of filtering is:
 **height -> threshold -> prominence -> distance -> plateaus**
+
+*Warning* `NaN` values are currently not supported and any `NaN`s should be filtered out by the user before applying this function.
 """
 function findpeaks(
                    y :: AbstractVector{T},
