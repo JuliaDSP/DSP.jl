@@ -7,6 +7,7 @@ struct PeakInfo{T}
     left_diff :: T
     right_diff :: T
     prominence :: T
+    plateau_range :: UnitRange{Int}
 end
 
 """
@@ -16,6 +17,14 @@ macro apply_indices!(inds, args...)
     Expr(
          :block,
          [ :($(esc(args[i])) = $(esc(args[i]))[$(esc(inds))]) for i in 1:length(args) ]...)
+end
+
+macro on_empty_return(peaks, x)
+    quote 
+        if isempty($(esc(peaks)))
+            return (empty($(esc(x))), empty($(esc(x)), PeakInfo))
+        end
+    end
 end
 
 """
@@ -35,6 +44,11 @@ in 1D array of real numbers. Similar to MATLAB's findpeaks().\n
 `min_dist` -- minimal peak distance (keeping highest peaks)\n
 `threshold` -- minimal difference (absolute value) between
  peak and neighboring points\n
+`min_plateau_points` -- minimal number of points a plateau needs to have to be considered a peak
+`max_plateau_points` -- maximal number of points a plateau can have to be considered a peak
+
+The order of filtering is:
+**height -> threshold -> prominence -> distance -> plateaus**
 """
 function findpeaks(
                    y :: AbstractVector{T},
@@ -43,9 +57,7 @@ function findpeaks(
                    kwargs...
                   ) where {T, S}
 
-    if isempty(y)
-        return (empty(x), empty(x, PeakInfo))
-    end
+    @on_empty_return(y, x)
 
     if length(x) != length(y)
         lx, ly = length(x), length(y)
@@ -56,23 +68,32 @@ function findpeaks(
     min_prom   = get(kwargs, :min_prom,   zero(y[1]))
     min_dist   = get(kwargs, :min_dist,   zero(x[1]))
     threshold  = get(kwargs, :threshold,  zero(y[1]))
+    min_plateau_points  = get(kwargs, :min_plateau_points, zero(length(y)))
+    max_plateau_points  = get(kwargs, :max_plateau_points, typemax(Int))
 
     peaks = 1:length(y) |> collect
 
     heights = y[peaks]
     inds2keep = heights .> min_height
     @apply_indices!(inds2keep, peaks, heights)
+    @on_empty_return(peaks, x)
 
     inds2keep, ldiffs, rdiffs = in_threshold(peaks, y, threshold)
     @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, heights)
+    @on_empty_return(peaks, x)
 
     inds2keep, proms = with_prominence(peaks, y, min_prom)
     @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, heights, proms)
+    @on_empty_return(peaks, x)
 
     inds2keep = with_distance(peaks, x, y, min_dist)
     @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, proms, heights)
-    
-    peak_info = [PeakInfo(heights[i], ldiffs[i], rdiffs[i], proms[i]) for i in 1:length(inds2keep)]
+    @on_empty_return(peaks, x)
+
+    peak_info = [PeakInfo{T}(heights[i], ldiffs[i], rdiffs[i], proms[i], 1:1) for i in 1:length(inds2keep)]
+
+    peaks, peak_info = zip(group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)...)
+
     (peaks = peaks, peak_info = peak_info)
 end
 
@@ -193,6 +214,92 @@ function with_distance(
     end
 
     inds[.!peaks2del]
+end
+
+function find_plateaus(peaks :: AbstractVector{Int})
+    n_ranges = 0
+    ranges = [1:1 for i in 1:length(peaks)]
+    is_plateau = diff(peaks) .== 1
+    constructed_range = -1:-1
+    for (i, t) in enumerate(is_plateau)
+        if t
+            if constructed_range == -1:-1
+                # start plateau range
+                constructed_range = i:i
+            end
+        else
+            if constructed_range != -1:-1
+                # finish plateau range
+                constructed_range = constructed_range.start : i
+                n_ranges += 1
+                ranges[n_ranges] = constructed_range
+
+                constructed_range = -1:-1
+            else
+                # add single peak
+                n_ranges += 1
+                ranges[n_ranges] = i:i
+            end
+        end
+    end
+    # finish the last plateau
+    if constructed_range != -1:-1
+        constructed_range = constructed_range.start : length(peaks)
+        n_ranges += 1
+        ranges[n_ranges] = constructed_range
+    else
+        n_ranges += 1
+        ranges[n_ranges] = length(peaks) : length(peaks)
+    end
+    ranges[1:n_ranges]
+end
+
+
+function merge_l_r_diff(l_edge :: PeakInfo, r_edge :: PeakInfo)
+    (l_edge.left_diff, r_edge.right_diff)
+end
+
+function global_plateau_range(peaks :: AbstractVector{Int},
+                              peak_info :: Vector{PeakInfo{T}},
+                              r :: UnitRange{Int}) where T <: Real
+    l_edge = peaks[r.start]
+    r_edge = peaks[r.stop]
+    plateau_range = l_edge : r_edge
+
+    l_edge_info = peak_info[r.start]
+    r_edge_info = peak_info[r.stop]
+    left_diff, right_diff = merge_l_r_diff(l_edge_info, r_edge_info)
+    merged_peak_info = PeakInfo(
+                                l_edge_info.height,
+                                left_diff,
+                                right_diff,
+                                l_edge_info.prominence,
+                                plateau_range,
+                               )
+
+    (plateau_range, merged_peak_info)
+end
+
+function center_peak(plateau :: UnitRange{Int})
+    center_peak = floor(Int, (plateau.start + plateau.stop)/2)
+end
+
+function group_plateaus(peaks :: AbstractVector{Int},
+                        peak_info :: Vector{PeakInfo{T}},
+                        min_plateau_points :: Int,
+                        max_plateau_points :: Int) where T <: Real
+
+    inds = sortperm(peaks)
+    @apply_indices!(inds, peaks, peak_info)
+
+    plateaus = find_plateaus(peaks)
+
+    map(r -> 
+        begin
+            plateau_range, merged_peak_info = global_plateau_range(peaks, peak_info, r)
+            (center_peak(plateau_range), merged_peak_info)
+        end,
+        filter(x -> min_plateau_points <= length(x) <= max_plateau_points, plateaus))
 end
 
 end # module

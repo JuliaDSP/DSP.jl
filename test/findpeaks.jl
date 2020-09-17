@@ -72,6 +72,26 @@ end
     @test Set(findpeaks(y, min_height=2.9)[1]) == Set([3, 6, 10])
 end
 
+@testset "$NAME Plateaus" begin
+    y = [0., 1., 3., 3., 3., 1., 4., 5., 3., 0., 0., 1., 5., 5., 4., 0.]
+    
+    @test Set(findpeaks(y)[1]) == Set([4, 8, 13])
+    @test Set(findpeaks(y, min_plateau_points=1)[1]) == Set([4, 8, 13])
+    @test Set(findpeaks(y, min_plateau_points=2)[1]) == Set([4, 13])
+    @test Set(findpeaks(y, min_plateau_points=3)[1]) == Set([4])
+    @test Set(findpeaks(y, min_plateau_points=4)[1]) == Set([])
+
+    @test Set(findpeaks(y, max_plateau_points=2)[1]) == Set([8, 13])
+    @test Set(findpeaks(y, max_plateau_points=1)[1]) == Set([8])
+    @test Set(findpeaks(y, max_plateau_points=0)[1]) == Set([])
+
+    @test Set(findpeaks(y, min_plateau_points=2, max_plateau_points=2)[1]) == Set([13])
+end
+
+@testset "$NAME Two Plateaus next to each other" begin
+    y = [0., 3., 3., 5., 5., 1.]
+    @test Set(findpeaks(y)[1]) == Set([4])
+end
 
 @testset "$NAME Empty inputs" begin
     y1 = Float64[]
