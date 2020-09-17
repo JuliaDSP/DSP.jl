@@ -1,6 +1,22 @@
 module Findpeaks
 
-export findpeaks
+export findpeaks, PeakInfo
+
+struct PeakInfo{T}
+    height :: T
+    left_diff :: T
+    right_diff :: T
+    prominence :: T
+end
+
+"""
+Overwrites arrays specified in `args` by `args[inds]`.
+"""
+macro apply_indices!(inds, args...)
+    Expr(
+         :block,
+         [ :($(esc(args[i])) = $(esc(args[i]))[$(esc(inds))]) for i in 1:length(args) ]...)
+end
 
 """
 `findpeaks(y::Array{T},
@@ -28,7 +44,7 @@ function findpeaks(
                   ) where {T, S}
 
     if isempty(y)
-        return empty(x)
+        return (empty(x), empty(x, PeakInfo))
     end
 
     if length(x) != length(y)
@@ -41,51 +57,91 @@ function findpeaks(
     min_dist   = get(kwargs, :min_dist,   zero(x[1]))
     threshold  = get(kwargs, :threshold,  zero(y[1]))
 
-    dy = diff(y)
+    peaks = 1:length(y) |> collect
 
-    peaks = in_threshold(dy, threshold)
+    heights = y[peaks]
+    inds2keep = heights .> min_height
+    @apply_indices!(inds2keep, peaks, heights)
 
-    yP = y[peaks]
-    peaks = with_prominence(y, peaks, min_prom)
+    inds2keep, ldiffs, rdiffs = in_threshold(peaks, y, threshold)
+    @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, heights)
+
+    inds2keep, proms = with_prominence(peaks, y, min_prom)
+    @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, heights, proms)
+
+    inds2keep = with_distance(peaks, x, y, min_dist)
+    @apply_indices!(inds2keep, peaks, ldiffs, rdiffs, proms, heights)
     
-    #minimal height refinement
-    peaks = peaks[y[peaks] .> min_height]
-    yP = y[peaks]
-
-    peaks = with_distance(peaks, x, y, min_dist)
-
-    peaks
+    peak_info = [PeakInfo(heights[i], ldiffs[i], rdiffs[i], proms[i]) for i in 1:length(inds2keep)]
+    (peaks = peaks, peak_info = peak_info)
 end
 
 function in_threshold(
-                      dy :: AbstractVector{T},
+                      peaks :: AbstractVector{Int},
+                      y :: AbstractVector{T},
                       threshold :: T,
                      ) where {T <: Real}
 
-    peaks = 1:length(dy) |> collect
+    peak_len = length(peaks)
 
-    k = 0
-    for i = 2:length(dy)
-        if dy[i] <= -threshold && dy[i-1] >= threshold
-            k += 1
-            peaks[k] = i
+    inds2keep = 1:peak_len |> collect
+    rdiffs = zeros(T, peak_len)
+    ldiffs = zeros(T, peak_len)
+
+    dy = diff(y)
+
+    n_peaks2keep = 0
+    for (j, peak_i) in enumerate(peaks)
+        # resolve edges of the data
+        if peak_i == 1
+            # only check right difference
+            rd = -dy[peak_i]
+            if rd >= threshold
+                n_peaks2keep += 1
+                inds2keep[n_peaks2keep] = j
+                ldiffs[j] = zero(threshold)
+                rdiffs[j] = rd
+            end
+        elseif peak_i == length(y)
+            # only check left difference
+            ld = dy[peak_i - 1]
+            if ld >= threshold
+                n_peaks2keep += 1
+                inds2keep[n_peaks2keep] = j
+                ldiffs[j] = ld
+                rdiffs[j] = zero(threshold)
+            end
+        else
+            # check both sides
+            ld = dy[peak_i - 1]
+            rd = -dy[peak_i]
+            if rd >= threshold && ld >= threshold
+                n_peaks2keep += 1
+                inds2keep[n_peaks2keep] = j
+                ldiffs[j] = ld
+                rdiffs[j] = rd
+            end
         end
     end
-    peaks[1:k]
+
+    (inds2keep[1:n_peaks2keep], ldiffs, rdiffs)
 end
 
 function with_prominence(
-                         y :: AbstractVector{T},
                          peaks :: AbstractVector{Int},
+                         y :: AbstractVector{T},
                          min_prom::T,
                         ) where {T <: Real}
 
     #minimal prominence refinement
-    peaks[prominence(y, peaks) .> min_prom]
+    proms = prominence(y, peaks)
+    proms .> min_prom, proms
 end
 
 
-function prominence(y::AbstractVector{T}, peaks::AbstractVector{Int}) where {T <: Real}
+function prominence(y :: AbstractVector{T},
+                    peaks :: AbstractVector{Int}
+                   ) where {T <: Real}
     yP = y[peaks]
     proms = zero(yP)
 
@@ -124,10 +180,11 @@ function with_distance(
 
     peaks2del = zeros(Bool, length(peaks))
     inds = sortperm(y[peaks], rev=true)
-    permute!(peaks, inds)
-    for i = 1:length(peaks)
+    sorted_peaks = copy(peaks)
+    permute!(sorted_peaks, inds)
+    for i = 1:length(sorted_peaks)
         for j = 1:(i-1)
-            if abs(x[peaks[i]] - x[peaks[j]]) <= min_dist
+            if abs(x[sorted_peaks[i]] - x[sorted_peaks[j]]) <= min_dist
                 if !peaks2del[j]
                     peaks2del[i] = true
                 end
@@ -135,8 +192,7 @@ function with_distance(
         end
     end
 
-    peaks[.!peaks2del]
+    inds[.!peaks2del]
 end
-
 
 end # module

@@ -9,11 +9,11 @@ const NAME = "Findpeaks: "
     μ = rand(x)
     data = gaussian.(x,μ,rand(x)/3)
 
-    p = findpeaks(data)
+    p, _ = findpeaks(data)
     @test length(p) == 1
     @test p[1] == μ
 
-    p = findpeaks(data,x)
+    p, _ = findpeaks(data,x)
     @test length(p) == 1
     @test p[1] == μ
 end
@@ -32,7 +32,7 @@ end
     signal = ( a * gaussian.(x, μ, σ) for (a, μ, σ) in zip(amps, positions, widths) )
     data = sum(signal) + base
 
-    peaks = findpeaks(data, x, min_prom=4.)
+    peaks, _ = findpeaks(data, x, min_prom=4.)
     
     @test length(peaks) == 2
 
@@ -47,29 +47,29 @@ end
 @testset "$NAME Threshold" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
-    @test Set(findpeaks(y, threshold=3.1)) == Set([])
-    @test Set(findpeaks(y, threshold=2.1)) == Set([])
-    @test Set(findpeaks(y, threshold=1.1)) == Set([3])
-    @test Set(findpeaks(y, threshold=0.1)) == Set([3, 6, 10])
-    @test Set(findpeaks(y, threshold=0.0)) == Set([3, 6, 10])
+    @test Set(findpeaks(y, threshold=3.1)[1]) == Set([])
+    @test Set(findpeaks(y, threshold=2.1)[1]) == Set([])
+    @test Set(findpeaks(y, threshold=1.1)[1]) == Set([3])
+    @test Set(findpeaks(y, threshold=0.1)[1]) == Set([3, 6, 10])
+    @test Set(findpeaks(y, threshold=0.0)[1]) == Set([3, 6, 10])
 end
 
 @testset "$NAME Min. Distance" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
-    @test Set(findpeaks(y, min_dist=4)) == Set([6])
-    @test Set(findpeaks(y, min_dist=3)) == Set([6, 10])
-    @test Set(findpeaks(y, min_dist=2)) == Set([3, 6, 10])
-    @test Set(findpeaks(y, min_dist=0)) == Set([3, 6, 10])
-    @test Set(findpeaks(y, min_dist=0)) == Set([3, 6, 10])
+    @test Set(findpeaks(y, min_dist=4)[1]) == Set([6])
+    @test Set(findpeaks(y, min_dist=3)[1]) == Set([6, 10])
+    @test Set(findpeaks(y, min_dist=2)[1]) == Set([3, 6, 10])
+    @test Set(findpeaks(y, min_dist=0)[1]) == Set([3, 6, 10])
+    @test Set(findpeaks(y, min_dist=0)[1]) == Set([3, 6, 10])
 end
 
 @testset "$NAME Min. Height" begin
     y = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
     
-    @test Set(findpeaks(y, min_height=6.)) == Set([])
-    @test Set(findpeaks(y, min_height=4.9)) == Set([6, 10])
-    @test Set(findpeaks(y, min_height=2.9)) == Set([3, 6, 10])
+    @test Set(findpeaks(y, min_height=6.0)[1]) == Set([])
+    @test Set(findpeaks(y, min_height=4.9)[1]) == Set([6, 10])
+    @test Set(findpeaks(y, min_height=2.9)[1]) == Set([3, 6, 10])
 end
 
 
@@ -77,14 +77,14 @@ end
     y1 = Float64[]
     x1 = Int64[]
 
-    @test isempty(findpeaks(y1))
-    @test findpeaks(y1, x1) == empty(x1)
+    @test isempty(findpeaks(y1)[1])
+    @test findpeaks(y1, x1)[1] == empty(x1)
 
     y2 = Integer[]
     x2 = String[]
 
-    @test isempty(findpeaks(y2))
-    @test findpeaks(y2, x2) == empty(x2)
+    @test isempty(findpeaks(y2)[1])
+    @test findpeaks(y2, x2)[1] == empty(x2)
 end
 
 @testset "$NAME Non-equal data lengths" begin
