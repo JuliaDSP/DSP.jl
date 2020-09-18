@@ -25,7 +25,7 @@ Macro specific to findpeaks function."
 macro on_empty_return(peaks, x)
     quote 
         if isempty($(esc(peaks)))
-            return ((), ())
+            return (empty($(esc(x))), empty($(esc(x)), PeakInfo))
         end
     end
 end
