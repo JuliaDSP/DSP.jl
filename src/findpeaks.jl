@@ -19,6 +19,9 @@ macro apply_indices!(inds, args...)
          [ :($(esc(args[i])) = $(esc(args[i]))[$(esc(inds))]) for i in 1:length(args) ]...)
 end
 
+"""
+Macro specific to findpeaks function."
+"""
 macro on_empty_return(peaks, x)
     quote 
         if isempty($(esc(peaks)))
@@ -93,9 +96,12 @@ function findpeaks(
     @on_empty_return(peaks, x)
 
     peak_info = [PeakInfo{T}(heights[i], ldiffs[i], rdiffs[i], proms[i], 1:1) for i in 1:length(inds2keep)]
+    
 
-    peaks, peak_info = zip(group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)...)
+    grouped = group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)
+    @on_empty_return(grouped, x)
 
+    peaks, peak_info = zip(grouped...)
     (peaks = peaks, peak_info = peak_info)
 end
 
