@@ -73,6 +73,8 @@ function findpeaks(
         throw(ArgumentError("`x` and `y` need to have the same length: x($lx) y($ly)"))
     end
 
+    
+    new_peaks, new_peak_info
     min_height = get(kwargs, :min_height, minimum(y))
     min_prom   = get(kwargs, :min_prom,   zero(y[1]))
     min_dist   = get(kwargs, :min_dist,   zero(x[1]))
@@ -101,10 +103,7 @@ function findpeaks(
 
     peak_info = [PeakInfo{T}(heights[i], ldiffs[i], rdiffs[i], proms[i], 1:1) for i in 1:length(inds2keep)]
     
-    grouped = group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)
-    @on_empty_return(grouped, x)
-
-    peaks, peak_info = zip(grouped...)
+    peaks, peak_info = group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)
     (peaks = peaks, peak_info = peak_info)
 end
 
@@ -304,13 +303,18 @@ function group_plateaus(peaks :: AbstractVector{Int},
     @apply_indices!(inds, peaks, peak_info)
 
     plateaus = find_plateaus(peaks)
+    ranges = filter(x -> min_plateau_points <= length(x) <= max_plateau_points, plateaus)
 
-    map(r -> 
-        begin
-            plateau_range, merged_peak_info = global_plateau_range(peaks, peak_info, r)
-            (center_peak(plateau_range), merged_peak_info)
-        end,
-        filter(x -> min_plateau_points <= length(x) <= max_plateau_points, plateaus))
+    l = length(ranges)
+    new_peaks = Vector{Int}(undef, l)
+    new_peak_info = Vector{PeakInfo}(undef, l)
+    for (i, r) in enumerate(ranges)
+        plateau_range, merged_peak_info = global_plateau_range(peaks, peak_info, r)
+        new_peaks[i] = center_peak(plateau_range)
+        new_peak_info[i] = merged_peak_info
+    end
+    
+    new_peaks, new_peak_info
 end
 
 end # module
