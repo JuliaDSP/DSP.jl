@@ -35,8 +35,12 @@ end
 x::Array{S}=collect(1:length(y))
 ;min_height::T=minimum(y), min_prom::T=minimum(y),
 min_dist::S=0, threshold::T=0 ) where {T<:Real,S}`\n
-Returns indices of local maxima (sorted from highest peaks to lowest)
-in 1D array of real numbers. Similar to MATLAB's findpeaks().\n
+
+Finds peaks in 1D array. Similar to MATLAB's findpeaks().\n
+Returns:\n
+* tuple of peak positions found
+* a tuple of `PeakInfo` structures with additional information about peaks.
+
 *Arguments*:\n
 `y` -- data\n
 *Optional*:\n
@@ -97,7 +101,6 @@ function findpeaks(
 
     peak_info = [PeakInfo{T}(heights[i], ldiffs[i], rdiffs[i], proms[i], 1:1) for i in 1:length(inds2keep)]
     
-
     grouped = group_plateaus(peaks, peak_info, min_plateau_points, max_plateau_points)
     @on_empty_return(grouped, x)
 

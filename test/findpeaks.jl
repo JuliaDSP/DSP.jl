@@ -39,7 +39,7 @@ end
     expected_peak_1 = argmin(abs.(x .- positions[2])) # global highest peak
     expected_peak_2 = argmin(abs.(x .- positions[4])) # lowest peak
 
-    # check peaks are around expected - may be shifted because of background
+    # check peaks are around expected -> they may be shifted because of background
     @test abs(peaks[1] - expected_peak_1) < 20
     @test abs(peaks[2] - expected_peak_2) < 20
 end
@@ -91,6 +91,12 @@ end
 @testset "$NAME Two Plateaus next to each other" begin
     y = [0., 3., 3., 5., 5., 1.]
     @test Set(findpeaks(y)[1]) == Set([4])
+end
+
+@testset "$NAME Threshold with height" begin
+    y = [0., 1., 3., 2., 4., 2., 1., 0.]
+    @test Set(findpeaks(y, min_height=2.9)[1]) == Set([3, 5])
+    @test Set(findpeaks(y, min_height=2.9, threshold=2.)[1]) == Set([5])
 end
 
 @testset "$NAME Empty inputs" begin
