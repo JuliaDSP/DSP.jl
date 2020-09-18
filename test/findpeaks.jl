@@ -104,13 +104,13 @@ end
     x1 = Int64[]
 
     @test isempty(findpeaks(y1)[1])
-    @test findpeaks(y1, x1)[1] == empty(x1)
+    @test findpeaks(y1, x1)[1] == ()
 
     y2 = Integer[]
     x2 = String[]
 
     @test isempty(findpeaks(y2)[1])
-    @test findpeaks(y2, x2)[1] == empty(x2)
+    @test findpeaks(y2, x2)[1] == ()
 end
 
 @testset "$NAME Non-equal data lengths" begin
