@@ -38,8 +38,8 @@ min_dist::S=0, threshold::T=0 ) where {T<:Real,S}`\n
 
 Finds peaks in 1D array. Similar to MATLAB's findpeaks().\n
 Returns:\n
-* tuple of peak positions found
-* a tuple of `PeakInfo` structures with additional information about peaks.
+* a vector of peak positions found
+* a vector of `PeakInfo` structures with additional information about peaks.
 
 *Arguments*:\n
 `y` -- data\n
