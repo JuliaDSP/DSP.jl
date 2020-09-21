@@ -99,6 +99,37 @@ end
     @test Set(findpeaks(y, min_height=2.9, threshold=2.)[1]) == Set([5])
 end
 
+@testset "$NAME PeakInfo" begin
+    y1 = [0., 1., 3., 1., 4., 5., 3., 0., 2., 5., 4., 0.]
+
+    @test Set([
+            PeakInfo(3., 2., 2., 2., 3:3),
+            PeakInfo(5., 1., 2., 5., 6:6),
+            PeakInfo(5., 3., 1., 5., 10:10)]
+           ) == Set(findpeaks(y1)[2])
+
+    y2 = [0., 1., 3., 3., 3., 1., 4., 5., 3., 0., 0., 1., 5., 5., 4., 0.]
+    @test Set([
+            PeakInfo(3., 2., 2., 2., 3:5),
+            PeakInfo(5., 1., 2., 5., 8:8),
+            PeakInfo(5., 4., 1., 5., 13:14)]
+           ) == Set(findpeaks(y2)[2])
+
+    y3 = [0., 1., 3., 2., 4., 2., 1., 0.]
+    @test Set([
+               PeakInfo(4., 2., 2., 4., 5:5)
+              ]) == Set(findpeaks(y3, min_height=2.9, threshold=2.)[2])
+
+
+    # test prominence giving the correct value when it is limited by a boundary value
+    y4 = [1., 5., 0.]
+    @test Set([
+               PeakInfo(5., 4., 5., 4., 2:2)
+              ]) == Set(findpeaks(y4)[2])
+
+end
+
+
 @testset "$NAME Empty inputs" begin
     y1 = Float64[]
     x1 = Int64[]
