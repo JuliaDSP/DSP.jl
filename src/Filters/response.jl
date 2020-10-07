@@ -157,10 +157,10 @@ end
 
 function _is_sym(x::AbstractArray)
     n = length(x) ÷ 2
-    return all([x[1+i] == x[end-i] for i in 0:n])
+    return all(x[1+i] == x[end-i] for i in 0:n-1)
 end
 
 function _is_anti_sym(x::AbstractArray)
     n = length(x) ÷ 2
-    return all([x[1+i] == -x[end-i] for i in 0:n])
+    return all(x[1+i] == -x[end-i] for i in 0:n)
 end
