@@ -4,6 +4,8 @@
 # Frequency response of a digital filter
 #
 
+using ..DSP: conv
+
 function freqz(filter::FilterCoefficients, w::Number)
     filter = convert(PolynomialRatio, filter)
     ejw = exp(-im * w)
@@ -55,6 +57,30 @@ or frequencies `w` in radians/sample.
 function phasez(filter::FilterCoefficients, w = range(0, stop=π, length=250))
     h = freqz(filter, w)
     unwrap(-atan.(imag(h), real(h)); dims=ndims(h))
+end
+
+
+"""
+    grpdelayz(fliter, w = range(0, stop=π, length=250))
+
+Group delay of a digital 'filter' at normalized frequency
+or frequencies 'w' in radians/sample.
+"""
+function grpdelayz(filter::FilterCoefficients, w = range(0, stop=π, length=250))
+    filter = convert(PolynomialRatio, filter)
+    b, a = coefb(filter), filter.a.coeffs # reversed a
+
+    # Linear Phase FIR
+    if (length(a) == 1) & (_is_sym(b) | _is_anti_sym(b))
+        return fill((length(b)-1)/2, length(w))
+    end
+
+    c = conv(b, conj(a))
+    cr = range(0, stop=length(c)-1) .* c
+    ejw = exp.(-im .* w)
+    num = Polynomial(cr).(ejw)
+    den = Polynomial(c).(ejw)
+    return real.(num ./ den) .- (length(a) - 1)
 end
 
 
@@ -127,4 +153,14 @@ end
 
 function hz_to_radians_per_second(hz, fs)
     hz * ((2 * pi) / fs)
+end
+
+function _is_sym(x::AbstractArray)
+    n = length(x) ÷ 2
+    return all(x[1+i] == x[end-i] for i in 0:n-1)
+end
+
+function _is_anti_sym(x::AbstractArray)
+    n = length(x) ÷ 2
+    return all(x[1+i] == -x[end-i] for i in 0:n)
 end
