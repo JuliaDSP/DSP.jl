@@ -8,7 +8,7 @@ using ..DSP: xcorr
 
 function freqz(filter::FilterCoefficients{:z}, w::Number)
     filter = convert(PolynomialRatio, filter)
-    ejw = exp(-im * w)
+    ejw = exp(im * w)
     filter.b(ejw) ./ filter.a(ejw)
 end
 

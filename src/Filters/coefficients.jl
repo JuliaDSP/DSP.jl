@@ -46,24 +46,39 @@ Base.promote_rule(::Type{ZeroPoleGain{D,Z1,P1,K1}}, ::Type{ZeroPoleGain{D,Z2,P2,
 # Transfer function form
 #
 
-struct PolynomialRatio{Domain,T<:Number} <: FilterCoefficients{Domain}
-    b::Polynomial{T}
-    a::Polynomial{T}
+function shiftpoly(p::LaurentPolynomial, i)
+    if i > 0
+        return p * LaurentPolynomial([one(eltype(p))], 1, p.var)^i
+    elseif i < 0
+        return p * LaurentPolynomial([one(eltype(p))], -1, p.var)^-i
+    end
+    return p
+end
 
-    function PolynomialRatio{:z,Ti}(b::Polynomial{Ti}, a::Polynomial{Ti}) where {Ti<:Number}
+struct PolynomialRatio{Domain,T<:Number} <: FilterCoefficients{Domain}
+    b::LaurentPolynomial{T}
+    a::LaurentPolynomial{T}
+
+    function PolynomialRatio{:z,Ti}(b::LaurentPolynomial, a::LaurentPolynomial) where {Ti<:Number}
+        i = max(lastindex(a), lastindex(b))
+        b = shiftpoly(b, -i)
+        a = shiftpoly(a, -i)
         if !isone(a[0])
             if iszero(a[0])
                 throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
             end
-            b = convert(Polynomial{Ti}, b / a[0])
-            a = convert(Polynomial{Ti}, a / a[0])
+            b /= a[0]
+            a /= a[0]
         end
         return new{:z,Ti}(b, a)
     end
-    function PolynomialRatio{:s,Ti}(b::Polynomial{Ti}, a::Polynomial{Ti}) where {Ti<:Number}
+    function PolynomialRatio{:s,Ti}(b::LaurentPolynomial, a::LaurentPolynomial) where {Ti<:Number}
         if iszero(a)
             throw(ArgumentError("filter must have non-zero denominator"))
         end
+        i = min(firstindex(a), firstindex(b))
+        b = shiftpoly(b, -i)
+        a = shiftpoly(a, -i)
         return new{:s,Ti}(b, a)
     end
 end
@@ -84,83 +99,41 @@ H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\l
 vectors ordered from highest power to lowest.
 """
 PolynomialRatio(b, a) = PolynomialRatio{:z}(b, a)
-_maybe_normalize(::Val, b, a) = promote(b, a)
-function _maybe_normalize(::Val{:z}, b, a)
-    if iszero(a[0])
-        throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
-    end
-    return promote(b / a[0], a / a[0])
+function PolynomialRatio{:z}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
+    return PolynomialRatio{:z,typeof(one(T1)/one(T2))}(b, a)
 end
-function PolynomialRatio{D}(b::Polynomial, a::Polynomial) where {D}
-    b, a = _maybe_normalize(Val(D), b, a)
-    return PolynomialRatio{D,eltype(a)}(b, a)
+function PolynomialRatio{:s}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
+    return PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 end
 
 # The DSP convention for Laplace domain is highest power first. The Polynomials.jl
 # convention is lowest power first.
-_polyprep(D::Symbol, x) = D === :z ? x : reverse(x)
-_polyvar(D::Symbol) = D === :z ? Symbol("z^-1") : D
+_polyprep(D::Symbol, x, T...) = LaurentPolynomial{T...}(reverse(x), D === :z ? -length(x)+1 : 0, D)
 PolynomialRatio{D,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D,T} =
-    PolynomialRatio{D,T}(Polynomial{T}(_polyprep(D, b), _polyvar(D)), Polynomial{T}(_polyprep(D, a), _polyvar(D)))
+    PolynomialRatio{D,T}(_polyprep(D, b, T), _polyprep(D, a, T))
 PolynomialRatio{D}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D} =
-    PolynomialRatio{D}(Polynomial(_polyprep(D, b), _polyvar(D)), Polynomial(_polyprep(D, a), _polyvar(D)))
+    PolynomialRatio{D}(_polyprep(D, b), _polyprep(D, a))
 
-PolynomialRatio{D,T}(f::PolynomialRatio{D}) where {D,T} =
-    PolynomialRatio{D,T}(convert(Polynomial{T}, f.b), convert(Polynomial{T}, f.a))
+PolynomialRatio{D,T}(f::PolynomialRatio{D}) where {D,T} = PolynomialRatio{D,T}(f.b, f.a)
 PolynomialRatio{D}(f::PolynomialRatio{D,T}) where {D,T} = PolynomialRatio{D,T}(f)
 
 Base.promote_rule(::Type{PolynomialRatio{D,T}}, ::Type{PolynomialRatio{D,S}}) where {D,T,S} = PolynomialRatio{D,promote_type(T,S)}
 
-function PolynomialRatio{:s,T}(f::ZeroPoleGain{:s}) where {T<:Real}
-    b = f.k * fromroots(f.z)
-    a = fromroots(f.p)
-    return PolynomialRatio{:s,T}(Polynomial{T}(real(coeffs(b)), :s), Polynomial{T}(real(coeffs(a)), :s))
-end
-function PolynomialRatio{:z,T}(f::ZeroPoleGain{:z}) where {T<:Real}
-    b = real(f.k * coeffs(fromroots(f.z)))
-    a = real(coeffs(fromroots(f.p)))
-    if length(a) < length(b)
-        a = [a; zeros(eltype(a), length(b)-length(a))]
-    elseif length(b) < length(a)
-        b = [b; zeros(eltype(b), length(a)-length(b))]
-    end
-    return PolynomialRatio{:z,T}(reverse(b), reverse(a))
+function PolynomialRatio{D,T}(f::ZeroPoleGain{D}) where {D,T<:Real}
+    b = convert(LaurentPolynomial{T}, real(f.k * fromroots(f.z)))
+    a = convert(LaurentPolynomial{T}, real(fromroots(f.p)))
+    return PolynomialRatio{D,T}(b, a)
 end
 PolynomialRatio{D}(f::ZeroPoleGain{D,Z,P,K}) where {D,Z,P,K} =
     PolynomialRatio{D,promote_type(real(Z),real(P),K)}(f)
 
 ZeroPoleGain{D,Z,P,K}(f::PolynomialRatio{D}) where {D,Z,P,K} =
     ZeroPoleGain{D,Z,P,K}(ZeroPoleGain{D}(f))
-function ZeroPoleGain{:s}(f::PolynomialRatio{:s,T}) where {T}
-    z = roots(f.b)
-    p = roots(f.a)
-    # work around `roots` returning Any[] for polynomials of degree zero
-    if isempty(z) && !(eltype(z) <: Number)
-        z = typeof(one(T)/one(T))[]
-    end
-    if isempty(p) && !(eltype(p) <: Number)
-        p = typeof(one(T)/one(T))[]
-    end
-    return ZeroPoleGain{:s}(z, p, f.b[end]/f.a[end])
-end
-function ZeroPoleGain{:z}(f::PolynomialRatio{:z,T}) where {T}
-    b = Polynomial(reverse(coeffs(f.b)))
-    a = Polynomial(reverse(coeffs(f.a)))
-    z = roots(b)
-    p = roots(a)
-    # work around `roots` returning Any[] for polynomials of degree zero
-    if isempty(z) && !(eltype(z) <: Number)
-        z = typeof(one(T)/one(T))[]
-    end
-    if isempty(p) && !(eltype(p) <: Number)
-        p = typeof(one(T)/one(T))[]
-    end
-    if length(f.b) > length(f.a)
-        p = [p; zeros(eltype(p), length(f.b) - length(f.a))]
-    elseif length(f.b) < length(f.a)
-        z = [z; zeros(eltype(z), length(f.a) - length(f.b))]
-    end
-    return ZeroPoleGain{:z}(z, p, b[end]/a[end])
+function ZeroPoleGain{D}(f::PolynomialRatio{D,T}) where {D,T}
+    i = -min(firstindex(f.a), firstindex(f.b), 0)
+    z = roots(shiftpoly(f.b, i))
+    p = roots(shiftpoly(f.a, i))
+    return ZeroPoleGain{D}(z, p, f.b[end]/f.a[end])
 end
 
 *(f::PolynomialRatio{D}, g::Number) where {D} = PolynomialRatio{D}(g*f.b, f.a)
@@ -176,8 +149,8 @@ end
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio{:s}) = reverse(coeffs(f.b))
-coefb(f::PolynomialRatio{:z}) = coeffs(f.b)
+coefb(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.b)); coeffs(f.b)])
+coefb(f::PolynomialRatio{:z}) = reverse([coeffs(f.b); zeros(-lastindex(f.b))])
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -186,8 +159,8 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio{:s}) = reverse(coeffs(f.a))
-coefa(f::PolynomialRatio{:z}) = coeffs(f.a)
+coefa(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.a)); coeffs(f.a)])
+coefa(f::PolynomialRatio{:z}) = reverse([coeffs(f.a); zeros(-lastindex(f.a))])
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
@@ -229,60 +202,23 @@ ZeroPoleGain{D,Z,P,K}(f::Biquad{D}) where {D,Z,P,K} = ZeroPoleGain{D,Z,P,K}(Poly
 ZeroPoleGain{D}(f::Biquad) where {D} = ZeroPoleGain{D}(convert(PolynomialRatio{D}, f))
 
 function PolynomialRatio{D,T}(f::Biquad{D}) where {D,T}
-    if f.b2 == zero(T) && f.a2 == zero(T)
-        if f.b1 == zero(T) && f.a1 == zero(T)
-            b = T[f.b0]
-            a = T[one(T)]
-        else
-            b = T[f.b0, f.b1]
-            a = T[one(T), f.a1]
-        end
-    else
-        b = T[f.b0, f.b1, f.b2]
-        a = T[one(T), f.a1, f.a2]
-    end
-
+    b = T[f.b0, f.b1, f.b2]
+    a = T[one(T), f.a1, f.a2]
     PolynomialRatio{D,T}(b, a)
 end
 PolynomialRatio{D}(f::Biquad{D,T}) where {D,T} = PolynomialRatio{D,T}(f)
 
-function Biquad{:s,T}(f::PolynomialRatio{:s}) where {T}
+function Biquad{D,T}(f::PolynomialRatio{D}) where {D,T}
     a, b = f.a, f.b
-    xs = max(length(b), length(a))
+    lastidx = max(lastindex(b), lastindex(a))
 
-    if xs > 0 && !isone(a[xs-1])
-        throw(ArgumentError("leading denominator coefficient of a Biquad must be one"))
-    end
-    if xs == 3
-        Biquad{:s,T}(b[2], b[1], b[0], a[1], a[0])
-    elseif xs == 2
-        Biquad{:s,T}(b[1], b[0], zero(T), a[0], zero(T))
-    elseif xs == 1
-        Biquad{:s,T}(b[0], zero(T), zero(T), zero(T), zero(T))
-    elseif xs == 0
-        throw(ArgumentError("cannot convert an empty PolynomialRatio to Biquad"))
-    else
+    if lastidx - min(firstindex(b), firstindex(a)) >= 3
         throw(ArgumentError("cannot convert a filter of length > 3 to Biquad"))
     end
-end
-function Biquad{:z,T}(f::PolynomialRatio{:z}) where {T}
-    a, b = f.a, f.b
-    xs = max(length(b), length(a))
-
-    if xs > 0 && !isone(a[0])
+    if !isone(a[lastidx])
         throw(ArgumentError("leading denominator coefficient of a Biquad must be one"))
     end
-    if xs == 3
-        Biquad{:z,T}(b[0], b[1], b[2], a[1], a[2])
-    elseif xs == 2
-        Biquad{:z,T}(b[0], b[1], zero(T), a[1], zero(T))
-    elseif xs == 1
-        Biquad{:z,T}(b[0], zero(T), zero(T), zero(T), zero(T))
-    elseif xs == 0
-        throw(ArgumentError("cannot convert an empty PolynomialRatio to Biquad"))
-    else
-        throw(ArgumentError("cannot convert a filter of length > 3 to Biquad"))
-    end
+    Biquad{D,T}(b[lastidx], b[lastidx-1], b[lastidx-2], a[lastidx-1], a[lastidx-2])
 end
 Biquad{D}(f::PolynomialRatio{D,T}) where {D,T} = Biquad{D,T}(f)
 

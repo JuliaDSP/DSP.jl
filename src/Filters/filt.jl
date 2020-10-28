@@ -7,7 +7,7 @@
 
 ## PolynomialRatio
 _zerosi(f::PolynomialRatio{:z,T}, x::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
+    zeros(promote_type(T, S), max(-firstindex(f.a), -firstindex(f.b)))
 
 """
     filt!(out, f, x[, si])

@@ -230,8 +230,8 @@ end
     @test promote_type(PolynomialRatio{:z,Float32}, PolynomialRatio{:z,Int}) == PolynomialRatio{:z,Float32}
     f1f = convert(PolynomialRatio{:z,Float32}, f1)
     f1p = convert(PolynomialRatio, f1)
-    @test f1f.b == convert(Poly{Float32}, f1p.b)
-    @test f1f.a == convert(Poly{Float32}, f1p.a)
+    @test coefb(f1f) == convert(Array{Float32}, coefb(f1p))
+    @test coefa(f1f) == convert(Array{Float32}, coefa(f1p))
 
     b = Biquad(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 2)
     @test b.b0 === 0.0
@@ -249,12 +249,6 @@ end
     @test Biquad(2.0, 0.0, 0.0, 0.0, 0.0)*2 == Biquad(4.0, 0.0, 0.0, 0.0, 0.0)
     @test convert(Biquad{:z,Float64}, f1) == convert(Biquad, f1)
     f = PolynomialRatio(Float64[1.0], Float64[1.0])
-
-    # I don't understand why this tests is necessary, it's impossible to make a
-    # PolynomialRatio with empty coefficients in the first place.
-    empty!(f.b.coeffs)
-    empty!(f.a.coeffs)
-    @test_throws ArgumentError convert(Biquad, f)
 
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
