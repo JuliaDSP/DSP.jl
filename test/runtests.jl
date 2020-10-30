@@ -1,5 +1,4 @@
 using  DSP, FFTW, Test
-import DSP: Frequencies, fftfreq, rfftfreq
 
 using Random: seed!
 

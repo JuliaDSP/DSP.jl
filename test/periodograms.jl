@@ -16,6 +16,7 @@
 
 using DSP, Test
 using Statistics: mean
+using FFTW: fftfreq
 
 @testset "matlab ref" begin
     x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
