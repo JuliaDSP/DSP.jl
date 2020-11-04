@@ -98,21 +98,21 @@ end
 
 
 """
-    impz(filter, n=100)
+    impresp(filter, n=100)
 
 Impulse response of a digital `filter` with `n` points.
 """
-function impz(filter::FilterCoefficients{:z}, n=100)
+function impresp(filter::FilterCoefficients{:z}, n=100)
   i = [1; zeros(n-1)]
   filt(filter, i)
 end
 
 """
-    stepz(filter, n=100)
+    stepresp(filter, n=100)
 
 Step response of a digital `filter` with `n` points.
 """
-function stepz(filter::FilterCoefficients{:z}, n=100)
+function stepresp(filter::FilterCoefficients{:z}, n=100)
   i = ones(n)
   filt(filter, i)
 end

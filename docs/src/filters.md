@@ -115,8 +115,8 @@ iirnotch
 freqresp
 phaseresp
 grpdelay
-impz
-stepz
+impresp
+stepresp
 ```
 
 ## Miscellaneous

@@ -8,3 +8,7 @@
 @deprecate phasez(filter::FilterCoefficients{:z}, w) phaseresp(filter, w)
 @deprecate grpdelayz(filter::FilterCoefficients{:z}) grpdelay(filter)
 @deprecate grpdelayz(filter::FilterCoefficients{:z}, w) grpdelay(filter, w)
+@deprecate impz(filter::FilterCoefficients{:z}) impresp(filter)
+@deprecate impz(filter::FilterCoefficients{:z}, n) impresp(filter, n)
+@deprecate stepz(filter::FilterCoefficients{:z}) stepresp(filter)
+@deprecate stepz(filter::FilterCoefficients{:z}, n) stepresp(filter, n)

@@ -47,8 +47,8 @@ include("response.jl")
 export  freqresp,
         phaseresp,
         grpdelay,
-        impz,
-        stepz
+        impresp,
+        stepresp
 
 include("stream_filt.jl")
 export  FIRFilter,
