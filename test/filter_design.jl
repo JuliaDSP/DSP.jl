@@ -1070,20 +1070,20 @@ end
         @test_throws MethodError Elliptic(Char, 4, 0.5, 1.01)
 
         @testset "$T" for T in [BigFloat, Float16, Float32, Float64]
-            @test Butterworth(T, 4) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test Chebyshev1(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test Chebyshev2(T, 5, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test Elliptic(T, 5, 0.31, 1.16) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test Butterworth(T, 4) isa ZeroPoleGain{:s, Complex{T}, Complex{T}, T}
+            @test Chebyshev1(T, 5, 1.16) isa ZeroPoleGain{:s, Complex{T}, Complex{T}, T}
+            @test Chebyshev2(T, 5, 1.16) isa ZeroPoleGain{:s, Complex{T}, Complex{T}, T}
+            @test Elliptic(T, 5, 0.31, 1.16) isa ZeroPoleGain{:s, Complex{T}, Complex{T}, T}
         end
     end
 
     @testset "transformed types" begin
         @testset "$T & $R" for T in [BigFloat, Float16, Float32, Float64],
                 R in [Lowpass(0.4), Highpass(0.6), Bandpass(0.3, 0.6), Bandstop(0.7, 0.8)]
-            @test digitalfilter(R, Butterworth(T, 5)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test digitalfilter(R, Chebyshev1(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test digitalfilter(R, Chebyshev2(T, 5, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
-            @test digitalfilter(R, Elliptic(T, 5, 0.31, 1.16)) isa ZeroPoleGain{Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Butterworth(T, 5)) isa ZeroPoleGain{:z, Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev1(T, 5, 1.16)) isa ZeroPoleGain{:z, Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Chebyshev2(T, 5, 1.16)) isa ZeroPoleGain{:z, Complex{T}, Complex{T}, T}
+            @test digitalfilter(R, Elliptic(T, 5, 0.31, 1.16)) isa ZeroPoleGain{:z, Complex{T}, Complex{T}, T}
         end
     end
 end
