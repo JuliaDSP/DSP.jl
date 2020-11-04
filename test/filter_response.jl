@@ -1,4 +1,6 @@
 using DSP, Test
+using DelimitedFiles: readdlm
+using Polynomials.PolyCompat: Poly
 
 
 #######################################
@@ -9,7 +11,7 @@ using DSP, Test
 #  dlmwrite('freqz-eg1.txt',[w, abs(h)], 'delimiter', '\t', 'precision', '%.12f')
 #
 #######################################
-@testset "freqz fro TF" begin
+@testset "freqresp from TF" begin
     # Matlab
     freqz_eg1_w_abs = readdlm(joinpath(dirname(@__FILE__), "data", "freqz-eg1.txt"),'\t')
     matlab_w     = freqz_eg1_w_abs[:,1]
@@ -25,7 +27,7 @@ using DSP, Test
     a = conv(a1, a2)
 
     #=w     = range(0, stop=2*pi, length=200)=#        # Does not produce same values as matlab
-    h     = freqz(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
+    h     = freqresp(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
     h_abs = convert(Array{Float64}, abs.(h))
 
     # Test
@@ -42,25 +44,25 @@ end
 
 #######################################
 #
-# freqz with conversion to PolynomialRatio may lead to undesirable roundoff errors
+# freqresp with conversion to PolynomialRatio may lead to undesirable roundoff errors
 # check by using the same poles and zeros such that they should cancel
 #
 #######################################
-@testset "freqz ple/zero cancellation" begin
+@testset "freqresp pole/zero cancellation" begin
     rs = [1-10.0^-n for n in 1:15]
-    @test freqz(ZeroPoleGain(rs, reverse(rs), 42.0), range(0, stop=2π, length=50)) ≈ fill(42., 50)
+    @test freqresp(ZeroPoleGain(rs, reverse(rs), 42.0), range(0, stop=2π, length=50)) ≈ fill(42., 50)
 
     biq = Biquad(42.0, 84.0*real(.999999*exp(im)), 42.0*.999999^2, 2.0*real(.999999*exp(im)), .999999^2)
-    @test freqz(biq, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
+    @test freqresp(biq, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
     pr = [1-10.0^-n for n in 1:10]
     zr = reverse(pr)
     bs = [Biquad(42.0, 84.0*real(r[1]*exp(im)), 42.0*r[1]^2, 2.0*real(r[2]*exp(im)), r[2]^2) for r in zip(zr, pr)]
     sos = SecondOrderSections(bs, 42.0^-9)
-    @test freqz(sos, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
+    @test freqresp(sos, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
-    @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
-    @test freqz(SecondOrderSections(Biquad{:z,Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
+    @test freqresp(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
+    @test freqresp(SecondOrderSections(Biquad{:z,Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
 end
 
 #######################################
@@ -76,16 +78,16 @@ end
 #  dlmwrite('responses-eg1.txt',all, 'delimiter', '\t', 'precision', '%.12f')
 #
 #######################################
-@testset "impz, stepz, freqz, phasez" begin
+@testset "impresp, stepresp, freqresp, phaseresp" begin
     Hdelay = PolynomialRatio{:z}([0, 1], [1])
     W = range(0, stop=2π, length=100)
     for Tf in (PolynomialRatio, ZeroPoleGain, Biquad, SecondOrderSections)
         H = convert(Tf, Hdelay)
-        @test freqz(H, W) ≈ exp.(-W*im)
-        @test phasez(H, W) ≈ -W
-        @test grpdelayz(H, W) ≈ fill(1.0, length(W))
-        @test impz(H, 10) == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-        @test stepz(H, 10) == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        @test freqresp(H, W) ≈ exp.(-W*im)
+        @test phaseresp(H, W) ≈ -W
+        @test grpdelay(H, W) ≈ fill(1.0, length(W))
+        @test impresp(H, 10) == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        @test stepresp(H, 10) == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     end
 
     matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
@@ -101,25 +103,25 @@ end
 
     #Impulse response
     impz_matlab = matlab_resp[:,2]
-    @test impz(df, 512) ≈ impz_matlab
+    @test impresp(df, 512) ≈ impz_matlab
 
     #Step response
     stepz_matlab = matlab_resp[:,3]
-    @test stepz(df, 512) ≈ stepz_matlab
+    @test stepresp(df, 512) ≈ stepz_matlab
 
     h_matlab = matlab_resp[:,4]
-    @test abs.(freqz(df, w)) ≈ h_matlab
-    @test abs.(freqz(SecondOrderSections(df), w)) ≈ h_matlab
-    @test abs.(freqz(ZeroPoleGain(df), w)) ≈ h_matlab
+    @test abs.(freqresp(df, w)) ≈ h_matlab
+    @test abs.(freqresp(SecondOrderSections(df), w)) ≈ h_matlab
+    @test abs.(freqresp(ZeroPoleGain(df), w)) ≈ h_matlab
 
     phi_matlab = matlab_resp[:,5]
-    @test phasez(df, w) ≈ phi_matlab
+    @test phaseresp(df, w) ≈ phi_matlab
 
 
     # Test diffent versions of the functions
-    @test freqz(df) == freqz(df, range(0, stop=pi, length=250))
-    @test phasez(df) == phasez(df, range(0, stop=pi, length=250))
-    @test cumsum(impz(df)) ≈ stepz(df)
+    @test freqresp(df) == freqresp(df, range(0, stop=pi, length=250))
+    @test phaseresp(df) == phaseresp(df, range(0, stop=pi, length=250))
+    @test cumsum(impresp(df)) ≈ stepresp(df)
 end
 
 #######################################
@@ -130,7 +132,7 @@ end
 #        Currently this just checks it runs without error
 #
 #######################################
-@testset "freqz with fs" begin
+@testset "freqresp with fs" begin
     # Julia
     b0 = 0.05634
     b1 = [1,  1]
@@ -142,7 +144,7 @@ end
 
     fs    = 8192
     hz    = range(0, stop=fs, length=200)
-    h     = freqz(PolynomialRatio(b, a), hz, fs)
+    h     = freqresp(PolynomialRatio(b, a), hz, fs)
     h_abs = convert(Array{Float64}, abs.(h))
 
     #=using Winston=#
@@ -161,7 +163,7 @@ end
 #  dlmwrite('freqs-eg1.txt',[w; mag; phasedeg]', 'delimiter', '\t', 'precision', '%.10f')
 #
 #######################################
-@testset "freqs" begin
+@testset "freqresp(::FilterCoefficients{:s})" begin
     w = 10 .^ range(-1, stop=1, length=50)
     for (b, a, H) in (
             ([1, 0], [1], w*im), # s
@@ -169,19 +171,19 @@ end
             ([0, 0, 1], [2, 10], 1 ./ (2*w*im .+ 10)), # 1/(2s + 10)
             ([1, 0, 1], [2, 10], (1 .- w.^2) ./ (2*w*im .+ 10)), # (s^2 + 1)/(2s + 10)
         )
-        @test freqs(PolynomialRatio{:s}(b, a), w) ≈ H
-        @test freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w) ≈ H
+        @test freqresp(PolynomialRatio{:s}(b, a), w) ≈ H
+        @test freqresp(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w) ≈ H
         if isone(a[1]) && length(Poly(reverse(b))) <= length(Poly(reverse(a)))
-            @test freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+            @test freqresp(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
         else
             # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
-            @test_broken freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+            @test_broken freqresp(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
         end
         if length(Poly(reverse(b))) <= length(Poly(reverse(a)))
-            @test freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+            @test freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
         else
             # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
-            @test_broken freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+            @test_broken freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
         end
     end
 
@@ -190,7 +192,7 @@ end
     b = [0.2, 0.3, 1.0]
     w = 10 .^ range(-1, stop=1, length=50)
 
-    h        = freqs(PolynomialRatio{:s}(b, a), w)
+    h        = freqresp(PolynomialRatio{:s}(b, a), w)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
@@ -205,8 +207,8 @@ end
     @test mag ≈ matlab_mag
     @test phasedeg ≈ matlab_phasedeg
 
-    @test h ≈ freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
-    @test h ≈ freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
+    @test h ≈ freqresp(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
+    @test h ≈ freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
 
     #=using Winston=#
     #=figure = loglog(w, mag)=#
@@ -230,14 +232,14 @@ end
 #        Currently this just checks it runs without error
 #
 #######################################
-@testset "freqs with fs" begin
+@testset "freqresp(::FilterCoefficients{:s}) with fs" begin
     # Julia
     a  = [1.0, 0.4, 1.0]
     b  = [0.2, 0.3, 1.0]
     fs = 8192
     hz = range(0, stop=fs, length=50)
 
-    h        = freqs(PolynomialRatio{:s}(b, a), hz, fs)
+    h        = freqresp(PolynomialRatio{:s}(b, a), hz, fs)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
@@ -250,7 +252,7 @@ end
 
 # ######################################
 #
-#  Test grpdelayz
+#  Test grpdelay
 #
 #  Data from Matlab using b,a and a from above:
 #  [gd, w] = grpdelay(b, a, 512)
@@ -258,7 +260,7 @@ end
 #  dlmwrite('grpdelay_eg1.txt', all, 'delimiter', '\t', 'precision', '%.12f')
 #
 # ######################################
-@testset "grpdelayz" begin
+@testset "grpdelay" begin
     matlab_delay = readdlm(joinpath(dirname(@__FILE__), "data", "grpdelay_eg1.txt"),'\t')
     b0 = 0.05634
     b1 = [1,  1]
@@ -271,11 +273,11 @@ end
     w = matlab_delay[:, 1]
 
     grpdelay_matlab = matlab_delay[:, 2]
-    @test grpdelayz(df, w) ≈ grpdelay_matlab
+    @test grpdelay(df, w) ≈ grpdelay_matlab
 
     # Test with IIR filters types I-IV
-    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1], [1])) ≈ fill(2.0, 250)
-    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
-    @test grpdelayz(PolynomialRatio([1, 0, -1], [1])) ≈ fill(1.0, 250)
-    @test grpdelayz(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
+    @test grpdelay(PolynomialRatio([1, 1, 1, 1, 1], [1])) ≈ fill(2.0, 250)
+    @test grpdelay(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
+    @test grpdelay(PolynomialRatio([1, 0, -1], [1])) ≈ fill(1.0, 250)
+    @test grpdelay(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
 end
