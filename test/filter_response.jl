@@ -1,6 +1,6 @@
 using DSP, Test
 using DelimitedFiles: readdlm
-using Polynomials.PolyCompat: Poly
+using Polynomials: Polynomial
 
 
 #######################################
@@ -14,7 +14,6 @@ using Polynomials.PolyCompat: Poly
 @testset "freqresp from TF" begin
     # Matlab
     freqz_eg1_w_abs = readdlm(joinpath(dirname(@__FILE__), "data", "freqz-eg1.txt"),'\t')
-    matlab_w     = freqz_eg1_w_abs[:,1]
     matlab_abs   = freqz_eg1_w_abs[:,2]
 
     # Julia
@@ -26,20 +25,14 @@ using Polynomials.PolyCompat: Poly
     b = b0*conv(b1, b2)
     a = conv(a1, a2)
 
-    #=w     = range(0, stop=2*pi, length=200)=#        # Does not produce same values as matlab
-    h     = freqresp(PolynomialRatio(b, a), matlab_w)   # So use frequencies from matlab
+    w     = range(0, stop=6.280045284537, length=2001)
+    h     = freqresp(PolynomialRatio(b, a), w)
     h_abs = convert(Array{Float64}, abs.(h))
+    h_ref = [b0 * Polynomial(b1)(z) * Polynomial(b2)(z) / (Polynomial(a1)(z) * Polynomial(a2)(z)) for z ∈ exp.(-im*w)]
 
     # Test
     @test h_abs ≈ matlab_abs
-
-    #=using Winston=#
-    #=figure = plot(matlab_w/pi, 20*log10(h_abs))=#
-    #=figure = oplot(matlab_w/pi, 20*log10(matlab_abs), "r--")=#
-    #=ylim(-100, 20)=#
-    #=ylabel("Magnitude (dB)")=#
-    #=xlabel("Normalised Frequency (x pi rad/s)")=#
-    #=file(figure, "MATLAB-freqz.png", width=1200, height=800)=#
+    @test h ≈ h_ref
 end
 
 #######################################
@@ -128,9 +121,6 @@ end
 #
 #  Test digital filter with frequency specified in hz
 #
-#  TODO: Create a MATLAB ground truth to compare against
-#        Currently this just checks it runs without error
-#
 #######################################
 @testset "freqresp with fs" begin
     # Julia
@@ -145,14 +135,8 @@ end
     fs    = 8192
     hz    = range(0, stop=fs, length=200)
     h     = freqresp(PolynomialRatio(b, a), hz, fs)
-    h_abs = convert(Array{Float64}, abs.(h))
-
-    #=using Winston=#
-    #=figure = plot(hz, 20*log10(h_abs))=#
-    #=ylim(-100, 20)=#
-    #=ylabel("Magnitude (dB)")=#
-    #=xlabel("Frequency (Hz)")=#
-    #=file(figure, "MATLAB-freqz-hz.png", width=1200, height=800)=#
+    h_ref = [b0 * Polynomial(b1)(z) * Polynomial(b2)(z) / (Polynomial(a1)(z) * Polynomial(a2)(z)) for z ∈ exp.(-2π*im*hz/fs)]
+    @test h ≈ h_ref
 end
 
 #######################################
@@ -173,13 +157,13 @@ end
         )
         @test freqresp(PolynomialRatio{:s}(b, a), w) ≈ H
         @test freqresp(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w) ≈ H
-        if isone(a[1]) && length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+        if isone(a[1]) && lastindex(Polynomial(reverse(b))) <= lastindex(Polynomial(reverse(a)))
             @test freqresp(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
         else
             # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
             @test_broken freqresp(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
         end
-        if length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+        if lastindex(Polynomial(reverse(b))) <= lastindex(Polynomial(reverse(a)))
             @test freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
         else
             # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
@@ -194,42 +178,28 @@ end
 
     h        = freqresp(PolynomialRatio{:s}(b, a), w)
     mag      = convert(Array{Float64}, abs.(h))
-    phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
+    phasedeg = (180/pi)*phaseresp(PolynomialRatio{:s}(b, a), w)
 
     # Matlab
     freqs_eg1_w_mag_phasedeg = readdlm(joinpath(dirname(@__FILE__), "data", "freqs-eg1.txt"),'\t')
     matlab_w        = freqs_eg1_w_mag_phasedeg[:,1]
     matlab_mag      = freqs_eg1_w_mag_phasedeg[:,2]
     matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
+    h_ref = [Polynomial(reverse(b))(s) / Polynomial(reverse(a))(s) for s ∈ im*w]
 
     # Test
     @test w ≈ matlab_w
+    @test h ≈ h_ref
     @test mag ≈ matlab_mag
     @test phasedeg ≈ matlab_phasedeg
 
     @test h ≈ freqresp(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
     @test h ≈ freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
-
-    #=using Winston=#
-    #=figure = loglog(w, mag)=#
-    #=ylabel("Magnitude")=#
-    #=xlabel("Frequency (rad/s)")=#
-    #=file(figure, "MATLAB-freqs-mag.png", width=1200, height=800)=#
-
-    #=figure = semilogx(w, phasedeg)=#
-    #=ylim(-150, 0)=#
-    #=setattr(figure, draw_grid=true, tickdir=1)=#
-    #=ylabel("Phase (degrees)")=#
-    #=xlabel("Frequency (rad/s)")=#
-    #=file(figure, "MATLAB-freqs-phase.png", width=1200, height=800)=#
 end
 
 #######################################
 #
 #  Test analog filter with frequency specified in hz
-#
-#  TODO: Create a MATLAB ground truth to compare against
-#        Currently this just checks it runs without error
 #
 #######################################
 @testset "freqresp(::FilterCoefficients{:s}) with fs" begin
@@ -240,14 +210,8 @@ end
     hz = range(0, stop=fs, length=50)
 
     h        = freqresp(PolynomialRatio{:s}(b, a), hz, fs)
-    mag      = convert(Array{Float64}, abs.(h))
-    phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
-
-    #=using Winston=#
-    #=figure = semilogx(hz, mag)=#
-    #=ylabel("Magnitude")=#
-    #=xlabel("Frequency (Hz)")=#
-    #=file(figure, "MATLAB-freqs-hz.png", width=1200, height=800)=#
+    h_ref = [Polynomial(reverse(b))(s) / Polynomial(reverse(a))(s) for s ∈ 2π*im*hz/fs]
+    @test h ≈ h_ref
 end
 
 # ######################################
