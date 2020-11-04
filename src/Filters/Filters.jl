@@ -44,8 +44,7 @@ export  FilterType,
         resample_filter
 
 include("response.jl")
-export  freqs,
-        freqz,
+export  freqresp,
         phasez,
         grpdelayz,
         impz,
