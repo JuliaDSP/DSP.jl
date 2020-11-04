@@ -46,7 +46,7 @@ export  FilterType,
 include("response.jl")
 export  freqresp,
         phaseresp,
-        grpdelayz,
+        grpdelay,
         impz,
         stepz
 

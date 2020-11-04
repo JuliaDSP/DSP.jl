@@ -6,3 +6,5 @@
 @deprecate freqs(filter::FilterCoefficients{:s}, hz, fs) freqresp(filter, hz, fs)
 @deprecate phasez(filter::FilterCoefficients{:z}) phaseresp(filter)
 @deprecate phasez(filter::FilterCoefficients{:z}, w) phaseresp(filter, w)
+@deprecate grpdelayz(filter::FilterCoefficients{:z}) grpdelay(filter)
+@deprecate grpdelayz(filter::FilterCoefficients{:z}, w) grpdelay(filter, w)

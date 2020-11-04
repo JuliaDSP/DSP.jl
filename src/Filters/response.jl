@@ -74,12 +74,12 @@ end
 
 
 """
-    grpdelayz(fliter, w = range(0, stop=π, length=250))
+    grpdelay(fliter, w = range(0, stop=π, length=250))
 
 Group delay of a digital 'filter' at normalized frequency
 or frequencies 'w' in radians/sample.
 """
-function grpdelayz(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
+function grpdelay(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
     filter = convert(PolynomialRatio, filter)
     b, a = coefb(filter), coefa(filter)
 
