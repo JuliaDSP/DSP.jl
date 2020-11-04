@@ -244,4 +244,9 @@ end
     @test grpdelay(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
     @test grpdelay(PolynomialRatio([1, 0, -1], [1])) ≈ fill(1.0, 250)
     @test grpdelay(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
+
+    # group delay of analog filters
+    @test grpdelay(PolynomialRatio{:s}([1, 2], [123]), w) ≈ 0.5 ./ (1 .+ w.^2/4)
+    @test grpdelay(PolynomialRatio{:s}([123], [1, 2]), w) ≈ -0.5 ./ (1 .+ w.^2/4)
+    @test grpdelay(PolynomialRatio{:s}([1, 2], [3, 9]), w) ≈ 0.5 ./ (1 .+ w.^2/4) - 1/3 ./ (1 .+ w.^2/9)
 end

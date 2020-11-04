@@ -96,6 +96,14 @@ function grpdelay(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=2
     return real.(num ./ den) .- (length(a) - 1)
 end
 
+function grpdelay(filter::FilterCoefficients{:s}, w)
+    filter = convert(PolynomialRatio, filter)
+    b, a = filter.b, filter.a
+    bd = derivative(b)
+    ad = derivative(a)
+    s = im .* w
+    return real.((bd*a - ad*b).(s) ./ (a * b).(s))
+end
 
 """
     impresp(filter, n=100)
