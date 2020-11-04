@@ -54,12 +54,20 @@ _freq(filter::SecondOrderSections, x::Number) =
 
 
 """
-    phasez(filter, w = range(0, stop=π, length=250))
+    phaseresp(filter)
 
-Phase response of a digital `filter` at normalised frequency
-or frequencies `w` in radians/sample.
+Phase response of a digital `filter` at normalized frequencies
+`w = range(0, stop=π, length=250)` in radians/sample.
 """
-function phasez(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
+phaseresp(filter::FilterCoefficients{:z}) = phaseresp(filter, range(0, stop=π, length=250))
+
+"""
+    phaseresp(filter, w)
+
+Phase response of a `filter` at (normalized) frequency or frequencies `w` in
+radians/sample for a digital filter or radians/second for an analog filter.
+"""
+function phaseresp(filter::FilterCoefficients, w)
     h = freqresp(filter, w)
     unwrap(angle.(h); dims=ndims(h))
 end

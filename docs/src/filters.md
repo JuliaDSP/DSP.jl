@@ -113,7 +113,7 @@ iirnotch
 
 ```@docs
 freqresp
-phasez
+phaseresp
 grpdelayz
 impz
 stepz
