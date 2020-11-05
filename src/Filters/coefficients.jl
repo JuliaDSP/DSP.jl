@@ -324,7 +324,7 @@ function split_real_complex(x::Vector{T}) where T
     r = typeof(real(zero(T)))[]
     for k in keys(d)
         if imag(k) != 0
-            if !haskey(d, conj(k))
+            if !haskey(d, conj(k)) || d[k] != d[conj(k)]
                 # No match for conjugate
                 return (c, r, false)
             elseif imag(k) > 0

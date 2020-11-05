@@ -258,6 +258,8 @@ end
 
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([1+im, 1+im, 1-im], [1, 0, 0], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([1+im, 1-im, 1-im], [1, 0, 0], 1))
 
     @test promote_type(SecondOrderSections{:z,Float64,Float32}, SecondOrderSections{:z,Float32,Float64}) == SecondOrderSections{:z,Float64,Float64}
     @test convert(SecondOrderSections{:z,Float32,Float32}, convert(SecondOrderSections, b)).biquads == convert(SecondOrderSections, convert(Biquad{:z,Float32}, b)).biquads
