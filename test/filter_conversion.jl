@@ -143,6 +143,12 @@ using Polynomials.PolyCompat
     f = ZeroPoleGain(ones(100), 0.99*ones(100), 1)
     g = convert(SecondOrderSections, f)
     tffilter_eq(convert(PolynomialRatio, f), convert(PolynomialRatio, g))
+
+    H = ZeroPoleGain{:z}([1+im, 1-im, 0.5+im, 0.5-im], [1, 0.0, 0.0, 0.0], 1.0)
+    H′ = ZeroPoleGain(SecondOrderSections(H))
+    @test sort(H.p, by=z->(real(z), imag(z))) ≈ sort(H′.p, by=z->(real(z), imag(z)))
+    @test sort(H.z, by=z->(real(z), imag(z))) ≈ sort(H′.z, by=z->(real(z), imag(z)))
+    @test H.k ≈ H′.k
 end
 
 @testset "conversions" begin
