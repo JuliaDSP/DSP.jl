@@ -279,104 +279,86 @@ Biquad{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} = Biquad{D,promote_type(T
 PolynomialRatio{D,T}(f::SecondOrderSections{D}) where {D,T} = PolynomialRatio{D,T}(ZeroPoleGain(f))
 PolynomialRatio{D}(f::SecondOrderSections{D}) where {D} = PolynomialRatio{D}(ZeroPoleGain(f))
 
-# Group each pole in p with its closest zero in z
-# Remove paired poles from p and z
-function groupzp(z, p)
-    n = min(length(z), length(p))
-    groupedz = similar(z, n)
-    i = 1
-    while i <= n
-        closest_zero_idx = 0
-        closest_zero_val = Inf
-        for j = 1:length(z)
-            val = abs(z[j] - p[i])
-            if val < closest_zero_val
-                closest_zero_idx = j
-                closest_zero_val = val
-            end
-        end
-        groupedz[i] = splice!(z, closest_zero_idx)
-        if !isreal(groupedz[i])
-            i += 1
-            groupedz[i] = splice!(z, closest_zero_idx)
-        end
-        i += 1
-    end
-    ret = (groupedz, p[1:n])
-    splice!(p, 1:n)
-    ret
-end
-
-# Sort zeros or poles lexicographically (so that poles are adjacent to
-# their conjugates). Handle repeated values. Split real and complex
-# values into separate vectors. Ensure that each value has a conjugate.
-function split_real_complex(x::Vector{T}) where T
-    # Get counts and store in a Dict
-    d = Dict{T,Int}()
-    for v in x
-        # needs to be in normal form since 0.0 !== -0.0
-        tonormal(x) = x == 0 ? abs(x) : x
-        vn = complex(tonormal(real(v)), tonormal(imag(v)))
-        d[vn] = get(d, vn, 0)+1
-    end
-
-    c = T[]
-    r = typeof(real(zero(T)))[]
-    for k in keys(d)
-        if imag(k) != 0
-            if !haskey(d, conj(k)) || d[k] != d[conj(k)]
-                # No match for conjugate
-                return (c, r, false)
-            elseif imag(k) > 0
-                # Add key and its conjugate
-                for n = 1:d[k]
-                    push!(c, k, conj(k))
-                end
-            end
-        else
-            for n = 1:d[k]
-                push!(r, k)
-            end
+function find_idx_of_closest(needle, haystack)
+    closest_idx = 0
+    closest_val = Inf
+    for j = eachindex(haystack)
+        val = abs(haystack[j] - needle)
+        if val < closest_val
+            closest_idx = j
+            closest_val = val
         end
     end
-    return (c, r, true)
+    return closest_idx
 end
 
 # Convert a filter to second-order sections
 # The returned sections are in ZPK form
 function SecondOrderSections{D,T,G}(f::ZeroPoleGain{D,Z,P}) where {D,T,G,Z,P}
-    z = f.z
-    p = f.p
-    nz = length(z)
-    n = length(p)
-    nz > n && throw(ArgumentError("ZeroPoleGain must not have more zeros than poles"))
+    n = length(f.p)
+    length(f.z) > n && throw(ArgumentError("ZeroPoleGain must not have more zeros than poles"))
 
-    # Split real and complex poles
-    (complexz, realz, matched) = split_real_complex(z)
-    matched || throw(ArgumentError("complex zeros could not be matched to their conjugates"))
-    (complexp, realp, matched) = split_real_complex(p)
-    matched || throw(ArgumentError("complex poles could not be matched to their conjugates"))
+    # sort poles by distance to unit circle but complex ones first
+    # TODO: for analog filters (D==:s), this should probably be the distance to the jω-axis
+    p = sort(f.p, by=x->(isreal(x), abs(abs(x) - 1)))
+    z = copy(f.z)
 
-    # Sort poles according to distance to unit circle (nearest first)
-    sort!(complexp, by=x->abs(abs(x) - 1))
-    sort!(realp, by=x->abs(abs(x) - 1))
+    # group poles with close zeros
+    groupedp = P[]
+    sizehint!(groupedp, length(p))
+    groupedz = Z[]
+    sizehint!(groupedz, length(z))
+    while !isempty(z)
+        p1 = popfirst!(p)
+        push!(groupedp, p1)
+        # find zero closest to current pole
+        closest_zero_idx = find_idx_of_closest(p1, z)
+        z1 = splice!(z, closest_zero_idx)
+        push!(groupedz, z1)
+        if isreal(p1)
+            if !isreal(z1)
+                # real pole but complex zero: find conjugate zero and a pole close to it
+                # that second pole will also be real because we did the complex ones first
+                closest_zero_idx′ = findfirst(==(conj(z1)), z)
+                if closest_zero_idx′ === nothing
+                    throw(ArgumentError("complex zeros could not be matched to their conjugates"))
+                end
+                closest_pole_idx′ = find_idx_of_closest(z[closest_zero_idx′], p)
+                push!(groupedp, splice!(p, closest_pole_idx′))
+                push!(groupedz, splice!(z, closest_zero_idx′))
+            end
+        else
+            # complex pole: find conjugate pole and a second zero (if possible)
+            closest_pole_idx′ = findfirst(==(conj(p1)), p)
+            if closest_pole_idx′ === nothing
+                throw(ArgumentError("complex poles could not be matched to their conjugates"))
+            end
+            push!(groupedp, splice!(p, closest_pole_idx′))
+            if !isempty(z)
+                if isreal(z1)
+                    # find the second closest zero
+                    closest_zero_idx′ = find_idx_of_closest(p1, z)
+                    if !isreal(z[closest_zero_idx′])
+                        # put back z1 and instead use the complex zero just found
+                        # its conjugate will be added below
+                        groupedz[end], z[closest_zero_idx′] = z[closest_zero_idx′], z1
+                        z1 = groupedz[end]
+                    end
+                end
+                if !isreal(z1)
+                    # first zero is complex, so pick its conjugate as second zero
+                    closest_zero_idx′ = findfirst(==(conj(z1)), z)
+                    if closest_zero_idx′ === nothing
+                        throw(ArgumentError("complex zeros could not be matched to their conjugates"))
+                    end
+                end
+                push!(groupedz, splice!(z, closest_zero_idx′))
+            end
+        end
+    end
+    append!(groupedp, p)
 
-    # Group complex poles with closest complex zeros
-    z1, p1 = groupzp(complexz, complexp)
-    # Group real poles with remaining complex zeros
-    z2, p2 = groupzp(complexz, realp)
-    # Group remaining complex poles with closest real zeros
-    z3, p3 = groupzp(realz, complexp)
-    # Group remaining real poles with closest real zeros
-    z4, p4 = groupzp(realz, realp)
-
-    # All zeros are now paired with a pole, but not all poles are
-    # necessarily paired with a zero
-    @assert isempty(complexz)
-    @assert isempty(realz)
-    groupedz = [z1; z2; z3; z4]::Vector{Z}
-    groupedp = [p1; p2; p3; p4; complexp; realp]::Vector{P}
-    @assert length(groupedz) == nz
+    @assert length(groupedz) == length(f.z)
     @assert length(groupedp) == n
 
     # Allocate memory for biquads
