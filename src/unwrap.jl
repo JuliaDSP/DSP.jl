@@ -7,13 +7,7 @@ export unwrap, unwrap!
 
 In-place version of [`unwrap`](@ref).
 """
-function unwrap!(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
-    if dims === nothing && N != 1
-        Base.depwarn("`unwrap!(m::AbstractArray)` is deprecated, use `unwrap!(m, dims=ndims(m))` instead", :unwrap!)
-        dims = N
-    end
-    unwrap!(m, m; dims=dims, kwargs...)
-end
+unwrap!(m::AbstractArray; kwargs...) = unwrap!(m, m; kwargs...)
 
 """
     unwrap!(y, m; kwargs...)
@@ -71,16 +65,7 @@ of an image, as each pixel is wrapped to stay within (-pi, pi].
 - `rng=GLOBAL_RNG`: Unwrapping of arrays with dimension > 1 uses a random
     initialization. A user can pass their own RNG through this argument.
 """
-function unwrap(m::AbstractArray{T,N}; dims=nothing, kwargs...) where {T, N}
-    if dims === nothing && N != 1
-        Base.depwarn("`unwrap(m::AbstractArray)` is deprecated, use `unwrap(m, dims=ndims(m))` instead", :unwrap)
-        dims = ndims(m)
-    end
-    unwrap!(similar(m), m; dims=dims, kwargs...)
-end
-
-@deprecate(unwrap(m::AbstractArray, dim::Integer; range::Number=2pi),
-    unwrap(m, dims=dim, range=range))
+unwrap(m::AbstractArray; kwargs...) = unwrap!(similar(m), m; kwargs...)
 
 #= Algorithm based off of
  M. A. Herráez, D. R. Burton, M. J. Lalor, and M. A. Gdeisat,

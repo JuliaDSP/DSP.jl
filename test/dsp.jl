@@ -234,19 +234,19 @@ end
     b = [4, 5]
     exp = [5, 14, 23, 12]
     @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
-    @test xcorr(a, b) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b) == exp
     @test xcorr(a, b, padmode = :longest) == [0, 5, 14, 23, 12]
     @test xcorr(a, b, padmode = :none) == exp
-    @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
+    @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6]
     @test xcorr([1, 2], [3, 4, 5], padmode = :longest) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :none) == [5, 14, 11, 6]
     @test xcorr([1.0im], [1.0im]) == [1]
-    @test xcorr([1, 2, 3]*1.0im, ComplexF64[4, 5]) ≈ [0, 5, 14, 23, 12]*im
-    @test xcorr([1, 2]*1.0im, ComplexF64[3, 4, 5]) ≈ [5, 14, 11, 6, 0]*im
-    @test xcorr(ComplexF64[1, 2, 3], [4, 5]*1.0im) ≈ -[0, 5, 14, 23, 12]*im
-    @test xcorr(ComplexF64[1, 2], [3, 4, 5]*1.0im) ≈ -[5, 14, 11, 6, 0]*im
-    @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [0, 5, 14, 23, 12]
-    @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6, 0]
+    @test xcorr([1, 2, 3]*1.0im, ComplexF64[4, 5]) ≈ [5, 14, 23, 12]*im
+    @test xcorr([1, 2]*1.0im, ComplexF64[3, 4, 5]) ≈ [5, 14, 11, 6]*im
+    @test xcorr(ComplexF64[1, 2, 3], [4, 5]*1.0im) ≈ -[5, 14, 23, 12]*im
+    @test xcorr(ComplexF64[1, 2], [3, 4, 5]*1.0im) ≈ -[5, 14, 11, 6]*im
+    @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [5, 14, 23, 12]
+    @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6]
 
     # Base Julia issue #17351
     let
