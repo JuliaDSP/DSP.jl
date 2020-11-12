@@ -206,7 +206,7 @@ end
     @test filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) ≈ y
 end
 
-@testset "filter inversion" begin
+@testset "filter inversion and exponentiation" begin
     # A filter is stable if all poles within unit circle and causal if not more zeros
     # than poles. For the inverse to also be stable and causal, it follows that the
     # zeros also have to be within the unit circle and the number of poles and zeros
@@ -221,11 +221,19 @@ end
         H′ = ZeroPoleGain(z, p,
             (rand() + 0.5) * rand([-1, 1]), # non-zero gain with random sign
         )
-        for T ∈ (PolynomialRatio, ZeroPoleGain, SecondOrderSections)
+        maybe_biquad = length(z) ≤ 2 && length(p) ≤ 2 ? (Biquad,) : ()
+        for T ∈ (PolynomialRatio, ZeroPoleGain, SecondOrderSections, maybe_biquad...)
             H = T(H′)
             H⁻¹ = inv(H)
             x = rand(100)
             @test filt(H⁻¹, filt(H, x)) ≈ x
+            for p ∈ 1:3
+                Hᵖ = H^p
+                H⁻ᵖ = H^-p
+                @test filt(Hᵖ, x) ≈ reduce(∘, fill(x -> filt(H, x), p))(x)
+                @test filt(H⁻ᵖ, filt(Hᵖ, x)) ≈ x rtol=5e-8
+            end
+            @test filt(H^0, x) ≈ x
         end
     end
 end
