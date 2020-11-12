@@ -143,6 +143,12 @@ using Polynomials.PolyCompat
     f = ZeroPoleGain(ones(100), 0.99*ones(100), 1)
     g = convert(SecondOrderSections, f)
     tffilter_eq(convert(PolynomialRatio, f), convert(PolynomialRatio, g))
+
+    H = ZeroPoleGain{:z}([1+im, 1-im, 0.5+im, 0.5-im], [1, 0.0, 0.0, 0.0], 1.0)
+    H′ = ZeroPoleGain(SecondOrderSections(H))
+    @test sort(H.p, by=z->(real(z), imag(z))) ≈ sort(H′.p, by=z->(real(z), imag(z)))
+    @test sort(H.z, by=z->(real(z), imag(z))) ≈ sort(H′.z, by=z->(real(z), imag(z)))
+    @test H.k ≈ H′.k
 end
 
 @testset "conversions" begin
@@ -252,6 +258,8 @@ end
 
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([1+im, 1+im, 1-im], [1, 0, 0], 1))
+    @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([1+im, 1-im, 1-im], [1, 0, 0], 1))
 
     @test promote_type(SecondOrderSections{:z,Float64,Float32}, SecondOrderSections{:z,Float32,Float64}) == SecondOrderSections{:z,Float64,Float64}
     @test convert(SecondOrderSections{:z,Float32,Float32}, convert(SecondOrderSections, b)).biquads == convert(SecondOrderSections, convert(Biquad{:z,Float32}, b)).biquads

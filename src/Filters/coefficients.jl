@@ -282,10 +282,10 @@ PolynomialRatio{D}(f::SecondOrderSections{D}) where {D} = PolynomialRatio{D}(Zer
 # Group each pole in p with its closest zero in z
 # Remove paired poles from p and z
 function groupzp(z, p)
-    unpaired = fill(true, length(z))  # whether zeros have been mapped
     n = min(length(z), length(p))
     groupedz = similar(z, n)
-    for i = 1:n
+    i = 1
+    while i <= n
         closest_zero_idx = 0
         closest_zero_val = Inf
         for j = 1:length(z)
@@ -296,6 +296,11 @@ function groupzp(z, p)
             end
         end
         groupedz[i] = splice!(z, closest_zero_idx)
+        if !isreal(groupedz[i])
+            i += 1
+            groupedz[i] = splice!(z, closest_zero_idx)
+        end
+        i += 1
     end
     ret = (groupedz, p[1:n])
     splice!(p, 1:n)
@@ -317,9 +322,9 @@ function split_real_complex(x::Vector{T}) where T
 
     c = T[]
     r = typeof(real(zero(T)))[]
-    for k in sort!(collect(keys(d)), by=x -> (real(x), imag(x)))
+    for k in keys(d)
         if imag(k) != 0
-            if !haskey(d, conj(k))
+            if !haskey(d, conj(k)) || d[k] != d[conj(k)]
                 # No match for conjugate
                 return (c, r, false)
             elseif imag(k) > 0
