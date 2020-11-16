@@ -62,6 +62,10 @@ end
         offset_arr = OffsetArray{Int}(undef, -1:2)
         offset_arr[:] = a
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
+        # Issue #352
+        @test conv([1//2, 1//3, 1//4], [1, 2]) ≈ [1//2, 4//3, 11//12, 1//2]
+        # Non-numerical arrays should not be convolved
+        @test_throws MethodError conv([sin], [cos])
     end
 
     @testset "old-style-seperable-warns" begin
@@ -277,19 +281,19 @@ end
     b = [4, 5]
     exp = [5, 14, 23, 12]
     @test xcorr([1, 2], [3, 4]) == [4, 11, 6]
-    @test xcorr(a, b) == [0, 5, 14, 23, 12]
+    @test xcorr(a, b) == exp
     @test xcorr(a, b, padmode = :longest) == [0, 5, 14, 23, 12]
     @test xcorr(a, b, padmode = :none) == exp
-    @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6, 0]
+    @test xcorr([1, 2], [3, 4, 5]) == [5, 14, 11, 6]
     @test xcorr([1, 2], [3, 4, 5], padmode = :longest) == [5, 14, 11, 6, 0]
     @test xcorr([1, 2], [3, 4, 5], padmode = :none) == [5, 14, 11, 6]
     @test xcorr([1.0im], [1.0im]) == [1]
-    @test xcorr([1, 2, 3]*1.0im, ComplexF64[4, 5]) ≈ [0, 5, 14, 23, 12]*im
-    @test xcorr([1, 2]*1.0im, ComplexF64[3, 4, 5]) ≈ [5, 14, 11, 6, 0]*im
-    @test xcorr(ComplexF64[1, 2, 3], [4, 5]*1.0im) ≈ -[0, 5, 14, 23, 12]*im
-    @test xcorr(ComplexF64[1, 2], [3, 4, 5]*1.0im) ≈ -[5, 14, 11, 6, 0]*im
-    @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [0, 5, 14, 23, 12]
-    @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6, 0]
+    @test xcorr([1, 2, 3]*1.0im, ComplexF64[4, 5]) ≈ [5, 14, 23, 12]*im
+    @test xcorr([1, 2]*1.0im, ComplexF64[3, 4, 5]) ≈ [5, 14, 11, 6]*im
+    @test xcorr(ComplexF64[1, 2, 3], [4, 5]*1.0im) ≈ -[5, 14, 23, 12]*im
+    @test xcorr(ComplexF64[1, 2], [3, 4, 5]*1.0im) ≈ -[5, 14, 11, 6]*im
+    @test xcorr([1, 2, 3]*1.0im, [4, 5]*1.0im) ≈ [5, 14, 23, 12]
+    @test xcorr([1, 2]*1.0im, [3, 4, 5]*1.0im) ≈ [5, 14, 11, 6]
 
     # Base Julia issue #17351
     let

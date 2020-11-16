@@ -60,7 +60,7 @@ end
     @test freqz(sos, range(0, stop=2π, length=50)) ≈ fill(42.0, 50)
 
     @test freqz(ZeroPoleGain(ComplexF64[], ComplexF64[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
-    @test freqz(SecondOrderSections(Biquad{Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
+    @test freqz(SecondOrderSections(Biquad{:z,Float64}[], 42.0), range(0, stop=2π, length=50)) == fill(42.0, 50)
 end
 
 #######################################
@@ -77,6 +77,17 @@ end
 #
 #######################################
 @testset "impz, stepz, freqz, phasez" begin
+    Hdelay = PolynomialRatio{:z}([0, 1], [1])
+    W = range(0, stop=2π, length=100)
+    for Tf in (PolynomialRatio, ZeroPoleGain, Biquad, SecondOrderSections)
+        H = convert(Tf, Hdelay)
+        @test freqz(H, W) ≈ exp.(-W*im)
+        @test phasez(H, W) ≈ -W
+        @test grpdelayz(H, W) ≈ fill(1.0, length(W))
+        @test impz(H, 10) == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        @test stepz(H, 10) == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    end
+
     matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
     b0 = 0.05634
     b1 = [1,  1]
@@ -151,12 +162,35 @@ end
 #
 #######################################
 @testset "freqs" begin
+    w = 10 .^ range(-1, stop=1, length=50)
+    for (b, a, H) in (
+            ([1, 0], [1], w*im), # s
+            ([1], [1, 0], 1 ./ (w*im)), # 1/s
+            ([0, 0, 1], [2, 10], 1 ./ (2*w*im .+ 10)), # 1/(2s + 10)
+            ([1, 0, 1], [2, 10], (1 .- w.^2) ./ (2*w*im .+ 10)), # (s^2 + 1)/(2s + 10)
+        )
+        @test freqs(PolynomialRatio{:s}(b, a), w) ≈ H
+        @test freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w) ≈ H
+        if isone(a[1]) && length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+            @test freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+        else
+            # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
+            @test_broken freqs(Biquad(PolynomialRatio{:s}(b, a)), w) ≈ H
+        end
+        if length(Poly(reverse(b))) <= length(Poly(reverse(a)))
+            @test freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+        else
+            # cannot represent this PolynomialRatio as a Biquad due to implied a0=1
+            @test_broken freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w) ≈ H
+        end
+    end
+
     # Julia
     a = [1.0, 0.4, 1.0]
     b = [0.2, 0.3, 1.0]
     w = 10 .^ range(-1, stop=1, length=50)
 
-    h        = freqs(PolynomialRatio(b, a), w)
+    h        = freqs(PolynomialRatio{:s}(b, a), w)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
@@ -171,8 +205,8 @@ end
     @test mag ≈ matlab_mag
     @test phasedeg ≈ matlab_phasedeg
 
-    @test h ≈ freqs(ZeroPoleGain(PolynomialRatio(b, a)), w)
-    @test h ≈ freqs(SecondOrderSections(PolynomialRatio(b, a)), w)
+    @test h ≈ freqs(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
+    @test h ≈ freqs(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
 
     #=using Winston=#
     #=figure = loglog(w, mag)=#
@@ -203,7 +237,7 @@ end
     fs = 8192
     hz = range(0, stop=fs, length=50)
 
-    h        = freqs(PolynomialRatio(b, a), hz, fs)
+    h        = freqs(PolynomialRatio{:s}(b, a), hz, fs)
     mag      = convert(Array{Float64}, abs.(h))
     phasedeg = (180/pi)*convert(Array{Float64}, angle.(h))
 
@@ -212,4 +246,36 @@ end
     #=ylabel("Magnitude")=#
     #=xlabel("Frequency (Hz)")=#
     #=file(figure, "MATLAB-freqs-hz.png", width=1200, height=800)=#
+end
+
+# ######################################
+#
+#  Test grpdelayz
+#
+#  Data from Matlab using b,a and a from above:
+#  [gd, w] = grpdelay(b, a, 512)
+#  all = [w gd]
+#  dlmwrite('grpdelay_eg1.txt', all, 'delimiter', '\t', 'precision', '%.12f')
+#
+# ######################################
+@testset "grpdelayz" begin
+    matlab_delay = readdlm(joinpath(dirname(@__FILE__), "data", "grpdelay_eg1.txt"),'\t')
+    b0 = 0.05634
+    b1 = [1,  1]
+    b2 = [1, -1.0166, 1]
+    a1 = [1, -0.683]
+    a2 = [1, -1.4461, 0.7957]
+    b = b0*conv(b1, b2)
+    a = conv(a1, a2)
+    df = PolynomialRatio(b, a)
+    w = matlab_delay[:, 1]
+
+    grpdelay_matlab = matlab_delay[:, 2]
+    @test grpdelayz(df, w) ≈ grpdelay_matlab
+
+    # Test with IIR filters types I-IV
+    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1], [1])) ≈ fill(2.0, 250)
+    @test grpdelayz(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
+    @test grpdelayz(PolynomialRatio([1, 0, -1], [1])) ≈ fill(1.0, 250)
+    @test grpdelayz(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
 end

@@ -1,6 +1,8 @@
 module Filters
 using ..Unwrap
-using Polynomials, ..Util
+using ..Util
+using Polynomials: LaurentPolynomial, Polynomial, coeffs, fromroots, roots
+
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
@@ -45,6 +47,7 @@ include("response.jl")
 export  freqs,
         freqz,
         phasez,
+        grpdelayz,
         impz,
         stepz
 

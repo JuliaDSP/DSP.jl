@@ -1,25 +1,25 @@
 name = "DSP"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.6.2"
+version = "0.7.0-dev"
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 
 [compat]
 FFTW = "1.1"
-OffsetArrays = "0.11"
-Polynomials = "0.6"
-Reexport = "0.2"
-SpecialFunctions = "0.8, 0.9"
-julia = "1"
 IterTools = "1"
+OffsetArrays = "0.11, 1"
+Polynomials = "1.1.11"
+Reexport = "0.2"
+SpecialFunctions = "0.8, 0.9, 0.10"
+julia = "1"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
