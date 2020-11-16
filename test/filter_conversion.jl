@@ -219,6 +219,9 @@ end
     @test_throws ArgumentError PolynomialRatio{:z,Float64}([1.0, 2.0], [0.0, 4.0])
     # does not normalize, uses type from input
     @test @inferred(PolynomialRatio{:s}([1, 2], [3, 4])) isa PolynomialRatio{:s,Int}
+    # throws because denominator must not be zero
+    @test_throws ArgumentError PolynomialRatio{:s}([1.0, 2.0], [0.0])
+    @test_throws ArgumentError PolynomialRatio{:s}([1.0, 2.0], Float64[])
 end
 
 @testset "misc" begin
