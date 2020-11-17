@@ -112,8 +112,18 @@ end
 
 
     # Test diffent versions of the functions
-    @test freqresp(df) == freqresp(df, range(0, stop=pi, length=250))
-    @test phaseresp(df) == phaseresp(df, range(0, stop=pi, length=250))
+    H, w = freqresp(df)
+    @test H == freqresp(df, w)
+    @test minimum(w) ≤ 0                 # w should cover frequencies from 0 ...
+    @test maximum(w) ≥ float(π)          # ... to π ...
+    @test maximum(abs.(diff(w))) < 0.03  # and be sufficiently dense
+
+    phi, w = phaseresp(df)
+    @test phi == phaseresp(df, w)
+    @test minimum(w) ≤ 0                 # w should cover frequencies from 0 ...
+    @test maximum(w) ≥ float(π)          # ... to π ...
+    @test maximum(abs.(diff(w))) < 0.03  # and be sufficiently dense
+
     @test cumsum(impresp(df)) ≈ stepresp(df)
 end
 
@@ -240,12 +250,20 @@ end
     @test grpdelay(df, w) ≈ grpdelay_matlab
 
     # Test with IIR filters types I-IV
-    @test grpdelay(PolynomialRatio([1, 1, 1, 1, 1], [1])) ≈ fill(2.0, 250)
-    @test grpdelay(PolynomialRatio([1, 1, 1, 1, 1, 1], [1])) ≈ fill(2.5, 250)
-    @test grpdelay(PolynomialRatio([1, 0, -1], [1])) ≈ fill(1.0, 250)
-    @test grpdelay(PolynomialRatio([1, -1], [1])) ≈ fill(0.5, 250)
+    tau, w = grpdelay(PolynomialRatio([1, 1, 1, 1, 1], [1]))
+    @test tau ≈ fill(2.0, length(w))
+    tau, w = grpdelay(PolynomialRatio([1, 1, 1, 1, 1, 1], [1]))
+    @test tau ≈ fill(2.5, length(w))
+    tau, w = grpdelay(PolynomialRatio([1, 0, -1], [1]))
+    @test tau ≈ fill(1.0, length(w))
+    tau, w = grpdelay(PolynomialRatio([1, -1], [1]))
+    @test tau ≈ fill(0.5, length(w))
+    @test minimum(w) ≤ 0                 # w should cover frequencies from 0 ...
+    @test maximum(w) ≥ float(π)          # ... to π ...
+    @test maximum(abs.(diff(w))) < 0.03  # and be sufficiently dense
 
     # group delay of analog filters
+    w = matlab_delay[:, 1]
     @test grpdelay(PolynomialRatio{:s}([1, 2], [123]), w) ≈ 0.5 ./ (1 .+ w.^2/4)
     @test grpdelay(PolynomialRatio{:s}([123], [1, 2]), w) ≈ -0.5 ./ (1 .+ w.^2/4)
     @test grpdelay(PolynomialRatio{:s}([1, 2], [3, 9]), w) ≈ 0.5 ./ (1 .+ w.^2/4) - 1/3 ./ (1 .+ w.^2/9)

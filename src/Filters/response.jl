@@ -7,12 +7,15 @@
 using ..DSP: xcorr
 
 """
-    freqresp(filter)
+    H, w = freqresp(filter)
 
-Frequency response of a digital `filter` at normalized frequencies
-`w = range(0, stop=π, length=250)` in radians/sample.
+Frequency response `H` of a digital `filter` at normalized frequencies
+`w` in radians/sample chosen as a reasonable default.
 """
-freqresp(filter::FilterCoefficients{:z}) = freqresp(filter, range(0, stop=π, length=250))
+function freqresp(filter::FilterCoefficients{:z})
+    w = range(0, stop=π, length=257)
+    return (freqresp(filter, w), w)
+end
 
 """
     freqresp(filter::FilterCoefficients{:z}, w)
@@ -54,12 +57,15 @@ _freq(filter::SecondOrderSections, x::Number) =
 
 
 """
-    phaseresp(filter)
+    phi, w = phaseresp(filter)
 
-Phase response of a digital `filter` at normalized frequencies
-`w = range(0, stop=π, length=250)` in radians/sample.
+Phase response `phi` of a digital `filter` at normalized frequencies
+`w` in radians/sample chosen as a reasonable default.
 """
-phaseresp(filter::FilterCoefficients{:z}) = phaseresp(filter, range(0, stop=π, length=250))
+function phaseresp(filter::FilterCoefficients{:z})
+    w = range(0, stop=π, length=257)
+    return (phaseresp(filter, w), w)
+end
 
 """
     phaseresp(filter, w)
@@ -72,14 +78,24 @@ function phaseresp(filter::FilterCoefficients, w)
     unwrap(angle.(h); dims=ndims(h))
 end
 
+"""
+    tau, w = grpdelay(filter)
+
+Group delay `tau` of a digital `filter` at normalized frequencies
+`w` in radians/sample chosen as a reasonable default.
+"""
+function grpdelay(filter::FilterCoefficients{:z})
+    w = range(0, stop=π, length=257)
+    return (grpdelay(filter, w), w)
+end
 
 """
-    grpdelay(fliter, w = range(0, stop=π, length=250))
+    grpdelay(fliter, w)
 
 Group delay of a digital 'filter' at normalized frequency
 or frequencies 'w' in radians/sample.
 """
-function grpdelay(filter::FilterCoefficients{:z}, w = range(0, stop=π, length=250))
+function grpdelay(filter::FilterCoefficients{:z}, w)
     filter = convert(PolynomialRatio, filter)
     b, a = coefb(filter), coefa(filter)
 
