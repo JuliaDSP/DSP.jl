@@ -9,11 +9,12 @@ using ..DSP: xcorr
 """
     H, w = freqresp(filter)
 
-Frequency response `H` of a digital `filter` at normalized frequencies
-`w` in radians/sample chosen as a reasonable default.
+Frequency response `H` of a `filter` at (normalized) frequencies `w` in
+radians/sample for a digital filter or radians/second for an analog filter
+chosen as a reasonable default.
 """
-function freqresp(filter::FilterCoefficients{:z})
-    w = range(0, stop=π, length=257)
+function freqresp(filter::FilterCoefficients)
+    w = _freqrange(filter)
     return (freqresp(filter, w), w)
 end
 
@@ -59,11 +60,12 @@ _freq(filter::SecondOrderSections, x::Number) =
 """
     phi, w = phaseresp(filter)
 
-Phase response `phi` of a digital `filter` at normalized frequencies
-`w` in radians/sample chosen as a reasonable default.
+Phase response `phi` of a `filter` at (normalized) frequencies `w` in
+radians/sample for a digital filter or radians/second for an analog filter
+chosen as a reasonable default.
 """
-function phaseresp(filter::FilterCoefficients{:z})
-    w = range(0, stop=π, length=257)
+function phaseresp(filter::FilterCoefficients)
+    w = _freqrange(filter)
     return (phaseresp(filter, w), w)
 end
 
@@ -81,11 +83,12 @@ end
 """
     tau, w = grpdelay(filter)
 
-Group delay `tau` of a digital `filter` at normalized frequencies
-`w` in radians/sample chosen as a reasonable default.
+Group delay `tau` of a `filter` at (normalized) frequencies `w` in
+radians/sample for a digital filter or radians/second for an analog filter
+chosen as a reasonable default.
 """
-function grpdelay(filter::FilterCoefficients{:z})
-    w = range(0, stop=π, length=257)
+function grpdelay(filter::FilterCoefficients)
+    w = _freqrange(filter)
     return (grpdelay(filter, w), w)
 end
 
@@ -155,4 +158,23 @@ end
 function _is_anti_sym(x::AbstractArray)
     n = length(x) ÷ 2
     return all(x[1+i] == -x[end-i] for i in 0:n)
+end
+
+_freqrange(::FilterCoefficients{:z}) = range(0, stop=π, length=257)
+function _freqrange(filter::FilterCoefficients{:s})
+    filter = convert(ZeroPoleGain, filter)
+    w_interesting = sort!(Float64.(abs.([filter.p; filter.z])))
+    include_zero = !isempty(w_interesting) && iszero(w_interesting[1])
+    w_interesting = collect(Compat.Iterators.dropwhile(iszero, w_interesting))
+    if isempty(w_interesting) # no non-zero poles or zeros
+        if !include_zero || !isfinite(1/filter.k)
+            return [0; 10 .^ (0:6)] # fallback
+        end
+        # include the point where |H|=1 (if any) and go further by factor 10
+        return range(0.0, stop=10 * Float64(max(filter.k, 1/filter.k)), length=200)
+    end
+    # normal case: go from smalles to largest pole/zero, extended by factor 10
+    w_min, w_max = w_interesting[[1,end]]
+    w = 10 .^ range(log10(w_min)-1, stop=log10(w_max)+1, length=200)
+    return include_zero ? [0.0; w] : w
 end

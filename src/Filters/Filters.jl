@@ -7,6 +7,7 @@ import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 import ..DSP: filt, filt!, optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
+import Compat
 using FFTW
 
 include("coefficients.jl")

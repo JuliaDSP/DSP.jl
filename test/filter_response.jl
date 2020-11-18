@@ -267,4 +267,13 @@ end
     @test grpdelay(PolynomialRatio{:s}([1, 2], [123]), w) ≈ 0.5 ./ (1 .+ w.^2/4)
     @test grpdelay(PolynomialRatio{:s}([123], [1, 2]), w) ≈ -0.5 ./ (1 .+ w.^2/4)
     @test grpdelay(PolynomialRatio{:s}([1, 2], [3, 9]), w) ≈ 0.5 ./ (1 .+ w.^2/4) - 1/3 ./ (1 .+ w.^2/9)
+    tau, w = grpdelay(PolynomialRatio{:s}([1, 2], [123]))
+    @test tau ≈ 0.5 ./ (1 .+ w.^2/4)
+    @test minimum(w) < 2 < maximum(w) # position of zero covered
+    tau, w = grpdelay(PolynomialRatio{:s}([123], [1, 2]))
+    @test tau ≈ -0.5 ./ (1 .+ w.^2/4)
+    @test minimum(w) < 2 < maximum(w) # position of pole covered
+    tau, w = grpdelay(PolynomialRatio{:s}([1, 2], [3, 9]))
+    @test tau ≈ 0.5 ./ (1 .+ w.^2/4) - 1/3 ./ (1 .+ w.^2/9)
+    @test minimum(w) < 2 && 3 < maximum(w) # position of pole and zero covered
 end
