@@ -129,28 +129,6 @@ end
 
 #######################################
 #
-#  Test digital filter with frequency specified in hz
-#
-#######################################
-@testset "freqresp with fs" begin
-    # Julia
-    b0 = 0.05634
-    b1 = [1,  1]
-    b2 = [1, -1.0166, 1]
-    a1 = [1, -0.683]
-    a2 = [1, -1.4461, 0.7957]
-    b = b0*conv(b1, b2)
-    a = conv(a1, a2)
-
-    fs    = 8192
-    hz    = range(0, stop=fs, length=200)
-    h     = freqresp(PolynomialRatio(b, a), hz, fs)
-    h_ref = [b0 * Polynomial(b1)(z) * Polynomial(b2)(z) / (Polynomial(a1)(z) * Polynomial(a2)(z)) for z ∈ exp.(-2π*im*hz/fs)]
-    @test h ≈ h_ref
-end
-
-#######################################
-#
 #  http://www.mathworks.com.au/help/signal/ref/freqs.html
 #  Example 1: Frequency response from the transfer function
 #
@@ -205,23 +183,6 @@ end
 
     @test h ≈ freqresp(ZeroPoleGain(PolynomialRatio{:s}(b, a)), w)
     @test h ≈ freqresp(SecondOrderSections(PolynomialRatio{:s}(b, a)), w)
-end
-
-#######################################
-#
-#  Test analog filter with frequency specified in hz
-#
-#######################################
-@testset "freqresp(::FilterCoefficients{:s}) with fs" begin
-    # Julia
-    a  = [1.0, 0.4, 1.0]
-    b  = [0.2, 0.3, 1.0]
-    fs = 8192
-    hz = range(0, stop=fs, length=50)
-
-    h        = freqresp(PolynomialRatio{:s}(b, a), hz, fs)
-    h_ref = [Polynomial(reverse(b))(s) / Polynomial(reverse(a))(s) for s ∈ 2π*im*hz/fs]
-    @test h ≈ h_ref
 end
 
 # ######################################

@@ -176,7 +176,7 @@ end
                 (10000.0,  Fs/2) => (0.0, 100.0)
         ]; Hz=Fs)
     g = DSP.Filters.PolynomialRatio(g_vec, [1.0])
-    Gdb = 20*log10.(abs.(freqresp(g,f,1.0)))
+    Gdb = 20*log10.(abs.(freqresp(g, 2π*f)))
 
     passband_indices = (f*Fs) .< 2880.0
     # Test that maximum passband error is less than 1/4 dB.

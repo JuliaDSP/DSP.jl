@@ -34,15 +34,6 @@ radians/second.
 """
 freqresp(filter::FilterCoefficients{:s}, w) = _freq(filter).(im .* w)
 
-"""
-    freqresp(filter, hz, fs)
-
-Frequency response of a `filter` at frequency or frequencies `hz` with sampling rate `fs`
-for a digital filter or frequencies `hz/fs` for an analog filter.
-"""
-freqresp(filter::FilterCoefficients, hz::Union{Number, AbstractVector}, fs::Number) =
-    freqresp(filter,  hz * ((2 * pi) / fs))
-
 
 _freq(filter::FilterCoefficients) = x::Number -> _freq(filter, x)
 
