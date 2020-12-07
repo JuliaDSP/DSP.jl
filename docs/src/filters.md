@@ -112,12 +112,11 @@ iirnotch
 ## Filter response
 
 ```@docs
-freqz
-phasez
-grpdelayz
-impz
-stepz
-freqs
+freqresp
+phaseresp
+grpdelay
+impresp
+stepresp
 ```
 
 ## Miscellaneous

@@ -337,8 +337,8 @@ julia> using PyPlot
 julia> b = DSP.Filters.PolynomialRatio(bpass, [1.0])
 julia> b2 = DSP.Filters.PolynomialRatio(bpass2, [1.0])
 julia> f = range(0, stop=0.5, length=1000)
-julia> plot(f, 20*log10.(abs.(freqz(b,f,1.0))))
-julia> plot(f, 20*log10.(abs.(freqz(b2,f,1.0))))
+julia> plot(f, 20*log10.(abs.(freqresp(b,f,1.0))))
+julia> plot(f, 20*log10.(abs.(freqresp(b2,f,1.0))))
 julia> grid()
 ```
 

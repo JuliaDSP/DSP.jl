@@ -75,15 +75,15 @@ end
     @testset "decimation" begin
         ratio = 1//2
         h     = resample_filter(ratio)
-        r0    = abs.(freqz(PolynomialRatio(h, [1]), 0))
-        rc    = abs.(freqz(PolynomialRatio(h, [1]), ratio*π))
+        r0    = abs.(freqresp(PolynomialRatio(h, [1]), 0))
+        rc    = abs.(freqresp(PolynomialRatio(h, [1]), ratio*π))
         @test isapprox(r0, 1.0)
         @test isapprox(rc, numerator(ratio)/2, rtol=0.001)
 
         ratio = 1//32
         h     = resample_filter(ratio)
-        r0    = abs.(freqz(PolynomialRatio(h, [1]), 0))
-        rc    = abs.(freqz(PolynomialRatio(h, [1]), ratio*π))
+        r0    = abs.(freqresp(PolynomialRatio(h, [1]), 0))
+        rc    = abs.(freqresp(PolynomialRatio(h, [1]), ratio*π))
         @test isapprox(r0, numerator(ratio))
         @test isapprox(rc, numerator(ratio)/2, rtol=0.001)
     end
@@ -91,15 +91,15 @@ end
     @testset "interpolation" begin
         ratio = 2//1
         h     = resample_filter(ratio)
-        r0    = abs.(freqz(PolynomialRatio(h, [1]), 0))
-        rc    = abs.(freqz(PolynomialRatio(h, [1]), 1/ratio*π))
+        r0    = abs.(freqresp(PolynomialRatio(h, [1]), 0))
+        rc    = abs.(freqresp(PolynomialRatio(h, [1]), 1/ratio*π))
         @test isapprox(r0, numerator(ratio))
         @test isapprox(rc, numerator(ratio)/2, rtol=0.001)
 
         ratio = 32//1
         h     = resample_filter(ratio)
-        r0    = abs.(freqz(PolynomialRatio(h, [1]), 0))
-        rc    = abs.(freqz(PolynomialRatio(h, [1]), 1/ratio*π))
+        r0    = abs.(freqresp(PolynomialRatio(h, [1]), 0))
+        rc    = abs.(freqresp(PolynomialRatio(h, [1]), 1/ratio*π))
         @test isapprox(r0, numerator(ratio))
         @test isapprox(rc, numerator(ratio)/2, rtol=0.001)
     end
@@ -109,8 +109,8 @@ end
         Nϕ    = 32
         fc    = 1/Nϕ
         h     = resample_filter(ratio, Nϕ)
-        r0    = abs.(freqz(PolynomialRatio(h, [1]), 0))
-        rc    = abs.(freqz(PolynomialRatio(h, [1]), fc*π))
+        r0    = abs.(freqresp(PolynomialRatio(h, [1]), 0))
+        rc    = abs.(freqresp(PolynomialRatio(h, [1]), fc*π))
         @test isapprox(r0, Nϕ)
         @test isapprox(rc, Nϕ/2, rtol=0.001)
     end

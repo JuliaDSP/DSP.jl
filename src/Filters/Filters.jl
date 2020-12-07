@@ -1,12 +1,13 @@
 module Filters
 using ..Unwrap
 using ..Util
-using Polynomials: LaurentPolynomial, Polynomial, coeffs, fromroots, roots
+using Polynomials: LaurentPolynomial, Polynomial, coeffs, derivative, fromroots, roots
 
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 import ..DSP: filt, filt!, optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
+import Compat
 using FFTW
 
 include("coefficients.jl")
@@ -44,12 +45,11 @@ export  FilterType,
         resample_filter
 
 include("response.jl")
-export  freqs,
-        freqz,
-        phasez,
-        grpdelayz,
-        impz,
-        stepz
+export  freqresp,
+        phaseresp,
+        grpdelay,
+        impresp,
+        stepresp
 
 include("stream_filt.jl")
 export  FIRFilter,
