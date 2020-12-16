@@ -42,6 +42,16 @@ Base.promote_rule(::Type{ZeroPoleGain{D,Z1,P1,K1}}, ::Type{ZeroPoleGain{D,Z2,P2,
     ZeroPoleGain{D}(vcat(f1.z, map(f -> f.z, fs)...), vcat(f1.p, map(f -> f.p, fs)...),
         f1.k*prod(f.k for f in fs))
 
+Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
+
+function Base.:^(f::ZeroPoleGain{D}, e::Integer) where {D}
+    if e < 0
+        return inv(f^-e)
+    else
+        return ZeroPoleGain{D}(repeat(f.z, e), repeat(f.p, e), f.k^e)
+    end
+end
+
 #
 # Transfer function form
 #
@@ -143,6 +153,18 @@ end
 *(f1::PolynomialRatio{D}, fs::PolynomialRatio{D}...) where {D} =
     PolynomialRatio{D}(f1.b*prod(f.b for f in fs), f1.a*prod(f.a for f in fs))
 
+Base.inv(f::PolynomialRatio{D}) where {D} = begin
+    PolynomialRatio{D}(f.a, f.b)
+end
+
+function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
+    if e < 0
+        return PolynomialRatio{D}(f.a^-e, f.b^-e)
+    else
+        return PolynomialRatio{D}(f.b^e, f.a^e)
+    end
+end
+
 """
     coefb(f)
 
@@ -227,6 +249,8 @@ Biquad{D}(f::ZeroPoleGain{D}) where {D} = Biquad{D}(convert(PolynomialRatio, f))
 
 *(f::Biquad{D}, g::Number) where {D} = Biquad{D}(f.b0*g, f.b1*g, f.b2*g, f.a1, f.a2)
 *(g::Number, f::Biquad{D}) where {D} = Biquad{D}(f.b0*g, f.b1*g, f.b2*g, f.a1, f.a2)
+
+Base.inv(f::Biquad{D,T}) where {D,T} = Biquad{D}(one(T), f.a1, f.a2, f.b0, f.b1, f.b2)
 
 #
 # Second-order sections (array of biquads)
@@ -421,3 +445,21 @@ SecondOrderSections{D}(f::FilterCoefficients{D}) where {D} = SecondOrderSections
     SecondOrderSections{D}([f1.biquads; f2], f1.g)
 *(f1::Biquad{D}, f2::SecondOrderSections{D}) where {D} =
     SecondOrderSections{D}([f1; f2.biquads], f2.g)
+
+Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.biquads), inv(f.g))
+
+function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
+    if e < 0
+        return inv(f)^-e
+    else
+        return SecondOrderSections{D}(repeat(f.biquads, e), f.g^e)
+    end
+end
+
+function Base.:^(f::Biquad{D}, e::Integer) where {D}
+    if e < 0
+        return inv(f)^-e
+    else
+        return SecondOrderSections{D}(fill(f, e), 1)
+    end
+end

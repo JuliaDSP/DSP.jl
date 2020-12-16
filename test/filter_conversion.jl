@@ -206,6 +206,38 @@ end
     @test filt((convert(Biquad, f1)*convert(Biquad, f2))*convert(Biquad, f3), x) ≈ y
 end
 
+@testset "filter inversion and exponentiation" begin
+    # A filter is stable if all poles within unit circle and causal if not more zeros
+    # than poles. For the inverse to also be stable and causal, it follows that the
+    # zeros also have to be within the unit circle and the number of poles and zeros
+    # must be equal. But poles and zeros at zero lead to degenerate polynomials in z⁻¹,
+    # so ensure these are tested as well. Further, we want both complex conjugate and
+    # real poles and zeros.
+    for Npr ∈ 0:2, Npc ∈ 0:2, Nzr ∈ 0:2, Nzc ∈ 0:2
+        z = rand(ComplexF64, Nzc) .- (0.5 + 0.5im);
+        z = [z; conj(z); rand(Nzr) .- 0.5; zeros(max(2Npc+Npr-2Nzc-Nzr, 0))]
+        p = rand(ComplexF64, Npc) .- (0.5 + 0.5im);
+        p = [p; conj(p); rand(Npr) .- 0.5; zeros(max(2Nzc+Nzr-2Npc-Npr, 0))]
+        H′ = ZeroPoleGain(z, p,
+            (rand() + 0.5) * rand([-1, 1]), # non-zero gain with random sign
+        )
+        maybe_biquad = length(z) ≤ 2 && length(p) ≤ 2 ? (Biquad,) : ()
+        for T ∈ (PolynomialRatio, ZeroPoleGain, SecondOrderSections, maybe_biquad...)
+            H = T(H′)
+            H⁻¹ = inv(H)
+            x = rand(100)
+            @test filt(H⁻¹, filt(H, x)) ≈ x
+            for p ∈ 1:3
+                Hᵖ = H^p
+                H⁻ᵖ = H^-p
+                @test filt(Hᵖ, x) ≈ reduce(∘, fill(x -> filt(H, x), p))(x)
+                @test filt(H⁻ᵖ, filt(Hᵖ, x)) ≈ x rtol=5e-8
+            end
+            @test filt(H^0, x) ≈ x
+        end
+    end
+end
+
 @testset "types" begin
     # normalizes and promotes to result type of division
     @test @inferred(PolynomialRatio{:z}([1, 2], [3, 4])) isa PolynomialRatio{:z,Float64}

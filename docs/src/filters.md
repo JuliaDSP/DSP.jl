@@ -21,6 +21,28 @@ Biquad
 SecondOrderSections
 ```
 
+These filter coefficient objects support the following arithmetic operations:
+inversion (`inv`), multiplication (`*`) for series connection, and integral
+power (`^`) for repeated mutlpilcation with itself. For example:
+
+```jldoctest; setup = :(using DSP)
+julia> H = PolynomialRatio([1.0], [1.0, 0.3])
+PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.3*z⁻¹ + 1.0))
+
+julia> inv(H)
+PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(0.3*z⁻¹ + 1.0), Polynomials.LaurentPolynomial(1.0))
+
+julia> H * H
+PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
+
+julia> H^2
+PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
+
+julia> H^-2
+PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0), Polynomials.LaurentPolynomial(1.0))
+
+```
+
 ## [Stateful filter objects](@id stateful-filter-objects)
 
 ```@docs
