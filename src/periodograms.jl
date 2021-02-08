@@ -4,7 +4,7 @@ module Periodograms
 using LinearAlgebra: mul!
 using ..Util, ..Windows
 export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
-       spectrogram, power, freq, stft
+       spectrogram, power, freq, stft, multitapered_spectrogram
 using FFTW
 import FFTW: Frequencies, fftfreq, rfftfreq
 
@@ -507,5 +507,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     end
     out
 end
+
+include("multitaper_spectrogram.jl")
 
 end # end module definition
