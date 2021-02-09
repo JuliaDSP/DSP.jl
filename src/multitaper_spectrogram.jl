@@ -1,4 +1,4 @@
-struct MultitaperedSpectrogramConfig{T, P, F}
+struct MultitaperedSpectrogramConfig{T,P,F}
     n_samples::Int
     sample_rate::Int
     samples_per_window::Int
@@ -15,10 +15,8 @@ struct MultitaperedSpectrogramConfig{T, P, F}
     freq::F
     time::FloatRange{Float64}
     function MultitaperedSpectrogramConfig{T}(; n_samples, sample_rate, samples_per_window,
-                               n_overlap_samples,
-                               n_for_fft = nextpow(2, samples_per_window)
-                               time_bandwidth_product=4,
-                               ) where T
+                                              n_overlap_samples,
+                                              n_for_fft=nextpow(2, samples_per_window)time_bandwidth_product = 4) where {T}
 
         # Dimensions of the spectrogram power matrix
         n_time_points = div(n_samples - samples_per_window,
@@ -28,7 +26,7 @@ struct MultitaperedSpectrogramConfig{T, P, F}
         n_freq_bins = length(freq)
 
         n_tapers = 2 * time_bandwidth_product - 1
-        
+
         input_tmp = zeros(T, n_for_fft)
         tmp = zeros(Complex{T}, n_freq_bins)
         plan = plan_rfft(input_tmp)
@@ -38,16 +36,19 @@ struct MultitaperedSpectrogramConfig{T, P, F}
         overlap_duration = n_overlap_samples / sample_rate
 
         hop = window_duration - overlap_duration
-        time = range(window_duration/2, step=hop, length = n_time_points)
+        time = range(window_duration / 2; step=hop, length=n_time_points)
 
-        return new{T, typeof(plan), typeof(freq)}(n_samples, sample_rate, samples_per_window, n_overlap_samples,
-                   n_for_fft, n_time_points, n_freq_bins, time_bandwidth_product, n_tapers,
-                   dpss_window, input_tmp, tmp, plan, freq, time)
+        return new{T,typeof(plan),typeof(freq)}(n_samples, sample_rate, samples_per_window,
+                                                n_overlap_samples, n_for_fft, n_time_points,
+                                                n_freq_bins, time_bandwidth_product,
+                                                n_tapers, dpss_window, input_tmp, tmp, plan,
+                                                freq, time)
     end
 end
 
-function multitapered_spectrogram!(destination::AbstractMatrix{T}, signal::AbstractVector{T},
-                                   config::MultitaperedSpectrogramConfig) where {T <: Real}
+function multitapered_spectrogram!(destination::AbstractMatrix{T},
+                                   signal::AbstractVector{T},
+                                   config::MultitaperedSpectrogramConfig) where {T<:Real}
     expected_destination_size = (config.n_time_points, config.n_freq_bins)
     if size(destination) != expected_destination_size
         throw(ArgumentError("size(destination) == $(size(destination)) != $expected_destination_size == (config.n_time_points, config.n_freq_bins)"))
@@ -65,15 +66,11 @@ function multitapered_spectrogram!(destination::AbstractMatrix{T}, signal::Abstr
     return Spectrogram(destination, config.freq, config.time)
 end
 
-function multitapered_spectrogram(signal::AbstractVector{T},
-                                  n::Int=length(s)>>3, n_overlap::Int=n>>1; 
-                                  fs::Int=1) where {T <: Real}
-
-    config = MultitaperedSpectrogramConfig{T}(;
-        n_samples=length(signal),
-        sample_rate=fs,
-        samples_per_window = n,
-        n_overlap_samples = n_overlap)
+function multitapered_spectrogram(signal::AbstractVector{T}, n::Int=length(s) >> 3,
+                                  n_overlap::Int=n >> 1; fs::Int=1) where {T<:Real}
+    config = MultitaperedSpectrogramConfig{T}(; n_samples=length(signal), sample_rate=fs,
+                                              samples_per_window=n,
+                                              n_overlap_samples=n_overlap)
 
     X = Array{T,2}(undef, config.n_time_points, config.n_freq_bins)
     return multitapered_spectrogram!(X, signal, config)
@@ -86,7 +83,7 @@ end
 # Benchmarks suggest that this uses a third of the memory, a tenth of the allocations,
 # and executes in a tenth of the time. It also allows us to avoid allocating an output
 # array and copying it to the destination.
-function power_mt_pgram!(output, signal, config::MultitaperedSpectrogramConfig{T}) where T
+function power_mt_pgram!(output, signal, config::MultitaperedSpectrogramConfig{T}) where {T}
     @assert length(signal) == size(config.dpss_window, 1)
     fill!(output, zero(T))
     input = config.input_tmp
