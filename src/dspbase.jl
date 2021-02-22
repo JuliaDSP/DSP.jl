@@ -679,13 +679,31 @@ end
 
 # May switch argument order
 """
-    conv(u,v)
+    conv(u,v; mode = :full)
 
 Convolution of two arrays. Uses either FFT convolution or overlap-save,
 depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
+
+:full — Return the full 2-D convolution.
+
+:same — Return the central part of the convolution, which is the same size as u.
+
+:valid — Return only parts of the convolution that are computed without zero-padded edges.
 """
-function conv(u::AbstractArray{T, N},
+function conv(u, v; mode::Symbol = :full)
+    if mode == :full
+        conv_full(u, v)
+    elseif mode == :same
+        conv_same(u, v)
+    elseif mode == :valid
+        conv_valid(u, v)
+    else
+        throw(ArgumentError("mode keyword argument must be either :full or :same or :valid"))
+    end
+end
+
+function conv_full(u::AbstractArray{T, N},
               v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
     su = size(u)
     sv = size(v)
@@ -696,36 +714,50 @@ function conv(u::AbstractArray{T, N},
     end
 end
 
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+function conv_full(u::AbstractArray{<:BLAS.BlasFloat, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
     fu, fv = promote(u, v)
-    conv(fu, fv)
+    conv_full(fu, fv)
 end
 
-conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
+conv_full(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
     round.(Int, conv(float(u), float(v)))
 
-conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
+conv_full(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
     conv(float(u), float(v))
 
-function conv(u::AbstractArray{<:Number, N},
+function conv_full(u::AbstractArray{<:Number, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
-    conv(float(u), v)
+    conv_full(float(u), v)
 end
 
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+function conv_full(u::AbstractArray{<:BLAS.BlasFloat, N},
               v::AbstractArray{<:Number, N}) where N
-    conv(u, float(v))
+    conv_full(u, float(v))
 end
 
-function conv(A::AbstractArray{<:Number, M},
+function conv_full(A::AbstractArray{<:Number, M},
               B::AbstractArray{<:Number, N}) where {M, N}
     if (M < N)
-        conv(cat(A, dims=N)::AbstractArray{eltype(A), N}, B)
+        conv_full(cat(A, dims=N)::AbstractArray{eltype(A), N}, B)
     else
         @assert M > N
-        conv(A, cat(B, dims=M)::AbstractArray{eltype(B), M})
+        conv_full(A, cat(B, dims=M)::AbstractArray{eltype(B), M})
     end
+end
+
+function conv_same(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
+	su = size(u)
+	sv = size(v)
+    conv_res = conv_full(u, v)
+	conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1]), Int(floor.(sv[2]/2 + 1)):Int(floor.(sv[2]/2) + su[2]), axes(conv_res)[3:end]...]
+end
+
+function conv_valid(u::AbstractArray{T}, v::AbstractArray{T})::AbstractArray{T} where {T <: Number}
+	su = size(u)
+	sv = size(v)
+	conv_res = conv_full(u, v)
+	conv_res[sv[1]:su[1], sv[2]:su[2], axes(conv_res)[3:end]...]
 end
 
 """
