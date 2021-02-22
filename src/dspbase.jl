@@ -685,7 +685,7 @@ Convolution of two arrays. Uses either FFT convolution or overlap-save,
 depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 
-:full — Return the full 2-D convolution.
+:full — Return the full convolution.
 
 :same — Return the central part of the convolution, which is the same size as u.
 
@@ -699,7 +699,7 @@ function conv(u, v; mode::Symbol = :full)
     elseif mode == :valid
         conv_valid(u, v)
     else
-        throw(ArgumentError("mode keyword argument must be either :full or :same or :valid"))
+        throw(ArgumentError("mode keyword argument must be :full or :same or :valid"))
     end
 end
 
@@ -721,10 +721,10 @@ function conv_full(u::AbstractArray{<:BLAS.BlasFloat, N},
 end
 
 conv_full(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
-    round.(Int, conv(float(u), float(v)))
+    round.(Int, conv_full(float(u), float(v)))
 
 conv_full(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
-    conv(float(u), float(v))
+    conv_full(float(u), float(v))
 
 function conv_full(u::AbstractArray{<:Number, N},
               v::AbstractArray{<:BLAS.BlasFloat, N}) where N
@@ -747,17 +747,25 @@ function conv_full(A::AbstractArray{<:Number, M},
 end
 
 function conv_same(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
-	su = size(u)
-	sv = size(v)
+    su = size(u)
+    sv = size(v)
     conv_res = conv_full(u, v)
-	conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1]), Int(floor.(sv[2]/2 + 1)):Int(floor.(sv[2]/2) + su[2]), axes(conv_res)[3:end]...]
+    if N != 1
+        conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1]), Int(floor.(sv[2]/2 + 1)):Int(floor.(sv[2]/2) + su[2]), axes(conv_res)[3:end]...]
+    else
+        conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1])]
+    end
 end
 
-function conv_valid(u::AbstractArray{T}, v::AbstractArray{T})::AbstractArray{T} where {T <: Number}
-	su = size(u)
-	sv = size(v)
-	conv_res = conv_full(u, v)
-	conv_res[sv[1]:su[1], sv[2]:su[2], axes(conv_res)[3:end]...]
+function conv_valid(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
+    su = size(u)
+    sv = size(v)
+    conv_res = conv_full(u, v)
+    if N != 1
+        conv_res[sv[1]:su[1], sv[2]:su[2], axes(conv_res)[3:end]...]
+    else
+        conv_res[sv[1]:su[1]]
+    end
 end
 
 """
