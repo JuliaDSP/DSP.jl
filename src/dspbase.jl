@@ -763,7 +763,7 @@ end
 
 
 """
-    xcorr(u,v; padmode = :longest)
+    xcorr(u,v; padmode = :none)
 
 Compute the cross-correlation of two vectors, by calculating the similarity
 between `u` and `v` with various offsets of `v`. Delaying `u` relative to `v`
