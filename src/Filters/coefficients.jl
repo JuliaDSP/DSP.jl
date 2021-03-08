@@ -58,16 +58,16 @@ end
 
 function shiftpoly(p::LaurentPolynomial, i)
     if i > 0
-        return p * LaurentPolynomial([one(eltype(p))], 1, p.var)^i
+        return p * LaurentPolynomial([one(eltype(p))], 1, indeterminate(p))^i
     elseif i < 0
-        return p * LaurentPolynomial([one(eltype(p))], -1, p.var)^-i
+        return p * LaurentPolynomial([one(eltype(p))], -1, indeterminate(p))^-i
     end
     return p
 end
 
 struct PolynomialRatio{Domain,T<:Number} <: FilterCoefficients{Domain}
-    b::LaurentPolynomial{T}
-    a::LaurentPolynomial{T}
+    b::LaurentPolynomial{T,Domain}
+    a::LaurentPolynomial{T,Domain}
 
     function PolynomialRatio{:z,Ti}(b::LaurentPolynomial, a::LaurentPolynomial) where {Ti<:Number}
         i = max(lastindex(a), lastindex(b))
