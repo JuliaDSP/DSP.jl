@@ -702,9 +702,6 @@ function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
     conv(fu, fv)
 end
 
-conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
-    round.(Int, conv(float(u), float(v)))
-
 conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
     conv(float(u), float(v))
 
