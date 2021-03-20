@@ -15,6 +15,7 @@ include("periodograms.jl")
 include("Filters/Filters.jl")
 include("lpc.jl")
 include("estimation.jl")
+include("diric.jl")
 
 using Reexport
 @reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation
