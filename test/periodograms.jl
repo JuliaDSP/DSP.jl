@@ -22,6 +22,10 @@ using Statistics: mean
     f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
     t0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_t.txt"),'\t'))
     p0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_p.txt"),'\t')
+    # x0 = vec(readdlm(joinpath("test", "data", "spectrogram_x.txt"),'\t'))
+    # f0 = vec(readdlm(joinpath("test", "data", "spectrogram_f.txt"),'\t'))
+    # t0 = vec(readdlm(joinpath("test", "data", "spectrogram_t.txt"),'\t'))
+    # p0 = readdlm(joinpath("test", "data", "spectrogram_p.txt"),'\t')
     spec = spectrogram(x0, 256, 128; fs=10)
     p, f, t = power(spec), freq(spec), time(spec)
 

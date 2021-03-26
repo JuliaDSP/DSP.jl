@@ -3,9 +3,9 @@ import DSP: Frequencies, fftfreq, rfftfreq
 
 using Random: seed!
 
-testfiles = [ "dsp.jl", "util.jl", "windows.jl", "filter_conversion.jl",
+testfiles = ["dsp.jl", "util.jl", "windows.jl", "filter_conversion.jl",
     "filter_design.jl", "filter_response.jl", "filt.jl", "filt_stream.jl",
-    "periodograms.jl", "resample.jl", "lpc.jl", "estimation.jl", "unwrap.jl",
+    "periodograms.jl", "multitaper.jl", "resample.jl", "lpc.jl", "estimation.jl", "unwrap.jl",
     "remez_fir.jl" ]
 
 seed!(1776)
