@@ -1,0 +1,9 @@
+fs = 1000;
+t = 0:1/fs:2-1/fs;
+x = cos(2*pi*100*t)+randn(size(t));
+nfft = 2^nextpow2(length(x));
+[pxx,fx] = pmtm(x,4,nfft,fs);
+y = sin(2*pi*100*t)+randn(size(t));
+z = x + 1i*y;
+[pzz,fz] = pmtm(z,4,nfft,fs);
+

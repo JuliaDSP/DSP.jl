@@ -22,10 +22,6 @@ using Statistics: mean
     f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
     t0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_t.txt"),'\t'))
     p0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_p.txt"),'\t')
-    # x0 = vec(readdlm(joinpath("test", "data", "spectrogram_x.txt"),'\t'))
-    # f0 = vec(readdlm(joinpath("test", "data", "spectrogram_f.txt"),'\t'))
-    # t0 = vec(readdlm(joinpath("test", "data", "spectrogram_t.txt"),'\t'))
-    # p0 = readdlm(joinpath("test", "data", "spectrogram_p.txt"),'\t')
     spec = spectrogram(x0, 256, 128; fs=10)
     p, f, t = power(spec), freq(spec), time(spec)
 
@@ -33,6 +29,20 @@ using Statistics: mean
     @test p0 ≈ p
     @test f0 ≈ f
     @test t0 ≈ t
+
+
+    mt_spec = mt_spectrogram(x0, 256, 128; fs=10)
+    @test freq(mt_spec) == f
+    @test time(mt_spec) == t
+    @test power(mt_spec)[:,1] ≈ power(mt_pgram(x0[1:256]; fs=10))
+
+    # Check that the in-place version gets the same results
+    spec_config = MTSpectrogramConfig{eltype(x0)}(length(x0), 256, 128; fs=10)
+    out = allocate_output(spec_config)
+    mt_spec2 = mt_spectrogram!(out, x0, spec_config)
+    @test power(mt_spec) ≈ power(mt_spec2)
+    @test freq(mt_spec) == freq(mt_spec2)
+    @test time(mt_spec) == time(mt_spec2)
 end
 
 @testset "0:7" begin
@@ -312,4 +322,45 @@ end
         @assert isa(x, Vector)
         @test pointer(x) == pointer(q.buf)
     end
+
+    x = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_x.txt")))
+    # MATLAB code:
+    # fft = 2^nextpow2(length(x));
+    # [pxx,fx] = pmtm(x,4,nfft,1000,'unity');
+    fx = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_fx.txt")))
+    pxx = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_pxx.txt")))
+
+    fs = 1000
+    nw=4
+    nfft = nextpow(2, length(x))
+    result = mt_pgram(x; fs=fs, nw=nw, nfft=nfft)
+    @test freq(result) ≈ fx
+    @test power(result) ≈ pxx
+
+    # Test against in-place
+    config = MTConfig{eltype(x)}(length(x); fs=fs, nw=nw, nfft=nfft)
+    out = allocate_output(config)
+    result2 = mt_pgram!(out, x, config)
+    @test freq(result) == freq(result2)
+    @test power(result) ≈ power(result2)
+
+
+    y = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_y.txt")))
+    z = x + im*y
+
+    # MATLAB code: `[pzz,fz] = pmtm(z,4,nfft,1000, 'unity')`
+    fz = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_fz.txt")))
+    pzz = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_pzz.txt")))
+    result = mt_pgram(z; fs=fs, nw=nw, nfft=nfft)
+    result_mask = 0 .< freq(result) .< 500
+    freqs = freq(result)[result_mask]
+    @test freqs ≈ fz[2:length(freqs)+1]
+    @test power(result)[result_mask] ≈ pzz[2:length(freqs)+1]
+
+    # Test against in-place
+    config = MTConfig{eltype(z)}(length(z); fs=fs, nw=nw, nfft=nfft)
+    out = allocate_output(config)
+    result2 = mt_pgram!(out, z, config)
+    @test freq(result) == freq(result2)
+    @test power(result) ≈ power(result2)
 end

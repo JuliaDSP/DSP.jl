@@ -407,12 +407,14 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   nfft::Int=nextfastfft(length(s)), fs::Real=1,
                   nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
                   window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s), fs;
-        n_for_fft = nfft,
+    config = MTConfig{T}(length(s);
+        fs = fs,
+        nfft = nfft,
         window = window,
-        time_bandwidth_product = nw,
-        n_tapers = ntapers,
-        onesided = onesided)
+        nw = nw,
+        ntapers = ntapers,
+        onesided = onesided,
+        fft_flags = FFTW.ESTIMATE)
     out = allocate_output(config)
     return mt_pgram!(out, s, config)
 end
