@@ -378,11 +378,11 @@ Computes a multitapered cross spectral matrix.
     if iseven(size(signal, 2))
         x_mt[end, :, :] ./= sqrt(2)
     end
-    csd_inner!(output, config.weighted_evals, x_mt, config)
+    cs_inner!(output, config.weighted_evals, x_mt, config)
     return CrossSpectral(output, config.freq)
 end
 
-function csd_inner!(output, weighted_evals, x_mt, config)
+function cs_inner!(output, weighted_evals, x_mt, config)
     freq_inds = config.freq_inds
     n_channels = config.n_channels
     @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, 1:length(freq_inds))
@@ -429,28 +429,28 @@ end
 
 struct MTCoherenceConfig{T, T1,C<:MTCrossSpectraConfig{T}}
     cs_matrix::T1
-    csd_config::C
+    cs_config::C
 end
 
 """
-    MTCoherenceConfig(csd_config::MTCrossSpectraConfig{T}) where {T}
+    MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
     MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true, freq_range=nothing, kwargs...) where T
 
 Creates a configuration object for coherences from a [`MTCrossSpectraConfig`](@ref). Provides a helper method
 with the same arugments as `MTCrossSpectraConfig` to construct the `MTCrossSpectraConfig` object.
 """
-function MTCoherenceConfig(csd_config::MTCrossSpectraConfig{T}) where {T}
-    cs_matrix = allocate_output(csd_config)
-    return MTCoherenceConfig{T, typeof(cs_matrix), typeof(csd_config)}(cs_matrix, csd_config)
+function MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
+    cs_matrix = allocate_output(cs_config)
+    return MTCoherenceConfig{T, typeof(cs_matrix), typeof(cs_config)}(cs_matrix, cs_config)
 end
 
 function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true, freq_range=nothing, kwargs...) where T
-    csd_config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, demean=demean, low_bias=low_bias, freq_range=freq_range, kwargs...)
-    cs_matrix = allocate_output(csd_config)
-    MTCoherenceConfig{T, typeof(cs_matrix), typeof(csd_config)}(cs_matrix, csd_config)
+    cs_config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, demean=demean, low_bias=low_bias, freq_range=freq_range, kwargs...)
+    cs_matrix = allocate_output(cs_config)
+    MTCoherenceConfig{T, typeof(cs_matrix), typeof(cs_config)}(cs_matrix, cs_config)
 end
 
-allocate_output(config::MTCoherenceConfig{T}) where T = Matrix{real(T)}(undef, config.csd_config.n_channels, config.csd_config.n_channels)
+allocate_output(config::MTCoherenceConfig{T}) where T = Matrix{real(T)}(undef, config.cs_config.n_channels, config.cs_config.n_channels)
 
 """
     coherence_from_cs!(output, cs::CrossSpectral)
@@ -489,15 +489,15 @@ Computes the pairwise coherences between channels.
 Returns a `Symmetric` view of `output`.
 """
 function mt_coherence!(output, signal::AbstractMatrix{T}, config::MTCoherenceConfig{T}) where T
-    if size(signal) != (config.csd_config.n_channels, config.csd_config.mt_config.n_samples)
-        throw(DimensionMismatch("Size of `signal` does not match `(config.csd_config.n_channels, config.csd_config.mt_config.n_samples)`;
-            got `size(signal)`=$(size(signal)) but `(config.csd_config.n_channels, config.csd_config.mt_config.n_samples)`=$((config.csd_config.n_channels, config.csd_config.mt_config.n_samples))"))
+    if size(signal) != (config.cs_config.n_channels, config.cs_config.mt_config.n_samples)
+        throw(DimensionMismatch("Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
+            got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((config.cs_config.n_channels, config.cs_config.mt_config.n_samples))"))
     end
-    if size(output) != (config.csd_config.n_channels, config.csd_config.n_channels)
-        throw(DimensionMismatch("Size of `output` does not match `(config.csd_config.n_channels, config.csd_config.n_channels)`;
-        got `size(output)`=$(size(output)) but `(config.csd_config.n_channels, config.csd_config.n_channels)`=$((config.csd_config.n_channels, config.csd_config.n_channels))"))
+    if size(output) != (config.cs_config.n_channels, config.cs_config.n_channels)
+        throw(DimensionMismatch("Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels)`;
+        got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels)`=$((config.cs_config.n_channels, config.cs_config.n_channels))"))
     end
-    cs = mt_cross_spectral!(config.cs_matrix, signal, config.csd_config)
+    cs = mt_cross_spectral!(config.cs_matrix, signal, config.cs_config)
     return coherence_from_cs!(output, cs)
 end
 
