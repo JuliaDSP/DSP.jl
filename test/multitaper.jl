@@ -119,7 +119,7 @@ end
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
     result = mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15))
-    @test jl_result[2, 1] ≈ coh
+    @test result[2, 1] ≈ coh
 end
 
 @testset "`mt_cross_spectral`" begin
