@@ -498,6 +498,6 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     out
 end
 
-include("multitaper_spectrogram.jl")
+include("multitaper.jl")
 
 end # end module definition
