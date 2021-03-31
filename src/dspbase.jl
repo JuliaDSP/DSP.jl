@@ -718,9 +718,14 @@ function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
     conv(u, float(v))
 end
 
-function conv(A::AbstractArray, B::AbstractArray)
-    maxnd = max(ndims(A), ndims(B))
-    return conv(cat(A, dims=maxnd), cat(B, dims=maxnd))
+function conv(A::AbstractArray{<:Number, M},
+              B::AbstractArray{<:Number, N}) where {M, N}
+    if (M < N)
+        conv(cat(A, dims=N)::AbstractArray{eltype(A), N}, B)
+    else
+        @assert M > N
+        conv(A, cat(B, dims=M)::AbstractArray{eltype(B), M})
+    end
 end
 
 """
@@ -747,27 +752,6 @@ function conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) 
 end
 
 
-function check_padmode_kwarg(padmode::Symbol, su::Integer, sv::Integer)
-    if padmode == :default_longest
-        if su != sv
-            Base.depwarn(
-            """
-            The default value of `padmode` will be changing from `:longest` to
-            `:none` in a future release of DSP. In preparation for this change,
-            leaving `padmode` unspecified is currently deprecated. To keep
-            current behavior specify `padmode=:longest`. To avoid this warning,
-            specify padmode = :none or padmode = :longest where appropriate.
-            """
-                ,
-                :xcorr
-            )
-        end
-        :longest
-    else
-        padmode
-    end
-end
-
 dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
 function dsp_reverse(v, vaxes)
     vsize = length(v)
@@ -790,17 +774,11 @@ The size of the output depends on the padmode keyword argument: with padmode =
 With padmode = :longest the shorter of the arguments will be padded so they are
 equal length. This gives a result with length 2*max(length(u), length(v))-1,
 with the zero-lag condition at the center.
-
-!!! warning
-    The default value of `padmode` will be changing from `:longest` to `:none`
-    in a future release of DSP. In preparation for this change, leaving
-    `padmode` unspecified is currently deprecated.
 """
 function xcorr(
-    u::AbstractVector, v::AbstractVector; padmode::Symbol = :default_longest
+    u::AbstractVector, v::AbstractVector; padmode::Symbol = :none
 )
     su = size(u,1); sv = size(v,1)
-    padmode = check_padmode_kwarg(padmode, su, sv)
     if padmode == :longest
         if su < sv
             u = _zeropad_keep_offset(u, sv)

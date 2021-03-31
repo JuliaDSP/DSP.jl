@@ -6,8 +6,8 @@
 
 
 ## PolynomialRatio
-_zerosi(f::PolynomialRatio{T}, x::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), max(length(f.a), length(f.b))-1)
+_zerosi(f::PolynomialRatio{:z,T}, x::AbstractArray{S}) where {T,S} =
+    zeros(promote_type(T, S), max(-firstindex(f.a), -firstindex(f.b)))
 
 """
     filt!(out, f, x[, si])
@@ -16,7 +16,7 @@ Same as [`filt()`](@ref) but writes the result into the `out`
 argument. Output array `out` may not be an alias of `x`, i.e. filtering may
 not be done in place.
 """
-filt!(out, f::PolynomialRatio{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S} =
+filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si=_zerosi(f, x)) =
     filt!(out, coefb(f), coefa(f), x, si)
 
 """
@@ -32,14 +32,14 @@ to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
 interpreted as an FIR filter, and a naïve or FFT-based algorithm is
 selected based on the data and filter length.
 """
-filt(f::PolynomialRatio, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+filt(f::PolynomialRatio{:z}, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections
-_zerosi(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S} =
+_zerosi(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S} =
     zeros(promote_type(T, G, S), 2, length(f.biquads))
 
 # filt! algorithm (no checking, returns si)
-function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections,
+function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
                 x::AbstractArray, col::Int) where {S,N}
     g = f.g
     biquads = f.biquads
@@ -58,7 +58,7 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     si
 end
 
-function filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
+function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     biquads = f.biquads
     ncols = Base.trailingsize(x, 2)
@@ -76,15 +76,15 @@ function filt!(out::AbstractArray, f::SecondOrderSections, x::AbstractArray,
     out
 end
 
-filt(f::SecondOrderSections{T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
+filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
     filt!(Array{promote_type(T, G, S)}(undef, size(x)), f, x, si)
 
 ## Biquad
-_zerosi(f::Biquad{T}, x::AbstractArray{S}) where {T,S} =
+_zerosi(f::Biquad{:z,T}, x::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), 2)
 
 # filt! algorithm (no checking, returns si)
-function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad,
+function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
                 x::AbstractArray, col::Int)
     @inbounds for i = 1:size(x, 1)
         xi = x[i, col]
@@ -97,7 +97,7 @@ function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad,
 end
 
 # filt! variant that preserves si
-function filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
+function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     ncols = Base.trailingsize(x, 2)
 
@@ -112,12 +112,12 @@ function filt!(out::AbstractArray, f::Biquad, x::AbstractArray,
     out
 end
 
-filt(f::Biquad{T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
+filt(f::Biquad{:z,T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
     filt!(Array{promote_type(T, S)}(undef, size(x)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
-filt(f::FilterCoefficients, x) = filt(convert(SecondOrderSections, f), x)
-filt!(out, f::FilterCoefficients, x) = filt!(out, convert(SecondOrderSections, f), x)
+filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
+filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 """
     DF2TFilter(coef[, si])
@@ -129,50 +129,48 @@ initial filter state (defaults to zeros). If `f` is a
 filtering is implemented directly. If `f` is a `ZeroPoleGain`
 object, it is first converted to a `SecondOrderSections` object.
 """
-struct DF2TFilter{T<:FilterCoefficients,S<:Array}
+struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
     coef::T
     state::S
 
-    function DF2TFilter{Ti,Si}(coef::PolynomialRatio, state::Vector) where {Ti,Si}
+    function DF2TFilter{Ti,Si}(coef::PolynomialRatio{:z}, state::Vector) where {Ti,Si}
         length(state) == length(coef.a)-1 == length(coef.b)-1 ||
             throw(ArgumentError("length of state vector must match filter order"))
         new{Ti,Si}(coef, state)
     end
-    function DF2TFilter{Ti,Si}(coef::SecondOrderSections, state::Matrix) where {Ti,Si}
+    function DF2TFilter{Ti,Si}(coef::SecondOrderSections{:z}, state::Matrix) where {Ti,Si}
         (size(state, 1) == 2 && size(state, 2) == length(coef.biquads)) ||
             throw(ArgumentError("state must be 2 x nbiquads"))
         new{Ti,Si}(coef, state)
     end
-    function DF2TFilter{Ti,Si}(coef::Biquad, state::Vector) where {Ti,Si}
+    function DF2TFilter{Ti,Si}(coef::Biquad{:z}, state::Vector) where {Ti,Si}
         length(state) == 2 || throw(ArgumentError("length of state must be 2"))
         new{Ti,Si}(coef, state)
     end
 end
 
 ## PolynomialRatio
-DF2TFilter(coef::PolynomialRatio{T},
+DF2TFilter(coef::PolynomialRatio{:z,T},
            state::Vector{S}=zeros(T, max(length(coef.a), length(coef.b))-1)) where {T,S} =
-    DF2TFilter{PolynomialRatio{T}, Vector{S}}(coef, state)
+    DF2TFilter{PolynomialRatio{:z,T}, Vector{S}}(coef, state)
 
-function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}}, x::AbstractVector) where {T,S}
+function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
-    # Note: these are in the Polynomials.jl convention, which is
-    # reversed WRT the usual DSP convention
-    b = f.coef.b.a
-    a = f.coef.a.a
+    b = coefb(f.coef)
+    a = coefa(f.coef)
     n = length(b)
     if n == 1
         mul!(out, x, b[1])
     else
         @inbounds for i=1:length(x)
             xi = x[i]
-            val = si[1] + b[n]*xi
-            for j=1:n-2
-                si[j] = si[j+1] + b[n-j]*xi - a[n-j]*val
+            val = si[1] + b[1]*xi
+            for j=2:n-1
+                si[j-1] = si[j] + b[j]*xi - a[j]*val
             end
-            si[n-1] = b[1]*xi - a[1]*val
+            si[n-1] = b[n]*xi - a[n]*val
             out[i] = val
         end
     end
@@ -180,20 +178,20 @@ function filt!(out::AbstractVector, f::DF2TFilter{PolynomialRatio{T},Vector{S}},
 end
 
 ## SecondOrderSections
-DF2TFilter(coef::SecondOrderSections{T,G},
+DF2TFilter(coef::SecondOrderSections{:z,T,G},
            state::Matrix{S}=zeros(promote_type(T, G), 2, length(coef.biquads))) where {T,G,S} =
-    DF2TFilter{SecondOrderSections{T,G}, Matrix{S}}(coef, state)
+    DF2TFilter{SecondOrderSections{:z,T,G}, Matrix{S}}(coef, state)
 
-function filt!(out::AbstractVector, f::DF2TFilter{SecondOrderSections{T,G},Matrix{S}}, x::AbstractVector) where {T,G,S}
+function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     _filt!(out, f.state, f.coef, x, 1)
     out
 end
 
 ## Biquad
-DF2TFilter(coef::Biquad{T}, state::Vector{S}=zeros(T, 2)) where {T,S} =
-    DF2TFilter{Biquad{T}, Vector{S}}(coef, state)
-function filt!(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::AbstractVector) where {T,S}
+DF2TFilter(coef::Biquad{:z,T}, state::Vector{S}=zeros(T, 2)) where {T,S} =
+    DF2TFilter{Biquad{:z,T}, Vector{S}}(coef, state)
+function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     si = f.state
     (si[1], si[2]) =_filt!(out, si[1], si[2], f.coef, x, 1)
@@ -201,11 +199,11 @@ function filt!(out::AbstractVector, f::DF2TFilter{Biquad{T},Vector{S}}, x::Abstr
 end
 
 # Variant that allocates the output
-filt(f::DF2TFilter{T,S}, x::AbstractVector) where {T,S<:Array} =
+filt(f::DF2TFilter{<:FilterCoefficients{:z},S}, x::AbstractVector) where {S<:Array} =
     filt!(Vector{eltype(S)}(undef, length(x)), f, x)
 
 # Fall back to SecondOrderSections
-DF2TFilter(coef::FilterCoefficients) = DF2TFilter(convert(SecondOrderSections, coef))
+DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
 
 #
 # filtfilt
@@ -310,7 +308,7 @@ function filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
 end
 
 # Zero phase digital filtering for second order sections
-function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S}
+function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     zi = filt_stepstate(f)
     pad_length = 6 * length(f.biquads)
     t = Base.promote_type(T, G, S)
@@ -333,8 +331,8 @@ function filtfilt(f::SecondOrderSections{T,G}, x::AbstractArray{S}) where {T,G,S
 end
 
 # Support for other filter types
-filtfilt(f::FilterCoefficients, x) = filtfilt(convert(SecondOrderSections, f), x)
-filtfilt(f::PolynomialRatio, x) = filtfilt(coefb(f), coefa(f), x)
+filtfilt(f::FilterCoefficients{:z}, x) = filtfilt(convert(SecondOrderSections, f), x)
+filtfilt(f::PolynomialRatio{:z}, x) = filtfilt(coefb(f), coefa(f), x)
 
 ## Initial filter state
 
@@ -365,7 +363,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     scale_factor \ (I - A) \ B
  end
 
-function filt_stepstate(f::SecondOrderSections{T}) where T
+function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     biquads = f.biquads
     si = Matrix{T}(undef, 2, length(biquads))
     y = one(T)

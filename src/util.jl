@@ -6,12 +6,9 @@ using LinearAlgebra: mul!
 using FFTW
 
 export  hilbert,
-        Frequencies,
         fftintype,
         fftouttype,
         fftabs2type,
-        fftfreq,
-        rfftfreq,
         nextfastfft,
         dB,
         dBa,

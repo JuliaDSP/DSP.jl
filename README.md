@@ -6,14 +6,14 @@ DSP.jl
 
 DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia. These include:
 
-- [Periodogram estimation](https://juliadsp.github.io/DSP.jl/stable/periodograms)
-- [Filter design and filtering](https://juliadsp.github.io/DSP.jl/stable/filters)
-- [Estimation](http://juliadsp.github.io/DSP.jl/stable/estimation/)
-- [Convolution](https://juliadsp.github.io/DSP.jl/stable/convolutions)
-- [Linear Predictive Coding](https://juliadsp.github.io/DSP.jl/stable/lpc)
-- [Window functions](https://juliadsp.github.io/DSP.jl/stable/windows)
-- [Utility functions](https://juliadsp.github.io/DSP.jl/stable/util)
+- [Periodogram estimation](https://docs.juliadsp.org/stable/periodograms)
+- [Filter design and filtering](https://docs.juliadsp.org/stable/filters)
+- [Estimation](http://docs.juliadsp.org/stable/estimation/)
+- [Convolution](https://docs.juliadsp.org/stable/convolutions)
+- [Linear Predictive Coding](https://docs.juliadsp.org//stable/lpc)
+- [Window functions](https://docs.juliadsp.org/stable/windows)
+- [Utility functions](https://docs.juliadsp.org/stable/util)
 
-More details can be found in the [Online Documentation](https://juliadsp.github.io/DSP.jl/stable/contents/).
+More details can be found in the [Online Documentation](https://docs.juliadsp.org/stable/contents/).
 
-The documentation for pre-releases (master) can be found [here](https://juliadsp.github.io/DSP.jl/latest/contents/).
+The documentation for pre-releases (master) can be found [here](https://docs.juliadsp.org/latest/contents/).
