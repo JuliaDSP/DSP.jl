@@ -6,7 +6,6 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     n_samples::Int
     fs::R1
     nfft::Int
-    n_freq_bins::Int
     ntapers::Int
     freq::F
     plan::P
@@ -15,7 +14,7 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     window::W
     onesided::Bool
     r::R2
-    function MTConfig{T}(n_samples, nfft, n_freq_bins, ntapers, freq, fs,
+    function MTConfig{T}(n_samples, nfft, ntapers, freq, fs,
                          plan, fft_input_tmp, fft_output_tmp, window, onesided, r) where {T}
         n_samples > 0 || throw(ArgumentError("`n_samples` must be positive"))
         nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
@@ -29,9 +28,9 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
             throw(DimensionMismatch("""Must have `size(fft_input_tmp) == (nfft,)`;
                 got `size(fft_input_tmp)` = $(size(fft_input_tmp)) and `nfft` = $(nfft)"""))
         end
-        if size(fft_output_tmp) != (n_freq_bins, ntapers)
-            throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (n_freq_bins, ntapers)`;
-                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `(n_freq_bins, ntapers)` = $((n_freq_bins, ntapers))"""))
+        if size(fft_output_tmp) != (length(freq), ntapers)
+            throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq), ntapers)`;
+                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `(length(freq), ntapers)` = $((length(freq), ntapers))"""))
         end
         if size(window) != (n_samples, ntapers)
             throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
@@ -43,7 +42,6 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
         return new{T,typeof(fs),typeof(freq),typeof(plan),typeof(fft_input_tmp),
                    typeof(fft_output_tmp),typeof(window),typeof(r)}(n_samples, fs,
                                                                                                                                           nfft,
-                                                                                                                                          n_freq_bins,
                                                                                                                                           ntapers,
                                                                                                                                           freq,
                                                                                                                                           plan,
@@ -95,9 +93,8 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples),
     nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
     ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
     freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
-    n_freq_bins = length(freq)
     fft_input_tmp = Vector{T}(undef, nfft)
-    fft_output_tmp = Matrix{fftouttype(T)}(undef, n_freq_bins, ntapers)
+    fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freq), ntapers)
     plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) : plan_fft(fft_input_tmp; flags=fft_flags)
     if window === nothing
         r = fs * ntapers
@@ -106,11 +103,11 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples),
         r = fs * sum(abs2, window)
     end
 
-    return MTConfig{T}(n_samples, nfft, n_freq_bins, ntapers, freq, fs, plan,
+    return MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan,
                        fft_input_tmp, fft_output_tmp, window, onesided, r)
 end
 
-allocate_output(config::MTConfig{T}) where T = Vector{fftabs2type(T)}(undef, config.n_freq_bins)
+allocate_output(config::MTConfig{T}) where T = Vector{fftabs2type(T)}(undef, length(config.freq))
 
 """
     tapered_spectra!(output, signal::AbstractVector, config) where {T}
@@ -128,8 +125,8 @@ Internal function used in [`mt_pgram!`](@ref) and [`mt_cross_spectral!`](@ref).
     if length(signal) != config.n_samples
         throw(DimensionMismatch("Expected `length(signal) == config.n_samples`; got `length(signal)` = $(length(signal)) and `config.n_samples` = $(config.n_samples)"))
     end
-    if size(output) != (config.n_freq_bins, config.ntapers)
-        throw(DimensionMismatch("Expected `size(output) == (config.n_freq_bins, config.ntapers)`; got `size(output)` = $(size(output)) and `(config.n_freq_bins, config.ntapers)` = $((config.n_freq_bins, config.ntapers))"))
+    if size(output) != (length(config.freq), config.ntapers)
+        throw(DimensionMismatch("Expected `size(output) == (length(config.freq), config.ntapers)`; got `size(output)` = $(size(output)) and `(length(config.freq), config.ntapers)` = $((length(config.freq), config.ntapers))"))
 
     end
     input = config.fft_input_tmp
@@ -153,12 +150,12 @@ Computes a multitapered periodogram with parameters specifed by `config`,
 storing the output in `output`.
 
 * `signal::AbstractVector`: should be of length `config.n_samples`
-* `output::AbstractVector`: should be of length `config.n_freq_bins`
+* `output::AbstractVector`: should be of length `length(config.freq)`
 """
 function mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTConfig)
-    if length(output) != config.n_freq_bins
-        throw(DimensionMismatch("""Expected `output` to be of length `config.n_freq_bins`;
-                got `length(output) = $(length(output)) and `config.n_freq_bins` = $(config.n_freq_bins)"""))
+    if length(output) != length(config.freq)
+        throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
+                got `length(output) = $(length(output)) and `length(config.freq)` = $(length(config.freq))"""))
     end
     if length(signal) != config.n_samples
         throw(DimensionMismatch("""Expected `signal` to be of length `config.n_samples`;
@@ -181,7 +178,6 @@ end
 struct MTSpectrogramConfig{T,C<:MTConfig{T}}
     n_samples::Int
     n_overlap_samples::Int
-    n_time_points::Int
     time::FloatRange{Float64}
     mt_config::C
 end
@@ -195,18 +191,18 @@ Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `
 """
 function MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
     samples_per_window = mt_config.n_samples
+    if samples_per_window <= n_overlap_samples
+        throw(ArgumentError("Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
+    end
+    if n_samples <= samples_per_window
+        throw(ArgumentError("Need `n_samples > samples_per_window`; got `n_samples` = $(n_samples) and `samples_per_window` = $(samples_per_window)."))
+    end
+    samples_per_window = mt_config.n_samples        
     fs = mt_config.fs
-    # Dimensions of the spectrogram power matrix
-    n_time_points = div(n_samples - samples_per_window,
-                        samples_per_window - n_overlap_samples) + 1
 
-    window_duration = samples_per_window / fs
-    overlap_duration = n_overlap_samples / fs
+    time = (samples_per_window/2 : samples_per_window-n_overlap_samples : (n_samples-1)*(samples_per_window-n_overlap_samples)+samples_per_window/2) / fs
 
-    hop = window_duration - overlap_duration
-    time = range(window_duration / 2; step=hop, length=n_time_points)
-    return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples,
-                                                              n_time_points, time,
+    return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples, time,
                                                               mt_config)
 end
 
@@ -223,17 +219,17 @@ end
 
 Computes a multitaper spectrogram using the parameters specified in `config`.
 
-* `destination`: `config.mt_config.n_freq_bins` x `config.n_time_points` matrix. This can be created by `allocate_output(config)`.
+* `destination`: `length(config.mt_config.freq)` x `length(config.time)` matrix. This can be created by `allocate_output(config)`.
 * `signal`: vector of length `config.n_samples`
 * `config`: an [`MTSpectrogramConfig`](@ref) object to hold temporary variables and configuration settings.
 """
 @views function mt_spectrogram!(destination::AbstractMatrix,
-                                          signal::AbstractVector,
-                                          config::MTSpectrogramConfig)
-    if size(destination) != (config.mt_config.n_freq_bins, config.n_time_points)
-        throw(DimensionMismatch("""Expected `destination` to be of size `(config.mt_config.n_freq_bins, config.n_time_points)`;
+                                signal::AbstractVector,
+                                config::MTSpectrogramConfig)
+    if size(destination) != (length(config.mt_config.freq), length(config.time))
+        throw(DimensionMismatch("""Expected `destination` to be of size `(length(config.mt_config.freq), length(config.time))`;
                 got `size(destination) == $(size(destination)) and
-                `(config.mt_config.n_freq_bins, config.n_time_points)` = $((config.mt_config.n_freq_bins, config.n_time_points))"""))
+                `(length(config.mt_config.freq), length(config.time))` = $((length(config.mt_config.freq), length(config.time)))"""))
     end
     if length(signal) != config.n_samples
         throw(DimensionMismatch("""Expected `signal` to be of length `config.n_samples`;
@@ -247,7 +243,7 @@ Computes a multitaper spectrogram using the parameters specified in `config`.
     return Spectrogram(destination, config.mt_config.freq, config.time)
 end
 
-allocate_output(config::MTSpectrogramConfig{T}) where {T} = Matrix{fftabs2type(T)}(undef, config.mt_config.n_freq_bins, config.n_time_points)
+allocate_output(config::MTSpectrogramConfig{T}) where {T} = Matrix{fftabs2type(T)}(undef, length(config.mt_config.freq), length(config.time))
 
 """
     mt_spectrogram(signal::AbstractVector{T}, n::Int=length(s) >> 3,
@@ -329,7 +325,7 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_b
 
     mt_config = MTConfig{T}(n_samples; fs=fs, window=window, ntapers=ntapers, nw=nw, kwargs...)
 
-    x_mt = Array{fftouttype(T), 3}(undef, mt_config.n_freq_bins, mt_config.ntapers, n_channels)
+    x_mt = Array{fftouttype(T), 3}(undef, mt_length(config.freq), mt_config.ntapers, n_channels)
     if freq_range !== nothing
         freq_mask = first(freq_range) .< mt_config.freq .< last(freq_range)
         freq_inds = findall(freq_mask)
