@@ -187,13 +187,13 @@ struct MTSpectrogramConfig{T,C<:MTConfig{T}}
 end
 
 """
-    MTSpectrogramConfig{T}(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
+    MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
     MTSpectrogramConfig{T}(n_samples, samples_per_window, n_overlap_samples; fs=1, kwargs...) where {T}
 
 Creates a `MTSpectrogramConfig` which holds configuration and temporary variables for [`mt_spectrogram!`](@ref).
 Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `MTConfig` object itself.
 """
-function MTSpectrogramConfig{T}(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
+function MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
     samples_per_window = mt_config.n_samples
     fs = mt_config.fs
     # Dimensions of the spectrogram power matrix
