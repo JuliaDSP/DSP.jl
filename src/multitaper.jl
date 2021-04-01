@@ -189,7 +189,7 @@ end
 Creates a `MTSpectrogramConfig` which holds configuration and temporary variables for [`mt_spectrogram!`](@ref).
 Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `MTConfig` object itself.
 """
-function MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
+function MTSpectrogramConfig(n_samples::Int, n_overlap_samples::Int, mt_config::MTConfig{T}) where {T}
     samples_per_window = mt_config.n_samples
     if samples_per_window <= n_overlap_samples
         throw(ArgumentError("Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
@@ -197,19 +197,27 @@ function MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T
     if n_samples <= samples_per_window
         throw(ArgumentError("Need `n_samples > samples_per_window`; got `n_samples` = $(n_samples) and `samples_per_window` = $(samples_per_window)."))
     end
-    samples_per_window = mt_config.n_samples        
     fs = mt_config.fs
 
-    time = (samples_per_window/2 : samples_per_window-n_overlap_samples : (n_samples-1)*(samples_per_window-n_overlap_samples)+samples_per_window/2) / fs
+    n_hops = div(n_samples - samples_per_window,
+                        samples_per_window - n_overlap_samples)
 
+    f = samples_per_window/2
+    hop = samples_per_window - n_overlap_samples
+    l = f + n_hops*hop
+    time = (f : hop : l) / fs
     return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples, time,
                                                               mt_config)
 end
 
-function MTSpectrogramConfig{T}(n_samples, samples_per_window, n_overlap_samples;
+# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}` 
+MTSpectrogramConfig{T}(n_samples::Int, n_overlap_samples::Int, mt_config::MTConfig{T}) where {T} = MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config)
+
+
+# Create the `MTConfig` if it's not passed
+function MTSpectrogramConfig{T}(n_samples::Int, samples_per_window::Int, n_overlap_samples::Int;
                                           fs=1, kwargs...) where {T}
-    mt_config = MTConfig{T}(samples_per_window; fs=fs, kwargs...)
-    return MTSpectrogramConfig{T}(n_samples, n_overlap_samples, mt_config)
+    return MTSpectrogramConfig(n_samples, n_overlap_samples, MTConfig{T}(samples_per_window; fs=fs, kwargs...))
 end
 
 """
@@ -237,6 +245,7 @@ Computes a multitaper spectrogram using the parameters specified in `config`.
     end
     samples_per_window = config.mt_config.n_samples
     subepochs = arraysplit(signal, samples_per_window, config.n_overlap_samples)
+    @assert length(subepochs) == length(config.time)
     for (time_index, subepoch) in enumerate(subepochs)
         mt_pgram!(destination[:, time_index], subepoch, config.mt_config)
     end
@@ -321,7 +330,6 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_b
 
     denom = fs * sum(evals) / 2
     weighted_evals = evals ./ denom
-
 
     mt_config = MTConfig{T}(n_samples; fs=fs, window=window, ntapers=ntapers, nw=nw, kwargs...)
 
