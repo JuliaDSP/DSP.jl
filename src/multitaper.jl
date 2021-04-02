@@ -333,7 +333,7 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_b
 
     mt_config = MTConfig{T}(n_samples; fs=fs, window=window, ntapers=ntapers, nw=nw, kwargs...)
 
-    x_mt = Array{fftouttype(T), 3}(undef, mt_length(config.freq), mt_config.ntapers, n_channels)
+    x_mt = Array{fftouttype(T), 3}(undef, length(mt_config.freq), mt_config.ntapers, n_channels)
     if freq_range !== nothing
         freq_mask = first(freq_range) .< mt_config.freq .< last(freq_range)
         freq_inds = findall(freq_mask)
