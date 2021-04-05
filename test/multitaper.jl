@@ -145,7 +145,7 @@ end
     signal = dropdims(data; dims=1)
     result = mt_cross_spectral(signal; fs=fs)
     @test freq(result)[2:end] ≈ csd_array_multitaper_frequencies
-    @test result.values[:,:,2:end] ≈ csd_array_multitaper_values rtol=1e-3
+    @test result.values[:,:,2:end] ≈ csd_array_multitaper_values
 
     # Test in-place
     config = MTCrossSpectraConfig{eltype(signal)}(size(signal)...; fs=fs)
