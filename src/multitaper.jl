@@ -468,18 +468,17 @@ function allocate_output(config::MTCoherenceConfig{T}) where {T}
 end
 
 """
-    coherence_from_cs!(output, cs::CrossSpectral)
+    coherence_from_cs!(output, cs_matrix)
 
 Compute the pairwise channel coherences from a cross spectral matrix, storing the result in `output`
 and returning a `Symmetric` view of `output`.
 """
-function coherence_from_cs!(output, cs::CrossSpectral)
-    cs_matrix = cs.values
+function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
     n_channels = size(cs_matrix, 2)
     n_freqs = size(cs_matrix, 3)
     @boundscheck checkbounds(output, 1:n_channels, 1:n_channels)
     @boundscheck checkbounds(cs_matrix, 1:n_channels, 1:n_channels, 1:n_freqs)
-    output .= 0
+    output .= zero(T)
     @inbounds for ch2 in 1:n_channels
         for ch1 in (ch2 + 1):n_channels # lower triangular matrix
             for f in 1:n_freqs # average over frequency
@@ -514,7 +513,7 @@ function mt_coherence!(output, signal::AbstractMatrix{T},
         got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels)`=$((config.cs_config.n_channels, config.cs_config.n_channels))"))
     end
     cs = mt_cross_spectral!(config.cs_matrix, signal, config.cs_config)
-    return coherence_from_cs!(output, cs)
+    return coherence_from_cs!(output, cs.values)
 end
 
 """
