@@ -190,17 +190,12 @@ function MTSpectrogramConfig(n_samples::Int, n_overlap_samples::Int,
     if samples_per_window <= n_overlap_samples
         throw(ArgumentError("Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
     end
-    if n_samples <= samples_per_window
-        throw(ArgumentError("Need `n_samples > samples_per_window`; got `n_samples` = $(n_samples) and `samples_per_window` = $(samples_per_window)."))
-    end
-    fs = mt_config.fs
-
-    n_hops = div(n_samples - samples_per_window, samples_per_window - n_overlap_samples)
 
     f = samples_per_window / 2
     hop = samples_per_window - n_overlap_samples
-    l = f + n_hops * hop
-    time = (f:hop:l) / fs
+
+    len = n_samples < samples_per_window ? 0 : div(n_samples - samples_per_window, samples_per_window - n_overlap_samples) + 1
+    time = range(f, step = hop, length = len) / mt_config.fs
     return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples, time,
                                                     mt_config)
 end

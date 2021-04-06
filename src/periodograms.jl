@@ -28,7 +28,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
-        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
+        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, length(s) >= n ? div((length(s) - n), n - noverlap)+1 : 0)
     end
 end
 ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =

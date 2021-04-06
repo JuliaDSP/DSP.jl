@@ -6,6 +6,11 @@ const epsilon = 10^-3
     @test_throws ArgumentError MTConfig{Float64}(100; ntapers = -1)
     @test_throws DimensionMismatch MTConfig{Float64}(100; window = rand(1, 200))
     @test_throws ArgumentError MTConfig{Complex{Float64}}(100; onesided=true)
+
+    @testset "`MTSpectrogramConfig` with `n_samples`=$(n_samples), `n_samples_per_window`=$(n_samples_per_window), `n_overlap`=$(n_overlap) " for n_samples in (20:20:100), n_samples_per_window in (20:20:100), n_overlap in (0:20:(n_samples_per_window-1))
+        config = MTSpectrogramConfig{Float64}(n_samples, n_samples_per_window, n_overlap)
+        @test length(config.time) == length(arraysplit(1:n_samples, n_samples_per_window, n_overlap))
+    end
 end
 
 
