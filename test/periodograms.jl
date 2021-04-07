@@ -44,6 +44,10 @@ using FFTW: fftfreq
     @test power(mt_spec) ≈ power(mt_spec2)
     @test freq(mt_spec) == freq(mt_spec2)
     @test time(mt_spec) == time(mt_spec2)
+
+
+    @test_throws DimensionMismatch mt_spectrogram!(similar(out, size(out, 1), size(out, 2)+1), x0, spec_config)
+    @test_throws DimensionMismatch mt_spectrogram!(out, vcat(x0, x0), spec_config)
 end
 
 @testset "0:7" begin
@@ -344,6 +348,14 @@ end
     result2 = mt_pgram!(out, x, config)
     @test freq(result) == freq(result2)
     @test power(result) ≈ power(result2)
+
+    @test_throws DimensionMismatch mt_pgram!(similar(out, length(out)+1), x, config)
+    @test_throws DimensionMismatch mt_pgram!(out, vcat(x, one(eltype(x))), config)
+
+    out = config.fft_output_tmp
+    @test DSP.Periodograms.tapered_spectra!(out, x, config) === nothing # runs OK
+    @test_throws DimensionMismatch DSP.Periodograms.tapered_spectra!(similar(out, length(out)+1), x, config) # wrong size -> error
+    @test_throws DimensionMismatch DSP.Periodograms.tapered_spectra!(out, vcat(x, x), config) # wrong size -> error
 
 
     y = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_y.txt")))

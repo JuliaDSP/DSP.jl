@@ -1,6 +1,6 @@
 const epsilon = 10^-3
 
-@testset "`MTConfig`" begin
+@testset "Configuration objects" begin
     @test_throws ArgumentError MTConfig{Float64}(100; nfft = 99)
     @test_throws ArgumentError MTConfig{Float64}(100; fs=-1)
     @test_throws ArgumentError MTConfig{Float64}(100; ntapers = -1)
@@ -11,6 +11,47 @@ const epsilon = 10^-3
         config = MTSpectrogramConfig{Float64}(n_samples, n_samples_per_window, n_overlap)
         @test length(config.time) == length(arraysplit(1:n_samples, n_samples_per_window, n_overlap))
     end
+
+    @testset "`MTConfig` inner constructor errors" begin
+        n_samples = 100
+        nfft = 200
+        ntapers = 5
+        fs = 1
+        window = rand(ntapers, n_samples)
+        for T in (Float32, Float64, Complex{Float32}, Complex{Float64})
+            fft_input_tmp = Vector{T}(undef, nfft)
+            onesided = T <: Real
+            fft_flags = FFTW.ESTIMATE
+            freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
+            fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freq), ntapers)
+            r = 1.0
+            plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) :
+                plan_fft(fft_input_tmp; flags=fft_flags)
+            let n_samples = 201
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let n_samples = -1
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let n_tapers = -1
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let fs = -1
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let fft_input_tmp = Vector{T}(undef, 2*nfft)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let nfft = 2*nfft
+                fft_input_tmp = Vector{T}(undef, 2*nfft)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let  window = rand(2*ntapers, n_samples)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+        end
+    end
+
 end
 
 
@@ -33,6 +74,15 @@ end
     out = allocate_output(config)
     coh2 = mt_coherence!(out, same_signal, config)
     @test coh ≈ coh2
+
+    # check that manually demeaning with `demean=false` gives the same result
+    same_signal_demeaned = same_signal .- mean(same_signal; dims = 2)
+    coh3 = mt_coherence(same_signal_demeaned; demean = false)
+    @test coh3 ≈ coh2
+
+    @test_throws DimensionMismatch mt_coherence!(zeros(size(out,1), 2*size(out, 2)), same_signal, config)
+    @test_throws DimensionMismatch mt_coherence!(out, vcat(same_signal, same_signal), config)
+
 
     @test abs(same_signal_coherence - 1) < epsilon
 
@@ -158,4 +208,8 @@ end
     result2 = mt_cross_spectral!(out, signal, config)
     @test freq(result) ≈ freq(result2)
     @test result.values ≈ result2.values
+
+    @test_throws DimensionMismatch mt_cross_spectral!(similar(out, size(out, 1) + 1, size(out, 2), size(out, 3)), signal, config)
+    @test_throws DimensionMismatch mt_cross_spectral!(out, vcat(signal, signal), config)
+
 end
