@@ -105,18 +105,16 @@ function allocate_output(config::MTConfig{T}) where {T}
     return Vector{fftabs2type(T)}(undef, length(config.freq))
 end
 
-"""
-    tapered_spectra!(output, signal::AbstractVector, config) where {T}
 
-Internal function used in [`mt_pgram!`](@ref) and [`mt_cross_spectral!`](@ref).
-
-* `output`: `length(frequencies)` x `ntapers`
-* `signal`: `n_samples`
-* `config.fft_input_tmp`: `nfft`
-* `config.window`: `n_samples` x `ntapers`
-* `config.plan`: 1D plan for `nfft`
-
-"""
+#     tapered_spectra!(output, signal::AbstractVector, config) where {T}
+#
+# Internal function used in [`mt_pgram!`](@ref) and [`mt_cross_spectral!`](@ref).
+#
+# * `output`: `length(frequencies)` x `ntapers`
+# * `signal`: `n_samples`
+# * `config.fft_input_tmp`: `nfft`
+# * `config.window`: `n_samples` x `ntapers`
+# * `config.plan`: 1D plan for `nfft`
 @views function tapered_spectra!(output, signal::AbstractVector, config::MTConfig)
     if length(signal) != config.n_samples
         throw(DimensionMismatch("Expected `length(signal) == config.n_samples`; got `length(signal)` = $(length(signal)) and `config.n_samples` = $(config.n_samples)"))
@@ -178,14 +176,13 @@ struct MTSpectrogramConfig{T,C<:MTConfig{T}}
 end
 
 """
-    MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config::MTConfig{T}) where {T}
+    MTSpectrogramConfig(n_samples, mt_config::MTConfig{T}, n_overlap_samples) where {T}
     MTSpectrogramConfig{T}(n_samples, samples_per_window, n_overlap_samples; fs=1, kwargs...) where {T}
 
 Creates a `MTSpectrogramConfig` which holds configuration and temporary variables for [`mt_spectrogram!`](@ref).
 Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `MTConfig` object itself.
 """
-function MTSpectrogramConfig(n_samples::Int, n_overlap_samples::Int,
-                             mt_config::MTConfig{T}) where {T}
+function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
     samples_per_window = mt_config.n_samples
     if samples_per_window <= n_overlap_samples
         throw(ArgumentError("Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
@@ -201,16 +198,14 @@ function MTSpectrogramConfig(n_samples::Int, n_overlap_samples::Int,
 end
 
 # add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}` 
-function MTSpectrogramConfig{T}(n_samples::Int, n_overlap_samples::Int,
-                                mt_config::MTConfig{T}) where {T}
-    return MTSpectrogramConfig(n_samples, n_overlap_samples, mt_config)
+function MTSpectrogramConfig{T}(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
+    return MTSpectrogramConfig(n_samples, mt_config, n_overlap_samples)
 end
 
 # Create the `MTConfig` if it's not passed
 function MTSpectrogramConfig{T}(n_samples::Int, samples_per_window::Int,
                                 n_overlap_samples::Int; fs=1, kwargs...) where {T}
-    return MTSpectrogramConfig(n_samples, n_overlap_samples,
-                               MTConfig{T}(samples_per_window; fs=fs, kwargs...))
+    return MTSpectrogramConfig(n_samples, MTConfig{T}(samples_per_window; fs=fs, kwargs...), n_overlap_samples)
 end
 
 """
@@ -218,7 +213,7 @@ end
                                 signal::AbstractVector,
                                 config::MTSpectrogramConfig) -> Spectrogram
 
-Computes a multitaper spectrogram using the parameters specified in `config`.
+Computes a multitaper spectrogram using the parameters specified in `config`. Arguments:
 
 * `destination`: `length(config.mt_config.freq)` x `length(config.time)` matrix. This can be created by `allocate_output(config)`.
 * `signal`: vector of length `config.n_samples`
@@ -265,10 +260,49 @@ function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
     return mt_spectrogram!(X, signal, config)
 end
 
+
+
+"""
+    mt_spectrogram(signal::AbstractVector{T}, mt_config::MTConfig{T},
+                   n_overlap::Int=mt_config.n_samples >> 1) where {T} -> Spectrogram
+
+Compute a multitaper spectrogram using an an [`MTConfig`](@ref) object to choose
+the window size. Note that all the workspace variables are contained in the [`MTConfig`](@ref) object,
+and this object can be re-used between spectrogram computations, so that only the output needs to be allocated.
+
+See also [`mt_spectrogram!`](@ref).
+
+## Example
+
+```julia
+signal1 = sin.(10_000) .+ randn(10_000)
+mt_config = MTConfig{Float64}(1000) # 1000 samples per window
+spec1 = mt_spectrogram(signal1, mt_config, 500)
+signal2 = cos.(2_000) .+ randn(2_000)
+spec2 = mt_spectrogram(signal2, mt_config, 250) # same `mt_config`, different signal, different overlap
+```
+"""
+function mt_spectrogram(signal::AbstractVector{T}, mt_config::MTConfig{T},
+                        n_overlap::Int=mt_config.n_samples >> 1) where {T}
+    config = MTSpectrogramConfig{T}(length(signal), mt_config, n_overlap)
+    X = allocate_output(config)
+    return mt_spectrogram!(X, signal, config)
+end
+
+
 #####
 ##### Multitapered cross spectral matrix
 #####
 
+"""
+    CrossSpectral{T,F}
+
+Fields:
+
+* `values::T`: `n_channels` x `n_channels` x `length(freq)` array
+* `freq::F`: frequencies; accessed by `freq(::CrossSpectral)`
+
+"""
 struct CrossSpectral{T,F}
     values::T
     freq::F
@@ -356,12 +390,14 @@ end
 """
     mt_cross_spectral!(output, signal::AbstractMatrix{T}, config::MTCrossSpectraConfig{T}) where {T} -> CrossSpectral
 
-Computes a multitapered cross spectral matrix.
+Computes a multitapered cross spectral matrix. Arguments:
 
 * `output`: `n_channels` x `n_channels` x `length(config.freq)`. Can be created by `allocate_output(config)`.
 * `signal`: `n_channels` x `n_samples`
 * `config`: `MTCrossSpectraConfig{T}`
 
+Produces a `CrossSpectral` object holding the `n_channels` x `n_channels` x `n_frequencies`
+output array (in the `values` field) and the corresponding frequencies (accessed by [`freq`](@ref)).
 """
 @views function mt_cross_spectral!(output, signal::AbstractMatrix{T},
                                    config::MTCrossSpectraConfig{T}) where {T}
@@ -399,8 +435,7 @@ function cs_inner!(output, weighted_evals, x_mt, config)
     @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, 1:length(freq_inds))
     @boundscheck checkbounds(weighted_evals, 1:length(weighted_evals))
     @boundscheck checkbounds(x_mt, freq_inds, 1:length(weighted_evals), 1:n_channels)
-
-    output .= 0
+    output .= zero(eltype(output))
     # Up to the `weighted_evals` scaling, we have 
     # J_k^l(f) = x_mt[k, f, l]
     # Ŝ^lm(f) = output[l, m, f]
@@ -425,6 +460,9 @@ Compute a multitapered cross-spectral matrix.
 
 Any keyword arguments accepted by [`MTCrossSpectraConfig`](@ref) may be passed here.
 See also [`mt_cross_spectral!`](@ref).
+
+Produces a `CrossSpectral` object holding the `n_channels` x `n_channels` x `n_frequencies`
+output array (in the `values` field) and the corresponding frequencies (accessed by [`freq`](@ref)).
 """
 function mt_cross_spectral(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
@@ -454,6 +492,9 @@ function MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
     cs_matrix = allocate_output(cs_config)
     return MTCoherenceConfig{T,typeof(cs_matrix),typeof(cs_config)}(cs_matrix, cs_config)
 end
+
+# add a method to cover the case in which the user specifies the `{T}` here
+MTCoherenceConfig{T}(cs_config::MTCrossSpectraConfig{T}) where {T} = MTCoherenceConfig(cs_config)
 
 function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true,
                               freq_range=nothing, kwargs...) where {T}

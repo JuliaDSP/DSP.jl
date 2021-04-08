@@ -45,6 +45,12 @@ using FFTW: fftfreq
     @test freq(mt_spec) == freq(mt_spec2)
     @test time(mt_spec) == time(mt_spec2)
 
+    # We can also only pass the window config
+    config = MTConfig{eltype(x0)}(256; fs=10)
+    mt_spec3 = mt_spectrogram(x0, config, 128)
+    @test power(mt_spec) ≈ power(mt_spec3)
+    @test freq(mt_spec) == freq(mt_spec3)
+    @test time(mt_spec) == time(mt_spec3)
 
     @test_throws DimensionMismatch mt_spectrogram!(similar(out, size(out, 1), size(out, 2)+1), x0, spec_config)
     @test_throws DimensionMismatch mt_spectrogram!(out, vcat(x0, x0), spec_config)
