@@ -92,6 +92,8 @@ end
     coh = mt_coherence(phase_shift; fs=fs, freq_range = (10, 15))
     phase_shift_coherence = coh[2,1]
     @test abs(phase_shift_coherence - 1) < epsilon
+    @test coh[1,1] ≈ 1
+    @test coh[2,2] ≈ 1
 
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(phase_shift)}(size(phase_shift)...; fs=fs, freq_range = (10, 15))

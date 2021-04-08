@@ -1,7 +1,7 @@
 # The periodogram module contains functions which compute non-parametric
 # estimates of the periodogram P[s] of a signal s.
 module Periodograms
-using LinearAlgebra: mul!, Symmetric
+using LinearAlgebra: mul!, Symmetric, diagind
 using ..Util, ..Windows
 using Statistics: mean!
 export arraysplit, nextfastfft, periodogram, welch_pgram,
