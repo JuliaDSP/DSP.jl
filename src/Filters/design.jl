@@ -238,7 +238,6 @@ Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 function normalize_freq(w::Real, fs::Real)
     w <= 0 && error("frequencies must be positive")
     f = 2*w/fs
-    f >= 1 && error("frequencies must be less than the Nyquist frequency $(fs/2)")
     f
 end
 
@@ -250,8 +249,8 @@ end
     Lowpass(Wn[; fs])
 
 Low pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+specified, `Wn` is interpreted for digital filters as a normalized 
+frequency in half-cycles/sample and as frequency in Hz for analog filters. 
 """
 Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
 
@@ -263,8 +262,8 @@ end
     Highpass(Wn[; fs])
 
 High pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+specified, `Wn` is interpreted for digital filters as a normalized 
+frequency in half-cycles/sample and as frequency in Hz for analog filters. 
 """
 Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
 
@@ -276,9 +275,9 @@ end
 """
     Bandpass(Wn1, Wn2[; fs])
 
-Band pass filter with normalized pass band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band pass filter with normalized pass band (`Wn1`, `Wn2`). If `fs` is not
+specified, `Wn1` and `Wn2` are interpreted for digital filters as normalized
+frequencies in half-cycles/sample and as frequencies in Hz for analog filters. 
 """
 function Bandpass(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
@@ -293,9 +292,9 @@ end
 """
     Bandstop(Wn1, Wn2[; fs])
 
-Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band stop filter with normalized stop band (`Wn1`, `Wn2`). If `fs` is not
+specified, `Wn1` and `Wn2` are interpreted for digital filters as normalized
+frequencies in half-cycles/sample and as frequencies in Hz for analog filters. 
 """
 function Bandstop(w1::Real, w2::Real; fs::Real=2)
     w1 < w2 || error("w1 must be less than w2")
@@ -449,7 +448,10 @@ end
 prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(prewarp(ftype.w))
 prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(prewarp(ftype.w1), prewarp(ftype.w2))
 # freq in half-samples per cycle
-prewarp(f::Real) = 4*tan(pi*f/2)
+function prewarp(f::Real) 
+    f >= 1 && error("frequencies must be less than the Nyquist frequency")
+    4*tan(pi*f/2)
+end
 
 # Digital filter design
 """
@@ -476,7 +478,9 @@ interpreted as a normalized frequency in half-cycles/sample.
 """
 function iirnotch(w::Real, bandwidth::Real; fs=2)
     w = normalize_freq(w, fs)
+    w >= 1 && error("frequencies must be less than the Nyquist frequency $(fs/2)")
     bandwidth = normalize_freq(bandwidth, fs)
+    bandwidth >= 1 && error("bandwidth must be less than the Nyquist frequency $(fs/2)")
 
     # Eq. 8.2.23
     b = 1/(1+tan(pi*bandwidth/2))

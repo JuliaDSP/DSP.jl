@@ -764,6 +764,17 @@ end
     zpkfilter_eq(f, m_f)
 end
 
+# issue #341
+@testset "analog filter design does not error" begin
+    fc = 1e3
+    bt2 = Butterworth(2)
+    for responsetype in (Lowpass(fc), Highpass(fc), Bandpass(fc, 2fc), Bandstop(fc, 2fc))
+        analog = analogfilter(responsetype, bt2)
+        @test_throws ErrorException digitalfilter(responsetype, bt2) 
+        # errors because cutoff frequency of lowpass far above Nyquist of 1
+    end
+end
+
 #
 # IIR digital filter creation
 #
