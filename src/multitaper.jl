@@ -28,9 +28,9 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
             throw(DimensionMismatch("""Must have `size(fft_input_tmp) == (nfft,)`;
                 got `size(fft_input_tmp)` = $(size(fft_input_tmp)) and `nfft` = $(nfft)"""))
         end
-        if size(fft_output_tmp) != (length(freq), ntapers)
-            throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq), ntapers)`;
-                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `(length(freq), ntapers)` = $((length(freq), ntapers))"""))
+        if size(fft_output_tmp) != (length(freq),)
+            throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq),)`;
+                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $length(freq)"""))
         end
         if size(window) != (n_samples, ntapers)
             throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
@@ -87,7 +87,7 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing
     ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
     freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
     fft_input_tmp = Vector{T}(undef, nfft)
-    fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freq), ntapers)
+    fft_output_tmp = Vector{fftouttype(T)}(undef, length(freq))
     plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) :
            plan_fft(fft_input_tmp; flags=fft_flags)
     if window === nothing
@@ -106,35 +106,20 @@ function allocate_output(config::MTConfig{T}) where {T}
 end
 
 
-#     tapered_spectra!(output, signal::AbstractVector, config) where {T}
-#
 # Internal function used in [`mt_pgram!`](@ref) and [`mt_cross_spectral!`](@ref).
-#
-# * `output`: `length(frequencies)` x `ntapers`
-# * `signal`: `n_samples`
-# * `config.fft_input_tmp`: `nfft`
-# * `config.window`: `n_samples` x `ntapers`
-# * `config.plan`: 1D plan for `nfft`
-@views function tapered_spectra!(output, signal::AbstractVector, config::MTConfig)
-    if length(signal) != config.n_samples
-        throw(DimensionMismatch("Expected `length(signal) == config.n_samples`; got `length(signal)` = $(length(signal)) and `config.n_samples` = $(config.n_samples)"))
+function mt_fft_tapered!(fft_output, signal, taper, config)
+    # Create the input: tapered + zero-padded version of the signal
+    fft_input = config.fft_input_tmp
+    @inbounds for i in 1:length(signal)
+        fft_input[i] = config.window[i, taper] * signal[i]
     end
-    if size(output) != (length(config.freq), config.ntapers)
-        throw(DimensionMismatch("Expected `size(output) == (length(config.freq), config.ntapers)`; got `size(output)` = $(size(output)) and `(length(config.freq), config.ntapers)` = $((length(config.freq), config.ntapers))"))
-    end
-    input = config.fft_input_tmp
+    fft_input[(length(signal) + 1):(config.nfft)] .= 0
 
-    @inbounds for j in 1:(config.ntapers)
-        for i in 1:length(signal)
-            input[i] = config.window[i, j] * signal[i]
-        end
-        # zero-pad
-        input[(length(signal) + 1):(config.nfft)] .= 0
-
-        mul!(output[:, j], config.plan, input)
-    end
+    # do the FFT
+    mul!(fft_output, config.plan, fft_input)
     return nothing
 end
+
 
 """
     mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTConfig) -> Periodogram
@@ -154,12 +139,12 @@ function mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTCon
         throw(DimensionMismatch("""Expected `signal` to be of length `config.n_samples`;
                 got `length(signal) == $(length(signal)) and `config.n_samples` = $(config.n_samples)"""))
     end
-    tmp = config.fft_output_tmp
-    tapered_spectra!(tmp, signal, config)
+    fft_output = config.fft_output_tmp
 
     output .= 0
-    for j in 1:(config.ntapers)
-        fft2pow!(output, @view(tmp[:, j]), config.nfft, config.r, config.onesided)
+    for taper in 1:(config.ntapers)
+        mt_fft_tapered!(fft_output, signal, taper, config)
+        fft2pow!(output, fft_output, config.nfft, config.r, config.onesided)
     end
     return Periodogram(output, config.freq)
 end
@@ -320,6 +305,7 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     freq::F
     freq_range::T5
     freq_inds::T6
+    ensure_aligned::Bool
     mt_config::C
 end
 
@@ -335,11 +321,13 @@ Creates a configuration object used for [`mt_cross_spectral!`](@ref) as well as 
 * `demean`: if `true`, the channelwise mean will be subtracted from the input signals before the cross spectral values are computed.
 * `low_bias`: if `true`, keeps only tapers with eigenvalues > `0.9`.
 * `freq_range`: if `nothing`, all frequencies are retained. Otherwise, only frequencies between `first(freq_range)` and `last(freq_range)` are retained.
+* `ensure_aligned = T == Float32 || T == Complex{Float32}`: perform an extra copy to ensure that the FFT output is memory-aligned
 
 Any keywords accepted by [`MTConfig`](@ref) may be passed here.
 """
 function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true,
                                  freq_range=nothing, nw=4, ntapers=2 * nw - 1,
+                                 ensure_aligned = T == Float32 || T == Complex{Float32},
                                  kwargs...) where {T}
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
@@ -379,7 +367,7 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_b
                                 typeof(freq),typeof(freq_range),typeof(freq_inds),
                                 typeof(mt_config)}(n_channels, weighted_evals, x_mt, demean,
                                                    mean_per_channel, demeaned_signal, freq,
-                                                   freq_range, freq_inds, mt_config)
+                                                   freq_range, freq_inds, ensure_aligned, mt_config)
 end
 
 function allocate_output(config::MTCrossSpectraConfig{T}) where {T}
@@ -418,8 +406,10 @@ output array (in the `values` field) and the corresponding frequencies (accessed
 
     x_mt = config.x_mt
 
-    for k in 1:(config.n_channels)
-        tapered_spectra!(x_mt[:, :, k], signal[k, :], config.mt_config)
+    if config.ensure_aligned
+        mt_fft_tapered_multichannel_ensure_aligned!(x_mt, signal, config)
+    else
+        mt_fft_tapered_multichannel!(x_mt, signal, config)
     end
     x_mt[1, :, :] ./= sqrt(2)
     if iseven(size(signal, 2))
@@ -427,6 +417,21 @@ output array (in the `values` field) and the corresponding frequencies (accessed
     end
     cs_inner!(output, config.weighted_evals, x_mt, config)
     return CrossSpectral(output, config.freq)
+end
+
+function mt_fft_tapered_multichannel_ensure_aligned!(x_mt, signal, config)
+    fft_output = config.mt_config.fft_output_tmp
+    for k in 1:(config.n_channels), taper in 1:config.mt_config.ntapers
+        # we do this in two steps so that we are sure `fft_output` has the memory alignment FFTW expects (without needing the `FFTW.UNALIGNED` flag)
+        mt_fft_tapered!(fft_output, signal[k, :], taper, config.mt_config)
+        x_mt[:, taper, k] .= fft_output
+    end
+end
+
+@views function mt_fft_tapered_multichannel!(x_mt, signal, config)
+    for k in 1:(config.n_channels), taper in 1:config.mt_config.ntapers
+        mt_fft_tapered!(x_mt[:, taper, k], signal[k, :], taper, config.mt_config)
+    end
 end
 
 function cs_inner!(output, weighted_evals, x_mt, config)

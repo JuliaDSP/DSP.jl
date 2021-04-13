@@ -160,7 +160,7 @@ end
     @test coh2 ≈ several_signals_coherences
 
     # Float32 output:
-    config = MTCoherenceConfig{Float32}(size(several_signals)...; fs=fs, freq_range = (10, 15), fft_flags = FFTW.UNALIGNED)
+    config = MTCoherenceConfig{Float32}(size(several_signals)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
     @test eltype(out) == Float32
     coh3 = mt_coherence!(out, several_signals, config)
@@ -226,7 +226,7 @@ end
     @test result.values ≈ result2.values
 
     # Float32 output:
-    config = MTCrossSpectraConfig{Float32}(size(signal)...; fs=fs, fft_flags = FFTW.UNALIGNED)
+    config = MTCrossSpectraConfig{Float32}(size(signal)...; fs=fs)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float32}
     result2 = mt_cross_spectral!(out, signal, config)

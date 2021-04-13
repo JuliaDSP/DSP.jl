@@ -46,7 +46,7 @@ using FFTW: fftfreq
     @test time(mt_spec2) == time(mt_spec)
 
     # in-place half precision version:
-    spec_config = MTSpectrogramConfig{Float32}(length(x0), 256, 128; fs=10, fft_flags = FFTW.UNALIGNED | FFTW.MEASURE)
+    spec_config = MTSpectrogramConfig{Float32}(length(x0), 256, 128; fs=10)
     out = allocate_output(spec_config)
     mt_spec3 = mt_spectrogram!(out, x0, spec_config)
     @test power(mt_spec3) ≈ power(mt_spec)
@@ -66,7 +66,7 @@ using FFTW: fftfreq
     @test time(mt_spec5) == time(mt_spec)
 
     # We can also only pass the window config. Half precision:
-    config = MTConfig{Float32}(256; fs=10, fft_flags = FFTW.UNALIGNED | FFTW.MEASURE)
+    config = MTConfig{Float32}(256; fs=10)
     mt_spec6 = mt_spectrogram(x0, config, 128)
     @test power(mt_spec6) ≈ power(mt_spec)
     @test freq(mt_spec6) == freq(mt_spec)
@@ -385,7 +385,7 @@ end
     @test power(result2) ≈ pxx
 
     # Lower precision output:
-    config = MTConfig{Float32}(length(x); fs=fs, nw=nw, nfft=nfft, fft_flags = FFTW.UNALIGNED)
+    config = MTConfig{Float32}(length(x); fs=fs, nw=nw, nfft=nfft)
     out = allocate_output(config)
     @test eltype(out) == Float32
     result3 = mt_pgram!(out, x, config)
@@ -399,12 +399,6 @@ end
 
     @test_throws DimensionMismatch mt_pgram!(similar(out, length(out)+1), x, config)
     @test_throws DimensionMismatch mt_pgram!(out, vcat(x, one(eltype(x))), config)
-
-    out = config.fft_output_tmp
-    @test DSP.Periodograms.tapered_spectra!(out, x, config) === nothing # runs OK
-    @test_throws DimensionMismatch DSP.Periodograms.tapered_spectra!(similar(out, length(out)+1), x, config) # wrong size -> error
-    @test_throws DimensionMismatch DSP.Periodograms.tapered_spectra!(out, vcat(x, x), config) # wrong size -> error
-
 
     y = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_y.txt")))
     z = x + im*y
@@ -429,7 +423,7 @@ end
     @test power(result2) ≈ power(result)
 
     # Lower precision output:
-    config = MTConfig{Complex{Float32}}(length(z); fs=fs, nw=nw, nfft=nfft, fft_flags = FFTW.UNALIGNED)
+    config = MTConfig{Complex{Float32}}(length(z); fs=fs, nw=nw, nfft=nfft)
     out = allocate_output(config)
     @test eltype(out) == Float32
 
