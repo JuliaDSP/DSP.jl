@@ -153,10 +153,22 @@ end
     @test several_signals_coherences[3, 1] ≈ different_signal_coherence
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{eltype(several_signals)}(size(several_signals)...; fs=fs, freq_range = (10, 15))
+    config = MTCoherenceConfig{Float64}(size(several_signals)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
+    @test eltype(out) == Float64
     coh2 = mt_coherence!(out, several_signals, config)
-    @test several_signals_coherences ≈ coh2
+    @test coh2 ≈ several_signals_coherences
+
+    # Float32 output:
+    config = MTCoherenceConfig{Float32}(size(several_signals)...; fs=fs, freq_range = (10, 15), fft_flags = FFTW.UNALIGNED)
+    out = allocate_output(config)
+    @test eltype(out) == Float32
+    coh3 = mt_coherence!(out, several_signals, config)
+    @test coh3 ≈ several_signals_coherences
+
+    # Float32 input and output:
+    coh4 = mt_coherence!(out, Float32.(several_signals), config)
+    @test coh4 ≈ several_signals_coherences
 end
 
 @testset "`mt_coherence` reference test" begin
@@ -200,16 +212,31 @@ end
     csd_array_multitaper_values = csd_array_multitaper_values_re + im*csd_array_multitaper_values_im
 
     signal = dropdims(data; dims=1)
+    @test signal isa Matrix{Float64}
     result = mt_cross_spectral(signal; fs=fs)
     @test freq(result)[2:end] ≈ csd_array_multitaper_frequencies
     @test result.values[:,:,2:end] ≈ csd_array_multitaper_values
 
-    # Test in-place
-    config = MTCrossSpectraConfig{eltype(signal)}(size(signal)...; fs=fs)
+    # Test in-place. Full precision:
+    config = MTCrossSpectraConfig{Float64}(size(signal)...; fs=fs)
     out = allocate_output(config)
+    @test eltype(out) == Complex{Float64}
     result2 = mt_cross_spectral!(out, signal, config)
     @test freq(result) ≈ freq(result2)
     @test result.values ≈ result2.values
+
+    # Float32 output:
+    config = MTCrossSpectraConfig{Float32}(size(signal)...; fs=fs, fft_flags = FFTW.UNALIGNED)
+    out = allocate_output(config)
+    @test eltype(out) == Complex{Float32}
+    result2 = mt_cross_spectral!(out, signal, config)
+    @test freq(result2) ≈ freq(result)
+    @test result2.values ≈ result.values
+
+    # Float32 input and output:
+    result3 = mt_cross_spectral!(out, Float32.(signal), config)
+    @test freq(result3) ≈ freq(result)
+    @test result3.values ≈ result.values
 
     @test_throws DimensionMismatch mt_cross_spectral!(similar(out, size(out, 1) + 1, size(out, 2), size(out, 3)), signal, config)
     @test_throws DimensionMismatch mt_cross_spectral!(out, vcat(signal, signal), config)

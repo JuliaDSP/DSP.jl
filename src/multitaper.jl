@@ -263,8 +263,8 @@ end
 
 
 """
-    mt_spectrogram(signal::AbstractVector{T}, mt_config::MTConfig{T},
-                   n_overlap::Int=mt_config.n_samples >> 1) where {T} -> Spectrogram
+    mt_spectrogram(signal::AbstractVector, mt_config::MTConfig,
+                   n_overlap::Int=mt_config.n_samples >> 1) -> Spectrogram
 
 Compute a multitaper spectrogram using an an [`MTConfig`](@ref) object to choose
 the window size. Note that all the workspace variables are contained in the [`MTConfig`](@ref) object,
@@ -282,7 +282,7 @@ signal2 = cos.(2_000) .+ randn(2_000)
 spec2 = mt_spectrogram(signal2, mt_config, 250) # same `mt_config`, different signal, different overlap
 ```
 """
-function mt_spectrogram(signal::AbstractVector{T}, mt_config::MTConfig{T},
+function mt_spectrogram(signal::AbstractVector, mt_config::MTConfig{T},
                         n_overlap::Int=mt_config.n_samples >> 1) where {T}
     config = MTSpectrogramConfig{T}(length(signal), mt_config, n_overlap)
     X = allocate_output(config)
@@ -388,7 +388,7 @@ function allocate_output(config::MTCrossSpectraConfig{T}) where {T}
 end
 
 """
-    mt_cross_spectral!(output, signal::AbstractMatrix{T}, config::MTCrossSpectraConfig{T}) where {T} -> CrossSpectral
+    mt_cross_spectral!(output, signal::AbstractMatrix, config::MTCrossSpectraConfig) -> CrossSpectral
 
 Computes a multitapered cross spectral matrix. Arguments:
 
@@ -399,8 +399,8 @@ Computes a multitapered cross spectral matrix. Arguments:
 Produces a `CrossSpectral` object holding the `n_channels` x `n_channels` x `n_frequencies`
 output array (in the `values` field) and the corresponding frequencies (accessed by [`freq`](@ref)).
 """
-@views function mt_cross_spectral!(output, signal::AbstractMatrix{T},
-                                   config::MTCrossSpectraConfig{T}) where {T}
+@views function mt_cross_spectral!(output, signal::AbstractMatrix,
+                                   config::MTCrossSpectraConfig)
     if size(signal) != (config.n_channels, config.mt_config.n_samples)
         throw(DimensionMismatch("Size of `signal` does not match `(config.n_channels, config.mt_config.n_samples)`;
         got `size(signal)`=$(size(signal)) but `(config.n_channels, config.mt_config.n_samples)`=$((config.n_channels, config.mt_config.n_samples))"))
@@ -534,7 +534,7 @@ function coherence_from_cs!(output::AbstractMatrix{T}, cs_matrix) where T
 end
 
 """
-    mt_coherence!(output, signal::AbstractMatrix{T}, config::MTCoherenceConfig{T}) where T
+    mt_coherence!(output, signal::AbstractMatrix, config::MTCoherenceConfig)
 
 Computes the pairwise coherences between channels.
 
@@ -544,8 +544,8 @@ Computes the pairwise coherences between channels.
 
 Returns a `Symmetric` view of `output`.
 """
-function mt_coherence!(output, signal::AbstractMatrix{T},
-                       config::MTCoherenceConfig{T}) where {T}
+function mt_coherence!(output, signal::AbstractMatrix,
+                       config::MTCoherenceConfig)
     if size(signal) != (config.cs_config.n_channels, config.cs_config.mt_config.n_samples)
         throw(DimensionMismatch("Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
             got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((config.cs_config.n_channels, config.cs_config.mt_config.n_samples))"))

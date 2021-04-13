@@ -37,20 +37,46 @@ using FFTW: fftfreq
     @test time(mt_spec) == t
     @test power(mt_spec)[:,1] ≈ power(mt_pgram(x0[1:256]; fs=10))
 
-    # Check that the in-place version gets the same results
-    spec_config = MTSpectrogramConfig{eltype(x0)}(length(x0), 256, 128; fs=10)
+    # in-place full precision version:
+    spec_config = MTSpectrogramConfig{Float64}(length(x0), 256, 128; fs=10)
     out = allocate_output(spec_config)
     mt_spec2 = mt_spectrogram!(out, x0, spec_config)
-    @test power(mt_spec) ≈ power(mt_spec2)
-    @test freq(mt_spec) == freq(mt_spec2)
-    @test time(mt_spec) == time(mt_spec2)
+    @test power(mt_spec2) ≈ power(mt_spec)
+    @test freq(mt_spec2) == freq(mt_spec)
+    @test time(mt_spec2) == time(mt_spec)
 
-    # We can also only pass the window config
-    config = MTConfig{eltype(x0)}(256; fs=10)
-    mt_spec3 = mt_spectrogram(x0, config, 128)
-    @test power(mt_spec) ≈ power(mt_spec3)
-    @test freq(mt_spec) == freq(mt_spec3)
-    @test time(mt_spec) == time(mt_spec3)
+    # in-place half precision version:
+    spec_config = MTSpectrogramConfig{Float32}(length(x0), 256, 128; fs=10, fft_flags = FFTW.UNALIGNED | FFTW.MEASURE)
+    out = allocate_output(spec_config)
+    mt_spec3 = mt_spectrogram!(out, x0, spec_config)
+    @test power(mt_spec3) ≈ power(mt_spec)
+    @test freq(mt_spec3) == freq(mt_spec)
+    @test time(mt_spec3) == time(mt_spec)
+
+    mt_spec4 = mt_spectrogram!(out, Float32.(x0), spec_config)
+    @test power(mt_spec4) ≈ power(mt_spec)
+    @test freq(mt_spec4) == freq(mt_spec)
+    @test time(mt_spec4) == time(mt_spec)
+
+    # We can also only pass the window config. Full precision:
+    config = MTConfig{Float64}(256; fs=10)
+    mt_spec5 = mt_spectrogram(x0, config, 128)
+    @test power(mt_spec5) ≈ power(mt_spec)
+    @test freq(mt_spec5) == freq(mt_spec)
+    @test time(mt_spec5) == time(mt_spec)
+
+    # We can also only pass the window config. Half precision:
+    config = MTConfig{Float32}(256; fs=10, fft_flags = FFTW.UNALIGNED | FFTW.MEASURE)
+    mt_spec6 = mt_spectrogram(x0, config, 128)
+    @test power(mt_spec6) ≈ power(mt_spec)
+    @test freq(mt_spec6) == freq(mt_spec)
+    @test time(mt_spec6) == time(mt_spec)
+
+    # with Float32 input:
+    mt_spec7 = mt_spectrogram(Float32.(x0), config, 128)
+    @test power(mt_spec7) ≈ power(mt_spec)
+    @test freq(mt_spec7) == freq(mt_spec)
+    @test time(mt_spec7) == time(mt_spec)
 
     @test_throws DimensionMismatch mt_spectrogram!(similar(out, size(out, 1), size(out, 2)+1), x0, spec_config)
     @test_throws DimensionMismatch mt_spectrogram!(out, vcat(x0, x0), spec_config)
@@ -335,6 +361,8 @@ end
     end
 
     x = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_x.txt")))
+    @test eltype(x) <: Float64
+
     # MATLAB code:
     # fft = 2^nextpow2(length(x));
     # [pxx,fx] = pmtm(x,4,nfft,1000,'unity');
@@ -348,12 +376,26 @@ end
     @test freq(result) ≈ fx
     @test power(result) ≈ pxx
 
-    # Test against in-place
-    config = MTConfig{eltype(x)}(length(x); fs=fs, nw=nw, nfft=nfft)
+    # Test against in-place. Full precision:
+    config = MTConfig{Float64}(length(x); fs=fs, nw=nw, nfft=nfft)
     out = allocate_output(config)
+    @test eltype(out) == Float64
     result2 = mt_pgram!(out, x, config)
-    @test freq(result) == freq(result2)
-    @test power(result) ≈ power(result2)
+    @test freq(result2) ≈ fx
+    @test power(result2) ≈ pxx
+
+    # Lower precision output:
+    config = MTConfig{Float32}(length(x); fs=fs, nw=nw, nfft=nfft, fft_flags = FFTW.UNALIGNED)
+    out = allocate_output(config)
+    @test eltype(out) == Float32
+    result3 = mt_pgram!(out, x, config)
+    @test freq(result3) ≈ fx
+    @test power(result3) ≈ pxx
+
+    # with Float32 input:
+    result4 = mt_pgram!(out, Float32.(x), config)
+    @test freq(result4) ≈ fx
+    @test power(result4) ≈ pxx
 
     @test_throws DimensionMismatch mt_pgram!(similar(out, length(out)+1), x, config)
     @test_throws DimensionMismatch mt_pgram!(out, vcat(x, one(eltype(x))), config)
@@ -366,6 +408,7 @@ end
 
     y = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_y.txt")))
     z = x + im*y
+    @test eltype(z) <: Complex{Float64}
 
     # MATLAB code: `[pzz,fz] = pmtm(z,4,nfft,1000, 'unity')`
     fz = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_fz.txt")))
@@ -376,10 +419,27 @@ end
     @test freqs ≈ fz[2:length(freqs)+1]
     @test power(result)[result_mask] ≈ pzz[2:length(freqs)+1]
 
-    # Test against in-place
-    config = MTConfig{eltype(z)}(length(z); fs=fs, nw=nw, nfft=nfft)
+    # Test against in-place. Full precision:
+    config = MTConfig{Complex{Float64}}(length(z); fs=fs, nw=nw, nfft=nfft)
     out = allocate_output(config)
+    @test eltype(out) == Float64
+
     result2 = mt_pgram!(out, z, config)
-    @test freq(result) == freq(result2)
-    @test power(result) ≈ power(result2)
+    @test freq(result2) == freq(result)
+    @test power(result2) ≈ power(result)
+
+    # Lower precision output:
+    config = MTConfig{Complex{Float32}}(length(z); fs=fs, nw=nw, nfft=nfft, fft_flags = FFTW.UNALIGNED)
+    out = allocate_output(config)
+    @test eltype(out) == Float32
+
+    result2 = mt_pgram!(out, z, config)
+    @test freq(result2) == freq(result)
+    @test power(result2) ≈ power(result)
+
+    # Lower precision computation:
+    result3 = mt_pgram!(out, Complex{Float32}.(z), config)
+    @test freq(result3) == freq(result)
+    @test power(result3) ≈ power(result)
+
 end
