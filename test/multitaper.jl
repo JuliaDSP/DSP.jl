@@ -22,32 +22,32 @@ const epsilon = 10^-3
             fft_input_tmp = Vector{T}(undef, nfft)
             onesided = T <: Real
             fft_flags = FFTW.ESTIMATE
-            freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
-            fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freq), ntapers)
+            freqs = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
+            fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freqs), ntapers)
             r = 1.0
             plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) :
                 plan_fft(fft_input_tmp; flags=fft_flags)
             let n_samples = 201
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let n_samples = -1
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let n_tapers = -1
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let fs = -1
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let fft_input_tmp = Vector{T}(undef, 2*nfft)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let nfft = 2*nfft
                 fft_input_tmp = Vector{T}(undef, 2*nfft)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
             let  window = rand(2*ntapers, n_samples)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
         end
     end
