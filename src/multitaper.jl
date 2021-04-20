@@ -200,7 +200,7 @@ end
 
 Computes a multitaper spectrogram using the parameters specified in `config`. Arguments:
 
-* `destination`: `length(config.mt_config.freq)` x `length(config.time)` matrix. This can be created by `allocate_output(config)`.
+* `destination`: `length(config.mt_config.freq)` x `length(config.time)` matrix. This can be created by `DSP.allocate_output(config)`.
 * `signal`: vector of length `config.n_samples`
 * `config`: an [`MTSpectrogramConfig`](@ref) object to hold temporary variables and configuration settings.
 """
@@ -380,7 +380,7 @@ end
 
 Computes a multitapered cross spectral matrix. Arguments:
 
-* `output`: `n_channels` x `n_channels` x `length(config.freq)`. Can be created by `allocate_output(config)`.
+* `output`: `n_channels` x `n_channels` x `length(config.freq)`. Can be created by `DSP.allocate_output(config)`.
 * `signal`: `n_channels` x `n_samples`
 * `config`: `MTCrossSpectraConfig{T}`
 

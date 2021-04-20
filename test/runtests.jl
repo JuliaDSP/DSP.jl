@@ -1,5 +1,5 @@
-using  DSP, FFTW, Test
-
+using DSP, FFTW, Test
+using DSP: allocate_output
 using Random: seed!
 
 testfiles = ["dsp.jl", "util.jl", "windows.jl", "filter_conversion.jl",

@@ -9,11 +9,10 @@ export arraysplit, nextfastfft, periodogram, welch_pgram,
        MTConfig, mt_pgram, mt_pgram!,
        MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
        MTCrossSpectraConfig, mt_cross_spectral, mt_cross_spectral!,
-       MTCoherenceConfig, mt_coherence, mt_coherence!,
-       allocate_output
+       MTCoherenceConfig, mt_coherence, mt_coherence!
+import ..DSP: allocate_output
 using FFTW
 import FFTW: Frequencies, fftfreq, rfftfreq
-
 ## ARRAY SPLITTER
 
 struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}

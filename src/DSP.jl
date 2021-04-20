@@ -6,6 +6,11 @@ using IterTools: subsets
 
 export conv, deconv, filt, filt!, xcorr
 
+# This function has methods added in `peridograms` but is not exported,
+# so we define it here so one can do `DSP.allocate_output` instead of
+# `DSP.Periodograms.allocate_output`.
+function allocate_output end
+
 include("dspbase.jl")
 
 include("util.jl")
