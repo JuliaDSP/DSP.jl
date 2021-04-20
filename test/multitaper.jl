@@ -54,6 +54,7 @@ const epsilon = 10^-3
 
 end
 
+avg_coh(x) = dropdims(mean(x.coherences; dims=3); dims=3)
 
 @testset "Coherence (synthetic data)" begin
     fs = 1000.0
@@ -66,21 +67,34 @@ end
     same_signal = Matrix{Float64}(undef, 2, n_samples)
     same_signal[1, :] = sin_1
     same_signal[2, :] = sin_1
-    coh = mt_coherence(same_signal; demean=true, fs=fs, freq_range = (10, 15))
+    coh = avg_coh(mt_coherence(same_signal; demean=true, fs=fs, freq_range = (10, 15)))
     same_signal_coherence = coh[2,1]
 
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(same_signal)}(size(same_signal)...; demean=true, fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
-    coh2 = mt_coherence!(out, same_signal, config)
+    coh2 = avg_coh(mt_coherence!(out, same_signal, config))
     @test coh ≈ coh2
+
+    # check that the output object has the right frequency information and properties
+    coh_object = mt_coherence!(out, same_signal, config)
+    @test freq(coh_object) == coh_object.freq == config.cs_config.freq
+    @test all(x -> 10 <= x <= 15, freq(coh_object))
+    # Check symmetries
+    for i in 1:2, j in 1:2, f in eachindex(freq(coh_object))
+        @test coh_object.coherences[i, j, f] == coh_object.coherences[j, i, f]
+        if i == j
+            @test coh_object.coherences[i,j, f] == 1
+        end
+    end
 
     # check that manually demeaning with `demean=false` gives the same result
     same_signal_demeaned = same_signal .- mean(same_signal; dims = 2)
-    coh3 = mt_coherence(same_signal_demeaned; demean = false)
+    coh3 = avg_coh(mt_coherence(same_signal_demeaned; demean = false))
     @test coh3 ≈ coh2
 
-    @test_throws DimensionMismatch mt_coherence!(zeros(size(out,1), 2*size(out, 2)), same_signal, config)
+
+    @test_throws DimensionMismatch mt_coherence!(zeros(size(out,1), 2*size(out, 2), size(out, 3)), same_signal, config)
     @test_throws DimensionMismatch mt_coherence!(out, vcat(same_signal, same_signal), config)
 
 
@@ -89,7 +103,7 @@ end
     phase_shift = Matrix{Float64}(undef, 2, n_samples)
     phase_shift[1, :] = sin_1
     phase_shift[2, :] = sin_2
-    coh = mt_coherence(phase_shift; fs=fs, freq_range = (10, 15))
+    coh = avg_coh(mt_coherence(phase_shift; fs=fs, freq_range = (10, 15)))
     phase_shift_coherence = coh[2,1]
     @test abs(phase_shift_coherence - 1) < epsilon
     @test coh[1,1] ≈ 1
@@ -98,13 +112,13 @@ end
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(phase_shift)}(size(phase_shift)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
-    coh2 = mt_coherence!(out, phase_shift, config)
+    coh2 = avg_coh(mt_coherence!(out, phase_shift, config))
     @test coh ≈ coh2
 
     different_signal = Matrix{Float64}(undef, 2, n_samples)
     different_signal[1, :] = sin_1
     different_signal[2, :] = noise
-    coh = mt_coherence(different_signal; fs=fs, freq_range = (10, 15))
+    coh = avg_coh(mt_coherence(different_signal; fs=fs, freq_range = (10, 15)))
     different_signal_coherence = coh[2,1]
     # .8 is arbitrary, but represents a high coherence, so if a sine wave is
     # that coherent with noise, there is a problem
@@ -113,25 +127,25 @@ end
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(different_signal)}(size(different_signal)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
-    coh2 = mt_coherence!(out, different_signal, config)
+    coh2 = avg_coh(mt_coherence!(out, different_signal, config))
     @test coh ≈ coh2
 
     less_noisy = Matrix{Float64}(undef, 2, n_samples)
     less_noisy[1, :] = sin_1
     less_noisy[2, :] .= sin_1 .+ noise
-    coh = mt_coherence(less_noisy; fs=fs, freq_range = (10, 15))
+    coh = avg_coh(mt_coherence(less_noisy; fs=fs, freq_range = (10, 15)))
     less_noisy_coherence = coh[2, 1]
 
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(less_noisy)}(size(less_noisy)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
-    coh2 = mt_coherence!(out, less_noisy, config)
+    coh2 = avg_coh(mt_coherence!(out, less_noisy, config))
     @test coh ≈ coh2
 
     more_noisy = Matrix{Float64}(undef, 2, n_samples)
     more_noisy[1, :] = sin_1
     more_noisy[2, :] .= sin_1 .+ 3 * noise
-    coh = mt_coherence(more_noisy; fs=fs, freq_range = (10, 15))
+    coh = avg_coh(mt_coherence(more_noisy; fs=fs, freq_range = (10, 15)))
     more_noisy_coherence = coh[2, 1]
     @test less_noisy_coherence < same_signal_coherence
     @test more_noisy_coherence < less_noisy_coherence
@@ -140,14 +154,14 @@ end
     # test in-place gets the same result
     config = MTCoherenceConfig{eltype(more_noisy)}(size(more_noisy)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
-    coh2 = mt_coherence!(out, more_noisy, config)
+    coh2 = avg_coh(mt_coherence!(out, more_noisy, config))
     @test coh ≈ coh2
 
     several_signals = Matrix{Float64}(undef, 3, n_samples)
     several_signals[1, :] = sin_1
     several_signals[2, :] = sin_2
     several_signals[3, :] = noise
-    several_signals_coherences = mt_coherence(several_signals; fs=fs, freq_range = (10, 15))
+    several_signals_coherences = avg_coh(mt_coherence(several_signals; fs=fs, freq_range = (10, 15)))
     @test length(several_signals_coherences) == 9
     @test several_signals_coherences[2, 1] ≈ phase_shift_coherence
     @test several_signals_coherences[3, 1] ≈ different_signal_coherence
@@ -156,18 +170,18 @@ end
     config = MTCoherenceConfig{Float64}(size(several_signals)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
     @test eltype(out) == Float64
-    coh2 = mt_coherence!(out, several_signals, config)
+    coh2 = avg_coh(mt_coherence!(out, several_signals, config))
     @test coh2 ≈ several_signals_coherences
 
     # Float32 output:
     config = MTCoherenceConfig{Float32}(size(several_signals)...; fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
     @test eltype(out) == Float32
-    coh3 = mt_coherence!(out, several_signals, config)
+    coh3 = avg_coh(mt_coherence!(out, several_signals, config))
     @test coh3 ≈ several_signals_coherences
 
     # Float32 input and output:
-    coh4 = mt_coherence!(out, Float32.(several_signals), config)
+    coh4 = avg_coh(mt_coherence!(out, Float32.(several_signals), config))
     @test coh4 ≈ several_signals_coherences
 end
 
@@ -187,7 +201,7 @@ end
     # mne_coherence_matrix, _ = PyMNE.connectivity.spectral_connectivity(more_noisy, method="coh", sfreq=fs,mode="multitaper",fmin=10,fmax=15,verbose=false)
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
-    result = mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15), demean=true)
+    result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15), demean=true))
     @test result[2, 1] ≈ coh
 end
 

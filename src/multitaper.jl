@@ -280,16 +280,16 @@ end
 #####
 
 """
-    CrossSpectral{T,F}
+    CrossSpectral{T,F,A<:AbstractArray{T, 3}}
 
 Fields:
 
-* `values::T`: `n_channels` x `n_channels` x `length(freq)` array
+* `values::A`: `n_channels` x `n_channels` x `length(freq)` array
 * `freq::F`: frequencies; accessed by `freq(::CrossSpectral)`
 
 """
-struct CrossSpectral{T,F}
-    values::T
+struct CrossSpectral{T,F,A<:AbstractArray{T, 3}}
+    values::A
     freq::F
 end
 
@@ -510,33 +510,52 @@ function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=false, low_bia
 end
 
 function allocate_output(config::MTCoherenceConfig{T}) where {T}
-    return Matrix{real(T)}(undef, config.cs_config.n_channels, config.cs_config.n_channels)
+    return Array{real(T)}(undef, config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))
 end
 
 """
-    coherence_from_cs!(output::AbstractMatrix, cs_matrix)
+    coherence_from_cs!(output::AbstractArray, cs_matrix)
 
-Compute the pairwise channel coherences from a cross spectral matrix, storing the result in `output`
-and returning a `Symmetric` view of `output`.
+Compute the pairwise channel coherences from a cross spectral matrix, storing the result in `output`.
 """
-function coherence_from_cs!(output::AbstractMatrix{T}, cs_matrix) where T
+function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
     n_channels = size(cs_matrix, 2)
     n_freqs = size(cs_matrix, 3)
-    @boundscheck checkbounds(output, 1:n_channels, 1:n_channels)
+    @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, 1:n_freqs)
     @boundscheck checkbounds(cs_matrix, 1:n_channels, 1:n_channels, 1:n_freqs)
     output .= zero(T)
-    output[diagind(output)] .= one(T)
     @inbounds for ch2 in 1:n_channels
         for ch1 in (ch2 + 1):n_channels # lower triangular matrix
             for f in 1:n_freqs # average over frequency
-                output[ch1, ch2] += real(abs(cs_matrix[ch1, ch2, f]) /
+                output[ch1, ch2, f] += real(abs(cs_matrix[ch1, ch2, f]) /
                                          (sqrt(cs_matrix[ch1, ch1, f] *
-                                               cs_matrix[ch2, ch2, f]) * n_freqs))
+                                               cs_matrix[ch2, ch2, f])))
             end
         end
     end
-    return Symmetric(output, :L)
+    output .+= PermutedDimsArray(output, (2, 1, 3)) # symmetrize
+    # diagonal elements should be `1` for any frequency
+    @inbounds for i in 1:n_channels
+        output[i, i, :] .= one(T)
+    end
+    return nothing
 end
+
+"""
+    Coherence{T,F,A<:AbstractArray{T, 3}}
+
+Fields:
+
+* `coherences::A`: `n_channels` x `n_channels` x `length(freq)` array consisting of the pairwise coherences between each channel, for each frequency
+* `freq::F`: frequencies; accessed by `freq(::Coherence)`
+
+"""
+struct Coherence{T,F,A<:AbstractArray{T, 3}}
+    coherences::A
+    freq::F
+end
+
+freq(c::Coherence) = c.freq
 
 """
     mt_coherence!(output, signal::AbstractMatrix, config::MTCoherenceConfig)
@@ -547,7 +566,7 @@ Computes the pairwise coherences between channels.
 * `signal`: `n_samples` x `n_channels` matrix
 * `config`: configuration object that holds temporary variables.
 
-Returns a `Symmetric` view of `output`.
+Returns a [`Coherence`](@ref) object.
 """
 function mt_coherence!(output, signal::AbstractMatrix,
                        config::MTCoherenceConfig)
@@ -555,12 +574,14 @@ function mt_coherence!(output, signal::AbstractMatrix,
         throw(DimensionMismatch("Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
             got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((config.cs_config.n_channels, config.cs_config.mt_config.n_samples))"))
     end
-    if size(output) != (config.cs_config.n_channels, config.cs_config.n_channels)
-        throw(DimensionMismatch("Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels)`;
-        got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels)`=$((config.cs_config.n_channels, config.cs_config.n_channels))"))
+    if size(output) != (config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))
+        throw(DimensionMismatch("Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`;
+        got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`=$((config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq)))"))
     end
     cs = mt_cross_spectral!(config.cs_matrix, signal, config.cs_config)
-    return coherence_from_cs!(output, cs.values)
+    coherence_from_cs!(output, cs.values)
+
+    return Coherence(output, config.cs_config.freq)
 end
 
 """
@@ -568,7 +589,7 @@ end
 
 Input: `signal`: `n_channels` x `n_samples` matrix
 
-Output: `n_channels` x `n_channels` matrix of pairwise coherences between channels.
+Returns a [`Coherence`](@ref) object.
 
 See [`MTCrossSpectraConfig`](@ref) for the meaning of the keyword arugments.
 """
