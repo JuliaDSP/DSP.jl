@@ -310,7 +310,7 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
 end
 
 """
-    MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true, freq_range=nothing, nw=4, kwargs...) where T
+    MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false, low_bias=true, freq_range=nothing, nw=4, kwargs...) where T
 
 Creates a configuration object used for [`mt_cross_spectral!`](@ref) as well as [`mt_coherence!`](@ref).
 
@@ -325,7 +325,7 @@ Creates a configuration object used for [`mt_cross_spectral!`](@ref) as well as 
 
 Any keywords accepted by [`MTConfig`](@ref) may be passed here.
 """
-function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true,
+function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false, low_bias=true,
                                  freq_range=nothing, nw=4, ntapers=2 * nw - 1,
                                  ensure_aligned = T == Float32 || T == Complex{Float32},
                                  kwargs...) where {T}
@@ -488,7 +488,7 @@ end
 
 """
     MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
-    MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true, freq_range=nothing, kwargs...) where T
+    MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=false, low_bias=true, freq_range=nothing, kwargs...) where T
 
 Creates a configuration object for coherences from a [`MTCrossSpectraConfig`](@ref). Provides a helper method
 with the same arugments as `MTCrossSpectraConfig` to construct the `MTCrossSpectraConfig` object.
@@ -501,7 +501,7 @@ end
 # add a method to cover the case in which the user specifies the `{T}` here
 MTCoherenceConfig{T}(cs_config::MTCrossSpectraConfig{T}) where {T} = MTCoherenceConfig(cs_config)
 
-function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=true, low_bias=true,
+function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=false, low_bias=true,
                               freq_range=nothing, kwargs...) where {T}
     cs_config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, demean=demean,
                                         low_bias=low_bias, freq_range=freq_range, kwargs...)
@@ -564,7 +564,7 @@ function mt_coherence!(output, signal::AbstractMatrix,
 end
 
 """
-    mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range = nothing, demean=true, low_bias=true, kwargs...) where T
+    mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range = nothing, demean=false, low_bias=true, kwargs...) where T
 
 Input: `signal`: `n_channels` x `n_samples` matrix
 
@@ -572,7 +572,7 @@ Output: `n_channels` x `n_channels` matrix of pairwise coherences between channe
 
 See [`MTCrossSpectraConfig`](@ref) for the meaning of the keyword arugments.
 """
-function mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range=nothing, demean=true,
+function mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range=nothing, demean=false,
                       low_bias=true, kwargs...) where {T}
     n_channels, n_samples = size(signal)
     config = MTCoherenceConfig{T}(n_channels, n_samples; fs=fs, demean=demean,

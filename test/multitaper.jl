@@ -66,11 +66,11 @@ end
     same_signal = Matrix{Float64}(undef, 2, n_samples)
     same_signal[1, :] = sin_1
     same_signal[2, :] = sin_1
-    coh = mt_coherence(same_signal; fs=fs, freq_range = (10, 15))
+    coh = mt_coherence(same_signal; demean=true, fs=fs, freq_range = (10, 15))
     same_signal_coherence = coh[2,1]
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{eltype(same_signal)}(size(same_signal)...; fs=fs, freq_range = (10, 15))
+    config = MTCoherenceConfig{eltype(same_signal)}(size(same_signal)...; demean=true, fs=fs, freq_range = (10, 15))
     out = allocate_output(config)
     coh2 = mt_coherence!(out, same_signal, config)
     @test coh ≈ coh2
@@ -187,7 +187,7 @@ end
     # mne_coherence_matrix, _ = PyMNE.connectivity.spectral_connectivity(more_noisy, method="coh", sfreq=fs,mode="multitaper",fmin=10,fmax=15,verbose=false)
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
-    result = mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15))
+    result = mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15), demean=true)
     @test result[2, 1] ≈ coh
 end
 
@@ -213,12 +213,12 @@ end
 
     signal = dropdims(data; dims=1)
     @test signal isa Matrix{Float64}
-    result = mt_cross_spectral(signal; fs=fs)
+    result = mt_cross_spectral(signal; demean=true, fs=fs)
     @test freq(result)[2:end] ≈ csd_array_multitaper_frequencies
     @test result.values[:,:,2:end] ≈ csd_array_multitaper_values
 
     # Test in-place. Full precision:
-    config = MTCrossSpectraConfig{Float64}(size(signal)...; fs=fs)
+    config = MTCrossSpectraConfig{Float64}(size(signal)...; demean=true, fs=fs)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float64}
     result2 = mt_cross_spectral!(out, signal, config)
@@ -226,7 +226,7 @@ end
     @test result.values ≈ result2.values
 
     # Float32 output:
-    config = MTCrossSpectraConfig{Float32}(size(signal)...; fs=fs)
+    config = MTCrossSpectraConfig{Float32}(size(signal)...; demean=true, fs=fs)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float32}
     result2 = mt_cross_spectral!(out, signal, config)
