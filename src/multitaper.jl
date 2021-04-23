@@ -279,6 +279,10 @@ end
 ##### Multitapered cross spectral matrix
 #####
 
+# the following code was initially ported from MNE-python before being partially rewritten.
+# MNE-python's 3-clause BSD license can be found here: <https://github.com/mne-tools/mne-python/blob/c6b22e82b64da0ed0f52a5f28bd4711e47090f9e/LICENSE.txt>.
+
+
 """
     CrossSpectral{T,F,A<:AbstractArray{T, 3}}
 
