@@ -77,7 +77,7 @@ function dpss_config(::Type{T}, n_samples; nw=4, ntapers = 2nw-1, fs=1, keep_onl
         taper_weights = fill(1/ntapers, ntapers)
     end
 
-    return MTConfig{T}(n_samples; window=window, nw=nw, ntapers=ntapers, taper_weights=taper_weights, fs, kwargs...)
+    return MTConfig{T}(n_samples; window=window, nw=nw, ntapers=ntapers, taper_weights=taper_weights, fs=fs, kwargs...)
 end
 
 
@@ -106,7 +106,8 @@ as none of the input arguments change.
 * `window`: window function to use for tapering. If left at the default of `nothing`,
   `window` will be set to `dpss(n_samples, nw, ntapers)`.
 * `ntapers`: the number of tapers to use.
-* `taper_weights = fill(1/ntapers, ntapers)`
+* `taper_weights = fill(1/ntapers, ntapers)`: how to weight the contribution of each taper.
+  The default setting is to simply average them.
 * `onesided`: whether or not to compute a "one-sided" FFT by using that real signal data
   yields conjugate-symmetry in Fourier space.
 * `fft_flags`: flags to control how the FFT plan is generated.
