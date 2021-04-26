@@ -121,7 +121,6 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing
     end
     n_samples > 0 || throw(ArgumentError("`n_samples` must be positive"))
     nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
-    ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
     freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
     fft_input_tmp = Vector{T}(undef, nfft)
     fft_output_tmp = Vector{fftouttype(T)}(undef, length(freq))

@@ -3,7 +3,6 @@ const epsilon = 10^-3
 @testset "Configuration objects" begin
     @test_throws ArgumentError MTConfig{Float64}(100; nfft = 99)
     @test_throws ArgumentError MTConfig{Float64}(100; fs=-1)
-    @test_throws ArgumentError MTConfig{Float64}(100; ntapers = -1)
     @test_throws DimensionMismatch MTConfig{Float64}(100; window = rand(1, 200))
     @test_throws ArgumentError MTConfig{Complex{Float64}}(100; onesided=true)
 
@@ -202,7 +201,7 @@ end
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
 
-    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
+    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCoherenceConfig(2, mt_config; freq_range = (10,15), demean=true)
     result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1), config))
     @test result[2, 1] ≈ coh
