@@ -435,7 +435,7 @@ Creates a configuration object used for [`mt_cross_power_spectra!`](@ref) as wel
 
 * `n_channels`: the number of channels of the input.
 * `n_samples`: the number of samples for each channel of the input.
-* `demean`: if `true`, the channelwise mean will be subtracted from the input signals before the cross spectral values are computed.
+* `demean`: if `true`, the channelwise mean will be subtracted from the input signals before the cross spectral powers are computed.
 * `freq_range`: if `nothing`, all frequencies are retained. Otherwise, only frequencies between `first(freq_range)` and `last(freq_range)` are retained.
 * `ensure_aligned = T == Float32 || T == Complex{Float32}`: perform an extra copy to ensure that the FFT output is memory-aligned
 
@@ -504,7 +504,7 @@ Computes multitapered cross power spectra between channels of a signal. Argument
   Otherwise, one may pass any keyword arguments accepted by this object.
 
 Produces a `CrossPowerSpectra` object holding the `n_channels` x `n_channels` x `n_frequencies`
-output array (in the `values` field) and the corresponding frequencies (accessed by [`freq`](@ref)).
+output array and the corresponding frequencies (accessed by [`freq`](@ref)).
 """
 mt_cross_power_spectra!
 
@@ -598,7 +598,7 @@ and choose configuration settings. Otherwise, any keyword arguments accepted by 
 See also [`mt_cross_power_spectra!`](@ref).
 
 Produces a `CrossPowerSpectra` object holding the `n_channels` x `n_channels` x `n_frequencies`
-output array (in the `values` field) and the corresponding frequencies (accessed by [`freq`](@ref)).
+output array and the corresponding frequencies (accessed by [`freq`](@ref)).
 """
 mt_cross_power_spectra
 
