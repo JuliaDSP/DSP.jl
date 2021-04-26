@@ -24,7 +24,7 @@ const epsilon = 10^-3
             fft_flags = FFTW.ESTIMATE
             freqs = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
             fft_output_tmp = Matrix{fftouttype(T)}(undef, length(freqs), ntapers)
-            r = 1.0
+            r = fs*ntapers*ones(ntapers)
             plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) :
                 plan_fft(fft_input_tmp; flags=fft_flags)
             let n_samples = 201
@@ -54,7 +54,7 @@ const epsilon = 10^-3
 
 end
 
-avg_coh(x) = dropdims(mean(x.coherences; dims=3); dims=3)
+avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
 
 @testset "Coherence (synthetic data)" begin
     fs = 1000.0
@@ -82,9 +82,9 @@ avg_coh(x) = dropdims(mean(x.coherences; dims=3); dims=3)
     @test all(x -> 10 <= x <= 15, freq(coh_object))
     # Check symmetries
     for i in 1:2, j in 1:2, f in eachindex(freq(coh_object))
-        @test coh_object.coherences[i, j, f] == coh_object.coherences[j, i, f]
+        @test coherence(coh_object)[i, j, f] == coherence(coh_object)[j, i, f]
         if i == j
-            @test coh_object.coherences[i,j, f] == 1
+            @test coherence(coh_object)[i,j, f] == 1
         end
     end
 
@@ -198,14 +198,17 @@ end
 
     ## to generate the reference result:
     # using PyMNE
-    # mne_coherence_matrix, _ = PyMNE.connectivity.spectral_connectivity(more_noisy, method="coh", sfreq=fs,mode="multitaper",fmin=10,fmax=15,verbose=false)
+    # mne_coherence_matrix, _ = PyMNE.connectivity.spectral_connectivity(more_noisy, method="coh",sfreq=fs,mode="multitaper",fmin=10,fmax=15,verbose=false)
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
-    result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1); fs=fs, freq_range = (10,15), demean=true))
+
+    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
+    config = MTCoherenceConfig(2, mt_config; freq_range = (10,15), demean=true)
+    result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1), config))
     @test result[2, 1] ≈ coh
 end
 
-@testset "`mt_cross_spectral`" begin
+@testset "`mt_cross_power_spectra`" begin
     fs = 1000.0
     n_samples = 1024
     t = (0:1023) ./ fs
@@ -226,33 +229,38 @@ end
     csd_array_multitaper_values = csd_array_multitaper_values_re + im*csd_array_multitaper_values_im
 
     signal = dropdims(data; dims=1)
+    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
+    config = MTCrossSpectraConfig(2, mt_config; demean=true)
+    result = mt_cross_power_spectra(signal, config)
+
     @test signal isa Matrix{Float64}
-    result = mt_cross_spectral(signal; demean=true, fs=fs)
+    # result = mt_cross_power_spectra(signal; demean=true, fs=fs)
     @test freq(result)[2:end] ≈ csd_array_multitaper_frequencies
-    @test result.values[:,:,2:end] ≈ csd_array_multitaper_values
+    @test power(result)[:,:,2:end] ≈ csd_array_multitaper_values
 
     # Test in-place. Full precision:
-    config = MTCrossSpectraConfig{Float64}(size(signal)...; demean=true, fs=fs)
+    config = MTCrossSpectraConfig(size(signal, 1), mt_config; demean=true)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float64}
-    result2 = mt_cross_spectral!(out, signal, config)
+    result2 = mt_cross_power_spectra!(out, signal, config)
     @test freq(result) ≈ freq(result2)
-    @test result.values ≈ result2.values
+    @test power(result) ≈ power(result2)
 
     # Float32 output:
-    config = MTCrossSpectraConfig{Float32}(size(signal)...; demean=true, fs=fs)
+    mt_config32 = DSP.Periodograms.dpss_config(Float32, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
+    config = MTCrossSpectraConfig(size(signal, 1), mt_config32; demean=true)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float32}
-    result2 = mt_cross_spectral!(out, signal, config)
+    result2 = mt_cross_power_spectra!(out, signal, config)
     @test freq(result2) ≈ freq(result)
-    @test result2.values ≈ result.values
+    @test power(result2) ≈ power(result)
 
     # Float32 input and output:
-    result3 = mt_cross_spectral!(out, Float32.(signal), config)
+    result3 = mt_cross_power_spectra!(out, Float32.(signal), config)
     @test freq(result3) ≈ freq(result)
-    @test result3.values ≈ result.values
+    @test power(result3) ≈ power(result)
 
-    @test_throws DimensionMismatch mt_cross_spectral!(similar(out, size(out, 1) + 1, size(out, 2), size(out, 3)), signal, config)
-    @test_throws DimensionMismatch mt_cross_spectral!(out, vcat(signal, signal), config)
+    @test_throws DimensionMismatch mt_cross_power_spectra!(similar(out, size(out, 1) + 1, size(out, 2), size(out, 3)), signal, config)
+    @test_throws DimensionMismatch mt_cross_power_spectra!(out, vcat(signal, signal), config)
 
 end

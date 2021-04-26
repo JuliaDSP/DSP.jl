@@ -8,8 +8,9 @@ export arraysplit, nextfastfft, periodogram, welch_pgram,
        spectrogram, power, freq, stft,
        MTConfig, mt_pgram, mt_pgram!,
        MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
-       MTCrossSpectraConfig, mt_cross_spectral, mt_cross_spectral!,
-       MTCoherenceConfig, mt_coherence, mt_coherence!
+       MTCrossSpectraConfig, mt_cross_power_spectra, mt_cross_power_spectra!,
+       MTCoherenceConfig, mt_coherence, mt_coherence!,
+       coherence
 import ..DSP: allocate_output
 using FFTW
 import FFTW: Frequencies, fftfreq, rfftfreq
@@ -384,38 +385,6 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     end
 
     Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
-end
-
-"""
-    mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1, window=dpss(length(s), nw, ntapers))
-
-Computes the multitaper periodogram of a signal `s`.
-
-If `window` is not specified, the signal is tapered with
-`ntapers` discrete prolate spheroidal sequences with
-time-bandwidth product `nw`. Each sequence is equally weighted;
-adaptive multitaper is not (yet) supported.
-
-If `window` is specified, each column is applied as a taper. The
-sum of periodograms is normalized by the total sum of squares of
-`window`.
-
-See also: [`dpss`](@ref)
-"""
-function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
-                  nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                  nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
-                  window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s);
-        fs = fs,
-        nfft = nfft,
-        window = window,
-        nw = nw,
-        ntapers = ntapers,
-        onesided = onesided,
-        fft_flags = FFTW.ESTIMATE)
-    out = allocate_output(config)
-    return mt_pgram!(out, s, config)
 end
 
 ## SPECTROGRAM
