@@ -1,0 +1,18 @@
+name: Delete preview deployment
+
+on:
+  pull_request:
+    types: [ closed ]
+jobs:
+  delete-preview:
+    name: Delete preview deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+      - run: rm -rf previews/PR${{ github.event.number }}
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'Delete preview of PR#${{ github.event.number }}'
+          branch: gh-pages
