@@ -459,7 +459,7 @@ $zerophase_docs
 function blackman(n::Integer; padding::Integer=0, zerophase::Bool=false)
     a0, a1, a2 = 0.42, 0.5, 0.08
     makewindow(n, padding, zerophase) do x
-        a0 + a1*cos(2pi*x) + a2*cos(4pi*x)
+        a0 + a2*cospi(4*x) + a1*cospi(2*x)
     end
 end
 
