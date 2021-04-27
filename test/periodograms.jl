@@ -45,6 +45,18 @@ using FFTW: fftfreq
     @test freq(mt_spec2) == freq(mt_spec)
     @test time(mt_spec2) == time(mt_spec)
 
+    # out-of-place with config:
+    r = mt_spectrogram(x0, spec_config)
+    @test power(r) ≈ power(mt_spec)
+    @test freq(r) == freq(mt_spec)
+    @test time(r) == time(mt_spec)
+
+    # in-place without config:
+    r = mt_spectrogram!(out, x0, 256, 128; fs=10)
+    @test power(r) ≈ power(mt_spec)
+    @test freq(r) == freq(mt_spec)
+    @test time(r) == time(mt_spec)
+
     # in-place half precision version:
     spec_config = MTSpectrogramConfig{Float32}(length(x0), 256, 128; fs=10)
     out = allocate_output(spec_config)
@@ -383,6 +395,16 @@ end
     result2 = mt_pgram!(out, x, config)
     @test freq(result2) ≈ fx
     @test power(result2) ≈ pxx
+
+    # in-place without config
+    r = mt_pgram!(out, x; fs=fs, nw=nw, nfft=nfft)
+    @test freq(r) ≈ fx
+    @test power(r) ≈ pxx
+
+    # out-of-place with config
+    r = mt_pgram(x, config)
+    @test freq(r) ≈ fx
+    @test power(r) ≈ pxx
 
     # Lower precision output:
     config = MTConfig{Float32}(length(x); fs=fs, nw=nw, nfft=nfft)
