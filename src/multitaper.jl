@@ -54,8 +54,10 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     end
 end
 
+# provides an `MTConfig` with `keep_only_large_evals` and `weight_by_evals` options used in some of the reference tests.
+function dpss_config(::Type{T}, n_samples; nw=4, ntapers = 2nw-1, fs=1, keep_only_large_evals=false,
+                     weight_by_evals=false, kwargs...) where {T}
 
-function dpss_config(::Type{T}, n_samples; nw=4, ntapers = 2nw-1, fs=1, keep_only_large_evals=false, weight_by_evals=false, kwargs...) where {T}
     window = dpss(n_samples, nw, ntapers)
 
     if keep_only_large_evals
@@ -411,6 +413,13 @@ end
 freq(c::CrossPowerSpectra) = c.freq
 power(c::CrossPowerSpectra) = c.power
 
+function check_onesided_real(mt_config::MTConfig{T}) where T
+    if !((T <: Real) && mt_config.onesided)
+        throw(ArgumentError("Only real data is supported (with the default choice of `onesided=true`) for this operation."))
+    end
+    return nothing
+end
+
 struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     n_channels::Int
     normalization_weights::T1
@@ -423,6 +432,11 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     freq_inds::T6
     ensure_aligned::Bool
     mt_config::C
+    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(args...) where {T,T1,T2,T3,T4,F,T5,T6,C}
+        mt_config = last(args)
+        check_onesided_real(mt_config) # this restriction is artifical; the code needs to be generalized
+        return new{T,T1,T2,T3,T4,F,T5,T6,C}(args...)
+    end
 end
 
 """
@@ -456,7 +470,7 @@ MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; demean=false,
 
 function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
         freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
-    
+
     n_samples = mt_config.n_samples                             
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
