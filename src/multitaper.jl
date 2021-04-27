@@ -432,10 +432,13 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     freq_inds::T6
     ensure_aligned::Bool
     mt_config::C
-    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(args...) where {T,T1,T2,T3,T4,F,T5,T6,C}
-        mt_config = last(args)
+    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels, normalization_weights,
+            x_mt, demean, mean_per_channel, demeaned_signal, freq, freq_range,
+            freq_inds, ensure_aligned, mt_config) where {T,T1,T2,T3,T4,F,T5,T6,C}
         check_onesided_real(mt_config) # this restriction is artifical; the code needs to be generalized
-        return new{T,T1,T2,T3,T4,F,T5,T6,C}(args...)
+        return new{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels, normalization_weights, x_mt,
+            demean, mean_per_channel, demeaned_signal, freq, freq_range,
+            freq_inds, ensure_aligned, mt_config)
     end
 end
 
