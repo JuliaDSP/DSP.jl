@@ -32,7 +32,7 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
         end
         if size(fft_output_tmp) != (length(freq),)
             throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq),)`;
-                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $length(freq)"""))
+                got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $(length(freq))"""))
         end
         if size(window) != (n_samples, ntapers)
             throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
