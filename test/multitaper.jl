@@ -45,12 +45,33 @@ const epsilon = 10^-3
                 fft_input_tmp = Vector{T}(undef, 2*nfft)
                 @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
-            let  window = rand(2*ntapers, n_samples)
+            let window = rand(2*ntapers, n_samples)
                 @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let r = 1.0
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+            end
+            let T=Complex{Float64}, onesided=true
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
             end
         end
     end
 
+end
+
+@testset "`dpss_config`" begin
+    dpss_config = DSP.Periodograms.dpss_config(Float64, 1024; keep_only_large_evals=false, weight_by_evals=false)
+    mt_config = MTConfig{Float64}(1024)
+
+    @test dpss_config.window ≈ mt_config.window
+    @test dpss_config.ntapers == mt_config.ntapers
+    @test dpss_config.r ≈ mt_config.r
+
+    dpss_config = DSP.Periodograms.dpss_config(Float64, 1024; keep_only_large_evals=false, weight_by_evals=true)
+    @test dpss_config.window ≈ mt_config.window
+    @test dpss_config.ntapers == mt_config.ntapers
+    # should be different since we're weighting by eigenvalues now
+    @test sum(abs, dpss_config.r - mt_config.r) > 0.1
 end
 
 avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
