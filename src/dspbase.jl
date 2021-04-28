@@ -750,22 +750,16 @@ function conv_same(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
     su = size(u)
     sv = size(v)
     conv_res = conv_full(u, v)
-    if N != 1
-        conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1]), Int(floor.(sv[2]/2 + 1)):Int(floor.(sv[2]/2) + su[2]), axes(conv_res)[3:end]...]
-    else
-        conv_res[Int(floor.(sv[1]/2 + 1)):Int(floor.(sv[1]/2) + su[1])]
-    end
+    outsize = CartesianIndex(Int.(floor.(sv ./2 .+ 1))...):CartesianIndex(Int.(floor.(sv ./ 2) .+ su)...)
+    conv_res[outsize]
 end
 
 function conv_valid(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
     su = size(u)
     sv = size(v)
     conv_res = conv_full(u, v)
-    if N != 1
-        conv_res[sv[1]:su[1], sv[2]:su[2], axes(conv_res)[3:end]...]
-    else
-        conv_res[sv[1]:su[1]]
-    end
+    outsize = CartesianIndex(sv...):CartesianIndex(su...)
+    conv_res[outsize]
 end
 
 """
