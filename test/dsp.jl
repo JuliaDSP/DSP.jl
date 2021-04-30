@@ -165,6 +165,8 @@ end
                                       47, 96,  100, 51,
                                       25, 51, 53, 27], (4, 4, 4)))
         @test conv(a, b) == exp
+        @test conv(a, b, mode=:same) == exp[2:4, 2:4, 2:4]
+        @test conv(a, b, mode=:valid) == exp[2:3, 2:3, 2:3]
 
 
         #6D, trivial, just to see if it works
