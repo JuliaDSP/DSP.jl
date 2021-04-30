@@ -203,21 +203,24 @@ end
 """
     power(p)
 
-For a Periodogram, returns the computed power at each frequency as
+For a `Periodogram`, returns the computed power at each frequency as
 a Vector.
 
-For a Spectrogram, returns the computed power at each frequency and
+For a `Spectrogram`, returns the computed power at each frequency and
 time bin as a Matrix. Dimensions are frequency × time.
+
+For a `CrossPowerSpectra`, returns the pairwise power between each pair
+of channels at each frequency. Dimensions are channel x channel x frequency.
 """
 power(p::TFR) = p.power
 
 """
     freq(p)
 
-Returns the frequency bin centers for a given Periodogram or
-Spectrogram object.
+Returns the frequency bin centers for a given `Periodogram`,
+`Spectrogram`, `CrossPowerSpectra`, or `Coherence` object.
 
-Returns a tuple of frequency bin centers for a given Periodogram2
+Returns a tuple of frequency bin centers for a given `Periodogram2`
 object.
 """
 freq(p::TFR) = p.freq

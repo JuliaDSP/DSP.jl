@@ -95,7 +95,8 @@ end
 
 Creates a config object which holds the configuration state
 and temporary variables used in multitaper computations,
-e.g. [`mt_pgram!`](@ref), [`mt_spectrogram`](@ref), and [`mt_cross_power_spectra!`](@ref).
+e.g. [`mt_pgram!`](@ref), [`mt_spectrogram`](@ref), [`MTSpectrogramConfig`](@ref),
+[`MTCrossSpectraConfig`](@ref), and [`MTCoherenceConfig`](@ref).
 
 An `MTConfig` can be re-used between computations as long
 as none of the input arguments change.
@@ -174,7 +175,9 @@ If `window` is specified, each column is applied as a taper. The
 sum of periodograms is normalized by the total sum of squares of
 `window`.
 
-See also: [`dpss`](@ref)
+Returns a `Periodogram`.
+
+See also [`mt_pgram!`](@ref) and [`MTConfig`](@ref).
 """
 mt_pgram
 
@@ -219,6 +222,10 @@ Computes a multitapered periodogram, storing the output in `output`. Arguments:
 Optionally pass an [`MTConfig`](@ref) object to preallocate temporary variables
 and choose configuration settings; otherwise, keyword arguments may be passed
 to choose those settings.
+
+Returns a `Periodogram`.
+
+See also [`mt_pgram`](@ref) and [`MTConfig`](@ref).
 """
 mt_pgram!
 
@@ -256,7 +263,7 @@ end
     MTSpectrogramConfig(n_samples, mt_config::MTConfig{T}, n_overlap_samples) where {T}
     MTSpectrogramConfig{T}(n_samples, samples_per_window, n_overlap_samples; fs=1, kwargs...) where {T}
 
-Creates a `MTSpectrogramConfig` which holds configuration and temporary variables for [`mt_spectrogram!`](@ref).
+Creates a `MTSpectrogramConfig` which holds configuration and temporary variables for [`mt_spectrogram`](@ref) and [`mt_spectrogram!`](@ref).
 Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `MTConfig` object itself.
 """
 function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
@@ -294,7 +301,11 @@ Computes a multitaper spectrogram using the parameters specified in `config`. Ar
 
 * `destination`: `length(config.mt_config.freq)` x `length(config.time)` matrix. This can be created by `DSP.allocate_output(config)`.
 * `signal`: vector of length `config.n_samples`
-* `config`: an [`MTSpectrogramConfig`](@ref) object to hold temporary variables and configuration settings.
+* `config`: optionally, pass an [`MTSpectrogramConfig`](@ref) object to hold temporary variables and configuration settings. Otherwise, settings arguments may be passed directly.
+
+Returns a `Spectrogram`.
+
+See also [`mt_spectrogram`](@ref).
 """
 mt_spectrogram!
 
@@ -345,6 +356,8 @@ Compute a multitaper spectrogram, returning a `Spectrogram` object.
 Optionally pass a [`MTSpectrogramConfig`](@ref) object; otherwise, any additional keyword
 arguments accepted by [`MTConfig`](@ref) may be passed to configure the tapering.
 
+Returns a `Spectrogram`.
+
 See also [`mt_spectrogram!`](@ref).
 """
 mt_spectrogram
@@ -366,8 +379,9 @@ end
                    n_overlap::Int=mt_config.n_samples >> 1) -> Spectrogram
 
 Compute a multitaper spectrogram using an an [`MTConfig`](@ref) object to choose
-the window size. Note that all the workspace variables are contained in the [`MTConfig`](@ref) object,
-and this object can be re-used between spectrogram computations, so that only the output needs to be allocated.
+the window size. Note that all the workspace variables are contained in the [`MTConfig`](@ref) object, and this object can be re-used between spectrogram computations, so that only the output needs to be allocated.
+
+Returns a `Spectrogram`.
 
 See also [`mt_spectrogram!`](@ref).
 
@@ -399,11 +413,9 @@ end
 """
     CrossPowerSpectra{T,F,A<:AbstractArray{T, 3}}
 
-Fields:
+Access the power (an `n_channels` x `n_channels` x `length(freq)` array) via the function [`power`](@ref), and the frequencies by the function [`freq`](@ref).
 
-* `power::A`: `n_channels` x `n_channels` x `length(freq)` array
-* `freq::F`: frequencies; accessed by `freq(::CrossPowerSpectra)`
-
+See also [`mt_cross_power_spectra`](@ref) and [`mt_cross_power_spectra!`](@ref).
 """
 struct CrossPowerSpectra{T,F,A<:AbstractArray{T, 3}}
     power::A
@@ -448,15 +460,16 @@ end
     MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false, freq_range=nothing,
                          ensure_aligned = T == Float32 || T == Complex{Float32})
 
-Creates a configuration object used for [`mt_cross_power_spectra!`](@ref) as well as [`mt_coherence!`](@ref).
+Creates a configuration object used for [`mt_cross_power_spectra`](@ref) and [`mt_cross_power_spectra!`](@ref).
 
 * `n_channels`: the number of channels of the input.
 * `n_samples`: the number of samples for each channel of the input.
 * `demean`: if `true`, the channelwise mean will be subtracted from the input signals before the cross spectral powers are computed.
 * `freq_range`: if `nothing`, all frequencies are retained. Otherwise, only frequencies between `first(freq_range)` and `last(freq_range)` are retained.
 * `ensure_aligned = T == Float32 || T == Complex{Float32}`: perform an extra copy to ensure that the FFT output is memory-aligned
+* Additionally, either pass an [`MTConfig`](@ref) object, or keyword arguments such as `fs` accepted by [`MTConfig`](@ref).
 
-Either pass an [`MTConfig`](@ref) object, or keyword arguments such as `fs` accepted by [`MTConfig`](@ref).
+Returns a `CrossPowerSpectra` object.
 """
 function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false,
                                  freq_range=nothing,
@@ -522,6 +535,8 @@ Computes multitapered cross power spectra between channels of a signal. Argument
 
 Produces a `CrossPowerSpectra` object holding the `n_channels` x `n_channels` x `n_frequencies`
 output array and the corresponding frequencies (accessed by [`freq`](@ref)).
+
+See also [`mt_cross_power_spectra`](@ref) and [`MTCrossSpectraConfig`](@ref).
 """
 mt_cross_power_spectra!
 
@@ -605,17 +620,16 @@ end
     mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
 
-Computes multitapered cross power spectra between channels of a signal.
+Computes multitapered cross power spectra between channels of a signal. Arguments:
 
 * `signal`: `n_channels` x `n_samples`
-
-Optionally pass an [`MTCrossSpectraConfig`](@ref) object to preallocate temporary variables
+* Optionally pass an [`MTCrossSpectraConfig`](@ref) object to preallocate temporary variables
 and choose configuration settings. Otherwise, any keyword arguments accepted by [`MTCrossSpectraConfig`](@ref) may be passed here.
 
-See also [`mt_cross_power_spectra!`](@ref).
-
 Produces a `CrossPowerSpectra` object holding the `n_channels` x `n_channels` x `n_frequencies`
-output array and the corresponding frequencies (accessed by [`freq`](@ref)).
+output array (accessed by [`power`](@ref)) and the corresponding frequencies (accessed by [`freq`](@ref)).
+
+See also [`mt_cross_power_spectra!`](@ref) and [`MTCrossSpectraConfig`](@ref).
 """
 mt_cross_power_spectra
 
@@ -648,6 +662,8 @@ end
 
 Creates a configuration object for coherences from a [`MTCrossSpectraConfig`](@ref). Provides a helper method
 with the same arugments as `MTCrossSpectraConfig` to construct the `MTCrossSpectraConfig` object.
+
+See also [`mt_coherence`](@ref) and [`mt_coherence!`](@ref).
 """
 function MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
     cs_matrix = allocate_output(cs_config)
@@ -714,13 +730,12 @@ function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
 end
 
 """
-    Coherence{T,F,A<:AbstractArray{T, 3}}
+    Coherence
 
-Fields:
+Holds an `n_channels` x `n_channels` x `length(freq)` array consisting of the pairwise coherences between each channel for each frequency which is accessed by [`coherence`](@ref), as well
+as the frequencies accessed by [`freq`](@ref).
 
-* `coherences::A`: `n_channels` x `n_channels` x `length(freq)` array consisting of the pairwise coherences between each channel, for each frequency
-* `freq::F`: frequencies; accessed by `freq(::Coherence)`
-
+See also [`mt_coherence`](@ref) and [`mt_coherence!`](@ref).
 """
 struct Coherence{T,F,A<:AbstractArray{T, 3}}
     coherence::A
@@ -728,6 +743,13 @@ struct Coherence{T,F,A<:AbstractArray{T, 3}}
 end
 
 freq(c::Coherence) = c.freq
+
+"""
+    coherence(c::Coherence)
+
+Given an `Coherence` object, returns an `n_channels` x `n_channels` x `length(freq(c))`
+array consisting of the pairwise coherences between each channel for each frequency.
+"""
 coherence(c::Coherence) = c.coherence
 
 """
@@ -740,7 +762,9 @@ Computes the pairwise coherences between channels.
 * `signal`: `n_samples` x `n_channels` matrix
 * `config`: optional configuration object that pre-allocates temporary variables and choose settings.
 
-Returns a [`Coherence`](@ref) object.
+Returns a `Coherence` object.
+
+See also [`mt_coherence`](@ref) and [`MTCoherenceConfig`](@ref).
 """
 mt_coherence!
 
@@ -774,13 +798,14 @@ end
     mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range = nothing, demean=false, low_bias=true, kwargs...) where T
     mt_coherence(signal::AbstractMatrix, config::MTCoherenceConfig)
 
-Input: `signal`: `n_channels` x `n_samples` matrix
+Arguments:
 
-Optionally pass an `MTCoherenceConfig` to pre-allocate temporary variables and choose configuration settings.
+* `signal`: `n_channels` x `n_samples` matrix
+* Optionally pass an `MTCoherenceConfig` to pre-allocate temporary variables and choose configuration settings, otherwise, see [`MTCrossSpectraConfig`](@ref) for the meaning of the keyword arguments.
 
-Returns a [`Coherence`](@ref) object.
+Returns a `Coherence` object.
 
-See [`MTCrossSpectraConfig`](@ref) for the meaning of the keyword arguments.
+See also [`mt_coherence`](@ref) and [`MTCoherenceConfig`](@ref).
 """
 mt_coherence
 
