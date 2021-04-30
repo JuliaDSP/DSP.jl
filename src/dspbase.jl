@@ -690,76 +690,67 @@ with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 :same — Return the central part of the convolution, which is the same size as u.
 
 :valid — Return only parts of the convolution that are computed without zero-padded edges.
+
+Warning: `:same` and `:valid` will result in an extra copy of the result.
 """
-function conv(u, v; mode::Symbol = :full)
+function conv(u::AbstractArray{T, N},
+              v::AbstractArray{T, N};
+              mode::Symbol = :full) where {T<:BLAS.BlasFloat, N}
+    su = size(u)
+    sv = size(v)
     if mode == :full
-        conv_full(u, v)
+        if prod(su) >= prod(sv)
+            _conv(u, v, su, sv)
+        else
+            _conv(v, u, sv, su)
+        end
     elseif mode == :same
-        conv_same(u, v)
+        conv_res = conv(u, v)
+        outsize = CartesianIndex(Int.(floor.(sv ./2 .+ 1))...):CartesianIndex(Int.(floor.(sv ./ 2) .+ su)...)
+        conv_res[outsize]
     elseif mode == :valid
-        conv_valid(u, v)
+        conv_res = conv(u, v)
+        outsize = CartesianIndex(sv...):CartesianIndex(su...)
+        conv_res[outsize]
     else
         throw(ArgumentError("mode keyword argument must be :full or :same or :valid"))
     end
 end
 
-function conv_full(u::AbstractArray{T, N},
-              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
-    su = size(u)
-    sv = size(v)
-    if prod(su) >= prod(sv)
-        _conv(u, v, su, sv)
-    else
-        _conv(v, u, sv, su)
-    end
-end
-
-function conv_full(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N};
+              mode::Symbol = :full) where N
     fu, fv = promote(u, v)
-    conv_full(fu, fv)
+    conv(fu, fv, mode = mode)
 end
 
-conv_full(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
-    round.(Int, conv_full(float(u), float(v)))
+conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}; mode::Symbol = :full) where {N} =
+    round.(Int, conv(float(u), float(v), mode = mode))
 
-conv_full(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
-    conv_full(float(u), float(v))
+conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}; mode::Symbol = :full) where {N} =
+    conv(float(u), float(v), mode = mode)
 
-function conv_full(u::AbstractArray{<:Number, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
-    conv_full(float(u), v)
+function conv(u::AbstractArray{<:Number, N},
+              v::AbstractArray{<:BLAS.BlasFloat, N};
+              mode::Symbol = :full) where N
+    conv(float(u), v, mode = mode)
 end
 
-function conv_full(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:Number, N}) where N
-    conv_full(u, float(v))
+function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+              v::AbstractArray{<:Number, N};
+              mode::Symbol = :full) where N
+    conv(u, float(v), mode = mode)
 end
 
-function conv_full(A::AbstractArray{<:Number, M},
-              B::AbstractArray{<:Number, N}) where {M, N}
+function conv(A::AbstractArray{<:Number, M},
+              B::AbstractArray{<:Number, N};
+              mode::Symbol = :full) where {M, N}
     if (M < N)
-        conv_full(cat(A, dims=N)::AbstractArray{eltype(A), N}, B)
+        conv(cat(A, dims=N)::AbstractArray{eltype(A), N}, B, mode = mode)
     else
         @assert M > N
-        conv_full(A, cat(B, dims=M)::AbstractArray{eltype(B), M})
+        conv(A, cat(B, dims=M)::AbstractArray{eltype(B), M}, mode = mode)
     end
-end
-
-function conv_same(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
-    su = size(u)
-    sv = size(v)
-    conv_res = conv_full(u, v)
-    outsize = CartesianIndex(Int.(floor.(sv ./2 .+ 1))...):CartesianIndex(Int.(floor.(sv ./ 2) .+ su)...)
-    conv_res[outsize]
-end
-
-function conv_valid(u::AbstractArray{T, N}, v::AbstractArray{T, N}) where {T, N}
-    su = size(u)
-    sv = size(v)
-    conv_res = conv_full(u, v)
-    outsize = CartesianIndex(sv...):CartesianIndex(su...)
-    conv_res[outsize]
 end
 
 """
