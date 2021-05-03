@@ -795,7 +795,7 @@ end
 
 
 """
-    mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range = nothing, demean=false, low_bias=true, kwargs...) where T
+    mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range = nothing, demean=false, kwargs...) where T
     mt_coherence(signal::AbstractMatrix, config::MTCoherenceConfig)
 
 Arguments:
