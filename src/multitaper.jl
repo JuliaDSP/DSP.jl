@@ -714,7 +714,7 @@ function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
     output .= zero(T)
     @inbounds for ch2 in 1:n_channels
         for ch1 in (ch2 + 1):n_channels # lower triangular matrix
-            for f in 1:n_freqs # average over frequency
+            for f in 1:n_freqs
                 output[ch1, ch2, f] += real(abs(cs_matrix[ch1, ch2, f]) /
                                          (sqrt(cs_matrix[ch1, ch1, f] *
                                                cs_matrix[ch2, ch2, f])))
