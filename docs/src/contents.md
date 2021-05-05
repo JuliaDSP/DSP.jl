@@ -13,5 +13,6 @@ Pages = ["periodograms.md",
     "convolutions.md",
     "lpc.md",
     "index.md",
+    "findpeaks.md",
 ]
 ```

@@ -15,9 +15,10 @@ include("periodograms.jl")
 include("Filters/Filters.jl")
 include("lpc.jl")
 include("estimation.jl")
+include("findpeaks.jl")
 
 using Reexport
-@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation
+@reexport using .Util, .Windows, .Periodograms, .Filters, .LPC, .Unwrap, .Estimation, .Findpeaks
 
 include("deprecated.jl")
 end
