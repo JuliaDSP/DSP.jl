@@ -20,7 +20,7 @@ jobs:
           - os: macOS-latest
             julia-arch: x86
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
