@@ -351,7 +351,9 @@ end
     Fsamp = 180
     responsetype = Bandpass(bp1, bp2; fs = Fsamp)
     designmethod = Elliptic(11, 0.25, 40)
-    bpass = digitalfilter(responsetype, designmethod)
-    H = SecondOrderSections(bpass) # this shouldn't throw
-    @test H isa SecondOrderSections
+    H = digitalfilter(responsetype, designmethod)
+    H′ = ZeroPoleGain(SecondOrderSections(H))
+    @test sort(H.p, by=z->(real(z), imag(z))) ≈ sort(H′.p, by=z->(real(z), imag(z)))
+    @test sort(H.z, by=z->(real(z), imag(z))) ≈ sort(H′.z, by=z->(real(z), imag(z)))
+    @test H.k ≈ H′.k
 end

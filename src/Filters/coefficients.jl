@@ -322,9 +322,6 @@ function groupzp(z, p)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
-            if closest_zero_idx > length(z)
-                closest_zero_idx = length(z)
-            end
             groupedz[i] = splice!(z, closest_zero_idx)
         end
         i += 1
@@ -337,7 +334,7 @@ end
 # Sort zeros or poles lexicographically (so that poles are adjacent to
 # their conjugates). Handle repeated values. Split real and complex
 # values into separate vectors. Ensure that each value has a conjugate.
-function split_real_complex(x::Vector{T}) where T
+function split_real_complex(x::Vector{T}; sortby=nothing) where T
     # Get counts and store in a Dict
     d = Dict{T,Int}()
     for v in x
@@ -349,7 +346,11 @@ function split_real_complex(x::Vector{T}) where T
 
     c = T[]
     r = typeof(real(zero(T)))[]
-    for k in keys(d)
+    ks = collect(keys(d))
+    if sortby !== nothing
+        sort!(ks, by=sortby)
+    end
+    for k in ks
         if imag(k) != 0
             if !haskey(d, conj(k)) || d[k] != d[conj(k)]
                 # No match for conjugate
@@ -381,12 +382,8 @@ function SecondOrderSections{D,T,G}(f::ZeroPoleGain{D,Z,P}) where {D,T,G,Z,P}
     # Split real and complex poles
     (complexz, realz, matched) = split_real_complex(z)
     matched || throw(ArgumentError("complex zeros could not be matched to their conjugates"))
-    (complexp, realp, matched) = split_real_complex(p)
+    (complexp, realp, matched) = split_real_complex(p; sortby=x->abs(abs(x) - 1))
     matched || throw(ArgumentError("complex poles could not be matched to their conjugates"))
-
-    # Sort poles according to distance to unit circle (nearest first)
-    sort!(complexp, by=x->abs(abs(x) - 1))
-    sort!(realp, by=x->abs(abs(x) - 1))
 
     # Group complex poles with closest complex zeros
     z1, p1 = groupzp(complexz, complexp)
