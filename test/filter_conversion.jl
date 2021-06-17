@@ -344,3 +344,14 @@ end
         @test coefb(f) == [0.0, 0.0, 1.0]
     end
 end
+
+@testset "issue #432" begin
+    bp1 = 0.75
+    bp2 = 10.0
+    Fsamp = 180
+    responsetype = Bandpass(bp1, bp2; fs = Fsamp)
+    designmethod = Elliptic(11, 0.25, 40)
+    bpass = digitalfilter(responsetype, designmethod)
+    H = SecondOrderSections(bpass) # this shouldn't throw
+    @test H isa SecondOrderSections
+end

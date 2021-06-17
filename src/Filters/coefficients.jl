@@ -322,6 +322,9 @@ function groupzp(z, p)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
+            if closest_zero_idx > length(z)
+                closest_zero_idx = length(z)
+            end
             groupedz[i] = splice!(z, closest_zero_idx)
         end
         i += 1
