@@ -134,7 +134,7 @@ struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
     state::S
 
     function DF2TFilter{Ti,Si}(coef::PolynomialRatio{:z}, state::Vector) where {Ti,Si}
-        length(state) == length(coef.a)-1 == length(coef.b)-1 ||
+        length(state) == max(length(coefa(coef)), length(coefb(coef)))-1 ||
             throw(ArgumentError("length of state vector must match filter order"))
         new{Ti,Si}(coef, state)
     end
@@ -151,16 +151,22 @@ end
 
 ## PolynomialRatio
 DF2TFilter(coef::PolynomialRatio{:z,T},
-           state::Vector{S}=zeros(T, max(length(coef.a), length(coef.b))-1)) where {T,S} =
+           state::Vector{S}=zeros(T, max(length(coefa(coef)), length(coefb(coef)))-1)) where {T,S} =
     DF2TFilter{PolynomialRatio{:z,T}, Vector{S}}(coef, state)
 
 function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
+    n = length(si) + 1
     b = coefb(f.coef)
+    if length(b) < n
+        append!(b, zeros(n-length(b)))
+    end
     a = coefa(f.coef)
-    n = length(b)
+    if length(a) < n
+        append!(a, zeros(n-length(a)))
+    end
     if n == 1
         mul!(out, x, b[1])
     else
