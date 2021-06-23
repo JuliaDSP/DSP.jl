@@ -75,6 +75,7 @@ end
     blackman_jl = blackman(128)
     blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
     @test blackman_jl ≈ blackman_ml
+    @test minimum(blackman_jl) == 0.0
 
     kaiser_jl = kaiser(128, 0.4/π)
     kaiser_ml = readdlm(joinpath(dirname(@__FILE__), "data", "kaiser128,0.4.txt"), '\t')

@@ -1,5 +1,6 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
 using DSP, Test, FilterTestHelpers
+using DelimitedFiles: readdlm
 
 #
 # Butterworth filter prototype
@@ -170,14 +171,9 @@ end
     matlab_k = 0.8912509381337452
     matlab_f = ZeroPoleGain(matlab_z, matlab_p, matlab_k)
 
-    # The gain shows a greater discrepancy with the gain of the enhanced
-    # precision filter than MATLAB's, but AFAICT our filter is still more
-    # accurate: the poles and zeros are each more accurate, and computing
-    # the gain in enhanced precision yields the same value.
-
     f = Chebyshev2(20, 1)
     zpkfilter_eq(f, matlab_f)
-    zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 20, 1), relerr=4)
+    zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 20, 1), compare_gain_at=0)
 
     # 19 pole Butterworth filter prototype with 1 dB passband ripple from MATLAB 2013b:
     #=
@@ -219,7 +215,7 @@ end
 
     f = Chebyshev2(19, 1)
     zpkfilter_eq(f, matlab_f)
-    zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 19, 1), relerr=2)
+    zpkfilter_accuracy(f, matlab_f, Chebyshev2(BigFloat, 19, 1), compare_gain_at=0)
 end
 
 #
@@ -369,7 +365,7 @@ end
         -0.97236994351794+0.2334453500964366im,
         -0.97236994351794-0.2334453500964366im]
     # println(ComplexF64([sort(f.p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt) sort(m_p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt)]))
-    zpkfilter_accuracy(f, ZeroPoleGain(Float64[], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, relerr=9)
+    zpkfilter_accuracy(f, ZeroPoleGain(Float64[], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, compare_gain_at=0, relerr=2)
 end
 
 #

@@ -344,3 +344,16 @@ end
         @test coefb(f) == [0.0, 0.0, 1.0]
     end
 end
+
+@testset "issue #432" begin
+    bp1 = 0.75
+    bp2 = 10.0
+    Fsamp = 180
+    responsetype = Bandpass(bp1, bp2; fs = Fsamp)
+    designmethod = Elliptic(11, 0.25, 40)
+    H = digitalfilter(responsetype, designmethod)
+    H′ = ZeroPoleGain(SecondOrderSections(H))
+    @test sort(H.p, by=z->(real(z), imag(z))) ≈ sort(H′.p, by=z->(real(z), imag(z)))
+    @test sort(H.z, by=z->(real(z), imag(z))) ≈ sort(H′.z, by=z->(real(z), imag(z)))
+    @test H.k ≈ H′.k
+end

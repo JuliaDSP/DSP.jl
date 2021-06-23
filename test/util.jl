@@ -90,7 +90,23 @@ end
 @test shiftin!([1,2,3,4],[5,6]) ≈ [3,4,5,6]
 
 ## arraysplit
-@test collect(DSP.arraysplit(collect(1:10), 3, 1)) == [ collect(1.0:3), collect(3.0:5), collect(5.0:7), collect(7.0:9)]
+
+# utility for checking our definition off `size` for `arraysplit` matches how many times we can iterate it
+function _length(itr)
+    c = 0
+    for x in itr
+        c += 1
+    end
+    return c
+end
+
+@testset "`arraysplit`" begin
+    @test collect(DSP.arraysplit(collect(1:10), 3, 1)) == [ collect(1.0:3), collect(3.0:5), collect(5.0:7), collect(7.0:9)]
+
+    @testset "`arraysplit` with `n_samples`=$(n_samples), `n_samples_per_window`=$(n_samples_per_window), `n_overlap`=$(n_overlap) " for n_samples in (20:20:100), n_samples_per_window in (20:20:100), n_overlap in (0:20:(n_samples_per_window-1))
+        @test _length(arraysplit(1:n_samples, n_samples_per_window, n_overlap)) == length(arraysplit(1:n_samples, n_samples_per_window, n_overlap))
+    end
+end
 
 # DELAY FINDING UTILITIES
 
