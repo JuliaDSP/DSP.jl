@@ -24,4 +24,5 @@ deploydocs(
     target = "build",
     deps   = nothing,
     make   = nothing,
+    push_preview = true,
 )

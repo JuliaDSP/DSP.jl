@@ -46,6 +46,21 @@ using Test
     @test y4_jl ≈ y4_ml
 end
 
+@testset "matrix signal" begin
+    rate   = 1//2
+    x_ml   = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
+    h1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
+    y1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
+
+    X = [x_ml 2x_ml]
+    y1_jl  = resample(X, rate, h1_ml, dims=1)
+    @test y1_jl ≈ [y1_ml 2y1_ml]
+
+    X = [x_ml'; 2x_ml']
+    y1_jl  = resample(X, rate, h1_ml, dims=2)
+    @test y1_jl ≈ [y1_ml'; 2y1_ml']
+end
+
 @testset "irrational ratio" begin
     ratio    = 3.141592653589793
     cycles   = 2

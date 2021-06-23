@@ -58,7 +58,7 @@ function tffilter_accuracy(f1, f2, accurate_f)
     accuracy_check(loss(a1, accurate_a), loss(a2, accurate_a), "a")
 end
 
-function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
+function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothing, eps=nothing)
     z1, p1 = sort(f1.z, lt=lt), sort(f1.p, lt=lt)
     z2, p2 = sort(f2.z, lt=lt), sort(f2.p, lt=lt)
     accurate_z, accurate_p = sort(accurate_f.z, lt=lt), sort(accurate_f.p, lt=lt)
@@ -84,7 +84,15 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, eps=nothing)
         @test f2.k ≈ accurate_f.k
     end
     accuracy_check(loss(p1, accurate_p), loss(p2, accurate_p), "p", relerr)
-    accuracy_check(loss(f1.k, accurate_f.k), loss(f2.k, accurate_f.k), "k", relerr)
+    if compare_gain_at === nothing
+        accuracy_check(loss(f1.k, accurate_f.k), loss(f2.k, accurate_f.k), "k", relerr)
+    else
+        jω = compare_gain_at*im
+        gain1 = Float64(abs(f1.k * prod(Complex{BigFloat}.(z1) .- jω) / prod(Complex{BigFloat}.(p1) .- jω)))
+        gain2 = Float64(abs(f2.k * prod(Complex{BigFloat}.(z2) .- jω) / prod(Complex{BigFloat}.(p2) .- jω)))
+        accurate_gain = abs(accurate_f.k * prod(Complex{BigFloat}.(accurate_z) .- jω) / prod(Complex{BigFloat}.(accurate_p) .- jω))
+        accuracy_check(loss(gain1, accurate_gain), loss(gain2, accurate_gain), "k", relerr)
+    end
 end
 
 # Convert an SOS matrix, as returned by MATLAB, to an SecondOrderSections
