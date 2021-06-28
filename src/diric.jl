@@ -1,6 +1,3 @@
-# diric.jl Dirichlet kernel
-# 2021-03-19, Jeff Fessler, University of Michigan
-
 export diric
 
 """
