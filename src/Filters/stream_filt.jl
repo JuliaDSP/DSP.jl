@@ -734,11 +734,11 @@ function resample(x::AbstractVector, rate::Real)
 end
 
 """
-    resample(x::AbstractMatrix, rate::Real, h::Vector = resample_filter(rate); dims)
+    resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
 
-Resample a matrix `x` along dimension `dims`.
+Resample an array `x` along dimension `dims`.
 """
-function resample(x::AbstractMatrix, rate::Real, h::Vector = resample_filter(rate); dims)
+function resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
     mapslices(x; dims=dims) do x
         resample(x, rate, h)
     end
