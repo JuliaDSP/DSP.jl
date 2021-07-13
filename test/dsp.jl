@@ -68,6 +68,13 @@ end
         @test_throws MethodError conv([sin], [cos])
     end
 
+    @testset "old-style-seperable-warns" begin
+        a = [1, 2]
+        b = [3, 4]
+        c = [1 2; 3 4]
+        @test conv(a, b, c) == conv(conv(a, b), c)
+        @test_warn "seperable" conv(a, b, c)
+    end
 
     @testset "conv-2D" begin
         a =[1 2 1;
@@ -109,31 +116,6 @@ end
         offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
         @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
-    end
-
-    @testset "seperable conv" begin
-        u = [1, 2, 3, 2, 1]
-        v = [6, 7, 3, 2]
-        A = [1 2 3 4 5 6 7;
-             8 9 10 11 12 13 14;
-             15 16 17 18 19 20 21;
-             22 23 24 25 26 27 28]
-        exp = [6 19 35 53 71 89 107 77 33 14;
-               60 148 217 285 339 393 447 315 134 56;
-               204 478 658 822 930 1038 1146 798 338 140;
-               468 1062 1400 1684 1828 1972 2116 1456 614 252;
-               636 1426 1848 2188 2332 2476 2620 1792 754 308;
-               624 1388 1778 2082 2190 2298 2406 1638 688 280;
-               354 785 1001 1167 1221 1275 1329 903 379 154;
-               132 292 371 431 449 467 485 329 138 56]
-        @test_broken conv(u, v, A) == exp
-
-        fu = convert(Array{Float64}, u)
-        fv = convert(Array{Float64}, v)
-        fA = convert(Array{Float64}, A)
-        fexp = convert(Array{Float64}, exp)
-        @test conv(fu, fv, fA) ≈ fexp
-
     end
 
     @testset "conv-ND" begin
@@ -191,10 +173,10 @@ end
             sv, v = os_test_data(eltype, nv, N)
             sout = su .+ sv .- 1
             out = _conv_similar(u, sout, axes(u), axes(v))
-            unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
+            unsafe_conv_kern_os!(out, u, v, (), su, sv, sout, nffts)
             os_out = copy(out)
             fft_nfft = nextfastfft(sout)
-            _conv_kern_fft!(out, u, v, su, sv, sout, fft_nfft)
+            _conv_kern_fft!(out, (u, v), sout, fft_nfft)
             @test out ≈ os_out
         end
         Ns = [1, 2, 3]
@@ -202,6 +184,7 @@ end
         nlarge = 128
 
         regular_nsmall = [12, 128]
+
         for numdim in Ns
             for elt in eltypes
                 for nsmall in regular_nsmall
@@ -227,6 +210,70 @@ end
         # three blocks need to be padded in the following case:
         test_os(Float64, 25, 4, Val{1}(), 16)
     end
+
+
+    @testset "N-arg-conv" begin
+        u = [1, 2, 3, 2, 1]
+        v = transpose([6, 7, 3, 2])
+        A = [1 2 3 4 5 6 7;
+             8 9 10 11 12 13 14;
+             15 16 17 18 19 20 21;
+             22 23 24 25 26 27 28]
+        exp = [6 19 35 53 71 89 107 77 33 14;
+               60 148 217 285 339 393 447 315 134 56;
+               204 478 658 822 930 1038 1146 798 338 140;
+               468 1062 1400 1684 1828 1972 2116 1456 614 252;
+               636 1426 1848 2188 2332 2476 2620 1792 754 308;
+               624 1388 1778 2082 2190 2298 2406 1638 688 280;
+               354 785 1001 1167 1221 1275 1329 903 379 154;
+               132 292 371 431 449 467 485 329 138 56]
+        @test conv(u, v, A) == exp
+
+        fu = convert(Array{Float64}, u)
+        fv = convert(Array{Float64}, v)
+        fA = convert(Array{Float64}, A)
+        fexp = convert(Array{Float64}, exp)
+        @test conv(fu, fv, fA) ≈ fexp
+
+        function compare_to_naive(arrs...)
+            function ncv(arrs...)
+                if length(arrs) == 1
+                    arrs[1]
+                else
+                    ncv(conv(arrs[1], arrs[2]), arrs[3:end]...)
+                end
+            end
+            tconv = @elapsed rconv = conv(arrs...)
+            tncv = @elapsed  rncv = ncv(arrs...)
+            @test rconv ≈ rncv
+        end
+
+       compare_to_naive([1 2 1;
+                         2 3 1;
+                         1 2 1],
+                        [3 2;
+                         0 1],
+                        convert(Array, reshape(1:27, (3, 3, 3))),
+                        [1 2 3 4 5 6 7;
+                         8 9 10 11 12 13 14;
+                         15 16 17 18 19 20 21;
+                         22 23 24 25 26 27 28])
+        compare_to_naive(u, transpose(v), A, fu, fv, fA, fexp)
+        compare_to_naive(u, transpose(v), A, fu, fv, fA, fexp)
+        compare_to_naive(u, v, A)
+        compare_to_naive(fu, fv, fA)
+        compare_to_naive(u, v, A, v, u, A, u, v, v, v, transpose(v), transpose(u))
+        compare_to_naive(repeat(exp, 300),
+                         A, exp, v, u)
+        compare_to_naive(repeat(fexp, 300),
+                         A, exp, fv, u)
+        compare_to_naive(repeat(complex.(fexp, 140), 30),
+                         A, exp, fv, u)
+        compare_to_naive(repeat([1, 2, 3, 4, 5, 5, 6, 7 ,9, 10], 100000),
+                         [1, 2, 3, 4], [5, 6, 7, 8])
+    end
+
+
 end
 
 @testset "xcorr" begin
