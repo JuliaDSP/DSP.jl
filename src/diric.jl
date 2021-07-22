@@ -1,7 +1,7 @@
 export diric
 
 """
-    kernel = diric(Ω::Real, n::Int; atol)
+    kernel = diric(Ω::Real, n::Int)
 
 Dirichlet kernel, also known as periodic sinc function,
 where `n` should be a positive integer.
@@ -9,11 +9,13 @@ Returns `sin(Ω * n/2) / (n * sin(Ω / 2))` typically,
 but `±1` when `Ω` is a multiple of 2π.
 
 In the usual case where 'n' is odd, the output is equivalent to
-``1/n \\sum_{k=-(n+1)/2}^{(n+1)/2} e^{i k Ω}``,
+``1/n \\sum_{k=-(n-1)/2}^{(n-1)/2} e^{i k Ω}``,
 which is the discrete-time Fourier transform (DTFT)
 of a `n`-point moving average filter.
 
 When `n` is odd or even, the function is 2π or 4π periodic, respectively.
+The formula for general `n` is
+`diric(Ω,n) = ``e^{i (n-1) Ω/2}/n \\sum_{k=0}^{n-1} e^{i k Ω}``.
 
 When `Ω` is an `AbstractFloat` (e.g., `Float32` or `BigFloat`),
 the return type matches that of `Ω`.  Otherwise the return type is `Float64`.
@@ -25,27 +27,33 @@ This implementation treats inputs near multiples of 2π fairly carefully.
 If the denominator `sin(Ω/2)` is close to 0, then this function uses
 an accurate 2nd-order Taylor expansion rather than simple division. 
 
-The optional argument `atol` defaults to `sqrt(eps(T))`
-and is used to assess whether `sin(Ω/2) ≈ 0`.
-Here `T` is the type of the floating-point argument `Ω`.
-This default tolerance originates from [`rtoldefault`](@ref)
-used in [`isapprox`](@ref).
+# Examples
+
+```jldoctest
+julia> round.(diric.((-2:0.5:2)*π, 5), digits=9)'
+1×9 adjoint(::Vector{Float64}) with eltype Float64:
+ 1.0  -0.2  0.2  -0.2  1.0  -0.2  0.2  -0.2  1.0
+
+julia> diric(0, 4)
+1.0
+```
 """
-function diric(Ω::T, n::Int; atol::Real=sqrt(eps(T))) where T <: AbstractFloat
-    n <= 0 && throw(ArgumentError("n=$n is non-positive"))
+function diric(Ω::T, n::Int) where T <: AbstractFloat
+    n > 0 || throw(ArgumentError("n=$n is non-positive"))
+    if isodd(n)
+        Ω = mod2pi(Ω + π) - π # [-π,π)
+    else
+        Ω = 2 * (mod2pi(Ω/2 + π) - π) # [-2π,2π)
+    end
+
     denom = sin(Ω / 2)
-    if abs(denom) ≤ atol # denom ≈ 0 ?
-        if isodd(n)
-            ω = mod2pi(Ω + π) - π # (-π,π)
-        else
-            π2 = 2T(π)
-            ω = mod(Ω + π2, 4T(π)) - π2 # (-2π,2π)
-            if abs(ω) ≈ π2
-                # 2nd-order Taylor expansion near ±2π
-                return (abs(ω)-π2)^2 * (n^2 - 1) / 24 - one(T)
-            end
+    if abs(denom) ≤ eps(T) # denom ≈ 0 ?
+        if iseven(n) && abs(Ω) ≈ 2T(π)
+            # 2nd-order Taylor expansion near ±2π for even n
+            return abs2(abs(Ω)-2T(π)) * (n*n - 1) / 24 - one(T)
         end
-        return one(T) - ω^2 * (n^2 - 1) / 24 # 2nd-order Taylor near 0
+    #   return one(T) - abs2(Ω) * (n*n - 1) / 24 # 2nd-order Taylor near 0
+        return one(T)
     end
 
     return sin(Ω * n/2) / (n * denom) # typical case
