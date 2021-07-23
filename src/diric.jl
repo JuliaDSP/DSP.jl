@@ -41,7 +41,7 @@ julia> diric(0, 4)
 function diric(Ω::T, n::Int) where T <: AbstractFloat
     n > 0 || throw(ArgumentError("n=$n is non-positive"))
     if isodd(n)
-        Ω = mod2pi(Ω + π) - π # [-π,π)
+        Ω = rem2pi(Ω, RoundNearest) # [-π,π)
     else
         Ω = 2 * (mod2pi(Ω/2 + π) - π) # [-2π,2π)
     end
