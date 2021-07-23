@@ -43,7 +43,7 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
     if isodd(n)
         Ω = rem2pi(Ω, RoundNearest) # [-π,π)
     else
-        Ω = 2 * (mod2pi(Ω/2 + π) - π) # [-2π,2π)
+        Ω = 2 * rem2pi(Ω/2, RoundNearest) # [-2π,2π)
     end
 
     denom = sin(Ω / 2)
