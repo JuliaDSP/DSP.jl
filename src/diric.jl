@@ -47,7 +47,7 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
         Ω = (VERSION < v"1.1") ?
             BigFloat(Ω, 2*precision(T)) :
             BigFloat(Ω ; precision = 2*precision(T))
-        Ω = 2 * rem2pi(abs(Ω)/2, RoundNearest) # [0,2π)
+        Ω = 2 * rem2pi(abs(Ω)/2, RoundNearest) # [-2π,2π)
         if Ω > π
             sign = -1
             Ω -= 2π # (-π,π]
