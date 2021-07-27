@@ -50,7 +50,7 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
         Ω = 2 * rem2pi(abs(Ω)/2, RoundNearest) # [-2π,2π)
         if Ω > π
             sign = -1
-            Ω -= 2π # (-π,π]
+            Ω -= 2π # (-π,0]
         end
     end
 
