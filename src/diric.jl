@@ -51,6 +51,9 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
         if Ω > π
             sign = -1
             Ω -= 2π # (-π,0]
+        else if Ω < π
+            sign = -1
+            Ω += 2π # (0,π]
         end
     end
 
