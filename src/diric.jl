@@ -43,17 +43,14 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
     sign = 1
     if isodd(n)
         Ω = rem2pi(Ω, RoundNearest) # [-π,π)
-    else
-        Ω = (VERSION < v"1.1") ?
-            BigFloat(Ω, 2*precision(T)) :
-            BigFloat(Ω ; precision = 2*precision(T))
-        Ω = 2 * rem2pi(abs(Ω)/2, RoundNearest) # [-2π,2π)
-        if Ω > π
+    else # wrap to interval [-π,π) to improve precision near ±2π
+        Ω = 2 * rem2pi(Ω/2, RoundNearest) # [-2π,2π)
+        if Ω > π # [π,2π)
             sign = -1
-            Ω -= 2π # (-π,0]
-        else if Ω < π
+            Ω -= 2π # [-π,0)
+        elseif Ω < -π # [-2π,-π)
             sign = -1
-            Ω += 2π # (0,π]
+            Ω += 2π # [0,π)
         end
     end
 
