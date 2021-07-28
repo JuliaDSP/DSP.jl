@@ -15,17 +15,11 @@ of a `n`-point moving average filter.
 
 When `n` is odd or even, the function is 2π or 4π periodic, respectively.
 The formula for general `n` is
-`diric(Ω,n) = ``e^{-i (n-1) Ω/2}/n \\sum_{k=0}^{n-1} e^{i k Ω}``.
-
-When `Ω` is an `AbstractFloat` (e.g., `Float32` or `BigFloat`),
-the return type matches that of `Ω`.  Otherwise the return type is `Float64`.
+`diric(Ω,n) = ``e^{-i (n-1) Ω/2}/n \\sum_{k=0}^{n-1} e^{i k Ω}``,
+which is a real and symmetric function of `Ω`.
 
 As of 2021-03-19, the Wikipedia definition has different factors.
 The definition here is consistent with scipy and other software frameworks.
-
-This implementation treats inputs near multiples of 2π fairly carefully.
-If the denominator `sin(Ω/2)` is close to 0, then this function uses
-an accurate 2nd-order Taylor expansion rather than simple division. 
 
 # Examples
 
@@ -39,36 +33,32 @@ julia> diric(0, 4)
 ```
 """
 function diric(Ω::T, n::Int) where T <: AbstractFloat
-    n > 0 || throw(ArgumentError("n=$n is non-positive"))
-    sign = 1
+    n > 0 || throw(ArgumentError("n=$n not positive"))
+    sign = one(T)
     if isodd(n)
         Ω = rem2pi(Ω, RoundNearest) # [-π,π)
     else # wrap to interval [-π,π) to improve precision near ±2π
         Ω = 2 * rem2pi(Ω/2, RoundNearest) # [-2π,2π)
         if Ω > π # [π,2π)
-            sign = -1
-            Ω -= 2π # [-π,0)
+            sign = -one(T)
+            Ω -= T(2π) # [-π,0)
         elseif Ω < -π # [-2π,-π)
-            sign = -1
-            Ω += 2π # [0,π)
+            sign = -one(T)
+            Ω += T(2π) # [0,π)
         end
     end
 
     denom = sin(Ω / 2)
     atol = eps(T)
     if abs(denom) ≤ atol # denom ≈ 0 ?
-    #   return one(T) - abs2(Ω) * (n*n - 1) / 24 # 2nd-order Taylor near 0
-        return T(sign)
+        return sign
     end
 
-    return T(sign * sin(Ω * n/2) / (n * denom)) # typical case
+    return sign * sin(Ω * n/2) / (n * denom) # typical case
 end
 
 # handle non AbstractFloat types (e.g., Int, Rational)
 diric(Ω::Real, n::Int) = diric(float(Ω), n::Int)
 
-# handle π exactly
-function diric(::Irrational{:π}, n::Int)
-    n > 0 || throw(ArgumentError("n=$n is non-positive"))
-    return 1 // n
-end
+# handle π
+diric(::Irrational{:π}, n::Int) = diric(float(π), n)
