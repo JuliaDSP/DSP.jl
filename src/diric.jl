@@ -65,7 +65,7 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
 end
 
 # handle non AbstractFloat types (e.g., Int, Rational)
-diric(Ω::Real, n::Int) = diric(Float64(Ω), n::Int)
+diric(Ω::Real, n::Int) = diric(float(Ω), n::Int)
 
 # handle π exactly
 function diric(::Irrational{:π}, n::Int)
