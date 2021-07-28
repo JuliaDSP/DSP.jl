@@ -57,12 +57,6 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
     denom = sin(Ω / 2)
     atol = eps(T)
     if abs(denom) ≤ atol # denom ≈ 0 ?
-#=
-        if iseven(n) && abs(Ω) ≈ 2T(π)
-            # 2nd-order Taylor expansion near ±2π for even n
-            return abs2(abs(Ω)-2T(π)) * (n*n - 1) / 24 - one(T)
-        end
-=#
     #   return one(T) - abs2(Ω) * (n*n - 1) / 24 # 2nd-order Taylor near 0
         return sign * one(T)
     end
