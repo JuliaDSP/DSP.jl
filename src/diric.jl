@@ -59,6 +59,3 @@ end
 
 # handle non AbstractFloat types (e.g., Int, Rational)
 diric(Ω::Real, n::Int) = diric(float(Ω), n)
-
-# handle π
-diric(::Irrational{:π}, n::Int) = diric(float(π), n)
