@@ -1,7 +1,7 @@
 export diric
 
 """
-    kernel = diric(Ω::Real, n::Int)
+    kernel = diric(Ω::Real, n::Integer)
 
 Dirichlet kernel, also known as periodic sinc function,
 where `n` should be a positive integer.
@@ -32,7 +32,7 @@ julia> diric(0, 4)
 1.0
 ```
 """
-function diric(Ω::T, n::Int) where T <: AbstractFloat
+function diric(Ω::T, n::Integer) where T <: AbstractFloat
     n > 0 || throw(ArgumentError("n=$n not positive"))
     sign = one(T)
     if isodd(n)
@@ -57,5 +57,5 @@ function diric(Ω::T, n::Int) where T <: AbstractFloat
     return sign * sin(Ω * n/2) / (n * denom) # typical case
 end
 
-# handle non AbstractFloat types (e.g., Int, Rational)
-diric(Ω::Real, n::Int) = diric(float(Ω), n)
+# handle non AbstractFloat types (e.g., Int, Rational, π)
+diric(Ω::Real, n::Integer) = diric(float(Ω), n)
