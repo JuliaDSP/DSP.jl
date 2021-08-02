@@ -23,4 +23,5 @@ shiftsignal
 shiftsignal!
 alignsignals
 alignsignals!
+diric
 ```
