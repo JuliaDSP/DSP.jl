@@ -3,6 +3,8 @@ DSP.jl
 
 [![CI](https://github.com/JuliaDSP/DSP.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaDSP/DSP.jl/actions/workflows/CI.yml)
 [![Coverage Status](https://coveralls.io/repos/JuliaDSP/DSP.jl/badge.svg?branch=master)](https://coveralls.io/r/JuliaDSP/DSP.jl?branch=master)
+[![Documentation (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.juliadsp.org/stable/contents/)
+[![Documentation (latest)](https://img.shields.io/badge/docs-dev-blue.svg)](https://docs.juliadsp.org/latest/contents/)
 
 DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia. These include:
 
