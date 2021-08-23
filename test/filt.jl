@@ -49,6 +49,12 @@ using DSP, Test, Random, FilterTestHelpers
 
     # Test simple scaling with DF2TFilter
     @test filt(DF2TFilter(PolynomialRatio([3.7], [4.2])), x) == x * (3.7/4.2)
+
+    # DF2TFilter{<:PolynomialRatio} with unequal numerator/denominator orders (issue #436)
+    @test filt(DF2TFilter(PolynomialRatio([0, 0, 1, 0.8], [1])), [1; zeros(9)]) == [0; 0; 1; 0.8; zeros(6)]
+    @test filt([0, 0, 1, 0.8], [1], [1; zeros(9)]) == [0; 0; 1; 0.8; zeros(6)]
+    @test filt(DF2TFilter(PolynomialRatio([1], [1, -0.5])), [1; zeros(9)]) ≈ 0.5.^(0:9)
+    @test filt([1], [1, -0.5], [1; zeros(9)]) ≈ 0.5.^(0:9)
 end
 
 #

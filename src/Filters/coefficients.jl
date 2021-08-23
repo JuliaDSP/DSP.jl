@@ -130,8 +130,8 @@ PolynomialRatio{D}(f::PolynomialRatio{D,T}) where {D,T} = PolynomialRatio{D,T}(f
 Base.promote_rule(::Type{PolynomialRatio{D,T}}, ::Type{PolynomialRatio{D,S}}) where {D,T,S} = PolynomialRatio{D,promote_type(T,S)}
 
 function PolynomialRatio{D,T}(f::ZeroPoleGain{D}) where {D,T<:Real}
-    b = convert(LaurentPolynomial{T}, real(f.k * fromroots(f.z)))
-    a = convert(LaurentPolynomial{T}, real(fromroots(f.p)))
+    b = convert(LaurentPolynomial{T}, real(f.k * fromroots(f.z; var=D)))
+    a = convert(LaurentPolynomial{T}, real(fromroots(f.p; var=D)))
     return PolynomialRatio{D,T}(b, a)
 end
 PolynomialRatio{D}(f::ZeroPoleGain{D,Z,P,K}) where {D,Z,P,K} =
