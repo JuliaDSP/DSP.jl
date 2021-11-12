@@ -5,6 +5,7 @@ using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
 using FFTW
 
 export  rect,
+        hann,
         hanning,
         hamming,
         tukey,
@@ -159,7 +160,7 @@ The window is defined by sampling the continuous function:
 
 in the range `[-0.5, 0.5]`
 
-The `hanning` window satisfies the Constant Overlap-Add (COLA) property with an
+The `hanning` window satisfies the Constant Overlap-Add (COLA) property with a
 hop of 0.5, which means that adding together a sequence of delayed windows with
 50% overlap will result in a constant signal. This is useful when synthesizing
 a signal from a number of overlapping frames (each with a roughly rectangular
@@ -176,6 +177,7 @@ function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
         0.5*(1+cos(2pi*x))
     end
 end
+hann = hanning
 
 """
 $hamming_winplot
