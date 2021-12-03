@@ -1,12 +1,12 @@
 
 #
-# Prototype filter transformations
+# Butterworth prototype filter transformations
 #
 
-_toprototype(Wp::Real, Ws::Real, ftype::Lowpass) = Ws/Wp
-_toprototype(Wp::Real, Ws::Real, ftype::Highpass) = Wp/Ws
+_toprototype(Wp::Real, Ws::Real, ftype::Type{Lowpass}) = Ws/Wp
+_toprototype(Wp::Real, Ws::Real, ftype::Type{Highpass}) = Wp/Ws
 
-function _toprototype(Wp::Vector{Real}, Ws::Vector{Real}, ftype::Bandpass) 
+function _toprototype(Wp::Vector{Real}, Ws::Vector{Real}, ftype::Type{Bandpass}) 
     # bandpass filter must have two corner frequencies we're computing with
     @assert length(Ws) == 2
     @assert length(Wp) == 2
@@ -14,17 +14,17 @@ function _toprototype(Wp::Vector{Real}, Ws::Vector{Real}, ftype::Bandpass)
     Wn
 end
 
-_fromprototype(Wp::Real, Wscale::Real, ftype::Lowpass) = Wp*Wscale
-_fromprototype(Wp::Real, Wscale::Real, ftype::Highpass) = Wp/Wscale
+_fromprototype(Wp::Real, Wscale::Real, ftype::Type{Lowpass}) = Wp*Wscale
+_fromprototype(Wp::Real, Wscale::Real, ftype::Type{Highpass}) = Wp/Wscale
 
-function _fromprototype(Wp::Vector{Real}, Wscale::Real, ftype::Bandpass)
+function _fromprototype(Wp::Vector{Real}, Wscale::Real, ftype::Type{Bandpass})
     @assert length(Wp) == 2
     Wsc = [-Wscale, Wscale]
     Wn = -Wsc .* (Wp[2]-Wp[1])./2 .+ sqrt.( Wsc.^2/4*(Wp[2]-Wp[1]).^2 + Wp[1]*Wp[2])
     sort!(Wn)
 end
 
-function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real, ftype::Union{Lowpass{:z}, Highpass{:z}})
+function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real, ftype::Union{Type{Lowpass}, Type{Highpass}})
     """
         buttord(Wp, Ws, Rp, Rs, filtertype)
 
@@ -36,7 +36,7 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real, ftype::Union{Lowpass{:z
     # need to pre-warp since we want to use formulae for analog case.
     wp = tan(π/2 * Wp)
     ws = tan(π/2 * Ws)
-    wa = _toprototype(ws, wp, ftype)
+    wa = _toprototype(wp, ws, ftype)
 
     # rounding up fractional order. Using differences of logs instead of division. 
     N = ceil((log10(^(10, 0.1*Rs) - 1) - log10(^(10, 0.1*Rp) - 1)) / (2*log10(wa)))
@@ -46,5 +46,5 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real, ftype::Union{Lowpass{:z
     
     # convert back to the original analog filter and bilinear xform.
     Wn = (2/π)*atan(_fromprototype(wp, wscale, ftype))
-    order, Wn
+    N, Wn
 end
