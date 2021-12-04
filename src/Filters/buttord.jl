@@ -3,7 +3,6 @@
 # Butterworth prototype filter transformations
 #
 
-
 function bsfcost(Wx::Real, uselowband::Bool, Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
     """
         bsfcost(Wx, uselowband, Wp, Ws, Rs, Rp)
@@ -80,20 +79,22 @@ end
 order_estimate(Rp::Real, Rs::Real, warp::Real) = (log10(^(10, 0.1*Rs) - 1) - log10(^(10, 0.1*Rp) - 1)) / (2*log10(warp))
 natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (^(10, 0.1*Rs) - 1)^(1/(2*order))
 
-function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real, ftype::Union{Type{Bandpass}, Type{Bandstop}})
+function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
     """
-        buttord(Wp, Ws, Rp, Rs, filttype)
+        buttord(Wp, Ws, Rp, Rs)
 
     Butterworth order estimate for bandpass and bandstop filter types. 
     `Wp` and `Ws` are 2-element pass/stopband frequency edges, with filttype specifying
     the `Bandpass` or `Bandstop` filter types.
     """
-    
+    # infer filter type based on ordering of edges.
+    ftype = (Wp[1] < Ws[1]) ? Bandstop : Bandpass
+
     # pre-warp both components
     wp = tan.(π/2 .* Wp)
     ws = tan.(π/2 .* Ws)
-    if (type == Bandstop)
-        # optimizer modifies passband frequencies. this is intended behavior.
+    if (ftype == Bandstop)
+        # optimizer modifies passband frequencies: this is intended behavior.
         wa = toprototype!(wp, ws, Rp, Rs, ftype)
     else
         wa = toprototype(wp, ws, ftype)
@@ -107,21 +108,19 @@ function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real,
     N, ωn
 end
 
-function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real, ftype::Union{Type{Lowpass}, Type{Highpass}})
+function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     """
-        buttord(Wp, Ws, Rp, Rs, filtertype)
+        buttord(Wp, Ws, Rp, Rs)
 
-    Butterworth filter order and -3 dB frequency approximation. The lowpass and highpass filters
-    are supported, currently working on the bandpass and bandstop prototype transformations. `Wp`
-    and `Ws` are the passband and stopband frequencies, whereas Rp and Rs are the passband and
-    stopband ripple attenuations in dB.
+    LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp`
+    and `Ws` are the passband and stopband frequencies, whereas Rp and Rs 
+    are the passband and stopband ripple attenuations in dB. 
+    If the passband is greater than stopband, the filter type is inferred to 
+    be for estimating the order of a highpass filter.
     """
 
-    if ((ftype == Lowpass) && (Wp > Ws))
-        error("Passband frequency must be less than stopband frequency for Lowpass filters.")
-    elseif ((ftype == Highpass) && (Ws > Wp))
-        error("Passband frequency must be greater than stopband frequency for Highpass filters.")
-    end
+    # infer which filter type based on the frequency ordering.
+    ftype = (Wp < Ws) ? Lowpass : Highpass
 
     # need to pre-warp since we want to use formulae for analog case.
     wp = tan(π/2 * Wp)
