@@ -2,6 +2,7 @@ module Filters
 using ..Unwrap
 using ..Util
 using Polynomials: LaurentPolynomial, Polynomial, coeffs, derivative, fromroots, roots, indeterminate
+using Optim: optimize, minimizer
 
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
@@ -26,6 +27,9 @@ export  DF2TFilter,
         tdfilt!,
         fftfilt,
         fftfilt!
+
+include("buttord.jl")
+export buttord
 
 include("design.jl")
 export  FilterType,
