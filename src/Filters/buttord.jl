@@ -38,15 +38,16 @@ function toprototype!(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::
     # NOTE: the optimization function will adjust the corner frequencies in Wp, modifying the original input.
     length(Wp) == 2 || error("2 passband frequencies were expected.")
     length(Ws) == 2 || error("2 stopband frequencies were expected.")
-
-    C₁(w, px) = bsfcost(w, true, Wp, Ws, Rp, Rs)
-    C₂(w, px) = bsfcost(w, false, Wp, Ws, Rp, Rs)
     tol = eps(typeof(Wp[1]))^(2/3)
 
     # optimize order on bound [passband low < w < stopband-tolerance].
+    C₁(w) = bsfcost(w, true, Wp, Ws, Rp, Rs)
     p1 = minimizer(optimize(C₁, Wp[1], Ws[1]-tol))
     Wp[1] = p1 # modifying band edge for next optimization run.
     
+    # declaring the 2nd cost function here to make sure the overwritten 
+    # passband edge vector Wp is used.
+    C₂(w) = bsfcost(w, false, Wp, Ws, Rp, Rs)
     p2 = minimizer(optimize(C₂, Ws[2]+tol, Wp[2]))
     Wp[2] = p2
 
