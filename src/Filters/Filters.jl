@@ -29,8 +29,9 @@ export  DF2TFilter,
         fftfilt!
 
 include("buttord.jl")
-export buttord
-
+export buttord,
+       bsfcost
+       
 include("design.jl")
 export  FilterType,
         Butterworth,
