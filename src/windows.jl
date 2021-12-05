@@ -166,6 +166,11 @@ hop of 0.5, which means that adding together a sequence of delayed windows with
 a signal from a number of overlapping frames (each with a roughly rectangular
 window), to eliminate windowing amplitude modulation.
 
+While the this windowing function was originally named after its inventor
+Julius Von Hann, coloquial usage has adjusted to refer to it as the "Hanning"
+window, to better match the similarly-named "Hamming" window.  Because of this,
+both `hann()` and `hanning()` are exported from this module.
+
 Note that the `hanning` window is the `cosine` window squared.
 
 $(twoD_docs())
@@ -177,7 +182,7 @@ function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
         0.5*(1+cos(2pi*x))
     end
 end
-hann = hanning
+const hann = hanning
 
 """
 $hamming_winplot
