@@ -50,15 +50,15 @@ computing in Python. Nature methods, 17(3), 261-272.
 
 ====================================================================#
 
-function bsfcost(Wx::Real, uselowband::Bool, Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
-    """
-        bsfcost(Wx, uselowband, Wp, Ws, Rs, Rp)
+"""
+    N = bsfcost(Wx, uselowband, Wp, Ws, Rs, Rp)
 
-    Bandstop filter order estimation. The primary variables are `Wx` and `uselowband`,
-    which indicate the test passband edge and if to use the lower edge. If false, the
-    test frequency is used in high-band, ([low, high] ordering in Wp.) This function
-    returns a non-integer BSF order estimate.
-    """
+Bandstop filter order estimation. The primary variables are `Wx` and `uselowband`,
+which indicate the test passband edge and if to use the lower edge. If false, the
+test frequency is used in high-band, ([low, high] ordering in Wp.) This function
+returns a non-integer BSF order estimate.
+"""
+function bsfcost(Wx::Real, uselowband::Bool, Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
 
     # override one of the passband edges with the test frequency.
     Wpc = uselowband ? [Wx, Wp[2]] : [Wp[1], Wx]
@@ -119,15 +119,19 @@ end
 order_estimate(Rp::Real, Rs::Real, warp::Real) = (log10(^(10, 0.1*Rs) - 1) - log10(^(10, 0.1*Rp) - 1)) / (2*log10(warp))
 natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (^(10, 0.1*Rs) - 1)^(1/(2*order))
 
+
+"""
+    (N, ωn) = buttord(Wp, Ws, Rp, Rs)
+
+Butterworth order estimate for bandpass and bandstop filter types. 
+`Wp` and `Ws` are 2-element pass and stopband frequency edges, with 
+no more than `Rp` dB passband ripple and at least `Rs` dB stopband 
+attenuation. Based on the ordering of passband and bandstop edges, 
+the Bandstop or Bandpass filter type is inferred. `N` is an integer 
+indicating the lowest estimated filter order, with `ωn` specifying
+the cutoff or "-3 dB" frequencies.
+"""
 function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
-    """
-        buttord(Wp, Ws, Rp, Rs)
-
-    Butterworth order estimate for bandpass and bandstop filter types. 
-    `Wp` and `Ws` are 2-element pass/stopband frequency edges, with filttype specifying
-    the `Bandpass` or `Bandstop` filter types.
-    """
-
     length(Wp) == 2 || error("2 passband frequencies were expected.")
     length(Ws) == 2 || error("2 stopband frequencies were expected.")
     
@@ -156,17 +160,17 @@ function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real,
     N, ωn
 end
 
+"""
+    (N, ωn) = buttord(Wp, Ws, Rp, Rs)
+
+LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp`
+and `Ws` are the passband and stopband frequencies, whereas Rp and Rs 
+are the passband and stopband ripple attenuations in dB. 
+If the passband is greater than stopband, the filter type is inferred to 
+be for estimating the order of a highpass filter. `N` specifies the lowest
+possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency.
+"""
 function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
-    """
-        buttord(Wp, Ws, Rp, Rs)
-
-    LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp`
-    and `Ws` are the passband and stopband frequencies, whereas Rp and Rs 
-    are the passband and stopband ripple attenuations in dB. 
-    If the passband is greater than stopband, the filter type is inferred to 
-    be for estimating the order of a highpass filter.
-    """
-
     # infer which filter type based on the frequency ordering.
     ftype = (Wp < Ws) ? Lowpass : Highpass
 
