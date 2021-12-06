@@ -149,7 +149,7 @@ function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real,
     end
 
     # get the integer order estimate.
-    N = ceil(order_estimate(Rp, Rs, wa))
+    N = ceil(Int, order_estimate(Rp, Rs, wa))
 
     wscale = natfreq_estimate(wa, Rs, Integer(N))
     ωn = (2/π).*atan.(fromprototype(wp, wscale, ftype))
