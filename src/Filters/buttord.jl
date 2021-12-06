@@ -176,7 +176,7 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     wa = toprototype(wp, ws, ftype)
 
     # rounding up fractional order. Using differences of logs instead of division. 
-    N = ceil(order_estimate(Rp, Rs, wa))
+    N = ceil(Int, order_estimate(Rp, Rs, wa))
     
     # specifications for the stopband ripple are met precisely.
     wscale = natfreq_estimate(wa, Rs, Integer(N))
