@@ -13,7 +13,7 @@ using DSP, Test
 
     (n, Wn) = buttord(40/500, 150/500, 3, 60)
     @test n == 5
-    @test isapprox(Wn, 0.081038494957764, rtol=1e-12)
+    @test Wn ≈ 0.081038494957764
 
     #
     # Highpass filter example
@@ -22,8 +22,7 @@ using DSP, Test
 
     (nhpf, Wnhpf) = buttord(600/2000, 1200/2000, 3, 60)
     @test nhpf == 7
-    @test isapprox(Wnhpf, 0.301783479785, rtol=1e-12)
-
+    @test Wnhpf ≈ 0.301783479785
 
     #
     # https://www.mathworks.com/help/signal/ref/buttord.html#d123e9937
@@ -38,8 +37,8 @@ using DSP, Test
 
     (nbp, Wnbp) = buttord([100/500, 200/500], [50/500, 250/500], 3, 40)
     @test nbp == 8
-    @test isapprox(Wnbp[1], 0.195101359239, rtol=1e-12)
-    @test isapprox(Wnbp[2], 0.408043633382, rtol=1e-12)
+    @test Wnbp[1] ≈ 0.195101359239
+    @test Wnbp[2] ≈ 0.408043633382
 
     #
     # Bandstop Example, (44.1 kHz Nyquist)
@@ -52,7 +51,7 @@ using DSP, Test
     # will yield different results in comparison to Optim.jl.
     (nbs, Wnbs) = buttord([3200/22050, 7800/22050], [4800/22050, 5600/22050], 2, 60)
     @test nbs == 5
-    @test isapprox(Wnbs[1], 0.172660908966, rtol=1e-12)
-    @test isapprox(Wnbs[2], 0.314956388749, rtol=1e-12)
+    @test ≈(Wnbs[1], 0.172660908966, rtol=1e-3)
+    @test ≈(Wnbs[2], 0.314956388749, rtol=1e-3)
 
 end

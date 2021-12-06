@@ -28,30 +28,26 @@ toprototype(Wp::Real, Ws::Real, ftype::Type{Highpass}) = Wp / Ws
 
 function toprototype(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, ftype::Type{Bandpass}) 
     # bandpass filter must have two corner frequencies we're computing with
-    length(Wp) == 2 || error("2 passband frequencies were expected.")
-    length(Ws) == 2 || error("2 stopband frequencies were expected.")
     Wa = (Ws.^2 .- Wp[1]*Wp[2]) ./ (Ws .* (Wp[1]-Wp[2]))
     minimum(abs.(Wa))
 end
 
 function toprototype!(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real, ftype::Type{Bandstop})
     # NOTE: the optimization function will adjust the corner frequencies in Wp, modifying the original input.
-    length(Wp) == 2 || error("2 passband frequencies were expected.")
-    length(Ws) == 2 || error("2 stopband frequencies were expected.")
-    tol = eps(typeof(Wp[1]))^(2/3)
+    Δ = eps(typeof(Wp[1]))^(2/3)
 
     # optimize order on bound [passband low < w < stopband-tolerance].
     C₁(w) = bsfcost(w, true, Wp, Ws, Rp, Rs)
-    p1 = minimizer(optimize(C₁, Wp[1], Ws[1]-tol))
+    p1 = minimizer(optimize(C₁, Wp[1], Ws[1]-Δ))
     Wp[1] = p1 # modifying band edge for next optimization run.
     
     # declaring the 2nd cost function here to make sure the overwritten 
-    # passband edge vector Wp is used.
+    # passband edge vector Wp is used in the new cost function.
     C₂(w) = bsfcost(w, false, Wp, Ws, Rp, Rs)
-    p2 = minimizer(optimize(C₂, Ws[2]+tol, Wp[2]))
+    p2 = minimizer(optimize(C₂, Ws[2]+Δ, Wp[2]))
     Wp[2] = p2
 
-    Wa = (Ws .* (Wp[1]-Wp[2])) ./ (Ws.^2 .- (Wp[1]-Wp[2]))
+    Wa = (Ws .* (Wp[1]-Wp[2])) ./ (Ws.^2 .- (Wp[1]*Wp[2]))
     minimum(abs.(Wa))
 end
 
@@ -59,22 +55,18 @@ fromprototype(Wp::Real, Wscale::Real, ftype::Type{Lowpass}) = Wp * Wscale
 fromprototype(Wp::Real, Wscale::Real, ftype::Type{Highpass}) = Wp / Wscale
 
 function fromprototype(Wp::AbstractArray{<:Real}, Wscale::Real, ftype::Type{Bandstop})
-    length(Wp) == 2 || error("2 passband frequencies were  expected.")
     Wa = zeros(2)
     diff = Wp[2]-Wp[1]
     prod = Wp[2]*Wp[1]
     Wa[1] = (diff + sqrt(diff^2 + 4*(Wscale^2)*prod)) / (2*Wscale)
     Wa[2] = (diff - sqrt(diff^2 + 4*(Wscale^2)*prod)) / (2*Wscale)
     sort!(abs.(Wa))
-    Wa
 end
 
 function fromprototype(Wp::AbstractArray{<:Real}, Wscale::Real, ftype::Type{Bandpass})
-    length(Wp) == 2 || error("2 passband frequencies were expected.")
     Wsc = [-Wscale, Wscale]
     Wa = -Wsc .* (Wp[2]-Wp[1])./2 .+ sqrt.( Wsc.^2/4*(Wp[2]-Wp[1]).^2 + Wp[1]*Wp[2])
     sort!(abs.(Wa))
-    Wa
 end
 
 order_estimate(Rp::Real, Rs::Real, warp::Real) = (log10(^(10, 0.1*Rs) - 1) - log10(^(10, 0.1*Rp) - 1)) / (2*log10(warp))
@@ -88,6 +80,14 @@ function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real,
     `Wp` and `Ws` are 2-element pass/stopband frequency edges, with filttype specifying
     the `Bandpass` or `Bandstop` filter types.
     """
+
+    length(Wp) == 2 || error("2 passband frequencies were expected.")
+    length(Ws) == 2 || error("2 stopband frequencies were expected.")
+    
+    # make sure the band edges are in increasing order.
+    sort!(Wp)
+    sort!(Ws)
+
     # infer filter type based on ordering of edges.
     ftype = (Wp[1] < Ws[1]) ? Bandstop : Bandpass
 
