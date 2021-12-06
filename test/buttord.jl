@@ -35,7 +35,7 @@ using DSP, Test
     # [n, Wn] = buttord(Wp, Ws, Rp, Rs)
     #
 
-    (nbp, Wnbp) = buttord([100/500, 200/500], [50/500, 250/500], 3, 40)
+    (nbp, Wnbp) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40)
     @test nbp == 8
     @test Wnbp[1] ≈ 0.195101359239
     @test Wnbp[2] ≈ 0.408043633382
@@ -49,7 +49,7 @@ using DSP, Test
 
     # this test may be more sensitive...MATLAB's implementation of bounded minimization
     # will yield different results in comparison to Optim.jl.
-    (nbs, Wnbs) = buttord([3200/22050, 7800/22050], [4800/22050, 5600/22050], 2, 60)
+    (nbs, Wnbs) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60)
     @test nbs == 5
     @test ≈(Wnbs[1], 0.172660908966, rtol=1e-3)
     @test ≈(Wnbs[2], 0.314956388749, rtol=1e-3)

@@ -58,10 +58,10 @@ which indicate the test passband edge and if to use the lower edge. If false, th
 test frequency is used in high-band, ([low, high] ordering in Wp.) This function
 returns a non-integer BSF order estimate.
 """
-function bsfcost(Wx::Real, uselowband::Bool, Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
+function bsfcost(Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
 
     # override one of the passband edges with the test frequency.
-    Wpc = uselowband ? [Wx, Wp[2]] : [Wp[1], Wx]
+    Wpc = uselowband ? tuple(Wx, Wp[2]) : tuple(Wp[1], Wx)
     
     # get the new warp frequency.
     warp = minimum(abs.((Ws .* (Wpc[1]-Wpc[2])) ./ (Ws.^2 .- (Wpc[1]*Wpc[2]))))
@@ -73,35 +73,33 @@ end
 toprototype(Wp::Real, Ws::Real, ftype::Type{Lowpass}) = Ws / Wp
 toprototype(Wp::Real, Ws::Real, ftype::Type{Highpass}) = Wp / Ws
 
-function toprototype(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, ftype::Type{Bandpass}) 
+function toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, ftype::Type{Bandpass}) 
     # bandpass filter must have two corner frequencies we're computing with
     Wa = (Ws.^2 .- Wp[1]*Wp[2]) ./ (Ws .* (Wp[1]-Wp[2]))
     minimum(abs.(Wa))
 end
 
-function toprototype!(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real, ftype::Type{Bandstop})
-    # NOTE: the optimization function will adjust the corner frequencies in Wp, modifying the original input.
+function toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real, ftype::Type{Bandstop})
+    # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
     Δ = eps(typeof(Wp[1]))^(2/3)
 
     # optimize order on bound [passband low < w < stopband-tolerance].
     C₁(w) = bsfcost(w, true, Wp, Ws, Rp, Rs)
     p1 = minimizer(optimize(C₁, Wp[1], Ws[1]-Δ))
-    Wp[1] = p1 # modifying band edge for next optimization run.
     
-    # declaring the 2nd cost function here to make sure the overwritten 
-    # passband edge vector Wp is used in the new cost function.
-    C₂(w) = bsfcost(w, false, Wp, Ws, Rp, Rs)
+    # declaring the 2nd cost function here to use the new passband tuple.
+    C₂(w) = bsfcost(w, false, tuple(p1, Wp[2]), Ws, Rp, Rs)
     p2 = minimizer(optimize(C₂, Ws[2]+Δ, Wp[2]))
-    Wp[2] = p2
+    Wadj = tuple(p1, p2)
 
-    Wa = (Ws .* (Wp[1]-Wp[2])) ./ (Ws.^2 .- (Wp[1]*Wp[2]))
-    minimum(abs.(Wa))
+    Wa = (Ws .* (Wadj[1]-Wadj[2])) ./ (Ws.^2 .- (Wadj[1]*Wadj[2]))
+    minimum(abs.(Wa)), Wadj
 end
 
 fromprototype(Wp::Real, Wscale::Real, ftype::Type{Lowpass}) = Wp * Wscale
 fromprototype(Wp::Real, Wscale::Real, ftype::Type{Highpass}) = Wp / Wscale
 
-function fromprototype(Wp::AbstractArray{<:Real}, Wscale::Real, ftype::Type{Bandstop})
+function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandstop})
     Wa = zeros(2)
     diff = Wp[2]-Wp[1]
     prod = Wp[2]*Wp[1]
@@ -110,7 +108,7 @@ function fromprototype(Wp::AbstractArray{<:Real}, Wscale::Real, ftype::Type{Band
     sort!(abs.(Wa))
 end
 
-function fromprototype(Wp::AbstractArray{<:Real}, Wscale::Real, ftype::Type{Bandpass})
+function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandpass})
     Wsc = [-Wscale, Wscale]
     Wa = -Wsc .* (Wp[2]-Wp[1])./2 .+ sqrt.( Wsc.^2/4*(Wp[2]-Wp[1]).^2 .+ Wp[1]*Wp[2])
     sort!(abs.(Wa))
@@ -131,32 +129,33 @@ the Bandstop or Bandpass filter type is inferred. `N` is an integer
 indicating the lowest estimated filter order, with `ωn` specifying
 the cutoff or "-3 dB" frequencies.
 """
-function buttord(Wp::AbstractArray{<:Real}, Ws::AbstractArray{<:Real}, Rp::Real, Rs::Real)
-    length(Wp) == 2 || error("2 passband frequencies were expected.")
-    length(Ws) == 2 || error("2 stopband frequencies were expected.")
-    
+function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+
     # make sure the band edges are in increasing order.
-    sort!(Wp)
-    sort!(Ws)
+    Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
+    Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
 
     # infer filter type based on ordering of edges.
-    ftype = (Wp[1] < Ws[1]) ? Bandstop : Bandpass
+    ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
 
     # pre-warp both components
-    wp = tan.(π/2 .* Wp)
-    ws = tan.(π/2 .* Ws)
+    wp = tan.(π/2 .* Wps)
+    ws = tan.(π/2 .* Wss)
+
     if (ftype == Bandstop)
-        # optimizer modifies passband frequencies: this is intended behavior.
-        wa = toprototype!(wp, ws, Rp, Rs, ftype)
+        # optimizer modifies passband frequencies.
+        (wa, wpadj) = toprototype(wp, ws, Rp, Rs, ftype)
     else
+        # no optimization in BPF case, use original warped passband edges.
         wa = toprototype(wp, ws, ftype)
+        wpadj = wp
     end
 
     # get the integer order estimate.
     N = ceil(Int, order_estimate(Rp, Rs, wa))
 
     wscale = natfreq_estimate(wa, Rs, Integer(N))
-    ωn = (2/π).*atan.(fromprototype(wp, wscale, ftype))
+    ωn = (2/π).*atan.(fromprototype(wpadj, wscale, ftype))
     N, ωn
 end
 
