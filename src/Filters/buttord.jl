@@ -114,7 +114,7 @@ function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandpass}
     sort!(abs.(Wa))
 end
 
-order_estimate(Rp::Real, Rs::Real, warp::Real) = (log10(^(10, 0.1*Rs) - 1) - log10(^(10, 0.1*Rp) - 1)) / (2*log10(warp))
+order_estimate(Rp::Real, Rs::Real, warp::Real) = (log10(db2pow(Rs) - 1) - log10(db2pow(Rp) - 1)) / (2*log10(warp))
 natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (^(10, 0.1*Rs) - 1)^(1/(2*order))
 
 
