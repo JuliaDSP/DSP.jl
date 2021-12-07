@@ -182,7 +182,7 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     N = ceil(Int, order_estimate(Rp, Rs, wa))
     
     # specifications for the stopband ripple are met precisely.
-    wscale = natfreq_estimate(wa, Rs, Integer(N))
+    wscale = natfreq_estimate(wa, Rs, N)
     
     # convert back to the original analog filter and bilinear xform.
     ωn = (2/π)*atan(fromprototype(wp, wscale, ftype))
