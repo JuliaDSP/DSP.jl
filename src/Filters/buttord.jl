@@ -154,7 +154,7 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
     # get the integer order estimate.
     N = ceil(Int, order_estimate(Rp, Rs, wa))
 
-    wscale = natfreq_estimate(wa, Rs, Integer(N))
+    wscale = natfreq_estimate(wa, Rs, N)
     ωn = (2/π).*atan.(fromprototype(wpadj, wscale, ftype))
     N, ωn
 end
