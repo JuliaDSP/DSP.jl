@@ -11,18 +11,30 @@ using DSP, Test
     # [n, Wn] = buttord(Wp, Ws, 3, 60)
     #
 
-    (n, Wn) = buttord(40/500, 150/500, 3, 60)
+    # z-domain test
+    (n, Wn) = buttord(40/500, 150/500, 3, 60, domain=:z)
     @test n == 5
     @test Wn ≈ 0.081038494957764
+
+    # s-domain test
+    (ns, Wns) = buttord(40/500, 150/500, 3, 60, domain=:s)
+    @test ns == 6
+    @test Wns ≈ 0.0948683377107
 
     #
     # Highpass filter example
     # Wp = 600/2000; Ws = 1200/2000;
     # Rs = 3; Rp = 60;
 
-    (nhpf, Wnhpf) = buttord(600/2000, 1200/2000, 3, 60)
+    # z-domain (default)
+    (nhpf, Wnhpf) = buttord(600/2000, 1200/2000, 3, 60, domain=:z)
     @test nhpf == 7
     @test Wnhpf ≈ 0.301783479785
+
+    # s-domain test
+    (nhpfs, Wnhpfs) = buttord(60/2000, 1200/2000, 3, 60, domain=:s)
+    @test nhpfs == 3
+    @test Wnhpf ≈ 0.06000001
 
     #
     # https://www.mathworks.com/help/signal/ref/buttord.html#d123e9937
@@ -35,10 +47,16 @@ using DSP, Test
     # [n, Wn] = buttord(Wp, Ws, Rp, Rs)
     #
 
-    (nbp, Wnbp) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40)
+    (nbp, Wnbp) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40, domain=:z)
     @test nbp == 8
     @test Wnbp[1] ≈ 0.195101359239
     @test Wnbp[2] ≈ 0.408043633382
+
+    # s-domain
+    (nbps, Wnbps) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40, domain=:s)
+    @test nbps == 9
+    @test Wnbps[1] ≈ 0.198730150231
+    @test Wnbps[2] ≈ 0.402555927759
 
     #
     # Bandstop Example, (44.1 kHz Nyquist)
@@ -49,9 +67,14 @@ using DSP, Test
 
     # this test may be more sensitive...MATLAB's implementation of bounded minimization
     # will yield different results in comparison to Optim.jl.
-    (nbs, Wnbs) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60)
+    (nbs, Wnbs) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:z)
     @test nbs == 5
     @test ≈(Wnbs[1], 0.172660908966, rtol=1e-3)
     @test ≈(Wnbs[2], 0.314956388749, rtol=1e-3)
+
+    # s-domain
+    (nbss, Wnbss) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:s)
+    @test ≈(Wnbss[1], 0.173677826752, rtol=1e-3)
+    @test ≈(Wnbss[2], 0.318267164272, rtol=1e-3)
 
 end

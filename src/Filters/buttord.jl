@@ -119,7 +119,7 @@ natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (db2pow(Rs) - 1)
 
 
 """
-    (N, ωn) = buttord(Wp, Ws, Rp, Rs)
+    (N, ωn) = buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain=:z)
 
 Butterworth order estimate for bandpass and bandstop filter types. 
 `Wp` and `Ws` are 2-element pass and stopband frequency edges, with 
@@ -127,9 +127,13 @@ no more than `Rp` dB passband ripple and at least `Rs` dB stopband
 attenuation. Based on the ordering of passband and bandstop edges, 
 the Bandstop or Bandpass filter type is inferred. `N` is an integer 
 indicating the lowest estimated filter order, with `ωn` specifying
-the cutoff or "-3 dB" frequencies.
+the cutoff or "-3 dB" frequencies. If a domain of `:s` is specified,
+the passband and stopband frequencies are interpretted as radians/second,
+giving an order and natural frequencies for an analog filter. The default
+domain is `:z`, interpretting the input frequencies as normalized from 0 to 1,
+where 1 corresponds to π radians/sample.
 """
-function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
     # make sure the band edges are in increasing order.
     Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
@@ -138,9 +142,14 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
     # infer filter type based on ordering of edges.
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
 
-    # pre-warp both components
-    wp = tan.(π/2 .* Wps)
-    ws = tan.(π/2 .* Wss)
+    # pre-warp both components, (if Z-domain specified)
+    if (domain == :z)
+        wp = tan.(π/2 .* Wps)
+        ws = tan.(π/2 .* Wss)
+    else
+        wp = Wps
+        ws = Wss
+    end
 
     if (ftype == Bandstop)
         # optimizer modifies passband frequencies.
@@ -155,12 +164,16 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
     N = ceil(Int, order_estimate(Rp, Rs, wa))
 
     wscale = natfreq_estimate(wa, Rs, N)
-    ωn = (2/π).*atan.(fromprototype(wpadj, wscale, ftype))
+    if (domain == :z)
+        ωn = (2/π).*atan.(fromprototype(wpadj, wscale, ftype))
+    else
+        ωn = fromprototype(wpadj, wscale, ftype)
+    end
     N, ωn
 end
 
 """
-    (N, ωn) = buttord(Wp, Ws, Rp, Rs)
+    (N, ωn) = buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain=:z)
 
 LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp`
 and `Ws` are the passband and stopband frequencies, whereas Rp and Rs 
@@ -168,14 +181,24 @@ are the passband and stopband ripple attenuations in dB.
 If the passband is greater than stopband, the filter type is inferred to 
 be for estimating the order of a highpass filter. `N` specifies the lowest
 possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency.
+If a domain of `:s` is specified, the passband and stopband edges are interpretted
+as radians/second, giving an order and natural frequency result for an analog filter.
+The default domain is `:z`, interpretting the input frequencies as normalized from 0 to 1,
+where 1 corresponds to π radians/sample.
 """
-function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
+function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     # infer which filter type based on the frequency ordering.
     ftype = (Wp < Ws) ? Lowpass : Highpass
 
-    # need to pre-warp since we want to use formulae for analog case.
-    wp = tan(π/2 * Wp)
-    ws = tan(π/2 * Ws)
+    if (domain == :z)
+        # need to pre-warp since we want to use formulae for analog case.
+        wp = tan(π/2 * Wp)
+        ws = tan(π/2 * Ws)
+    else
+        # already analog
+        wp = Wp
+        ws = Ws
+    end
     wa = toprototype(wp, ws, ftype)
 
     # rounding up fractional order. Using differences of logs instead of division. 
@@ -184,7 +207,13 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     # specifications for the stopband ripple are met precisely.
     wscale = natfreq_estimate(wa, Rs, N)
     
-    # convert back to the original analog filter and bilinear xform.
-    ωn = (2/π)*atan(fromprototype(wp, wscale, ftype))
+    # convert back to the original analog filter
+    if (domain == :z)
+        # bilinear xform to digital
+        ωn = (2/π)*atan(fromprototype(wp, wscale, ftype))
+    else
+        # s-domain, no atan call.
+        ωn = fromprototype(wp, wscale, ftype)
+    end
     N, ωn
 end
