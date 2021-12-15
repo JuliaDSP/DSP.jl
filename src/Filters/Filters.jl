@@ -27,9 +27,6 @@ export  DF2TFilter,
         tdfilt!,
         fftfilt,
         fftfilt!
-
-include("buttord.jl")
-export buttord
        
 include("design.jl")
 export  FilterType,
@@ -47,6 +44,9 @@ export  FilterType,
         kaiserord,
         FIRWindow,
         resample_filter
+
+include("buttord.jl")
+export  buttord
 
 include("response.jl")
 export  freqresp,

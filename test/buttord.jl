@@ -23,18 +23,19 @@ using DSP, Test
 
     #
     # Highpass filter example
-    # Wp = 600/2000; Ws = 1200/2000;
+    # Wp = 1200/2000; Ws=600/2000;
     # Rs = 3; Rp = 60;
 
     # z-domain (default)
-    (nhpf, Wnhpf) = buttord(600/2000, 1200/2000, 3, 60, domain=:z)
+    (nhpf, Wnhpf) = buttord(1200/2000, 600/2000, 3, 60, domain=:z)
     @test nhpf == 7
-    @test Wnhpf ≈ 0.301783479785
+    @test Wnhpf ≈ 0.597905417809
+    
 
     # s-domain test
-    (nhpfs, Wnhpfs) = buttord(60/2000, 1200/2000, 3, 60, domain=:s)
-    @test nhpfs == 3
-    @test Wnhpf ≈ 0.06000001
+    (nhpfs, Wnhpfs) = buttord(1200/2000, 600/2000, 3, 60, domain=:s)
+    @test nhpfs == 10
+    @test Wnhpfs ≈ 0.598578664562
 
     #
     # https://www.mathworks.com/help/signal/ref/buttord.html#d123e9937
