@@ -1,5 +1,7 @@
 using DSP, Test
 
+
+Δ = 1e-3
 @testset "buttord" begin
     
     #
@@ -70,16 +72,19 @@ using DSP, Test
     # will yield different results in comparison to Optim.jl.
     (nbs, Wnbs) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:z)
     @test nbs == 5
-    @test ≈(Wnbs[1], 0.172660908966, rtol=1e-3)
-    @test ≈(Wnbs[2], 0.314956388749, rtol=1e-3)
+    @test ≈(Wnbs[1], 0.172660908966, rtol=Δ)
+    @test ≈(Wnbs[2], 0.314956388749, rtol=Δ)
 
     # s-domain
     (nbss, Wnbss) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:s)
-    @test ≈(Wnbss[1], 0.173677826752, rtol=1e-3)
-    @test ≈(Wnbss[2], 0.318267164272, rtol=1e-3)
+    @test ≈(Wnbss[1], 0.173677826752, rtol=Δ)
+    @test ≈(Wnbss[2], 0.318267164272, rtol=Δ)
 
 end
 
+#
+# Elliptic/Chebyshev I/II Filter cases tested against SciPy signal results.
+#
 @testset "ellipord" begin
     
     Rp, Rs = 3, 40
@@ -88,13 +93,13 @@ end
     
     # Lowpass
     (nl, Wnl) = ellipord(0.1, 0.2, Rp, Rs, domain=:z)
-    @test nl == 5
+    @test nl == 3
     @test Wnl == 0.1
 
     # Highpass
     (nh, Wnh) = ellipord(0.3, 0.1, Rp, Rs, domain=:z)
-    @test nl == 3
-    @test Wnl == 0.3
+    @test nh == 3
+    @test Wnh == 0.3
     
     # Bandpass (z-domain)
     (nbp, Wnbp) = ellipord(Wp, Ws, Rp, Rs, domain=:z)
@@ -115,8 +120,8 @@ end
     # n, Wn = scipy.signal.ellipord([0.1, 0.8], [0.2, 0.7], 3, 40, True)
     (nbs, Wnbs) = ellipord(Ws, Wp, Rp, Rs, domain=:s)
     @test nbs == 5
-    @test ≈(Wnbs[1], 0.17500000332788998, rtol=1e-3)
-    @test ≈(Wnbs[2], 0.799993389303865, rtol=1e-3)
+    @test ≈(Wnbs[1], 0.17500000332788998, rtol=Δ)
+    @test ≈(Wnbs[2], 0.799993389303865, rtol=Δ)
 
 end
 
@@ -133,7 +138,7 @@ end
     # Highpass
     (nh, Wnh) = cheb1ord(0.1, 0.04, Rp, Rs, domain=:z)
     @test nh == 6
-    @test Wnh = 0.1
+    @test Wnh == 0.1
 
     # Bandpass (z-domain)
     (nbp, Wnbp) = cheb1ord(Wp, Ws, Rp, Rs, domain=:z)
@@ -149,13 +154,13 @@ end
     # Bandstop (z-domain)
     (nbs, Wnbs) = cheb1ord(Ws, Wp, Rp, Rs, domain=:z)
     @test nbs == 9
-    @test Wnbp == Ws
+    @test Wnbs == Ws
 
     # Bandstop (s-domain)
     (nbs, Wnbs) = cheb1ord(Ws, Wp, Rp, Rs, domain=:s)
     @test nbs == 10
-    @test ≈(Wnbs[1], 0.166666612185443, rtol=1e-3)
-    @test ≈(Wnbs[2], 0.5999933893038649, rtol=1e-3)
+    @test ≈(Wnbs[1], 0.166666612185443, rtol=Δ)
+    @test ≈(Wnbs[2], 0.5999933893038649, rtol=Δ)
 end
 
 @testset "cheb2ord" begin
@@ -179,9 +184,24 @@ end
     @test nh == 8
     @test Wnh == 0.10568035411923006
 
-    # Bandpass [TODO: check bandpass-case]
+    # Bandpass
     (nbp, Wnbp) = cheb2ord(Wp, Ws, Rp, Rs, domain=:z)
     @test nbp == 9
-    
+    @test ≈(Wnbp[1], 0.1608459041132262)
+    @test ≈(Wnbp[2], 0.6133747025904719)
+    (nbp, Wnbp) = cheb2ord(Wp, Ws, Rp, Rs, domain=:s)
+    @test nbp == 11
+    @test ≈(Wnbp[1], 0.18262279523940905)
+    @test ≈(Wnbp[2], 0.6143811338169016)
+
+    # Bandstop
+    (nbs, Wnbs) = cheb2ord(Ws, Wp, Rp, Rs, domain=:z)
+    @test nbs == 9
+    @test ≈(Wnbs[1], 0.21211425852327126, rtol=Δ)
+    @test ≈(Wnbs[2], 0.5225427194473862, rtol=Δ)
+    (nbs, Wnbs) = cheb2ord(Ws, Wp, Rp, Rs, domain=:s)
+    @test nbs == 11
+    @test ≈(Wnbs[1], 0.2159740591083134, rtol=Δ)
+    @test ≈(Wnbs[2], 0.5195028184932494, rtol=Δ)
 
 end
