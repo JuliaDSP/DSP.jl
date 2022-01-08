@@ -109,13 +109,79 @@ end
     # Bandstop (z-domain)
     (nbs, Wnbs) = ellipord(Ws, Wp, Rp, Rs, domain=:z)
     @test nbs == 4
-    @test Wnbp == Ws
+    @test Wnbs == Ws
 
     # Bandstop (s-domain)
     # n, Wn = scipy.signal.ellipord([0.1, 0.8], [0.2, 0.7], 3, 40, True)
     (nbs, Wnbs) = ellipord(Ws, Wp, Rp, Rs, domain=:s)
     @test nbs == 5
-    @test ≈(Wnbp[1], 0.17500000332788998, rtol=1e-3)
-    @test ≈(Wnbp[2], 0.799993389303865, rtol=1e-3)
+    @test ≈(Wnbs[1], 0.17500000332788998, rtol=1e-3)
+    @test ≈(Wnbs[2], 0.799993389303865, rtol=1e-3)
+
+end
+
+@testset "cheb1ord" begin
+    Rp, Rs = 2, 70
+    Wp = tuple(0.2, 0.5)
+    Ws = tuple(0.1, 0.6)
+
+    # Lowpass
+    (nl, Wnl) = cheb1ord(0.1, 0.21, Rp, Rs, domain=:z)
+    @test nl == 7
+    @test Wnl == 0.1
+
+    # Highpass
+    (nh, Wnh) = cheb1ord(0.1, 0.04, Rp, Rs, domain=:z)
+    @test nh == 6
+    @test Wnh = 0.1
+
+    # Bandpass (z-domain)
+    (nbp, Wnbp) = cheb1ord(Wp, Ws, Rp, Rs, domain=:z)
+    @test nbp == 9
+    @test Wnbp == (0.2, 0.5)
+    
+
+    # Bandpass (s-domain)
+    (nbp, Wnbp) = cheb1ord(Wp, Ws, Rp, Rs, domain=:s)
+    @test nbp == 10
+    @test Wnbp == (0.2, 0.5)
+
+    # Bandstop (z-domain)
+    (nbs, Wnbs) = cheb1ord(Ws, Wp, Rp, Rs, domain=:z)
+    @test nbs == 9
+    @test Wnbp == Ws
+
+    # Bandstop (s-domain)
+    (nbs, Wnbs) = cheb1ord(Ws, Wp, Rp, Rs, domain=:s)
+    @test nbs == 10
+    @test ≈(Wnbs[1], 0.166666612185443, rtol=1e-3)
+    @test ≈(Wnbs[2], 0.5999933893038649, rtol=1e-3)
+end
+
+@testset "cheb2ord" begin
+    Rp, Rs = 1.2, 80
+    Wp = tuple(0.22, 0.51)
+    Ws = tuple(0.14, 0.63)
+
+    # Lowpass
+    (nl, Wnl) = cheb2ord(0.1, 0.21, Rp, Rs, domain=:z)
+    @test nl == 8
+    @test Wnl == 0.19411478246577737    
+    (nl, Wnl) = cheb2ord(0.1, 0.21, Rp, Rs, domain=:s)
+    @test nl == 8
+    @test Wnl == 0.1987124302811051
+
+    # Highpass
+    (nh, Wnh) = cheb2ord(0.21, 0.1, Rp, Rs, domain=:z)
+    @test nh == 8
+    @test Wnh == 0.10862150541420543
+    (nh, Wnh) = cheb2ord(0.21, 0.1, Rp, Rs, domain=:s)
+    @test nh == 8
+    @test Wnh == 0.10568035411923006
+
+    # Bandpass [TODO: check bandpass-case]
+    (nbp, Wnbp) = cheb2ord(Wp, Ws, Rp, Rs, domain=:z)
+    @test nbp == 9
+    
 
 end
