@@ -303,7 +303,18 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
 end
 
 
+"""
+    (N, ωn) = cheb2ord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
 
+Integer and natural frequency order estimation for Chebyshev Type II (inverse) Filters. `Wp` and `Ws`
+are the frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing the ripple maximum
+loss in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of
+the passband and stopband edges, the Lowpass or Highpass filter type is inferred. `N` is the integer
+indicating the lowest filter order, with `ωn` specifying the "-3 dB" cutoff frequency. If the domain
+is specified as `:s`, the passband and stopband frequencies are interpretted as radians/second, giving
+the order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the
+input frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
+"""
 function cheb2ord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     ftype = (Wp < Ws) ? Lowpass : Highpass
     (Ωp, Ωs) = (domain == :z) ? (tan(π/2 * Wp), tan(π/2 * Ws)) : (Wp, Ws)
@@ -317,6 +328,19 @@ function cheb2ord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     N, ωn
 end
 
+
+"""
+    (N, ωn) = cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
+
+Integer and natural frequency order estimation for Chebyshev Type II (inverse) Filters. `Wp` and `Ws` are 
+2-element frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing  the ripple maximum 
+loss in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of passband 
+and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the 
+lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies. If a domain of 
+`:s` is specified, the passband and stopband frequencies are interpretted as radians/second, giving an 
+order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the input 
+frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
+"""
 function cheb2ord(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
     Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
     Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
