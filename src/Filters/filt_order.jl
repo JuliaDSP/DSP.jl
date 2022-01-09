@@ -365,6 +365,6 @@ function cheb2ord(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Re
         Wna[1] = ((Ωpadj[1]-Ωpadj[2])*wnew)/2 + √((Ωpadj[1]-Ωpadj[2])^2 * wnew^2 / 4 + (Ωpadj[1]*Ωpadj[2]))
         Wna[2] = (Ωpadj[1]*Ωpadj[2]) / Wna[1]
     end
-    ωn = (domain == :z) ? Wss : tuple(Wna[1], Wna[2])
+    ωn = (domain == :z) ?  tuple((2/π)*atan(Wna[1]), (2/π)*atan(Wna[2]))  : tuple(Wna[1], Wna[2])
     N, ωn
 end
