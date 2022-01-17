@@ -255,7 +255,7 @@ end
 struct MTSpectrogramConfig{T,C<:MTConfig{T}}
     n_samples::Int
     n_overlap_samples::Int
-    time::FloatRange{Float64}
+    time::Float64Range
     mt_config::C
 end
 

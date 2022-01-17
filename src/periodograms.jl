@@ -392,14 +392,12 @@ end
 
 ## SPECTROGRAM
 
-@static if isdefined(Base, :StepRangeLen)
-    const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
-end
+const Float64Range = typeof(range(0.0, step=1.0, length=2))
 
 struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
     power::M
     freq::F
-    time::FloatRange{Float64}
+    time::Float64Range
 end
 FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
