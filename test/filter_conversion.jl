@@ -133,7 +133,7 @@ using Polynomials.PolyCompat
     1.0000000000000000e+00  -1.9021224191804869e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.8964983429993663e+00   9.9553672990017417e-01
     1.0000000000000000e+00  -1.9021224191804869e+00   1.0000000000000000e+00   1.0000000000000000e+00  -1.8992956433548462e+00   9.9559721515078736e-01
     ]
-    f = convert(SecondOrderSections, digitalfilter(Bandstop(49.5, 50.5; fs=1000), DSP.Butterworth(2)))
+    f = convert(SecondOrderSections, digitalfilter(Bandstop(49.5, 50.5), DSP.Butterworth(2); fs=1000))
     @test m_sos_butterworth_bs ≈ sosfilter_to_matrix(f)
     @test f.g ≈ 0.995566972017647
 
@@ -349,9 +349,9 @@ end
     bp1 = 0.75
     bp2 = 10.0
     Fsamp = 180
-    responsetype = Bandpass(bp1, bp2; fs = Fsamp)
+    responsetype = Bandpass(bp1, bp2)
     designmethod = Elliptic(11, 0.25, 40)
-    H = digitalfilter(responsetype, designmethod)
+    H = digitalfilter(responsetype, designmethod; fs = Fsamp)
     H′ = ZeroPoleGain(SecondOrderSections(H))
     @test sort(H.p, by=z->(real(z), imag(z))) ≈ sort(H′.p, by=z->(real(z), imag(z)))
     @test sort(H.z, by=z->(real(z), imag(z))) ≈ sort(H′.z, by=z->(real(z), imag(z)))

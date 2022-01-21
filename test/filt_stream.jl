@@ -282,7 +282,7 @@ end
 function test_arbitrary(Th, x, resampleRate, numFilters)
     cutoffFreq      = 0.45
     transitionWidth = 0.05
-    h               = digitalfilter(Lowpass(cutoffFreq, fs=numFilters), FIRWindow(transitionwidth=transitionWidth/numFilters)) .* numFilters
+    h               = digitalfilter(Lowpass(cutoffFreq), FIRWindow(transitionwidth=transitionWidth/numFilters); fs=numFilters) .* numFilters
     h               = convert(Vector{Th}, h)
     myfilt          = DSP.FIRFilter(h, resampleRate, numFilters)
     xLen            = length(x)

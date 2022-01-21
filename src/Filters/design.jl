@@ -253,7 +253,7 @@ Low pass filter with cutoff frequency `Wn`. If `fs` is not
 specified, `Wn` is interpreted as a normalized frequency in
 half-cycles/sample.
 """
-Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
+Lowpass(w::Real) = Lowpass{typeof(w/1)}(w)
 
 struct Highpass{T} <: FilterType
     w::T
@@ -266,7 +266,7 @@ High pass filter with cutoff frequency `Wn`. If `fs` is not
 specified, `Wn` is interpreted as a normalized frequency in
 half-cycles/sample.
 """
-Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
+Highpass(w::Real) = Highpass{typeof(w/1)}(w)
 
 struct Bandpass{T} <: FilterType
     w1::T
@@ -280,9 +280,9 @@ Band pass filter with normalized pass band (`Wn1`, `Wn2`). If
 `fs` is not specified, `Wn1` and `Wn2` are interpreted as
 normalized frequencies in half-cycles/sample.
 """
-function Bandpass(w1::Real, w2::Real; fs::Real=2)
+function Bandpass(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
-    Bandpass{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
+    Bandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
 struct Bandstop{T} <: FilterType
@@ -297,9 +297,9 @@ Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
 `fs` is not specified, `Wn1` and `Wn2` are interpreted as
 normalized frequencies in half-cycles/sample.
 """
-function Bandstop(w1::Real, w2::Real; fs::Real=2)
+function Bandstop(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
-    Bandstop{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
+    Bandstop{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
 #
@@ -446,8 +446,8 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(prewarp(ftype.w))
-prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(prewarp(ftype.w1), prewarp(ftype.w2))
+prewarp(ftype::Union{Lowpass, Highpass}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Union{Bandpass, Bandstop}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
 # freq in half-samples per cycle
 prewarp(f::Real) = 4*tan(pi*f/2)
 
@@ -458,8 +458,8 @@ prewarp(f::Real) = 4*tan(pi*f/2)
 Construct a digital filter. See below for possible response and
 filter types.
 """
-digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
-    bilinear(transform_prototype(prewarp(ftype), proto), 2)
+digitalfilter(ftype::FilterType, proto::FilterCoefficients; fs::Real=2) =
+    bilinear(transform_prototype(prewarp(ftype, fs), proto), 2)
 
 #
 # Special filter types
@@ -542,21 +542,21 @@ FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwi
     FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
 
 # Compute coefficients for FIR prototype with specified order
-function firprototype(n::Integer, ftype::Lowpass)
-    w = ftype.w
+function firprototype(n::Integer, ftype::Lowpass, fs::Real)
+    w = normalize_freq(ftype.w, fs)
 
     [w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
-function firprototype(n::Integer, ftype::Bandpass)
-    w1 = ftype.w1
-    w2 = ftype.w2
+function firprototype(n::Integer, ftype::Bandpass, fs::Real)
+    w1 = normalize_freq(ftype.w1, fs)
+    w2 = normalize_freq(ftype.w2, fs)
 
     [w2*sinc(w2*(k-(n-1)/2)) - w1*sinc(w1*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
-function firprototype(n::Integer, ftype::Highpass)
-    w = ftype.w
+function firprototype(n::Integer, ftype::Highpass, fs::Real)
+    w = normalize_freq(ftype.w, fs)
     isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
 
     out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
@@ -564,9 +564,9 @@ function firprototype(n::Integer, ftype::Highpass)
     out
 end
 
-function firprototype(n::Integer, ftype::Bandstop)
-    w1 = ftype.w1
-    w2 = ftype.w2
+function firprototype(n::Integer, ftype::Bandstop, fs::Real)
+    w1 = normalize_freq(ftype.w1, fs)
+    w2 = normalize_freq(ftype.w2, fs)
     isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
 
     out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
@@ -574,17 +574,17 @@ function firprototype(n::Integer, ftype::Bandstop)
     out
 end
 
-scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}) = sum(coefs)
-function scalefactor(coefs::Vector, ::Highpass)
+scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}, fs::Real) = sum(coefs)
+function scalefactor(coefs::Vector, ::Highpass, fs::Real)
     c = zero(coefs[1])
     for k = 1:length(coefs)
         c += ifelse(isodd(k), coefs[k], -coefs[k])
     end
     c
 end
-function scalefactor(coefs::Vector, ftype::Bandpass)
+function scalefactor(coefs::Vector, ftype::Bandpass, fs::Real)
     n = length(coefs)
-    freq = middle(ftype.w1, ftype.w2)
+    freq = normalize_freq(middle(ftype.w1, ftype.w2), fs)
     c = zero(coefs[1])
     for k = 0:n-1
         c += coefs[k+1]*cospi(freq*(k-(n-1)/2))
@@ -592,11 +592,11 @@ function scalefactor(coefs::Vector, ftype::Bandpass)
     c
 end
 
-function digitalfilter(ftype::FilterType, proto::FIRWindow)
-    coefs = firprototype(length(proto.window), ftype)
+function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
+    coefs = firprototype(length(proto.window), ftype, fs)
     @assert length(proto.window) == length(coefs)
     out = coefs .* proto.window
-    proto.scale ? rmul!(out, 1/scalefactor(out, ftype)) : out
+    proto.scale ? rmul!(out, 1/scalefactor(out, ftype, fs)) : out
 end
 
 
