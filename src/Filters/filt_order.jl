@@ -39,13 +39,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 --- end of scipy license
 
-Design equations based on [1], Chapter 10.
+Design equations based on [1], Chapter 10. Brent's method with Parabolic interpolation
+uses code from [3], modifications from Optim.jl's Brent method in [4].
 
 [1] Proakis, J. G., & Manolakis, D. G. (1996). Digital Signal Processing, Fourth Edition. 
 Prentice Hall, New Jersey.
+
 [2] Virtanen, P., Gommers, R., Oliphant, T. E., Haberland, M., Reddy, T., 
 Cournapeau, D., ... & Van Mulbregt, P. (2020). SciPy 1.0: fundamental algorithms for scientific 
 computing in Python. Nature methods, 17(3), 261-272.
+
+[3] W. H. Press, et al. Numerical recipes. Third Edition. Cambridge university press, 2007. Chapter 10.3
+
+[4] P. K. Mogensen and A. N. Riseth, Optim: A mathematical optimization package for Julia. Journal of Open 
+Source Software, 2018. https://github.com/JuliaNLSolvers/Optim.jl/blob/master/src/univariate/solvers/brent.jl
 
 ====================================================================#
 
@@ -100,6 +107,91 @@ function chebyshev_order_estimate(Rp::Real, Rs::Real, Wa::Real)
     acosh(√(ϵs / ϵp)) / acosh(Wa) # Eq. (10.3.63) in [1]
 end
 
+function brent(f, x1::T, x2::T) where T <: AbstractFloat
+    a, b = x1, x2
+    fa, fb = f(a), f(b)
+    c = copy(a) # midpoint of [b, a] bracket
+    ϵ, rtol = eps(T), √(eps(T))
+    g = 1/2 * (3 - √(5)) # golden ratio
+    k = zero(T)
+    k1 = zero(T)
+    
+    # first interval calculation.
+    m = a + g*(b - a)
+    m1, m2 = m, m
+    fm = f(m)
+    fm1, fm2 = fm, fm
+    iter = zero(T)
+
+    while(iter < 1_000)
+        p, q = zero(T), zero(T)
+        xt = rtol * abs(m) + ϵ
+        c = (b + a) / 2
+        if (abs(m - c) ≤ 2*xt - (b - a)/2)
+            break
+        end
+        iter += 1
+        if (abs(k1) > xt) # trial parabolic fit
+            r = (m - m1) * (fm - fm2)
+            q = (m - m2) * (fm - fm1)
+            p = (m - m2) * q - (m - m1) * r
+            q = 2*(q - r)
+            if (q > 0)
+                p = -p
+            else
+                q = -q
+            end
+        end
+        if abs(p) < abs(q*k1/2) && (p < q*(b - m)) && (p < q*(m - a)) # parabolic step
+            k1 = k
+            k = p/q
+            if ((m + k) < 2*xt) || ((b - (m + k)) < 2*xt)
+                k = (m < c) ? xt : -xt
+            end
+        else
+            k1 = (m < c) ? b - m : a - m
+            k = g * k1
+        end
+
+        if (abs(k) > xt)
+            xn = m + k
+        else
+            xn = m + ((k > 0) ? xt : -xt)
+        end
+        # re-assign variables for next iteration, ("Housekeeping" in [3])
+        fn = f(xn)
+        if (fn < fm)
+            if (xn < m)
+                b = m
+            else
+                a = m
+            end
+            m2 = m1
+            fm2 = fm1
+            m1 = m
+            fm1 = fm
+            m = xn
+            fm = fn
+        else
+            if (xn < m)
+                a = xn
+            else
+                b = xn
+            end
+            if (fn ≤ fm1) || (m1 == m)
+                m2 = m1
+                fm2 = fm1
+                m1 = xn
+                fm1 = fn
+            elseif (fn ≤ fm2 || m2 == m || m2 == m1)
+                m2 = xn
+                fm2 = fn
+            end
+        end
+    end
+    m
+end
+
 #
 # Bandstop cost functions and passband minimization
 #
@@ -120,10 +212,10 @@ for filt in (:butterworth, :elliptic, :chebyshev)
             # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
             Δ = eps(typeof(Wp[1]))^(2/3)
             C₁(w) = $(Symbol(string(filt, "_bsfcost")))(w, true, Wp, Ws, Rp, Rs)
-            p1 = minimizer(optimize(C₁, Wp[1], Ws[1]-Δ))
+            p1 = brent(C₁, Wp[1], Ws[1]-Δ)
 
             C₂(w) = $(Symbol(string(filt, "_bsfcost")))(w, false, tuple(p1, Wp[2]), Ws, Rp, Rs)
-            p2 = minimizer(optimize(C₂, Ws[2]+Δ, Wp[2]))
+            p2 = brent(C₂, Ws[2]+Δ, Wp[2])
             Wadj = tuple(p1, p2)
 
             Wa = (Ws .* (Wadj[1]-Wadj[2])) ./ (Ws.^2 .- (Wadj[1]*Wadj[2]))
@@ -135,17 +227,13 @@ end
 """
     (N, ωn) = buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain=:z)
 
-Butterworth order estimate for bandpass and bandstop filter types. 
-`Wp` and `Ws` are 2-element pass and stopband frequency edges, with 
-no more than `Rp` dB passband ripple and at least `Rs` dB stopband 
-attenuation. Based on the ordering of passband and bandstop edges, 
-the Bandstop or Bandpass filter type is inferred. `N` is an integer 
-indicating the lowest estimated filter order, with `ωn` specifying
-the cutoff or "-3 dB" frequencies. If a domain of `:s` is specified,
-the passband and stopband frequencies are interpretted as radians/second,
-giving an order and natural frequencies for an analog filter. The default
-domain is `:z`, interpretting the input frequencies as normalized from 0 to 1,
-where 1 corresponds to π radians/sample.
+Butterworth order estimate for bandpass and bandstop filter types.  `Wp` and `Ws` are 2-element pass 
+and stopband frequency edges, with no more than `Rp` dB passband ripple and at least `Rs` dB stopband 
+attenuation. Based on the ordering of passband and bandstop edges,  the Bandstop or Bandpass filter 
+type is inferred. `N` is an integer indicating the lowest estimated filter order, with `ωn` specifying
+the cutoff or "-3 dB" frequencies. If a domain of `:s` is specified, the passband and stopband frequencies 
+are interpretted as radians/second, giving an order and natural frequencies for an analog filter. The default
+domain is `:z`, interpretting the input frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 """
 function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
@@ -189,16 +277,15 @@ end
 """
     (N, ωn) = buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain=:z)
 
-LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp`
-and `Ws` are the passband and stopband frequencies, whereas Rp and Rs 
-are the passband and stopband ripple attenuations in dB. 
-If the passband is greater than stopband, the filter type is inferred to 
-be for estimating the order of a highpass filter. `N` specifies the lowest
-possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency.
-If a domain of `:s` is specified, the passband and stopband edges are interpretted
-as radians/second, giving an order and natural frequency result for an analog filter.
-The default domain is `:z`, interpretting the input frequencies as normalized from 0 to 1,
-where 1 corresponds to π radians/sample.
+LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp` and `Ws` are 
+the passband and stopband frequencies, whereas Rp and Rs  are the passband and stopband 
+ripple attenuations in dB. If the passband is greater than stopband, the filter type 
+is inferred to be for estimating the order of a highpass filter. `N` specifies the lowest
+possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency. If a domain 
+of `:s` is specified, the passband and stopband edges are interpretted as radians/second, 
+giving an order and natural frequency result for an analog filter. The default domain 
+is `:z`, interpretting the input frequencies as normalized from 0 to 1, where 1 corresponds 
+to π radians/sample.
 """
 function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     # infer which filter type based on the frequency ordering.
@@ -244,6 +331,7 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
         Integer and natural frequency order estimation for $($filt) Filters. `Wp`
         and `Ws` indicate the passband and stopband frequency edges, and `Rp` and `Rs` indicate
         the maximum loss in the passband and the minimum attenuation in the stopband, (in dB.)
+        Based on the ordering of passband and stopband edges, the Lowpass or Highpass filter type is inferred.
         `N` indicates the smallest integer filter order that achieves the desired specifications,
         and `ωn` contains the natural frequency of the filter, (in this case, simply the passband edge.)
         If a domain of `:s` is specified, the passband and stopband edges are interpretted
@@ -330,7 +418,7 @@ end
 
 
 """
-    (N, ωn) = cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
+    (N, ωn) = cheb2ord(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
 Integer and natural frequency order estimation for Chebyshev Type II (inverse) Filters. `Wp` and `Ws` are 
 2-element frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing  the ripple maximum 

@@ -7,7 +7,6 @@ import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 using SpecialFunctions: ellipk
-using Optim: optimize, minimizer
 import ..DSP: filt, filt!, optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
 import Compat
 using FFTW
