@@ -108,6 +108,18 @@ Bandpass
 Bandstop
 ```
 
+The interpretation of the frequencies `Wn`, `Wn1` and `Wn2` depends on wether an analog
+or a digital filter is designed.
+1. If an analog filter is designed using [`analogfilter`](@ref), the frequencies are
+   interpreted as analog frequencies in radians/second.
+1. If a digital filter is designed using [`digitalfilter`](@ref) and the sampling
+   frequency `fs` is specified, the frequencies of the filter response type are
+   normalized to `fs`. This requires that the sampling frequency and the filter response
+   type use the same frequency unit (Hz, radians/second, ...). If `fs` is not specified,
+   the frequencies of the filter response type are interpreted as normalized frequencies
+   in half-cycles/sample.
+
+
 ### [Filter design methods](@id design-methods)
 
 #### IIR filter design methods
@@ -167,16 +179,16 @@ Filter the data in `x`, sampled at 1000 Hz, with a 4th order
 Butterworth bandpass filter between 10 and 40 Hz:
 
 ```julia
-responsetype = Bandpass(10, 40; fs=1000)
+responsetype = Bandpass(10, 40)
 designmethod = Butterworth(4)
-filt(digitalfilter(responsetype, designmethod), x)
+filt(digitalfilter(responsetype, designmethod; fs=1000), x)
 ```
 
 Filter the data in `x`, sampled at 50 Hz, with a 64 tap Hanning
 window FIR lowpass filter at 5 Hz:
 
 ```julia
-responsetype = Lowpass(5; fs=50)
+responsetype = Lowpass(5)
 designmethod = FIRWindow(hanning(64))
-filt(digitalfilter(responsetype, designmethod), x)
+filt(digitalfilter(responsetype, designmethod; fs=50), x)
 ```

@@ -247,11 +247,9 @@ struct Lowpass{T} <: FilterType
 end
 
 """
-    Lowpass(Wn[; fs])
+    Lowpass(Wn)
 
-Low pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+Low pass filter with cutoff frequency `Wn`.
 """
 Lowpass(w::Real) = Lowpass{typeof(w/1)}(w)
 
@@ -260,11 +258,9 @@ struct Highpass{T} <: FilterType
 end
 
 """
-    Highpass(Wn[; fs])
+    Highpass(Wn)
 
-High pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+High pass filter with cutoff frequency `Wn`.
 """
 Highpass(w::Real) = Highpass{typeof(w/1)}(w)
 
@@ -274,11 +270,9 @@ struct Bandpass{T} <: FilterType
 end
 
 """
-    Bandpass(Wn1, Wn2[; fs])
+    Bandpass(Wn1, Wn2)
 
-Band pass filter with normalized pass band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
 function Bandpass(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
@@ -291,11 +285,9 @@ struct Bandstop{T} <: FilterType
 end
 
 """
-    Bandstop(Wn1, Wn2[; fs])
+    Bandstop(Wn1, Wn2)
 
-Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
 function Bandstop(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
@@ -453,7 +445,7 @@ prewarp(f::Real) = 4*tan(pi*f/2)
 
 # Digital filter design
 """
-    digitalfilter(responsetype, designmethod)
+    digitalfilter(responsetype, designmethod[; fs])
 
 Construct a digital filter. See below for possible response and
 filter types.
