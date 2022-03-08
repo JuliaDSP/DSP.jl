@@ -791,6 +791,9 @@ end
     f = convert(PolynomialRatio, digitalfilter(Lowpass(0.5), Butterworth(20)))
     tffilter_eq(f, m_f)
 
+    f = convert(PolynomialRatio, digitalfilter(Lowpass(250), Butterworth(20); fs=1000))
+    tffilter_eq(f, m_f)
+
     # Output of [b, a] = butter(20, 0.3, 'high')
     m_b = [0.001797932208654781, -0.03595864417309561, 0.3416071196444083,
         -2.04964271786645, 8.710981550932413, -27.87514096298372,
@@ -811,6 +814,9 @@ end
     f = convert(PolynomialRatio, digitalfilter(Highpass(0.3), Butterworth(20)))
     tffilter_eq(f, m_f)
 
+    f = convert(PolynomialRatio, digitalfilter(Highpass(60), Butterworth(20); fs=400))
+    tffilter_eq(f, m_f)
+
     # Output of [b, a] = butter(7, [0.1 0.4])
     m_b = [0.0009628940476886417, 0, -0.006740258333820491, 0,
         0.02022077500146148, 0, -0.03370129166910246,
@@ -826,6 +832,9 @@ end
     f = convert(PolynomialRatio, digitalfilter(Bandpass(0.1, 0.4), Butterworth(7)))
     tffilter_eq(f, m_f)
 
+    f = convert(PolynomialRatio, digitalfilter(Bandpass(400, 1600), Butterworth(7); fs=8000))
+    tffilter_eq(f, m_f)
+
     # Output of [b, a] = butter(4, [0.2 0.25], 'stop')
     m_b = [0.8142545568862771, -4.968628804996451, 14.62659178092118,
         -26.46885325790832, 32.03454308505385, -26.46885325790833,
@@ -836,6 +845,9 @@ end
     m_f = PolynomialRatio(m_b, m_a)
 
     f = convert(PolynomialRatio, digitalfilter(Bandstop(0.2, 0.25), Butterworth(4)))
+    tffilter_eq(f, m_f)
+
+    f = convert(PolynomialRatio, digitalfilter(Bandstop(200, 250), Butterworth(4); fs=2000))
     tffilter_eq(f, m_f)
 
     # Output of [b, a] = ellip(10, 0.7, 13, 0.4)
@@ -851,6 +863,9 @@ end
     f = convert(PolynomialRatio, digitalfilter(Lowpass(0.4), Elliptic(10, 0.7, 13)))
     tffilter_eq(f, m_f)
 
+    f = convert(PolynomialRatio, digitalfilter(Lowpass(120), Elliptic(10, 0.7, 13); fs=600))
+    tffilter_eq(f, m_f)
+
     # Output of [b, a] = ellip(11, 0.7, 17, 0.2, 'high')
     m_b = [0.5737867105773529, -5.288884465999311, 23.07976318423696,
         -62.6831981311594, 117.4527496444787, -159.209133733912,
@@ -863,6 +878,9 @@ end
     m_f = PolynomialRatio(m_b, m_a)
 
     f = convert(PolynomialRatio, digitalfilter(Highpass(0.2), Elliptic(11, 0.7, 17)))
+    tffilter_eq(f, m_f)
+
+    f = convert(PolynomialRatio, digitalfilter(Highpass(1700), Elliptic(11, 0.7, 17); fs=17000))
     tffilter_eq(f, m_f)
 
     # Output of [b, a] = ellip(10, 0.5, 2, [0.2 0.3])
@@ -883,6 +901,9 @@ end
     m_f = PolynomialRatio(m_b, m_a)
 
     f = convert(PolynomialRatio, digitalfilter(Bandpass(0.2, 0.3), Elliptic(10, 0.5, 2)))
+    tffilter_eq(f, m_f)
+
+    f = convert(PolynomialRatio, digitalfilter(Bandpass(1100, 1650), Elliptic(10, 0.5, 2); fs=11000))
     tffilter_eq(f, m_f)
 
     # Output of [b, a] = ellip(15, 1.8, 52, [0.6 0.7], 'stop')
@@ -910,6 +931,9 @@ end
     m_f = PolynomialRatio(m_b, m_a)
 
     f = convert(PolynomialRatio, digitalfilter(Bandstop(0.6, 0.7), Elliptic(15, 1.8, 52)))
+    tffilter_eq(f, m_f)
+
+    f = convert(PolynomialRatio, digitalfilter(Bandstop(3000, 3500), Elliptic(15, 1.8, 52); fs=10000))
     tffilter_eq(f, m_f)
 end
 
