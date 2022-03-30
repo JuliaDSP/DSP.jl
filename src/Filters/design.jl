@@ -238,6 +238,11 @@ function normalize_freq(w::Real, fs::Real)
     f >= 1 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs/2)"))
     f
 end
+function normalize_complex_freq(w::Real, fs::Real)
+    f = 2*w/fs
+    f >= 2 && error("frequencies must be less than the Nyquist frequency $(fs)")
+    f
+end
 
 struct Lowpass{T} <: FilterType
     w::T
@@ -279,6 +284,21 @@ end
 struct Bandstop{T} <: FilterType
     w1::T
     w2::T
+end
+
+struct ComplexBandpass{T} <: FilterType
+    w1::T
+    w2::T
+end
+
+"""
+    ComplexBandpass(Wn1, Wn2)
+
+Complex band pass filter with stop band frequencies (`Wn1`, `Wn2`).
+"""
+function ComplexBandpass(w1::Real, w2::Real)
+    w1 < w2 || error("w1 must be less than w2")
+    ComplexBandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
 """
@@ -580,6 +600,15 @@ function firprototype(n::Integer, ftype::Bandpass, fs::Real)
     w2 = normalize_freq(ftype.w2, fs)
 
     [w2*sinc(w2*(k-(n+1)/2)) - w1*sinc(w1*(k-(n+1)/2)) for k = 1:n]
+end
+
+function firprototype(n::Integer, ftype::ComplexBandpass, fs::Real)
+    w1 = normalize_complex_freq(ftype.w1, fs)
+    w2 = normalize_complex_freq(ftype.w2, fs)
+    w_center = (w2 + w1) / 2
+    w_cutoff = (w2 - w1) / 2
+    lp = Lowpass(w_cutoff)
+    firprototype(n, lp, fs) .* cis.(π * w_center * (0:(n-1)))
 end
 
 function firprototype(n::Integer, ftype::Highpass, fs::Real)
