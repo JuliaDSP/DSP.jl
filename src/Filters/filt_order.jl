@@ -85,7 +85,7 @@ function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandpass}
 end
 
 butterworth_order_estimate(Rp::Real, Rs::Real, warp::Real) = (log(db2pow(Rs) - 1) - log(db2pow(Rp) - 1)) / (2*log(warp))
-natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (db2pow(Rs) - 1)^(1/(2*order))
+butterworth_natfreq_estimate(warp::Real, Rs::Real, order::Integer) = warp / (db2pow(Rs) - 1)^(1/(2*order))
 
 function elliptic_order_estimate(Rp::Real, Rs::Real, Wa::Real)
     # Elliptic integer order estmate. Requires Complete Elliptic integral of first kind.
@@ -265,7 +265,7 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real;
     # get the integer order estimate.
     N = ceil(Int, butterworth_order_estimate(Rp, Rs, wa))
 
-    wscale = natfreq_estimate(wa, Rs, N)
+    wscale = butterworth_natfreq_estimate(wa, Rs, N)
     if (domain == :z)
         ωn = (2/π).*atan.(fromprototype(wpadj, wscale, ftype))
     else
@@ -306,7 +306,7 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     N = ceil(Int, butterworth_order_estimate(Rp, Rs, wa))
     
     # specifications for the stopband ripple are met precisely.
-    wscale = natfreq_estimate(wa, Rs, N)
+    wscale = butterworth_natfreq_estimate(wa, Rs, N)
     
     # convert back to the original analog filter
     if (domain == :z)
