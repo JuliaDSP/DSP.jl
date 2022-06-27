@@ -121,7 +121,7 @@ function brent(f, x1::T, x2::T) where T <: AbstractFloat
     m1, m2 = m, m
     fm = f(m)
     fm1, fm2 = fm, fm
-    iter = zero(T)
+    iter = 0
 
     while(iter < 1_000)
         p, q = zero(T), zero(T)
