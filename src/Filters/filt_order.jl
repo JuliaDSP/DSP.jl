@@ -110,7 +110,6 @@ end
 function brent(f, x1::T, x2::T) where T <: AbstractFloat
     a, b = x1, x2
     fa, fb = f(a), f(b)
-    c = copy(a) # midpoint of [b, a] bracket
     ϵ, rtol = eps(T), √(eps(T))
     g = 1/2 * (3 - √(5)) # golden ratio
     k = zero(T)
