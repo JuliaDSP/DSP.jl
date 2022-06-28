@@ -372,6 +372,11 @@ end
 # Frequency scaling
 #
 @testset "freq. scaling" begin
+
+#
+# Low pass filter construction
+#
+@testset "lowpass" begin
     # Output of:
     #=
         [z, p, k] = butter(20, 0.5, 's')
@@ -759,6 +764,8 @@ end
     f = analogfilter(Bandstop(0.2, 0.8), Elliptic(10, 0.5, 20))
     zpkfilter_eq(f, m_f)
 end
+
+end # freq. scaling
 
 #
 # IIR digital filter creation
