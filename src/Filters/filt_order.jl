@@ -242,6 +242,7 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real;
     Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
 
     # infer filter type based on ordering of edges.
+    (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
 
     # pre-warp both components, (if Z-domain specified)
@@ -374,6 +375,7 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
         function $fcn(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
             Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
             Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
+            (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
             ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
             # pre-warp to analog if z-domain.
             (Ωp, Ωs) = (domain == :z) ? (tan.(π/2 .* Wps), tan.(π/2 .* Wss)) : (Wps, Wss)
@@ -432,6 +434,7 @@ frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 function cheb2ord(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
     Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
     Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
+    (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
     (Ωp, Ωs) = (domain == :z) ? (tan.(π/2 .* Wps), tan.(π/2 .* Wss)) : (Wps, Wss)
     if (ftype == Bandpass)

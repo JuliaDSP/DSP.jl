@@ -205,3 +205,11 @@ end
     @test ≈(Wnbs[2], 0.5195028184932494, rtol=Δ)
 
 end
+
+# using some simple examples for testing Brent's method.
+@testset "brent" begin
+    f1(x) = (x+3) * ((x-1)^2) # x³ + x² - 5x + 3
+    @test ≈(f1(DSP.Filters.brent(f1, -4.0, 4.0)), 0.0, atol=1e-8)
+    @test ≈(sin(DSP.Filters.brent(sin, 0.0, 2pi)), -1.0, atol=1e-8)
+    @test ≈(cos(DSP.Filters.brent(cos, 0.0, 2pi)), -1.0, atol=1e-8)
+end
