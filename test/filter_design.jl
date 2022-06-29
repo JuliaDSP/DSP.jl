@@ -369,9 +369,9 @@ end
 end
 
 #
-# Frequency scaling
+# Analog filter design
 #
-@testset "freq. scaling" begin
+@testset "analogfilter" begin
 
 #
 # Low pass filter construction
@@ -765,7 +765,7 @@ end
     zpkfilter_eq(f, m_f)
 end
 
-end # freq. scaling
+end # analogfilter
 
 #
 # IIR digital filter creation
