@@ -465,7 +465,7 @@ end
     m_k = 0.1000000000276181
     m_f = ZeroPoleGain(m_z, m_p, m_k)
 
-    f = convert(ZeroPoleGain, analogfilter(Lowpass(0.3), Elliptic(20, 0.5, 20)))
+    f = analogfilter(Lowpass(0.3), Elliptic(20, 0.5, 20))
     zpkfilter_eq(f, m_f)
 end
 
@@ -562,7 +562,7 @@ end
     m_k = 0.9440608762859236
     m_f = ZeroPoleGain(m_z, m_p, m_k)
 
-    f = convert(ZeroPoleGain, analogfilter(Highpass(0.4), Elliptic(20, 0.5, 20)))
+    f = analogfilter(Highpass(0.4), Elliptic(20, 0.5, 20))
     zpkfilter_eq(f, m_f)
 end
 
@@ -657,7 +657,7 @@ end
     m_k = 0.1000000000000025
     m_f = ZeroPoleGain(m_z, m_p, m_k)
 
-    f = convert(ZeroPoleGain, analogfilter(Bandpass(0.2, 0.8), Elliptic(10, 0.5, 20)))
+    f = analogfilter(Bandpass(0.2, 0.8), Elliptic(10, 0.5, 20))
     zpkfilter_eq(f, m_f)
 end
 
