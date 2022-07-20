@@ -46,6 +46,8 @@ end
         im_expectation = [1, 3, 6, 6, 5, 3]
         a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a, b, mode=:same) == expectation[2:5]
+        @test conv(a, b, mode=:valid) == expectation[3:4]
         @test conv(a32, b) == expectation
         fa = convert(Array{Float64}, a)
         f32a = convert(Array{Float32}, a)
@@ -90,6 +92,8 @@ end
         # Real Integers
         a32 = convert(Array{Int32}, a)
         @test conv(a, b) == expectation
+        @test conv(a, b, mode=:same) == expectation[2:4, 2:4]
+        @test conv(a, b, mode=:valid) == expectation[2:3, 2:3]
         @test conv(a32, b) == expectation
         # Floats
         fa = convert(Array{Float64}, a)
@@ -161,6 +165,8 @@ end
                                       47, 96,  100, 51,
                                       25, 51, 53, 27], (4, 4, 4)))
         @test conv(a, b) == exp
+        @test conv(a, b, mode=:same) == exp[2:4, 2:4, 2:4]
+        @test conv(a, b, mode=:valid) == exp[2:3, 2:3, 2:3]
 
 
         #6D, trivial, just to see if it works
