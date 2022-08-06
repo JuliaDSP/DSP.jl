@@ -677,7 +677,7 @@ function _conv(u, v, su, sv)
 end
 
 # We use this type definition for clarity
-const AbstractFloats = Union{AbstractFloat,Complex{T} where T<:AbstractFloat}
+const AbstractFloats = Union{<:AbstractFloat,Complex{T} where T<:AbstractFloat}
 
 # May switch argument order
 """
