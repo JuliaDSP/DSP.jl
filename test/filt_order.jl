@@ -3,7 +3,7 @@ using DSP, Test
 
 Δ = 1e-3
 @testset "buttord" begin
-    
+
     #
     # https://www.mathworks.com/help/signal/ref/buttord.html#d123e9937
     # Example 1: Lowpass Butterworth Example
@@ -14,12 +14,12 @@ using DSP, Test
     #
 
     # z-domain test
-    (n, Wn) = buttord(40/500, 150/500, 3, 60, domain=:z)
+    (n, Wn) = buttord(40 / 500, 150 / 500, 3, 60, domain=:z)
     @test n == 5
     @test Wn ≈ 0.081038494957764
 
     # s-domain test
-    (ns, Wns) = buttord(40/500, 150/500, 3, 60, domain=:s)
+    (ns, Wns) = buttord(40 / 500, 150 / 500, 3, 60, domain=:s)
     @test ns == 6
     @test Wns ≈ 0.0948683377107
 
@@ -29,13 +29,13 @@ using DSP, Test
     # Rs = 3; Rp = 60;
 
     # z-domain (default)
-    (nhpf, Wnhpf) = buttord(1200/2000, 600/2000, 3, 60, domain=:z)
+    (nhpf, Wnhpf) = buttord(1200 / 2000, 600 / 2000, 3, 60, domain=:z)
     @test nhpf == 7
     @test Wnhpf ≈ 0.597905417809
-    
+
 
     # s-domain test
-    (nhpfs, Wnhpfs) = buttord(1200/2000, 600/2000, 3, 60, domain=:s)
+    (nhpfs, Wnhpfs) = buttord(1200 / 2000, 600 / 2000, 3, 60, domain=:s)
     @test nhpfs == 10
     @test Wnhpfs ≈ 0.598578664562
 
@@ -50,13 +50,13 @@ using DSP, Test
     # [n, Wn] = buttord(Wp, Ws, Rp, Rs)
     #
 
-    (nbp, Wnbp) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40, domain=:z)
+    (nbp, Wnbp) = buttord(tuple(100 / 500, 200 / 500), tuple(50 / 500, 250 / 500), 3, 40, domain=:z)
     @test nbp == 8
     @test Wnbp[1] ≈ 0.195101359239
     @test Wnbp[2] ≈ 0.408043633382
 
     # s-domain
-    (nbps, Wnbps) = buttord(tuple(100/500, 200/500), tuple(50/500, 250/500), 3, 40, domain=:s)
+    (nbps, Wnbps) = buttord(tuple(100 / 500, 200 / 500), tuple(50 / 500, 250 / 500), 3, 40, domain=:s)
     @test nbps == 9
     @test Wnbps[1] ≈ 0.198730150231
     @test Wnbps[2] ≈ 0.402555927759
@@ -70,13 +70,13 @@ using DSP, Test
 
     # this test may be more sensitive...MATLAB's implementation of bounded minimization
     # will yield different results in comparison to Optim.jl.
-    (nbs, Wnbs) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:z)
+    (nbs, Wnbs) = buttord(tuple(3200 / 22050, 7800 / 22050), tuple(4800 / 22050, 5600 / 22050), 2, 60, domain=:z)
     @test nbs == 5
     @test ≈(Wnbs[1], 0.172660908966, rtol=Δ)
     @test ≈(Wnbs[2], 0.314956388749, rtol=Δ)
 
     # s-domain
-    (nbss, Wnbss) = buttord(tuple(3200/22050, 7800/22050), tuple(4800/22050, 5600/22050), 2, 60, domain=:s)
+    (nbss, Wnbss) = buttord(tuple(3200 / 22050, 7800 / 22050), tuple(4800 / 22050, 5600 / 22050), 2, 60, domain=:s)
     @test ≈(Wnbss[1], 0.173677826752, rtol=Δ)
     @test ≈(Wnbss[2], 0.318267164272, rtol=Δ)
 
@@ -86,11 +86,11 @@ end
 # Elliptic/Chebyshev I/II Filter cases tested against SciPy signal results.
 #
 @testset "ellipord" begin
-    
+
     Rp, Rs = 3, 40
     Wp = tuple(0.2, 0.7)
     Ws = tuple(0.1, 0.8)
-    
+
     # Lowpass
     (nl, Wnl) = ellipord(0.1, 0.2, Rp, Rs, domain=:z)
     @test nl == 3
@@ -100,7 +100,7 @@ end
     (nh, Wnh) = ellipord(0.3, 0.1, Rp, Rs, domain=:z)
     @test nh == 3
     @test Wnh == 0.3
-    
+
     # Bandpass (z-domain)
     (nbp, Wnbp) = ellipord(Wp, Ws, Rp, Rs, domain=:z)
     @test nbp == 4
@@ -144,7 +144,7 @@ end
     (nbp, Wnbp) = cheb1ord(Wp, Ws, Rp, Rs, domain=:z)
     @test nbp == 9
     @test Wnbp == (0.2, 0.5)
-    
+
 
     # Bandpass (s-domain)
     (nbp, Wnbp) = cheb1ord(Wp, Ws, Rp, Rs, domain=:s)
@@ -171,7 +171,7 @@ end
     # Lowpass
     (nl, Wnl) = cheb2ord(0.1, 0.21, Rp, Rs, domain=:z)
     @test nl == 8
-    @test Wnl == 0.19411478246577737    
+    @test Wnl == 0.19411478246577737
     (nl, Wnl) = cheb2ord(0.1, 0.21, Rp, Rs, domain=:s)
     @test nl == 8
     @test Wnl == 0.1987124302811051
@@ -208,8 +208,23 @@ end
 
 # using some simple examples for testing Brent's method.
 @testset "brent" begin
-    f1(x) = (x+3) * ((x-1)^2) # x³ + x² - 5x + 3
+    f1(x) = (x + 3) * ((x - 1)^2) # x³ + x² - 5x + 3
     @test ≈(f1(DSP.Filters.brent(f1, -4.0, 4.0)), 0.0, atol=1e-8)
     @test ≈(sin(DSP.Filters.brent(sin, 0.0, 2pi)), -1.0, atol=1e-8)
     @test ≈(cos(DSP.Filters.brent(cos, 0.0, 2pi)), -1.0, atol=1e-8)
+end
+
+
+@testset "remezord" begin
+    #
+    # Using the test-cases highlighted in [^Parks] Figures 8 and 15.
+    #
+    # [^Parks]: Rabiner, L. R., McClellan, J. H., & Parks, T. W. (1975). 
+    #   FIR digital filter design techniques using weighted Chebyshev 
+    #   approximation. Proceedings of the IEEE, 63(4), 595-610.
+    #
+    @test remezord(0.41665, 0.49417, 0.0116, 0.0001) == 39
+    @test remezord(0.135, 0.203, 0.1, 0.1) == 10
+    @test remezord(0.203, 0.135, 0.1, 0.1) == 10 # flipped HPF case.
+    @test remezord(0.00963, 0.13271, 0.0116, 0.0001) == 24
 end

@@ -460,28 +460,27 @@ function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real
 end
 
 """
-    N = remezord(F₁, F₂, δ₁, δ₂)
+    N = remezord(Wp, Ws, Rp, Rs)
 
 Order estimation for lowpass digital filter cases based
-on the equations and coefficients in [^Rabiner]. Source equation
-returns the minimum filterlength, this returns the order, N=L-1. 
-Results are valid within 1.3% error. `F₁` and `F₂` are the normalized 
-passband and stopband frequencies, with `δ₁` indicating the passband ripple
-and `δ₂` is the stopband attenuation (linear.) 
+on the equations and coefficients in [^Rabiner]. The original
+equation returned the minimum filterlength, whereas this implementation 
+returns the order (N=L-1). Results are valid within 1.3% error. `Wp` and 
+`Ws` are the normalized passband and stopband frequencies, with `Rp` indicating 
+the passband ripple and `Rs` is the stopband attenuation (linear.) 
 
 [^Rabiner]: Herrmann, O., Lawrence R. Rabiner, and D. S. K. Chan. "Practical 
 design rules for optimum finite impulse response lowpass digital filters." Bell System 
 Technical Journal 52.6 (1973): 769-799.
 """
-function remezord(F₁::Real, F₂::Real, δ₁::Real, δ₂::Real)
-    (0 > F₁ > 0.5) || (0 > F₂ > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))
-    K = δ₁ / δ₂
-    l1, l2 = log10(δ₁), log10(δ₂)
-    df = abs(F₂ - F₁) # works in HPF case if passband/stopband edges are flipped
-    A = (5.309e-3 * l1^2) + (7.114e-2 * l1) - 0.4761
-    B = (2.66e-3 * l1^2) + (0.5941 * l1) + 0.42768
-    Kf = 0.51244 * log10(K) + 11.01217
-    D = A * l2 - B
+function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
+    (0 > Wp > 0.5) || (0 > Ws > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))
+    L1, L2 = log10(Rp), log10(Rs)
+    df = abs(Ws - Wp) # works in HPF case if passband/stopband edges are flipped
+    A = (5.309e-3 * L1^2) + (7.114e-2 * L1) - 0.4761
+    B = (2.66e-3 * L1^2) + (0.5941 * L1) + 0.4278
+    Kf = 0.51244 * (L1 - L2) + 11.01217
+    D = A * L2 - B
     L = ((D - Kf * df^2) / df) + 1
     return ceil(Int, L) - 1
 end
