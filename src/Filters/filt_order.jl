@@ -481,6 +481,5 @@ function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     B = (2.66e-3 * L1^2) + (0.5941 * L1) + 0.4278
     Kf = 0.51244 * (L1 - L2) + 11.01217
     D = A * L2 - B
-    L = ((D - Kf * df^2) / df) + 1
-    return ceil(Int, L) - 1
+    return ceil(Int, ((D - Kf * df^2) / df))
 end
