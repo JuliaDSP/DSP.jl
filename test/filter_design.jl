@@ -1,5 +1,6 @@
 !(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
 using DSP, Test, FilterTestHelpers
+using LinearAlgebra: norm
 using DelimitedFiles: readdlm
 
 #
@@ -341,8 +342,6 @@ end
     f = convert(ZeroPoleGain, convert(PolynomialRatio, Butterworth(20)))
     zpkfilter_eq(f, Butterworth(20), 1e-6)
 
-    # TODO: Make this more accurate!
-
     # Output of [z, p, k] = buttap(20); [b, a] = zp2tf(z, p, k); tf2zpk(b, a)
     m_p = [-0.07845909573254482+0.9969173337335029im,
         -0.07845909573254482-0.9969173337335029im,
@@ -364,8 +363,19 @@ end
         -0.9969173244841298-0.07845911266921719im,
         -0.97236994351794+0.2334453500964366im,
         -0.97236994351794-0.2334453500964366im]
-    # println(ComplexF64([sort(f.p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt) sort(m_p, lt=lt) - sort(Butterworth(BigFloat, 20).p, lt=lt)]))
-    zpkfilter_accuracy(f, ZeroPoleGain(Float64[], m_p, 1), Butterworth(BigFloat, 20); eps=1e-6, compare_gain_at=0, relerr=2)
+
+    # compare frequency responses to a reference
+    freq = [0; 10 .^ range(big(-2), 2, length=10000)]
+    H_ref = freqresp(Butterworth(BigFloat, 20), freq)
+    H_1 = freqresp(f, freq)
+    H_2 = freqresp(ZeroPoleGain{:s}(Float64[], m_p, 1), freq)
+    # both should be good
+    @test H_1 ./ H_ref ≈ ones(length(freq))
+    @test H_2 ./ H_ref ≈ ones(length(freq))
+    # ... but ours (H1) should be the better one
+    delta_1 = H_1 ./ H_ref .- 1
+    delta_2 = H_2 ./ H_ref .- 1
+    @test norm(delta_1) < norm(delta_2)
 end
 
 #
