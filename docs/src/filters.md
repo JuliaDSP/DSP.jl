@@ -86,7 +86,8 @@ The design method is [`Butterworth`](@ref), [`Chebyshev1`](@ref), [`Chebyshev2`]
 necessary parameters for the method that affect the shape of the response,
 such as filter order, ripple, and attenuation. [Filter order estimation methods](@ref order-est-methods) 
 are available in [`buttord`](@ref), [`cheb1ord`](@ref), [`cheb2ord`](@ref), 
-and [`ellipord`](@ref) if the corner frequencies for different IIR filter types are known.
+and [`ellipord`](@ref) if the corner frequencies for different IIR filter types are known. [`remezord`](@ref) 
+can be used for an initial FIR filter order estimate.
 
 ```@docs
 analogfilter
@@ -121,13 +122,21 @@ Chebyshev2
 Elliptic
 ```
 
-### [IIR filter order estimation methods](@id order-est-methods)
+### [Filter order estimation methods](@id order-est-methods)
+
+#### IIR filter order estimation methods
 
 ```@docs
 buttord
 cheb1ord
 cheb2ord
 ellipord
+```
+
+#### FIR filter order estimation methods
+
+```@docs
+remezord
 ```
 
 #### FIR filter design methods
