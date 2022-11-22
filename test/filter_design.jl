@@ -342,40 +342,12 @@ end
     f = convert(ZeroPoleGain, convert(PolynomialRatio, Butterworth(20)))
     zpkfilter_eq(f, Butterworth(20), 1e-6)
 
-    # Output of [z, p, k] = buttap(20); [b, a] = zp2tf(z, p, k); tf2zpk(b, a)
-    m_p = [-0.07845909573254482+0.9969173337335029im,
-        -0.07845909573254482-0.9969173337335029im,
-        -0.2334453637958131+0.9723699203918822im,
-        -0.2334453637958131-0.9723699203918822im,
-        -0.3826834327796701+0.9238795325396184im,
-        -0.3826834327796701-0.9238795325396184im,
-        -0.5224985628488221+0.8526401643454914im,
-        -0.5224985628488221-0.8526401643454914im,
-        -0.6494480541398985+0.7604059651905597im,
-        -0.6494480541398985-0.7604059651905597im,
-        -0.760405952587916+0.6494480502272874im,
-        -0.760405952587916-0.6494480502272874im,
-        -0.8526401859847815+0.5224985598169277im,
-        -0.8526401859847815-0.5224985598169277im,
-        -0.9238795057196649+0.3826834415328767im,
-        -0.9238795057196649-0.3826834415328767im,
-        -0.9969173244841298+0.07845911266921719im,
-        -0.9969173244841298-0.07845911266921719im,
-        -0.97236994351794+0.2334453500964366im,
-        -0.97236994351794-0.2334453500964366im]
-
     # compare frequency responses to a reference
     freq = [0; 10 .^ range(big(-2), 2, length=10000)]
     H_ref = freqresp(Butterworth(BigFloat, 20), freq)
     H_1 = freqresp(f, freq)
-    H_2 = freqresp(ZeroPoleGain{:s}(Float64[], m_p, 1), freq)
-    # both should be good
-    @test H_1 ./ H_ref ≈ ones(length(freq))
-    @test H_2 ./ H_ref ≈ ones(length(freq))
-    # ... but ours (H1) should be the better one
-    delta_1 = H_1 ./ H_ref .- 1
-    delta_2 = H_2 ./ H_ref .- 1
-    @test norm(delta_1) < norm(delta_2)
+    @test all(isapprox.(H_1 ./ H_ref, 1; atol=1e-10))
+    @test H_1 ./ H_ref ≈ ones(length(freq)) atol=1e-9
 end
 
 #
