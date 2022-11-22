@@ -21,7 +21,7 @@ export FilterCoefficients,
         coefb
 
 include("filt.jl")
-export  DF2TFilter,
+export DF2TFilter,
         filtfilt,
         tdfilt,
         tdfilt!,
@@ -29,7 +29,7 @@ export  DF2TFilter,
         fftfilt!
 
 include("design.jl")
-export  FilterType,
+export FilterType,
         Butterworth,
         Chebyshev1,
         Chebyshev2,
@@ -46,21 +46,22 @@ export  FilterType,
         resample_filter
 
 include("filt_order.jl")
-export  buttord,
+export buttord,
         ellipord,
         cheb1ord,
-        cheb2ord
+        cheb2ord,
+        remezord
 
 
 include("response.jl")
-export  freqresp,
+export freqresp,
         phaseresp,
         grpdelay,
         impresp,
         stepresp
 
 include("stream_filt.jl")
-export  FIRFilter,
+export FIRFilter,
         outputlength,
         inputlength,
         reset!,
@@ -69,7 +70,7 @@ export  FIRFilter,
         timedelay
 
 include("remez_fir.jl")
-export  remez,
+export remez,
         RemezFilterType,
         filter_type_bandpass,
         filter_type_differentiator,
