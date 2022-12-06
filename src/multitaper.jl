@@ -363,7 +363,7 @@ See also [`mt_spectrogram!`](@ref).
 mt_spectrogram
 
 function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-                        n_overlap::Int=n >> 1; fs::Int=1, onesided::Bool=T <: Real,
+                        n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
                         kwargs...) where {T}
     config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
                                     fft_flags=FFTW.ESTIMATE, kwargs...)
