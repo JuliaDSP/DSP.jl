@@ -97,16 +97,30 @@ PolynomialRatio(f::FilterCoefficients{D}) where {D} = PolynomialRatio{D}(f)
     PolynomialRatio(b, a)
 
 Filter representation in terms of the coefficients of the numerator
-`b` and denominator `a` of the transfer function:
+`b` and denominator `a` in the z or s domain
+where `b` and `a` are vectors ordered from highest power to lowest.
+Filter with:
+- Transfer function in z domain (zero & negative z powers):
+```math
+H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[m]! z^{-m+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
+```
+returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficients divided by `a[1]`. 
+```jldoctest
+julia> PolynomialRatio([1,1],[1,2])
+PolynomialRatio{:z, Float64}(Polynomials.LaurentPolynomial(1.0*z⁻¹ + 1.0), Polynomials.LaurentPolynomial(2.0*z⁻¹ + 1.0))
+julia> PolynomialRatio{:z}([1,2,3],[2,3,4])
+PolynomialRatio{:z, Float64}(Polynomials.LaurentPolynomial(1.5*z⁻² + 1.0*z⁻¹ + 0.5), Polynomials.LaurentPolynomial(2.0*z⁻² + 1.5*z⁻¹ + 1.0))
+```
+- Transfer function in s domain (zero & positive s powers):
 ```math
 H(s) = \\frac{\\verb!b[1]! s^{m-1} + \\ldots + \\verb!b[m]!}{\\verb!a[1]! s^{n-1} + \\ldots + \\verb!a[n]!}
 ```
-or equivalently:
-```math
-H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[n]! z^{-n+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
+returns `PolynomialRatio` object with specified `b` and `a` coefficients.
+```jldoctest
+julia> PolynomialRatio{:s}([1,2,3],[2,3,4])
+PolynomialRatio{:s, Int64}(Polynomials.LaurentPolynomial(3 + 2*s + s²), Polynomials.LaurentPolynomial(4 + 3*s + 2*s²))
 ```
-`b` and `a` may be specified as `Polynomial` objects or
-vectors ordered from highest power to lowest.
+
 """
 PolynomialRatio(b, a) = PolynomialRatio{:z}(b, a)
 function PolynomialRatio{:z}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
