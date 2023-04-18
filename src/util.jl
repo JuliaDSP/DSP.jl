@@ -4,6 +4,7 @@ import Base: *
 import LinearAlgebra.BLAS
 using LinearAlgebra: mul!
 using FFTW
+using Statistics: mean
 
 export  hilbert,
         fftintype,
@@ -162,11 +163,18 @@ Convert an amplitude ratio to dB (decibel), or ``20
 amp2db(a::Real) = 20*log10(a)
 
 """
-    rms(s)
+    rms(s; dims)
 
-Return the root mean square of signal `s`.
+Return the root mean square (rms) of signal `s`. Optional keyword parameter
+`dims` can be used to specify the dimensions along which to compue the rms.
 """
-rms(s::AbstractArray{T}) where {T<:Number} = sqrt(sum(abs2, s)/length(s))
+function rms(s::AbstractArray{T}; dims=:) where {T<:Number}
+    if dims === (:)
+        return sqrt(mean(abs2, s))
+    else
+        return sqrt.(mean(abs2, s; dims=dims))
+    end
+end
 
 """
     rmsfft(f)
