@@ -4,7 +4,7 @@ module Periodograms
 using LinearAlgebra: mul!
 using ..Util, ..Windows
 using Statistics: mean!
-export arraysplit, nextfastfft, periodogram, welch_pgram,
+export arraysplit, nextfastfft, periodogram, WelchConfig, welch_pgram,
        spectrogram, power, freq, stft,
        MTConfig, mt_pgram, mt_pgram!,
        MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
@@ -353,6 +353,66 @@ forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{
     plan_rfft(X)
 forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
+
+"""
+    AbstractPGramConfig
+
+Abstract type representing a configuration object used for computing a periodogram.
+
+# See Also
+
+- [`MTConfig`](@ref)
+- [`WelchConfig`](@ref)
+
+"""
+abstract type AbstractPGramConfig end
+
+struct WelchConfig{F,W} <: AbstractPGramConfig
+    nsamples::Int
+    noverlap::Int
+    onesided::Bool
+    nfft::Int
+    fs::F
+    window::W
+end
+
+nout(config::WelchConfig) = config.onesided ? (config.nfft >> 1)+1 : config.nfft
+
+"""
+    WelchConfig(data; n=length(signal)>>3, noverlap=n>>1,
+             onesided=eltype(signal)<:Real, nfft=nextfastfft(n),
+             fs=1, window=nothing)
+
+    WelchConfig(nsamples, eltype; n=nsamples>>3, noverlap=n>>1,
+             onesided=eltype<:Real, nfft=nextfastfft(n),
+             fs=1, window=nothing)
+
+Captures all configuraiton options for the [welch_pgram](@ref) in a single struct. (Akin to
+[MTConfig](@ref)). When passed on the second argument of [`welch_pgram`](@ref), computes the
+periodogram based on segments with `n` samples with overlap of `noverlap` samples, and
+returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
+[`periodogram`](@ref) for description of optional keyword arguments.
+"""
+function WelchConfig(nsamples, eltype; n=nsamples >> 3, noverlap=n >> 1,
+                                onesided::Bool=eltype <: Real, nfft=nextfastfft(n),
+                                fs=1, window=nothing)
+    return WelchConfig(n, noverlap, onesided, nfft, fs, window)
+end
+
+function WelchConfig(data::AbstractArray; kwargs...)
+    return WelchConfig(size(data, ndims(data)), eltype(data); kwargs...)
+end
+
+"""
+    welch_pgram(signal::AbstractVector, config::WelchConfig)
+
+Computes the Welch periodogram of the given signal using the predefined config object
+[WelchConfig](@ref).
+"""
+function welch_pgram(data::AbstractVector, config::WelchConfig)
+    return welch_pgram(data, config.nsamples, config.noverlap; config.onesided,
+                           config.nfft, config.fs, config.window)
+end
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap

@@ -217,6 +217,11 @@ end
     @test power(welch_pgram(data, length(data), 0; window=hamming, nfft=32)) ≈ expected
     @test power(spectrogram(data, length(data), 0; window=hamming, nfft=32)) ≈ expected
 
+    # test welch_pgram configuration object
+    expected = power(welch_pgram(data, length(data), 0; window=hamming, nfft=32))
+    config = WelchConfig(data; n=length(data), noverlap=0, window=hamming, nfft=32)
+    @test power(welch_pgram(data, config)) == expected
+
     # Test fftshift
     p = periodogram(data)
     @test power(p) == power(fftshift(p))

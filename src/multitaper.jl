@@ -2,7 +2,7 @@
 ##### Multitapered periodogram
 #####
 
-struct MTConfig{T,R1,F,P,T1,T2,W,R2}
+struct MTConfig{T,R1,F,P,T1,T2,W,R2} <: AbstractPGramConfig
     n_samples::Int
     fs::R1
     nfft::Int
