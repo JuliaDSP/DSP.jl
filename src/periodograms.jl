@@ -376,8 +376,6 @@ struct WelchConfig{F,W} <: AbstractPGramConfig
     window::W
 end
 
-nout(config::WelchConfig) = config.onesided ? (config.nfft >> 1)+1 : config.nfft
-
 """
     WelchConfig(data; n=length(signal)>>3, noverlap=n>>1,
              onesided=eltype(signal)<:Real, nfft=nextfastfft(n),
@@ -410,8 +408,9 @@ Computes the Welch periodogram of the given signal using the predefined config o
 [WelchConfig](@ref).
 """
 function welch_pgram(data::AbstractVector, config::WelchConfig)
-    return welch_pgram(data, config.nsamples, config.noverlap; config.onesided,
-                           config.nfft, config.fs, config.window)
+    return welch_pgram(data, config.nsamples, config.noverlap; 
+                       onesided=config.onesided, nfft=config.nfft, 
+                       fs=config.fs, window=config.window)
 end
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
