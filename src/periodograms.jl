@@ -385,7 +385,7 @@ end
              onesided=eltype<:Real, nfft=nextfastfft(n),
              fs=1, window=nothing)
 
-Captures all configuraiton options for the [welch_pgram](@ref) in a single struct. (Akin to
+Captures all configuration options for the [welch_pgram](@ref) in a single struct. (Akin to
 [MTConfig](@ref)). When passed on the second argument of [`welch_pgram`](@ref), computes the
 periodogram based on segments with `n` samples with overlap of `noverlap` samples, and
 returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
