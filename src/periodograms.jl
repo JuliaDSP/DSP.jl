@@ -24,15 +24,23 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     window::W
     k::Int
 
-    function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window) where {Ti<:AbstractVector,Si,Wi}
+    function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window;
+        buffer::Union{Nothing,Vector{Si}}=nothing) where {Ti<:AbstractVector,Si,Wi}
+        
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
-        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, length(s) >= n ? div((length(s) - n), n - noverlap)+1 : 0)
+        buf_ = isnothing(buffer) ? zeros(Si, nfft) : buffer
+        length(buf_) == nfft ||
+            error("buffer length ($(length(buffer)) must be length of `nfft` ($nfft)")
+
+        new{Ti,Si,Wi}(s, buf_, n, noverlap, window, length(s) >= n ? div((length(s) - n),
+            n - noverlap) + 1 : 0)
     end
+
 end
-ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
-    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
+ArraySplit(s::AbstractVector, n, noverlap, nfft, window; buffer) =
+    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window; buffer)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
     (i >= 1 && i <= x.k) || throw(BoundsError())
@@ -54,13 +62,14 @@ end
 Base.size(x::ArraySplit) = (x.k,)
 
 """
-    arraysplit(s, n, m)
+    arraysplit(s, n, m, nfft=n, window=nothing; buffer)
 
 Split an array into arrays of length `n` with overlapping regions
 of length `m`. Iterating or indexing the returned AbstractVector
 always yields the same Vector with different contents.
+Optionally provide a buffer of length `nfft`
 """
-arraysplit(s, n, noverlap, nfft=n, window=nothing) = ArraySplit(s, n, noverlap, nfft, window)
+arraysplit(s, n, noverlap, nfft=n, window=nothing; buffer) = ArraySplit(s, n, noverlap, nfft, window; buffer)
 
 ## Make collect() return the correct split arrays rather than repeats of the last computed copy
 Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
@@ -367,17 +376,22 @@ Abstract type representing a configuration object used for computing a periodogr
 """
 abstract type AbstractPGramConfig end
 
-struct WelchConfig{F,W} <: AbstractPGramConfig
+struct WelchConfig{F,Fr,W,P,T1,T2,R} <: AbstractPGramConfig
     nsamples::Int
     noverlap::Int
     onesided::Bool
     nfft::Int
     fs::F
+    freq::Fr
     window::W
+    plan::P
+    inbuf::T1
+    outbuf::T2
+    r::R # inverse normalization 
 end
 
 """
-    WelchConfig(data; n=length(signal)>>3, noverlap=n>>1,
+    WelchConfig(data; n=size(signal, ndims(signal))>>3, noverlap=n>>1,
              onesided=eltype(signal)<:Real, nfft=nextfastfft(n),
              fs=1, window=nothing)
 
@@ -391,26 +405,26 @@ periodogram based on segments with `n` samples with overlap of `noverlap` sample
 returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
 [`periodogram`](@ref) for description of optional keyword arguments.
 """
-function WelchConfig(nsamples, eltype; n=nsamples >> 3, noverlap=n >> 1,
-                                onesided::Bool=eltype <: Real, nfft=nextfastfft(n),
-                                fs=1, window=nothing)
-    return WelchConfig(n, noverlap, onesided, nfft, fs, window)
+function WelchConfig(nsamples, ::Type{T}; n::Int=nsamples >> 3, noverlap::Int=n >> 1,
+    onesided::Bool=eltype <: Real, nfft::Int=nextfastfft(n),
+    fs::Real=1, window::Union{Function,AbstractVector,Nothing}=nothing) where T
+
+    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    nfft >= n || error("nfft must be >= n")
+
+    win, norm2 = compute_window(window, n)
+    r = fs*norm2*nfft
+    inbuf = zeros(float(T), nfft)
+    outbuf = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
+    plan = forward_plan(inbuf, outbuf)
+
+    freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
+
+    return WelchConfig(n, noverlap, onesided, nfft, fs, freq, win, plan, inbuf, outbuf, r)
 end
 
 function WelchConfig(data::AbstractArray; kwargs...)
     return WelchConfig(size(data, ndims(data)), eltype(data); kwargs...)
-end
-
-"""
-    welch_pgram(signal::AbstractVector, config::WelchConfig)
-
-Computes the Welch periodogram of the given signal using the predefined config object
-[WelchConfig](@ref).
-"""
-function welch_pgram(data::AbstractVector, config::WelchConfig)
-    return welch_pgram(data, config.nsamples, config.noverlap; 
-                       onesided=config.onesided, nfft=config.nfft, 
-                       fs=config.fs, window=config.window)
 end
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
@@ -420,33 +434,74 @@ end
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
 """
-    welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
+    welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, 
+                nfft=nextfastfft(n), fs=1, window=nothing)
 
 Computes the Welch periodogram of a signal `s` based on segments with `n` samples
 with overlap of `noverlap` samples, and returns a Periodogram
 object. For a Bartlett periodogram, set `noverlap=0`. See
 [`periodogram`](@ref) for description of optional keyword arguments.
 """
-function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
-                     onesided::Bool=eltype(s)<:Real,
-                     nfft::Int=nextfastfft(n), fs::Real=1,
-                     window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= n || error("nfft must be >= n")
+function welch_pgram(s::AbstractVector, n::Int=length(s)>>3, noverlap::Int=n>>1; kwargs...)
+    welch_pgram(s, WelchConfig(s; n, noverlap, kwargs...))
+end
 
-    win, norm2 = compute_window(window, n)
-    sig_split = arraysplit(s, n, noverlap, nfft, win)
-    out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
-    r = fs*norm2*length(sig_split)
+"""
+    welch_pgram!(out::AbstractVector, in::AbstractVector, n=div(length(s), 8), 
+                 noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), 
+                 fs=1, window=nothing)
 
-    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
-    plan = forward_plan(sig_split.buf, tmp)
+Computes the Welch periodogram of a signal `s`, storing the result in `out`, based on
+segments with `n` samples with overlap of `noverlap` samples, and returns a Periodogram
+object. For a Bartlett periodogram, set `noverlap=0`. See [`periodogram`](@ref) for
+description of optional keyword arguments.
+"""
+function welch_pgram!(output::AbstractVector, s::AbstractVector, n::Int=length(s)>>3, noverlap::Int=n>>1;
+                      kwargs...)
+    welch_pgram!(output, s, WelchConfig(s; n, overlap, kwargs...))
+end
+
+"""
+    welch_pgram(signal::AbstractVector, config::WelchConfig)
+
+Computes the Welch periodogram of the given signal using the predefined config object
+[WelchConfig](@ref).
+"""
+function welch_pgram(s::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
+    out = zeros(fftabs2type(T), config.onesided ? (config.nfft >> 1)+1 : config.nfft)
+    return welch_pgram_helper!(out, s, config)
+end
+
+"""
+    welch_pgram!(out::AbstractVector, in::AbstractVector, n=div(length(s), 8), 
+                 noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), 
+                 fs=1, window=nothing)
+
+Computes the Welch periodogram of the given signal, storing the result in `out`, using the
+predefined config object [WelchConfig](@ref).
+"""
+function welch_pgram!(out::AbstractVector, in::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
+    if length(output) != length(config.freq)
+        throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
+            got `length(output) = $(length(output)) and `length(config.freq)` = $(length(config.freq))"""))
+    end
+    if eltype(out) == fftabs2type(T)
+        throw(ArgumentError("Eltype of output ($eltype(out)) doesn't matched the expected "*
+                            "type: $(fftabs2type(T))."))
+    end
+    welch_pgram_helper!(out, in, config)
+end
+
+function welch_pgram_helper!(out, in, config)
+    sig_split = arraysplit(in, config.nsamples, config.noverlap, config.nfft, config.window;
+                           buffer=config.inbuf)
+
     for sig in sig_split
-        mul!(tmp, plan, sig)
-        fft2pow!(out, tmp, nfft, r, onesided)
+        mul!(config.outbuf, config.plan, sig)
+        fft2pow!(out, config.outbuf, config.nfft, config.r, config.onesided)
     end
 
-    Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
+    Periodogram(out, config.freq)
 end
 
 ## SPECTROGRAM
