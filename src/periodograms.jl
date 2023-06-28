@@ -480,9 +480,7 @@ function welch_pgram(s::AbstractVector{T}, config::WelchConfig) where T<:Number
 end
 
 """
-    welch_pgram!(out::AbstractVector, in::AbstractVector, n=div(length(s), 8), 
-                 noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), 
-                 fs=1, window=nothing)
+    welch_pgram!(out::AbstractVector, in::AbstractVector, config::WelchConfig)
 
 Computes the Welch periodogram of the given signal, storing the result in `out`, using the
 predefined config object [WelchConfig](@ref).
@@ -512,31 +510,6 @@ function welch_pgram_helper!(out, in, config)
 
     Periodogram(out, config.freq)
 end
-
-function welch_pgram__(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
-                     onesided::Bool=eltype(s)<:Real,
-                     nfft::Int=nextfastfft(n), fs::Real=1,
-                     window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= n || error("nfft must be >= n")
-
-    win, norm2 = compute_window(window, n)
-    sig_split = arraysplit(s, n, noverlap, nfft, win)
-    out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
-    r = fs*norm2*length(sig_split)
-    # Main.@infiltrate
-
-    @show win, size(out), r
-    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
-    plan = forward_plan(sig_split.buf, tmp)
-    for sig in sig_split
-        mul!(tmp, plan, sig)
-        fft2pow!(out, tmp, nfft, r, onesided)
-    end
-
-    Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
-end
-
 
 ## SPECTROGRAM
 
