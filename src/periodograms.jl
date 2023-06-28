@@ -39,7 +39,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     end
 
 end
-ArraySplit(s::AbstractVector, n, noverlap, nfft, window; buffer) =
+ArraySplit(s::AbstractVector, n, noverlap, nfft, window; buffer=nothing) =
     ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window; buffer)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
@@ -62,14 +62,14 @@ end
 Base.size(x::ArraySplit) = (x.k,)
 
 """
-    arraysplit(s, n, m, nfft=n, window=nothing; buffer)
+    arraysplit(s, n, m, nfft=n, window=nothing; buffer=zeros(eltype(s), nfft))
 
 Split an array into arrays of length `n` with overlapping regions
 of length `m`. Iterating or indexing the returned AbstractVector
 always yields the same Vector with different contents.
 Optionally provide a buffer of length `nfft`
 """
-arraysplit(s, n, noverlap, nfft=n, window=nothing; buffer) = ArraySplit(s, n, noverlap, nfft, window; buffer)
+arraysplit(s, n, noverlap, nfft=n, window=nothing; buffer=nothing) = ArraySplit(s, n, noverlap, nfft, window; buffer)
 
 ## Make collect() return the correct split arrays rather than repeats of the last computed copy
 Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
@@ -404,16 +404,23 @@ Captures all configuration options for the [welch_pgram](@ref) in a single struc
 periodogram based on segments with `n` samples with overlap of `noverlap` samples, and
 returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
 [`periodogram`](@ref) for description of optional keyword arguments.
+
+!!! note
+
+    WelchConfig precomputes an fft plan, and preallocates the necessary intermediate buffers.
+    Thus, repeated calls to `welch_pgram` that use the same `WelchConfig` object
+    will be more efficient than otherwise possible.
+
 """
 function WelchConfig(nsamples, ::Type{T}; n::Int=nsamples >> 3, noverlap::Int=n >> 1,
-    onesided::Bool=eltype <: Real, nfft::Int=nextfastfft(n),
+    onesided::Bool=T<:Real, nfft::Int=nextfastfft(n),
     fs::Real=1, window::Union{Function,AbstractVector,Nothing}=nothing) where T
 
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
     nfft >= n || error("nfft must be >= n")
 
     win, norm2 = compute_window(window, n)
-    r = fs*norm2*nfft
+    r = fs*norm2
     inbuf = zeros(float(T), nfft)
     outbuf = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(inbuf, outbuf)
@@ -467,7 +474,7 @@ end
 Computes the Welch periodogram of the given signal using the predefined config object
 [WelchConfig](@ref).
 """
-function welch_pgram(s::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
+function welch_pgram(s::AbstractVector{T}, config::WelchConfig) where T<:Number
     out = zeros(fftabs2type(T), config.onesided ? (config.nfft >> 1)+1 : config.nfft)
     return welch_pgram_helper!(out, s, config)
 end
@@ -496,13 +503,40 @@ function welch_pgram_helper!(out, in, config)
     sig_split = arraysplit(in, config.nsamples, config.noverlap, config.nfft, config.window;
                            buffer=config.inbuf)
 
+    r = length(sig_split)*config.r
+
     for sig in sig_split
         mul!(config.outbuf, config.plan, sig)
-        fft2pow!(out, config.outbuf, config.nfft, config.r, config.onesided)
+        fft2pow!(out, config.outbuf, config.nfft, r, config.onesided)
     end
 
     Periodogram(out, config.freq)
 end
+
+function welch_pgram__(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
+                     onesided::Bool=eltype(s)<:Real,
+                     nfft::Int=nextfastfft(n), fs::Real=1,
+                     window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
+    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    nfft >= n || error("nfft must be >= n")
+
+    win, norm2 = compute_window(window, n)
+    sig_split = arraysplit(s, n, noverlap, nfft, win)
+    out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
+    r = fs*norm2*length(sig_split)
+    # Main.@infiltrate
+
+    @show win, size(out), r
+    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
+    plan = forward_plan(sig_split.buf, tmp)
+    for sig in sig_split
+        mul!(tmp, plan, sig)
+        fft2pow!(out, tmp, nfft, r, onesided)
+    end
+
+    Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
+end
+
 
 ## SPECTROGRAM
 
