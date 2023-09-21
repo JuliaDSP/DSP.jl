@@ -77,11 +77,11 @@ function jacobsen(x::Vector{<:Complex}, Fs::Real = 1.0)
 end
 
 """
-    qf(x::Vector, f0::Real = 0.0, Fs::Real = 1.0 ; tol = 1e-6, maxiters = 20)
+    quinn(x::Vector, f0::Real = 0.0, Fs::Real = 1.0 ; tol = 1e-6, maxiters = 20)
 
-    qf(x::Vector, Fs::Real = 1.0 ; kwargs...)
+    quinn(x::Vector, Fs::Real = 1.0 ; kwargs...)
 
-    qf(x::Vector ; kwargs...)
+    quinn(x::Vector ; kwargs...)
 
 Algorithms by Quinn and Quinn & Fernandes for frequency estimation. Given a
 signal `x` and an initial guess `f0`, estimate and return the frequency of the
@@ -89,7 +89,7 @@ largest sinusoid in `x`. `Fs` is the sampling frequency. All frequencies are
 expressed in Hz.
 
 If the initial guess `f0` is not provided or if it is equal to zero, then a guess
-is calculated by `qf` using Jacobsen's estimator. The sampling frequency `Fs`
+is calculated by `quinn` using Jacobsen's estimator. The sampling frequency `Fs`
 defaults to `1.0`.
 
 The following keyword arguments control the algorithm's behavior:
@@ -114,9 +114,9 @@ estimation of frequency", Biometrika, Vol. 78 (1991).
 Signal Processing, Vol. 19 (2009), Elsevier.
 
 """
-qf(x ; kwargs...) = qf(x, 0.0, 1.0 ; kwargs...)
+quinn(x ; kwargs...) = quinn(x, 0.0, 1.0 ; kwargs...)
 
-qf(x, Fs ; kwargs...) = qf(x, 0.0, Fs ; kwargs...)
+quinn(x, Fs ; kwargs...) = quinn(x, 0.0, Fs ; kwargs...)
 
 function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
     fₙ = Fs/2
@@ -156,7 +156,7 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
         α = 2β-α
     end
 
-    fₙ*acos(0.5*β)/π,  abs(β) <= 2.0, iter == maxiters
+    fₙ*acos(0.5*β)/π, abs(β) <= 2.0, iter == maxiters
 end
 
 function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
