@@ -41,15 +41,30 @@ end
     t = range(0, 5, step = 1/fs)
     fr = 28.3
     sr = cos.(2π*fr*t .+ π/4.2)
-    (f_est_real, converged, maxiter) = quinn(sr, fs)
-    @test converged
+    ### real input
+    (f_est_real, maxiter) = quinn(sr, 50, fs)
     @test maxiter == false
     @test isapprox(f_est_real, fr, atol = 1e-3)
-    # complex input
+    # use default initial guess
+    (f_est_real, maxiter) = quinn(sr, fs) # assumes f0 = 0.0
+    @test maxiter == false
+    @test isapprox(f_est_real, fr, atol = 1e-3)
+    # use default fs
+    (f_est_real, maxiter) = quinn(sr) # assumes fs = 1.0, f0 = 0.0
+    @test maxiter == false
+    @test isapprox(f_est_real, fr/fs, atol = 1e-3)
+    ### complex input
     fc = -40.3
     sc = cis.(2π*fc*t .+ π/1.4)
-    (f_est_real, converged, maxiter) = quinn(sc, fs)
-    @test converged
+    (f_est_real, maxiter) = quinn(sc, -20, fs)
     @test maxiter == false
     @test isapprox(f_est_real, fc, atol = 1e-3)
+    # use default initial guess
+    (f_est_real, maxiter) = quinn(sc, fs) # assumes f0 = 0.0
+    @test maxiter == false
+    @test isapprox(f_est_real, fc, atol = 1e-3)
+    # use default fs
+    (f_est_real, maxiter) = quinn(sc) # assumes fs = 1.0, f0 = 0.0
+    @test maxiter == false
+    @test isapprox(f_est_real, fc/fs, atol = 1e-3)
 end
