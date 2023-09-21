@@ -99,10 +99,10 @@ The following keyword arguments control the algorithm's behavior:
   `1e-6`.
 - `maxiters`: the maximum number of iterations to run. Defaults to `20`.
 
-Returns a tuple `(estimate, converged, reachedmaxiters)`, where `estimate` is
-the estimated frequency, `converged` is `true` if the algorithm converged, and
-`reachedmaxiters` is `true` if the algorithm finished after running for
-`maxiters` iterations.
+Returns a tuple `(estimate, reachedmaxiters)`, where `estimate` is the
+estimated frequency, and `reachedmaxiters` is `true` if the algorithm finished
+after running for `maxiters` iterations (this may indicate that the algorithm
+did not converge).
 
 If the signal `x` is real, then the algorithm used is [^Quinn]. If the signal is
 complex, the algorithm is [^Quinn2009].
@@ -156,7 +156,7 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
         α = 2β-α
     end
 
-    fₙ*acos(0.5*β)/π, abs(β) <= 2.0, iter == maxiters
+    fₙ*acos(0.5*β)/π, iter == maxiters
 end
 
 function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
@@ -199,7 +199,7 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
         (abs(2*num/den) < tol) && break
     end
 
-    fₙ*ω̂/π, true, iter == maxiters
+    fₙ*ω̂/π, iter == maxiters
 end
 
 end # end module definition
