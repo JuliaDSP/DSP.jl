@@ -185,13 +185,13 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
             ξ[t] = x[t] + exp(complex(0,ω̂))*ξ[t-1]
         end
         # step 3
-        x = let s = 0.0
+        S = let s = 0.0
                 for t=2:T
                     s += x[t]*conj(ξ[t-1])
                 end
                 s
             end
-        num = imag(x*exp(complex(0,-ω̂)))
+        num = imag(S*exp(complex(0,-ω̂)))
         den = sum(abs2.(ξ[1:end-1]))
         ω̂ += 2*num/den
 
