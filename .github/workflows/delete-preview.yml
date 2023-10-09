@@ -12,7 +12,7 @@ jobs:
         with:
           ref: gh-pages
       - run: rm -rf previews/PR${{ github.event.number }}
-      - uses: stefanzweifel/git-auto-commit-action@v4.16.0
+      - uses: stefanzweifel/git-auto-commit-action@v5.0.0
         with:
           commit_message: 'Delete preview of PR#${{ github.event.number }}'
           branch: gh-pages
