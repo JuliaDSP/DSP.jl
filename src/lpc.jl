@@ -40,7 +40,7 @@ function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCBurg)
     prediction_err = sum(abs2, x) / length(x)
     T = typeof(prediction_err)
 
-    ef = similar(x, T); copyto!(ef, x)  # forward error
+    ef = collect(T, x)                  # forward error
     eb = copy(ef)                       # backwards error
     a = zeros(T, p + 1); a[1] = 1       # prediction coefficients
 
