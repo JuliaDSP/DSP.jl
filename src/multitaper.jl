@@ -149,7 +149,7 @@ end
 function mt_fft_tapered!(fft_output, signal, taper_index, config)
     # Create the input: tapered + zero-padded version of the signal
     fft_input = config.fft_input_tmp
-    @inbounds for i in 1:length(signal)
+    @inbounds for i in eachindex(signal)
         fft_input[i] = config.window[i, taper_index] * signal[i]
     end
     fft_input[(length(signal) + 1):(config.nfft)] .= 0
@@ -281,7 +281,7 @@ function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_s
                                                     mt_config)
 end
 
-# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}` 
+# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}`
 function MTSpectrogramConfig{T}(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
     return MTSpectrogramConfig(n_samples, mt_config, n_overlap_samples)
 end
@@ -487,7 +487,7 @@ MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; demean=false,
 function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
         freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
 
-    n_samples = mt_config.n_samples                             
+    n_samples = mt_config.n_samples
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
         demeaned_signal = Matrix{T}(undef, n_channels, n_samples)
@@ -601,7 +601,7 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     @boundscheck checkbounds(normalization_weights, 1:length(normalization_weights))
     @boundscheck checkbounds(x_mt, freq_inds, 1:length(normalization_weights), 1:n_channels)
     output .= zero(eltype(output))
-    # Up to the `normalization_weights` scaling, we have 
+    # Up to the `normalization_weights` scaling, we have
     # J_k^l(f) = x_mt[k, f, l]
     # Ŝ^lm(f) = output[l, m, f]
     # using the notation from https://en.wikipedia.org/wiki/Multitaper#The_method
@@ -609,7 +609,7 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     @inbounds for (fi, f) in enumerate(freq_inds),
                   m in 1:n_channels,
                   l in 1:n_channels,
-                  k in 1:length(normalization_weights)
+                  k in eachindex(normalization_weights)
 
         output[l, m, fi] += normalization_weights[k] * x_mt[f, k, l] * conj(x_mt[f, k, m])
     end
@@ -618,7 +618,7 @@ end
 
 """
     mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
-    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
 
 Computes multitapered cross power spectra between channels of a signal. Arguments:
 
@@ -640,7 +640,7 @@ function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) wher
     return mt_cross_power_spectra(signal, config)
 end
 
-function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
     output = allocate_output(config)
     return mt_cross_power_spectra!(output, signal, config)
 end
@@ -758,7 +758,7 @@ coherence(c::Coherence) = c.coherence
 
 Computes the pairwise coherences between channels.
 
-* `output`: `n_channels` x `n_channels` matrix 
+* `output`: `n_channels` x `n_channels` matrix
 * `signal`: `n_samples` x `n_channels` matrix
 * `config`: optional configuration object that pre-allocates temporary variables and choose settings.
 

@@ -86,9 +86,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 
     ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
-    for i = 1:length(p)
-        p[i] = inv(p[i])
-    end
+    map!(inv, p, p)
 
     z = zeros(Complex{T}, n-isodd(n))
     k = one(T)
@@ -355,7 +353,7 @@ function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain{:s})
     newz = zeros(TR, 2*nz+np-ncommon)
     newp = zeros(TR, 2*np+nz-ncommon)
     for (oldc, newc) in ((p, newp), (z, newz))
-        for i = 1:length(oldc)
+        for i in eachindex(oldc)
             b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
             pm = sqrt(b^2 - ftype.w2 * ftype.w1)
             newc[2i-1] = b + pm
@@ -372,7 +370,7 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     k = proto.k
     nz = length(z)
     np = length(p)
-    npairs = nz+np-min(nz, np)
+    npairs = max(nz, np)
     TR = Base.promote_eltype(z, p)
     newz = Vector{TR}(undef, 2*npairs)
     newp = Vector{TR}(undef, 2*npairs)

@@ -80,13 +80,13 @@ function fft2pow!(out::AbstractArray{T}, s_fft::AbstractVector{Complex{T}}, nfft
         out[offset+n] += abs2(s_fft[end])*ifelse(iseven(nfft), m1, m2)
     else
         if n == nfft
-            for i = 1:length(s_fft)
+            for i in eachindex(s_fft)
                 @inbounds out[offset+i] += abs2(s_fft[i])*m1
             end
         else
             # Convert real FFT to two-sided
             out[offset+1] += abs2(s_fft[1])*m1
-            @inbounds for i = 2:length(s_fft)-1
+            @inbounds for i = 2:n-1
                 v = abs2(s_fft[i])*m1
                 out[offset+i] += v
                 out[offset+nfft-i+2] += v
@@ -103,10 +103,8 @@ end
 # Convert the output of a 2-d FFT to a 2-d PSD and add it to out
 function fft2pow2!(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real) where T
     m1 = convert(T, 1/r)
-    for j = 1:n2
-        for i = 1:n1
-            @inbounds out[i,j] += abs2(s_fft[i,j])*m1
-        end
+    for j = 1:n2, i = 1:n1
+        @inbounds out[i,j] += abs2(s_fft[i,j])*m1
     end
     out
 end
@@ -266,12 +264,12 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     nfft >= length(s) || error("nfft must be >= n")
 
     win, norm2 = compute_window(window, length(s))
-    if nfft == length(s) && win == nothing && isa(s, StridedArray)
+    if nfft == length(s) && win === nothing && isa(s, StridedArray)
         input = s # no need to pad
     else
         input = zeros(fftintype(T), nfft)
-        if win != nothing
-            for i = 1:length(s)
+        if win !== nothing
+            for i in eachindex(s)
                 @inbounds input[i] = s[i]*win[i]
             end
         else
