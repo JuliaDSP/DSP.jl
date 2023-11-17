@@ -43,15 +43,19 @@ function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCBurg)
     ef = collect(T, x)                  # forward error
     eb = copy(ef)                       # backwards error
     a = zeros(T, p + 1); a[1] = 1       # prediction coefficients
+    rev_buf = similar(a, p)             # buffer to store a in reverse
 
-    for m in 1:p
+    @views for m in 1:p
         pop!(ef)
         popfirst!(eb)
         k = -2 * dot(ef, eb) / (sum(abs2, eb) + sum(abs2, ef))
         for i in eachindex(ef, eb)
-            ef[i], eb[i] = ef[i] + k * eb[i], eb[i] + k * ef[i]
+            ef_i, eb_i = ef[i], eb[i]
+            ef[i] += k * eb_i
+            eb[i] += k * ef_i
         end
-        @views @. a[2:m+1] += k * a[m:-1:1]
+        rev_buf[1:m] = a[m:-1:1]
+        @. a[2:m+1] += k * rev_buf[1:m]
         prediction_err *= (1 - k^2)
     end
 
