@@ -76,6 +76,7 @@ https://doi.org/10.1002/sapm1946251261)
 function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCLevinson)
     R_xx = xcorr(x,x)[length(x):end]
     a = zeros(p)
+    rev_buf = similar(a, p - 1)     # buffer to store a in reverse
 
     # for m = 1
     a[1] = -R_xx[2] / R_xx[1]
@@ -84,7 +85,8 @@ function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCLevinson)
     # for m = 2,3,4,..p
     @views for m = 2:p
         a[m] = (-(R_xx[m+1] + dot(a[1:m-1], R_xx[m:-1:2])) / prediction_err)
-        @. a[1:m-1] += a[m] * a[m-1:-1:1]
+        rev_buf[1:m-1] = a[m-1:-1:1]
+        @. a[1:m-1] += a[m] * rev_buf[1:m-1]
         prediction_err *= (1 - a[m]^2)
     end
 
