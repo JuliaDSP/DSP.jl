@@ -79,7 +79,7 @@ end
 # Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i,col]
         val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
@@ -93,7 +93,7 @@ end
 # Transposed direct form II
 function _filt_fir!(out, b, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i,col]
         val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
@@ -116,7 +116,7 @@ for n = 2:SMALL_FILT_CUTOFF
         offset = (col - 1) * size(x, 1)
 
         $(Expr(:block, [:(@inbounds $(si[i]) = siarr[$i]) for i = 1:silen]...))
-        @inbounds for i=1:size(x, 1)
+        @inbounds for i in axes(x, 1)
             xi = x[i+offset]
             val = muladd(xi, b[1], $(si[1]))
             $(Expr(:block, [:($(si[j]) = muladd(xi, b[$(j+1)], $(si[j+1]))) for j = 1:(silen-1)]...))

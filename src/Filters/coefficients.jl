@@ -165,14 +165,24 @@ function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     end
 end
 
+function _rev_zeropad_f(v::AbstractVector{T}, n) where T
+    padded_v = zeros(T, length(v) + n)
+    copyto!(padded_v, Iterators.reverse(v))
+end
+
+function _rev_zeropad_b(v::AbstractVector{T}, n) where T
+    padded_v = zeros(T, length(v) + n)
+    copyto!(padded_v, n+1, Iterators.reverse(v))
+end
+
 """
     coefb(f)
 
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.b)); coeffs(f.b)])
-coefb(f::PolynomialRatio{:z}) = reverse([coeffs(f.b); zeros(-lastindex(f.b))])
+coefb(f::PolynomialRatio{:s}) = _rev_zeropad_f(coeffs(f.b), firstindex(f.b))
+coefb(f::PolynomialRatio{:z}) = _rev_zeropad_b(coeffs(f.b), -lastindex(f.b))
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -181,8 +191,8 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.a)); coeffs(f.a)])
-coefa(f::PolynomialRatio{:z}) = reverse([coeffs(f.a); zeros(-lastindex(f.a))])
+coefa(f::PolynomialRatio{:s}) = _rev_zeropad_f(coeffs(f.a), firstindex(f.a))
+coefa(f::PolynomialRatio{:z}) = _rev_zeropad_b(coeffs(f.a), -lastindex(f.a))
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
@@ -310,15 +320,8 @@ function groupzp(z, p)
     groupedz = similar(z, n)
     i = 1
     while i <= n
-        closest_zero_idx = 0
-        closest_zero_val = Inf
-        for j = 1:length(z)
-            val = abs(z[j] - p[i])
-            if val < closest_zero_val
-                closest_zero_idx = j
-                closest_zero_val = val
-            end
-        end
+        p_i = p[i]
+        closest_zero_idx = argmin(x -> abs(x - p_i), z)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
@@ -326,8 +329,7 @@ function groupzp(z, p)
         end
         i += 1
     end
-    ret = (groupedz, p[1:n])
-    splice!(p, 1:n)
+    ret = (groupedz, splice!(p, 1:n))
     ret
 end
 
