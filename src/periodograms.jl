@@ -26,8 +26,8 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
 
     function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window) where {Ti<:AbstractVector,Si,Wi}
         # n = noverlap is a problem - the algorithm will not terminate.
-        (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
-        nfft >= n || error("nfft must be >= n")
+        (0 ≤ noverlap < n) || throw(DomainError((noverlap=noverlap, n=n), "noverlap must be between zero and n"))
+        nfft >= n || throw(DomainError((nfft=nfft, n=n), "nfft must be >= n"))
         new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, length(s) >= n ? div((length(s) - n), n - noverlap)+1 : 0)
     end
 end
@@ -35,12 +35,12 @@ ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
     ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
-    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
+    (1 <= i <= x.k) || throw(BoundsError(x, i))
+    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + firstindex(x.s), x.n)
 end
 function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
-    offset = (i-1)*(x.n-x.noverlap)
+    (1 <= i <= x.k) || throw(BoundsError(x, i))
+    offset = (i-1)*(x.n-x.noverlap) + firstindex(x.s) - 1
     window = x.window
     for i = 1:x.n
         @inbounds x.buf[i] = x.s[offset+i]*window[i]
@@ -260,8 +260,8 @@ signal.
 function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= length(s) || error("nfft must be >= n")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
+    nfft >= length(s) || throw(DomainError((nfft=nfft, n=length(s)), "nfft must be >= n = length(s)"))
 
     win, norm2 = compute_window(window, length(s))
     if nfft == length(s) && win === nothing && isa(s, StridedArray)
@@ -269,7 +269,7 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     else
         input = zeros(fftintype(T), nfft)
         if win !== nothing
-            for i in eachindex(s)
+            for i in eachindex(s, win)
                 @inbounds input[i] = s[i]*win[i]
             end
         else
@@ -347,9 +347,9 @@ function periodogram(s::AbstractMatrix{T};
     end
 end
 
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
+forward_plan(X::AbstractArray{T}, ::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
     plan_rfft(X)
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
+forward_plan(X::AbstractArray{T}, ::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
 
 # Compute an estimate of the power spectral density of a signal s via Welch's
