@@ -370,8 +370,8 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
                      onesided::Bool=eltype(s)<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= n || error("nfft must be >= n")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
+    nfft >= n || throw(DomainError((nfft=nfft, n=n), "nfft must be >= n"))
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
@@ -442,7 +442,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
               psdonly::Union{Nothing,PSDOnly}=nothing;
               onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
               window::Union{Function,AbstractVector,Nothing}=nothing) where T
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
