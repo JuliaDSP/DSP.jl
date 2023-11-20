@@ -29,7 +29,7 @@ length p real array of frequencies in units of Hz.
 [^Roy1986]: R Roy, A Paulraj and T Kailath, ESPRIT - A subspace approach to estimation of parameters of cisoids in noise, IEEE Trans. Acoustics, Speech, Signal Process., 34, 1340-1342 (1986). [url](http://ieeexplore.ieee.org/abstract/document/1164935/).
 """
 function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
-    count(v->v != 1, size(x)) <= 1 || error("`x` must be a 1D signal")
+    count(!isone, size(x)) <= 1 || error("`x` must be a 1D signal")
     N = length(x)
     X = x[ (1:M) .+ (0:N-M)' ]
     U,s,V = svd(X)
