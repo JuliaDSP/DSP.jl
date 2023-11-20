@@ -25,24 +25,19 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
         if size(plan) != size(fft_input_tmp)
             throw(DimensionMismatch("""Must have `size(plan) == size(fft_input_tmp)`;
                 got `size(plan)` = $(size(plan)) and `size(fft_input_tmp)` = $(size(fft_input_tmp))"""))
-        end
-        if size(fft_input_tmp) != (nfft,)
+        elseif size(fft_input_tmp) != (nfft,)
             throw(DimensionMismatch("""Must have `size(fft_input_tmp) == (nfft,)`;
                 got `size(fft_input_tmp)` = $(size(fft_input_tmp)) and `nfft` = $(nfft)"""))
-        end
-        if size(fft_output_tmp) != (length(freq),)
+        elseif size(fft_output_tmp) != (length(freq),)
             throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq),)`;
                 got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $(length(freq))"""))
-        end
-        if size(window) != (n_samples, ntapers)
+        elseif size(window) != (n_samples, ntapers)
             throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
                 got `size(window)` = $(size(window)) and `(ntapers, n_samples)` = $((n_samples, ntapers))"""))
-        end
-        if size(r) != (ntapers,)
+        elseif size(r) != (ntapers,)
             throw(DimensionMismatch("""Must have `size(r) == (ntapers,)`;
             got `size(r)` = $(size(r)) and `(ntapers,)` = $((ntapers,))"""))
-        end
-        if onesided && T <: Complex
+        elseif onesided && T <: Complex
             throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
         end
         return new{T,typeof(fs),typeof(freq),typeof(plan),typeof(fft_input_tmp),

@@ -105,7 +105,7 @@ fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 # Get next fast FFT size for a given signal length
-const FAST_FFT_SIZES = [2, 3, 5, 7]
+const FAST_FFT_SIZES = (2, 3, 5, 7)
 """
     nextfastfft(n)
 
