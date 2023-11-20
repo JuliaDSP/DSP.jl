@@ -39,20 +39,19 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs = length(b)
     sz = max(as, bs)
     silen = sz - 1
-    ncols = trailingsize(x,2)
+    ncols = trailingsize(x, 2)
 
     if size(si, 1) != silen
         throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
-    end
-    if N > 1 && trailingsize(si,2) != ncols
-        throw(ArgumentError("initial state vector si must be a vector or have the same number of columns as x"))
+    elseif N > 1 && size(si, 2) != ncols
+        throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
     end
 
-    size(x,1) == 0 && return out
-    sz == 1 && return mul!(out, x, b[1]/a[1]) # Simple scaling without memory
+    iszero(size(x, 1)) && return out
+    isone(sz) && return mul!(out, x, b[1] / a[1]) # Simple scaling without memory
 
     # Filter coefficient normalization
-    if a[1] != 1
+    if !isone(a[1])
         norml = a[1]
         a = a ./ norml
         b = b ./ norml
@@ -80,13 +79,13 @@ end
 function _filt_iir!(out, b, a, x, si, col)
     silen = length(si)
     @inbounds for i in axes(x, 1)
-        xi = x[i,col]
+        xi = x[i, col]
         val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
             si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
         si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
-        out[i,col] = val
+        out[i, col] = val
     end
 end
 
@@ -94,13 +93,13 @@ end
 function _filt_fir!(out, b, x, si, col)
     silen = length(si)
     @inbounds for i in axes(x, 1)
-        xi = x[i,col]
+        xi = x[i, col]
         val = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
             si[j] = muladd(xi, b[j+1], si[j+1])
         end
-        si[silen] = b[silen+1]*xi
-        out[i,col] = val
+        si[silen] = b[silen+1] * xi
+        out[i, col] = val
     end
 end
 
