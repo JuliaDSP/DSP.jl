@@ -44,7 +44,7 @@ http://www.sylvain-marchand.info/Publications/dafx03.pdf
 function arburg(x::AbstractVector{<:Number}, p::Integer)
     # Initialize prediction error with the variance of the signal
     prediction_err = sum(abs2, x) / length(x)
-    T = typeof(prediction_err)
+    T = promote_type(typeof(prediction_err), eltype(x))
 
     ef = collect(T, x)                  # forward error
     eb = copy(ef)                       # backwards error
