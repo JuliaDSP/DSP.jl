@@ -41,33 +41,34 @@ implements the mathematics published in [1].
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
 """
-function arburg(x::AbstractVector{<:Number}, p::Integer)
+function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
     prediction_err = sum(abs2, x) / length(x)
-    T = promote_type(typeof(prediction_err), eltype(x))
+    R = typeof(prediction_err)
+    F = promote_type(R, T)
 
-    ef = collect(T, x)                  # forward error
+    ef = collect(F, x)                  # forward error
     eb = copy(ef)                       # backwards error
-    a = zeros(T, p + 1); a[1] = 1       # prediction coefficients
+    a = zeros(F, p + 1); a[1] = 1       # prediction coefficients
     rev_buf = similar(a, p)             # buffer to store a in reverse
-    reflection_coeffs = zeros(T, p)     # reflection coefficients
+    reflection_coeffs = similar(a, p)   # reflection coefficients
 
     @views for m in 1:p
         pop!(ef)
         popfirst!(eb)
-        k = -2 * dot(ef, eb) / (sum(abs2, eb) + sum(abs2, ef))
+        k = -2 * dot(eb, ef) / (sum(abs2, eb) + sum(abs2, ef))
         for i in eachindex(ef, eb)
             ef_i, eb_i = ef[i], eb[i]
             ef[i] += k * eb_i
-            eb[i] += k * ef_i
+            eb[i] += conj(k) * ef_i
         end
-        rev_buf[1:m] = a[m:-1:1]
-        @. a[2:m+1] += k * rev_buf[1:m]
-        prediction_err *= (1 - k^2)
+        copyto!(rev_buf, CartesianIndices((1:m,)), a, CartesianIndices((m:-1:1,)))
+        @. a[2:m+1] += k * conj(rev_buf[1:m])
+        prediction_err *= (one(R) - abs2(k))
         reflection_coeffs[m] = k
     end
 
-    return a, prediction_err, reflection_coeffs
+    return conj!(a), prediction_err, reflection_coeffs
 end
 
 function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
@@ -89,8 +90,10 @@ https://doi.org/10.1002/sapm1946251261)
 function levinson(R_xx::AbstractVector{<:Number}, p::Integer)
     # for m = 1
     a_1 = -R_xx[2] / R_xx[1]
-    prediction_err = R_xx[1] * (one(a_1) - a_1^2)
-    T = typeof(prediction_err)
+    F = typeof(a_1)
+    prediction_err = abs(R_xx[1] * (one(F) - abs2(a_1)))
+    R = typeof(prediction_err)
+    T = promote_type(F, R)
 
     a = zeros(T, p)
     reflection_coeffs = zeros(T, p)
@@ -98,17 +101,19 @@ function levinson(R_xx::AbstractVector{<:Number}, p::Integer)
     rev_buf = similar(a, p - 1)     # buffer to store a in reverse
 
     @views for m = 2:p
-        k = (-(R_xx[m+1] + dot(a[1:m-1], R_xx[m:-1:2])) / prediction_err)
-        rev_buf[1:m-1] = a[m-1:-1:1]
-        @. a[1:m-1] += k * rev_buf[1:m-1]
+        k = -(R_xx[m+1] + reverse_dot(R_xx[2:m], a[1:m-1])) / prediction_err
+        copyto!(rev_buf, CartesianIndices((1:m-1,)), a, CartesianIndices((m-1:-1:1,)))
+        @. a[1:m-1] += k * conj(rev_buf[1:m-1])
         a[m] = reflection_coeffs[m] = k
-        prediction_err *= (1 - k^2)
+        prediction_err *= (one(R) - abs2(k))
     end
 
     # Return autocorrelation coefficients, error estimate, and reflection coefficients
     a, prediction_err, reflection_coeffs
 end
 
+"workaround for 1.6 BLAS incompatibility with negative stride views"
+reverse_dot(x, y) = mapreduce(*, +, x, Iterators.reverse(y))
 
 # Default users to using Burg estimation as it is in general more stable
 lpc(x, p) = lpc(x, p, LPCBurg())
