@@ -34,12 +34,22 @@ end
 """
     arburg(x::AbstractVector, p::Integer)
 
-LPC (Linear-Predictive-Code) estimation, using the Burg method. This function
-implements the mathematics published in [1].
+LPC (Linear-Predictive-Code) estimation, using the Burg method.
+This function implements the mathematics published in [1], and
+the recursion relation as noted in [2], in turn referenced from [3].
 
 [1] - Enhanced Partial Tracking Using Linear Prediction
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
+
+[2] - A Fast Implementation of Burg’s Method © 2013, Koen Vos.\\
+https://www.opus-codec.org/docs/vos_fastburg.pdf
+
+This work is licensed under a Creative Commons Attribution 3.0 Unported License.\\
+https://creativecommons.org/licenses/by/3.0/
+
+[3] - N. Andersen. Comments on the performance of maximum entropy algorithms.\\
+Proceedings of the IEEE 66.11: 1581-1582, 1978.
 """
 function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
@@ -53,19 +63,30 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     rev_buf = similar(a, p)             # buffer to store a in reverse
     reflection_coeffs = similar(a, p)   # reflection coefficients
 
+    cf = pop!(ef)
+    cb = popfirst!(eb)
+    den = sum(abs2, eb) + sum(abs2, ef)
+
     @views for m in 1:p
-        pop!(ef)
-        popfirst!(eb)
-        k = -2 * dot(eb, ef) / (sum(abs2, eb) + sum(abs2, ef))
+        k = -2 * dot(eb, ef) / den
+        reflection_coeffs[m] = k
+
+        copyto!(rev_buf, CartesianIndices((1:m,)), a, CartesianIndices((m:-1:1,)))
+        @. a[2:m+1] += k * conj(rev_buf[1:m])
+
+        # update prediction errors
         for i in eachindex(ef, eb)
             ef_i, eb_i = ef[i], eb[i]
             ef[i] += k * eb_i
             eb[i] += conj(k) * ef_i
         end
-        copyto!(rev_buf, CartesianIndices((1:m,)), a, CartesianIndices((m:-1:1,)))
-        @. a[2:m+1] += k * conj(rev_buf[1:m])
-        prediction_err *= (one(R) - abs2(k))
-        reflection_coeffs[m] = k
+
+        ratio = one(R) - abs2(k)
+        prediction_err *= ratio
+        den = ratio * den - abs2(cf) - abs2(cb)
+
+        cf = pop!(ef)
+        cb = popfirst!(eb)
     end
 
     return conj!(a), prediction_err, reflection_coeffs
