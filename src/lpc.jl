@@ -72,7 +72,7 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
 end
 
 function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
-    R_xx = xcorr(x,x)[length(x):end]
+    R_xx = xcorr(x; scaling=:biased)[length(x):end]
     a, prediction_err = levinson(R_xx, p)
     a, prediction_err
 end
