@@ -302,9 +302,13 @@ frequency bands using the Remez exchange algorithm.
 - `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
     (in a minimax sense) filter.
 
-[^McClellan1973a]: J. H. McClellan and T. W. Parks, A unified approach to the design of optimum FIR linear phase digital filters, IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
+[^McClellan1973a]: J. H. McClellan and T. W. Parks,
+    A unified approach to the design of optimum FIR linear phase digital filters,
+    IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
 
-[^McClellan1973b]: J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer Program for Designing Optimum FIR Linear Phase Digital Filters, IEEE Trans. Audio Electroacoust., vol. AU-21, pp. 506-525, 1973.
+[^McClellan1973b]: J. H. McClellan, T. W. Parks and L. R. Rabiner,
+    A Computer Program for Designing Optimum FIR Linear Phase Digital Filters,
+    IEEE Trans. Audio Electroacoust., vol. AU-21, pp. 506-525, 1973.
 
 # Examples
 Construct a length 35 filter with a passband at 0.15-0.4 Hz

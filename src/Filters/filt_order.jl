@@ -472,7 +472,9 @@ stopband attenuation (linear.)
 NOTE: The value of N is an initial approximation. If under-estimated, the order
 should be increased until the design specifications are met.
 
-[^Rabiner]: Herrmann, O., Lawrence R. Rabiner, and D. S. K. Chan. "Practical design rules for optimum finite impulse response lowpass digital filters." Bell System Technical Journal 52.6 (1973): 769-799.
+[^Rabiner]: Herrmann, O., Lawrence R. Rabiner, and D. S. K. Chan.
+    "Practical design rules for optimum finite impulse response lowpass digital filters."
+    Bell System Technical Journal 52.6 (1973): 769-799.
 """
 function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     (0 > Wp > 0.5) || (0 > Ws > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))
