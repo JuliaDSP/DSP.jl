@@ -32,8 +32,8 @@ function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
     count(!isone, size(x)) <= 1 || error("`x` must be a 1D signal")
     N = length(x)
     X = x[ (1:M) .+ (0:N-M)' ]
-    U,s,V = svd(X)
-    D,_ = eigen( U[1:end-1,1:p] \ U[2:end,1:p] )
+    U, _ = svd(X)
+    D, _ = eigen( U[1:end-1, 1:p] \ U[2:end, 1:p] )
 
     angle.(D)*Fs/2π
 end

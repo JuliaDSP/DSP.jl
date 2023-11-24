@@ -42,16 +42,16 @@ THE POSSIBILITY OF SUCH DAMAGE.
 Design equations based on [1], Chapter 10. Brent's method with Parabolic interpolation
 uses code from [3], modifications from Optim.jl's Brent method in [4].
 
-[1] Proakis, J. G., & Manolakis, D. G. (1996). Digital Signal Processing, Fourth Edition. 
+[1] Proakis, J. G., & Manolakis, D. G. (1996). Digital Signal Processing, Fourth Edition.
 Prentice Hall, New Jersey.
 
-[2] Virtanen, P., Gommers, R., Oliphant, T. E., Haberland, M., Reddy, T., 
-Cournapeau, D., ... & Van Mulbregt, P. (2020). SciPy 1.0: fundamental algorithms for scientific 
+[2] Virtanen, P., Gommers, R., Oliphant, T. E., Haberland, M., Reddy, T.,
+Cournapeau, D., ... & Van Mulbregt, P. (2020). SciPy 1.0: fundamental algorithms for scientific
 computing in Python. Nature methods, 17(3), 261-272.
 
 [3] W. H. Press, et al. Numerical recipes. Third Edition. Cambridge university press, 2007. Chapter 10.3
 
-[4] P. K. Mogensen and A. N. Riseth, Optim: A mathematical optimization package for Julia. Journal of Open 
+[4] P. K. Mogensen and A. N. Riseth, Optim: A mathematical optimization package for Julia. Journal of Open
 Source Software, 2018. https://github.com/JuliaNLSolvers/Optim.jl/blob/master/src/univariate/solvers/brent.jl
 
 ====================================================================#
@@ -226,12 +226,12 @@ end
 """
     (N, ωn) = buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain=:z)
 
-Butterworth order estimate for bandpass and bandstop filter types.  `Wp` and `Ws` are 2-element pass 
-and stopband frequency edges, with no more than `Rp` dB passband ripple and at least `Rs` dB stopband 
-attenuation. Based on the ordering of passband and bandstop edges,  the Bandstop or Bandpass filter 
+Butterworth order estimate for bandpass and bandstop filter types.  `Wp` and `Ws` are 2-element pass
+and stopband frequency edges, with no more than `Rp` dB passband ripple and at least `Rs` dB stopband
+attenuation. Based on the ordering of passband and bandstop edges,  the Bandstop or Bandpass filter
 type is inferred. `N` is an integer indicating the lowest estimated filter order, with `ωn` specifying
-the cutoff or "-3 dB" frequencies. If a domain of `:s` is specified, the passband and stopband frequencies 
-are interpretted as radians/second, giving an order and natural frequencies for an analog filter. The default
+the cutoff or "-3 dB" frequencies. If a domain of `:s` is specified, the passband and stopband frequencies
+are interpreted as radians/second, giving an order and natural frequencies for an analog filter. The default
 domain is `:z`, interpretting the input frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 """
 function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
@@ -277,14 +277,14 @@ end
 """
     (N, ωn) = buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain=:z)
 
-LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp` and `Ws` are 
-the passband and stopband frequencies, whereas Rp and Rs  are the passband and stopband 
-ripple attenuations in dB. If the passband is greater than stopband, the filter type 
+LPF/HPF Butterworth filter order and -3 dB frequency approximation. `Wp` and `Ws` are
+the passband and stopband frequencies, whereas Rp and Rs  are the passband and stopband
+ripple attenuations in dB. If the passband is greater than stopband, the filter type
 is inferred to be for estimating the order of a highpass filter. `N` specifies the lowest
-possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency. If a domain 
-of `:s` is specified, the passband and stopband edges are interpretted as radians/second, 
-giving an order and natural frequency result for an analog filter. The default domain 
-is `:z`, interpretting the input frequencies as normalized from 0 to 1, where 1 corresponds 
+possible integer filter order, whereas `ωn` is the cutoff or "-3 dB" frequency. If a domain
+of `:s` is specified, the passband and stopband edges are interpreted as radians/second,
+giving an order and natural frequency result for an analog filter. The default domain
+is `:z`, interpretting the input frequencies as normalized from 0 to 1, where 1 corresponds
 to π radians/sample.
 """
 function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
@@ -302,7 +302,7 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     end
     wa = toprototype(Ωp, Ωs, ftype)
 
-    # rounding up fractional order. Using differences of logs instead of division. 
+    # rounding up fractional order. Using differences of logs instead of division.
     N = ceil(Int, butterworth_order_estimate(Rp, Rs, wa))
 
     # specifications for the stopband ripple are met precisely.
@@ -334,7 +334,7 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
         Based on the ordering of passband and stopband edges, the Lowpass or Highpass filter type is inferred.
         `N` indicates the smallest integer filter order that achieves the desired specifications,
         and `ωn` contains the natural frequency of the filter, (in this case, simply the passband edge.)
-        If a domain of `:s` is specified, the passband and stopband edges are interpretted
+        If a domain of `:s` is specified, the passband and stopband edges are interpreted
         as radians/second, giving an order and natural frequency result for an analog filter.
         The default domain is `:z`, interpretting the input frequencies as normalized from 0 to 1,
         where 1 corresponds to π radians/sample.
@@ -364,11 +364,11 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
 
         Integer and natural frequency order estimation for $($filt) Filters. `Wp` and `Ws` are 2-element
         frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing the ripple maximum loss
-        in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of passband 
-        and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the 
-        lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies. If a domain of 
-        `:s` is specified, the passband and stopband frequencies are interpretted as radians/second, giving an 
-        order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the input 
+        in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of passband
+        and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the
+        lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies. If a domain of
+        `:s` is specified, the passband and stopband frequencies are interpreted as radians/second, giving an
+        order and natural frequencies for an analog filter. The default domain is `:z`, interpreting the input
         frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
         """
         function $fcn(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
@@ -400,7 +400,7 @@ are the frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` represen
 loss in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of
 the passband and stopband edges, the Lowpass or Highpass filter type is inferred. `N` is the integer
 indicating the lowest filter order, with `ωn` specifying the "-3 dB" cutoff frequency. If the domain
-is specified as `:s`, the passband and stopband frequencies are interpretted as radians/second, giving
+is specified as `:s`, the passband and stopband frequencies are interpreted as radians/second, giving
 the order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the
 input frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 """
@@ -421,13 +421,13 @@ end
 """
     (N, ωn) = cheb2ord(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
-Integer and natural frequency order estimation for Chebyshev Type II (inverse) Filters. `Wp` and `Ws` are 
-2-element frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing  the ripple maximum 
-loss in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of passband 
-and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the 
-lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies. If a domain of 
-`:s` is specified, the passband and stopband frequencies are interpretted as radians/second, giving an 
-order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the input 
+Integer and natural frequency order estimation for Chebyshev Type II (inverse) Filters. `Wp` and `Ws` are
+2-element frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing  the ripple maximum
+loss in the passband and minimum ripple attenuation in the stopband in dB. Based on the ordering of passband
+and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the
+lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies. If a domain of
+`:s` is specified, the passband and stopband frequencies are interpreted as radians/second, giving an
+order and natural frequencies for an analog filter. The default domain is `:z`, interpretting the input
 frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 """
 function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
@@ -464,17 +464,15 @@ end
 
 Order estimation for lowpass digital filter cases based
 on the equations and coefficients in [^Rabiner]. The original
-equation returned the minimum filterlength, whereas this implementation 
-returns the order (N=L-1). `Wp` and  `Ws` are the normalized passband and 
-stopband frequencies, with `Rp` indicating the passband ripple and `Rs` is the 
-stopband attenuation (linear.) 
+equation returned the minimum filterlength, whereas this implementation
+returns the order (N=L-1). `Wp` and `Ws` are the normalized passband and
+stopband frequencies, with `Rp` indicating the passband ripple and `Rs` is the
+stopband attenuation (linear.)
 
 NOTE: The value of N is an initial approximation. If under-estimated, the order
 should be increased until the design specifications are met.
 
-[^Rabiner]: Herrmann, O., Lawrence R. Rabiner, and D. S. K. Chan. "Practical 
-design rules for optimum finite impulse response lowpass digital filters." Bell System 
-Technical Journal 52.6 (1973): 769-799.
+[^Rabiner]: Herrmann, O., Lawrence R. Rabiner, and D. S. K. Chan. "Practical design rules for optimum finite impulse response lowpass digital filters." Bell System Technical Journal 52.6 (1973): 769-799.
 """
 function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     (0 > Wp > 0.5) || (0 > Ws > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))

@@ -92,8 +92,8 @@ C CODE BANNER
 
 
 
-"""/*
-lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
+"""
+    lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
 
 CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
 """
@@ -112,8 +112,9 @@ end
 
 
 """
-build_grid(numtaps, band_defs, Hz, grid_density, neg)
-return "grid" and "des" and "wt" arrays
+    build_grid(numtaps, band_defs, Hz, grid_density, neg)
+
+Returns `grid`, `des`, and `wt` arrays
 """
 function build_grid(nfilt, band_defs, Hz, grid_density, neg)
     nodd = isodd(nfilt)
@@ -201,11 +202,12 @@ function _buildgrid!(grid, des, wt, j, fs, neg, nodd, Hz, des_wt)
 end
 
 """
-function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+    function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
   LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
+
 -----------------------------------------------------------------------
 """
 function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
@@ -300,16 +302,9 @@ frequency bands using the Remez exchange algorithm.
 - `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
     (in a minimax sense) filter.
 
-[^McClellan1973a]:
-J. H. McClellan and T. W. Parks, A unified approach to the
-design of optimum FIR linear phase digital filters,
-IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
+[^McClellan1973a]: J. H. McClellan and T. W. Parks, A unified approach to the design of optimum FIR linear phase digital filters, IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
 
-[^McClellan1973b]:
-J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer
-Program for Designing Optimum FIR Linear Phase Digital
-Filters, IEEE Trans. Audio Electroacoust., vol. AU-21,
-pp. 506-525, 1973.
+[^McClellan1973b]: J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer Program for Designing Optimum FIR Linear Phase Digital Filters, IEEE Trans. Audio Electroacoust., vol. AU-21, pp. 506-525, 1973.
 
 # Examples
 Construct a length 35 filter with a passband at 0.15-0.4 Hz
@@ -317,7 +312,7 @@ Construct a length 35 filter with a passband at 0.15-0.4 Hz
 (desired response of 0). Note: the behavior in the frequency ranges between
 those bands - the transition bands - is unspecified.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0]);
 ```
 
@@ -326,7 +321,7 @@ The wider the transition bands, the lower the maximum error in the
 bands specified. Here is a bandpass filter with the same passband, but
 wider transition bands.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0]);
 ```
 
@@ -345,44 +340,44 @@ julia> grid()
 # Examples from the unittests - standard (even) symmetry.
 
 Length 151 LPF (Low Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(151, [(0, 0.475) => 1, (0.5, 1.0) => 0]; Hz=2.0);
 ```
 
 Length 152 LPF. Non-default "weight" input.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(152, [(0, 0.475) => (1, 1), (0.5, 1.0) => (0, 2)]; Hz=2.0);
 ```
 
 Length 51 HPF (High Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(51, [(0, 0.75) => 0, (0.8, 1.0) => 1]; Hz=2.0);
 ```
 
 Length 180 BPF (Band Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(180, [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]; Hz=2.0, maxiter=30);
 ```
 
 # Examples from the unittests - Odd-symmetric filters - hilbert and differentiators type.
 Even length - has a much better approximation since the response is not constrained to 0 at
 the nyquist frequency.  Length 20 Hilbert transformer.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(20, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 ```
 
 Length 21 Hilbert transformer.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(21, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 ```
 
 Length 200 differentiator.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(200, [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 ```
 
 Length 201 differentiator.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(201, [(0.05, 0.95) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 ```
 
@@ -811,28 +806,28 @@ Each of the following blocks first designs a filter using the
 simplified (recommended) API, and then designs the same filter
 using the Scipy-compatible API.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0]);
 
 julia> bpass = remez(35, [0, 0.1, 0.15, 0.4, 0.45, 0.5], [0, 1, 0]);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0]);
 
 julia> bpass2 = remez(35, [0, 0.08, 0.15, 0.4, 0.47, 0.5], [0, 1, 0]);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(20, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 
 julia> h = remez(20, [0.1, 0.95], [1]; filter_type=filter_type_hilbert, Hz=2.0);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(200, [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 
 julia> h = remez(200, [0.01, 0.99], [1]; filter_type=filter_type_differentiator, Hz=2.0);

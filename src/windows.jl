@@ -82,7 +82,7 @@ $zerophase_docs
 
 Example:
 
-```
+```julia
 function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.5*(1+cos(2pi*x))
