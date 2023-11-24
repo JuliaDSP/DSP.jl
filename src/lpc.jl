@@ -55,7 +55,7 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
     prediction_err = sum(abs2, x) / length(x)
     R = typeof(prediction_err)
-    F = promote_type(R, T)
+    F = promote_type(R, Base.promote_union(T))
 
     ef = collect(F, x)                  # forward error
     eb = copy(ef)                       # backwards error
@@ -99,7 +99,7 @@ function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
 end
 
 """
-    levinson(x::AbstractVector, p::Integer, LPCLevinson())
+    levinson(x::AbstractVector, p::Integer)
 
 LPC (Linear-Predictive-Code) estimation, using the Levinson method. This
 function implements the mathematics described in [1].
@@ -108,10 +108,10 @@ function implements the mathematics described in [1].
 (N. Levinson, Studies in Applied Mathematics 25(1946), 261-278,
 https://doi.org/10.1002/sapm1946251261)
 """
-function levinson(R_xx::AbstractVector{<:Number}, p::Integer)
+function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     # for m = 1
     a_1 = -R_xx[2] / R_xx[1]
-    F = typeof(a_1)
+    F = promote_type(Base.promote_union(U), typeof(a_1))
     prediction_err = abs(R_xx[1] * (one(F) - abs2(a_1)))
     R = typeof(prediction_err)
     T = promote_type(F, R)
