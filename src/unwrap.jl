@@ -113,7 +113,7 @@ end
 function unwrap_nd!(dest::AbstractArray{T, N},
                     src::AbstractArray{T, N};
                     range::Number=2*convert(T, pi),
-                    circular_dims::NTuple{N, Bool}=tuple(fill(false, N)...),
+                    circular_dims::NTuple{N, Bool}=ntuple(_->false, Val(N)),
                     rng::AbstractRNG=GLOBAL_RNG) where {T, N}
 
     range_T = convert(T, range)
@@ -235,18 +235,18 @@ function populate_edges!(edges, pixel_image::Array{T, N}, dim, connected, range)
     size_img[dim] -= 1
     idx_step       = fill(0, N)
     idx_step[dim] += 1
-    idx_step_cart  = CartesianIndex{N}(idx_step...)
-    idx_size       = CartesianIndex{N}(size_img...)
+    idx_step_cart  = CartesianIndex{N}(Tuple(idx_step))
+    idx_size       = CartesianIndex{N}(Tuple(size_img))
     for i in CartesianIndices(idx_size)
         push!(edges, Edge{N}(pixel_image, i, i+idx_step_cart, range))
     end
     if connected
-        idx_step        = fill(0, N)
+        idx_step        = fill!(idx_step, 0)
         idx_step[dim]   = -size_img[dim]
-        idx_step_cart   = CartesianIndex{N}(idx_step...)
-        edge_begin      = fill(1, N)
+        idx_step_cart   = CartesianIndex{N}(Tuple(idx_step))
+        edge_begin      = ones(Int, N)
         edge_begin[dim] = size(pixel_image)[dim]
-        edge_begin_cart = CartesianIndex{N}(edge_begin...)
+        edge_begin_cart = CartesianIndex{N}(Tuple(edge_begin))
         for i in CartesianIndices(ntuple(dim_idx -> edge_begin_cart[dim_idx]:size(pixel_image, dim_idx), N))
             push!(edges, Edge{N}(pixel_image, i, i+idx_step_cart, range))
         end
@@ -272,7 +272,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
                 if ps[idx_dim] == 1
                     new_ps          = fill(0, N)
                     new_ps[idx_dim] = -size_img[idx_dim]+1
-                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(new_ps...)
+                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
                 end
             end
             border_range = get_border_range(size_img, idx_dim, size_img[idx_dim])
@@ -286,7 +286,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
                 if ps[idx_dim] == -1
                     new_ps          = fill(0, N)
                     new_ps[idx_dim] = size_img[idx_dim]-1
-                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(new_ps...)
+                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
                 end
             end
             border_range = get_border_range(size_img, idx_dim, 1)
@@ -300,7 +300,7 @@ end
 function get_border_range(size_img::NTuple{N, T}, border_dim, border_idx) where {N, T}
     border_range = [2:(size_img[dim]-1) for dim=1:N]
     border_range[border_dim] = border_idx:border_idx
-    return tuple(border_range...)
+    return Tuple(border_range)
 end
 
 function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, N}, pixel_index, pixel_shifts, range) where {T, N}
@@ -312,11 +312,11 @@ function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, N}, pi
 end
 
 # specialized pixel reliability calculations for different N
-function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, 2}, pixel_index, pixel_shifts, range) where T
-    @inbounds D1 = wrap_val(pixel_image[pixel_index+pixel_shifts[2]].val - pixel_image[pixel_index].val, range)
-    @inbounds D2 = wrap_val(pixel_image[pixel_index+pixel_shifts[4]].val - pixel_image[pixel_index].val, range)
-    @inbounds H  = wrap_val(pixel_image[pixel_index+pixel_shifts[6]].val - pixel_image[pixel_index].val, range)
-    @inbounds V  = wrap_val(pixel_image[pixel_index+pixel_shifts[8]].val - pixel_image[pixel_index].val, range)
+@inbounds function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, 2}, pixel_index, pixel_shifts, range) where T
+    D1 = wrap_val(pixel_image[pixel_index+pixel_shifts[2]].val - pixel_image[pixel_index].val, range)
+    D2 = wrap_val(pixel_image[pixel_index+pixel_shifts[4]].val - pixel_image[pixel_index].val, range)
+    H  = wrap_val(pixel_image[pixel_index+pixel_shifts[6]].val - pixel_image[pixel_index].val, range)
+    V  = wrap_val(pixel_image[pixel_index+pixel_shifts[8]].val - pixel_image[pixel_index].val, range)
     return H*H + V*V + D1*D1 + D2*D2
 end
 
