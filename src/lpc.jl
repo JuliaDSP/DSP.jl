@@ -100,8 +100,20 @@ end
 """
     levinson(x::AbstractVector, p::Integer)
 
-Implements Levinson recursion, as described in [^Levinson].
-This function can be used for LPC (Linear Predictive Coding) estimation.
+Implements Levinson recursion, as described in [^Levinson], to find
+the solution `a` of the linear equation
+```math
+\\mathbf{T} \\vec{a}
+=
+\\begin{bmatrix}
+    x_2 \\\\
+    \\vdots \\\\
+    x_{p+1}
+\\end{bmatrix}
+```
+in the case where ``\\mathbf{T}`` is Hermitian and Toeplitz, with first column `x[1:p]`.
+This function can be used for LPC (Linear Predictive Coding) estimation,
+by providing `LPCLevinson()` as an argument to `lpc`.
 
 [^Levinson]: The Wiener (RMS) Error Criterion in Filter Design and Prediction.
     N. Levinson, Studies in Applied Mathematics 25(1946), 261-278.\\
@@ -109,15 +121,15 @@ This function can be used for LPC (Linear Predictive Coding) estimation.
 """
 function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     # for m = 1
-    a_1 = -R_xx[2] / R_xx[1]
-    F = promote_type(Base.promote_union(U), typeof(a_1))
-    prediction_err = abs(R_xx[1] * (one(F) - abs2(a_1)))
+    k = -R_xx[2] / R_xx[1]
+    F = promote_type(Base.promote_union(U), typeof(k))
+    prediction_err = real(R_xx[1] * (one(F) - abs2(k)))
     R = typeof(prediction_err)
     T = promote_type(F, R)
 
     a = zeros(T, p)
     reflection_coeffs = zeros(T, p)
-    a[1] = reflection_coeffs[1] = a_1
+    a[1] = reflection_coeffs[1] = k
     rev_buf = similar(a, p - 1)     # buffer to store a in reverse
 
     @views for m = 2:p
