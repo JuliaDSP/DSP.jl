@@ -103,7 +103,7 @@ end
 Implements Levinson recursion, as described in [^Levinson], to find
 the solution `a` of the linear equation
 ```math
-\\mathbf{T} \\vec{a}
+\\mathbf{T} (-\\vec{a})
 =
 \\begin{bmatrix}
     x_2 \\\\
