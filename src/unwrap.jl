@@ -22,7 +22,7 @@ function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, ran
         dims = 1
     end
     if dims isa Integer
-        accumulate!(unwrap_kernel(range), y, m, dims=dims)
+        accumulate!(unwrap_kernel(range), y, m; dims=dims)
     elseif dims == 1:N
         unwrap_nd!(y, m; range=range, kwargs...)
     else
@@ -263,14 +263,20 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
         @inbounds pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts, range)
     end
 
+    if !(true in circular_dims)
+        return
+    end
+
+    pixel_shifts_border = similar(pixel_shifts)
+    new_ps = zeros(N)
     for (idx_dim, connected) in enumerate(circular_dims)
         if connected
             # first border
-            pixel_shifts_border = copy(pixel_shifts)
+            pixel_shifts_border = copyto!(pixel_shifts_border, pixel_shifts)
             for (idx_ps, ps) in enumerate(pixel_shifts_border)
                 # if the pixel shift goes out of bounds, we make the shift wrap
                 if ps[idx_dim] == 1
-                    new_ps          = fill(0, N)
+                    new_ps          = fill!(new_ps, 0)
                     new_ps[idx_dim] = -size_img[idx_dim]+1
                     pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
                 end
@@ -284,7 +290,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             for (idx_ps, ps) in enumerate(pixel_shifts_border)
                 # if the pixel shift goes out of bounds, we make the shift wrap, this time to the other side
                 if ps[idx_dim] == -1
-                    new_ps          = fill(0, N)
+                    new_ps          = fill!(new_ps, 0)
                     new_ps[idx_dim] = size_img[idx_dim]-1
                     pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
                 end
@@ -303,11 +309,13 @@ function get_border_range(size_img::NTuple{N, T}, border_dim, border_idx) where 
     return Tuple(border_range)
 end
 
-function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, N}, pixel_index, pixel_shifts, range) where {T, N}
-    sum_val = zero(T)
-    for pixel_shift in pixel_shifts
-        @inbounds sum_val += wrap_val(pixel_image[pixel_index+pixel_shift].val - pixel_image[pixel_index].val, range)^2
-    end
+function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T},N}, pixel_index, pixel_shifts, range) where {T,N}
+    @inline rel_contrib(shift) =
+        let pix_val = pixel_image[pixel_index].val, rg = range, img = pixel_image, ind = pixel_index
+            @inbounds wrap_val(img[ind+shift].val - pix_val, rg)^2
+        end
+    # for N=3, pixel_shifts[14] is null shift, can avoid if manually unrolling loop
+    sum_val = sum(rel_contrib, pixel_shifts)
     return sum_val
 end
 
@@ -318,38 +326,6 @@ end
     H  = wrap_val(pixel_image[pixel_index+pixel_shifts[6]].val - pixel_image[pixel_index].val, range)
     V  = wrap_val(pixel_image[pixel_index+pixel_shifts[8]].val - pixel_image[pixel_index].val, range)
     return H*H + V*V + D1*D1 + D2*D2
-end
-
-function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T}, 3}, pixel_index, pixel_shifts, range) where T
-    sum_val = zero(T)
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[1]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[2]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[3]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[4]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[5]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[6]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[7]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[8]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[9]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[10]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[11]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[12]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[13]].val - pixel_image[pixel_index].val, range))^2
-    # pixel_shifts[14] is null shift
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[15]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[16]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[17]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[18]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[19]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[20]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[21]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[22]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[23]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[24]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[25]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[26]].val - pixel_image[pixel_index].val, range))^2
-    @inbounds sum_val += (wrap_val(pixel_image[pixel_index+pixel_shifts[27]].val - pixel_image[pixel_index].val, range))^2
-    return sum_val
 end
 
 end
