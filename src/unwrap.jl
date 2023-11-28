@@ -306,7 +306,7 @@ end
 function get_border_range(size_img::NTuple{N, T}, border_dim, border_idx) where {N, T}
     border_range = [2:(size_img[dim]-1) for dim=1:N]
     border_range[border_dim] = border_idx:border_idx
-    return Tuple(border_range)
+    return NTuple{N,UnitRange{Int}}(border_range)
 end
 
 function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T},N}, pixel_index, pixel_shifts, range) where {T,N}
