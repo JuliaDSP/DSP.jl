@@ -235,18 +235,18 @@ function populate_edges!(edges, pixel_image::Array{T, N}, dim, connected, range)
     size_img[dim] -= 1
     idx_step       = fill(0, N)
     idx_step[dim] += 1
-    idx_step_cart  = CartesianIndex{N}(Tuple(idx_step))
-    idx_size       = CartesianIndex{N}(Tuple(size_img))
+    idx_step_cart  = CartesianIndex{N}(NTuple{N,Int}(idx_step))
+    idx_size       = CartesianIndex{N}(NTuple{N,Int}(size_img))
     for i in CartesianIndices(idx_size)
         push!(edges, Edge{N}(pixel_image, i, i+idx_step_cart, range))
     end
     if connected
         idx_step        = fill!(idx_step, 0)
         idx_step[dim]   = -size_img[dim]
-        idx_step_cart   = CartesianIndex{N}(Tuple(idx_step))
+        idx_step_cart   = CartesianIndex{N}(NTuple{N,Int}(idx_step))
         edge_begin      = ones(Int, N)
         edge_begin[dim] = size(pixel_image)[dim]
-        edge_begin_cart = CartesianIndex{N}(Tuple(edge_begin))
+        edge_begin_cart = CartesianIndex{N}(NTuple{N,Int}(edge_begin))
         for i in CartesianIndices(ntuple(dim_idx -> edge_begin_cart[dim_idx]:size(pixel_image, dim_idx), N))
             push!(edges, Edge{N}(pixel_image, i, i+idx_step_cart, range))
         end
@@ -272,13 +272,13 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
     for (idx_dim, connected) in enumerate(circular_dims)
         if connected
             # first border
-            pixel_shifts_border = copyto!(pixel_shifts_border, pixel_shifts)
+            copyto!(pixel_shifts_border, pixel_shifts)
             for (idx_ps, ps) in enumerate(pixel_shifts_border)
                 # if the pixel shift goes out of bounds, we make the shift wrap
                 if ps[idx_dim] == 1
-                    new_ps          = fill!(new_ps, 0)
+                    fill!(new_ps, 0)
                     new_ps[idx_dim] = -size_img[idx_dim]+1
-                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
+                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(NTuple{N,Int}(new_ps))
                 end
             end
             border_range = get_border_range(size_img, idx_dim, size_img[idx_dim])
@@ -290,9 +290,9 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             for (idx_ps, ps) in enumerate(pixel_shifts_border)
                 # if the pixel shift goes out of bounds, we make the shift wrap, this time to the other side
                 if ps[idx_dim] == -1
-                    new_ps          = fill!(new_ps, 0)
+                    fill!(new_ps, 0)
                     new_ps[idx_dim] = size_img[idx_dim]-1
-                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(Tuple(new_ps))
+                    pixel_shifts_border[idx_ps] = CartesianIndex{N}(NTuple{N,Int}(new_ps))
                 end
             end
             border_range = get_border_range(size_img, idx_dim, 1)
