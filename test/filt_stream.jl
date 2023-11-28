@@ -51,8 +51,10 @@ if isinteractive()
         :(@time $(esc(ex)))
     end
 
-    macro printfifinteractive(args...)
-        :(@printf($(map(esc, args)...)))
+    using Printf: @printf
+
+    macro printfifinteractive(s, args...)
+        :(@printf($s, $(map(esc, args)...)))
     end
 else
     macro timeifinteractive(ex)
@@ -79,7 +81,7 @@ function test_singlerate(h, x)
     @printfifinteractive( "____ _ _  _ ____ _    ____    ____ ____ ___ ____\n" )
     @printfifinteractive( "[__  | |\\ | | __ |    |___    |__/ |__|  |  |___\n" )
     @printfifinteractive( "___] | | \\| |__] |___ |___    |  \\ |  |  |  |___\n" )
-    @printfifinteractive( "\nTesting single-rate fitering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
+    @printfifinteractive( "\nTesting single-rate filtering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
 
     @printfifinteractive( "\n\tBase.filt\n\t\t")
     @timeifinteractive naiveResult = filt(h, 1.0, x)
