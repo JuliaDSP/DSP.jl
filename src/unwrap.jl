@@ -311,8 +311,7 @@ end
 
 function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T},N}, pixel_index, pixel_shifts, range) where {T,N}
     pix_val = pixel_image[pixel_index].val
-    @inline rel_contrib(shift) =
-            @inbounds wrap_val(pixel_image[pixel_index+shift].val - pix_val, range)^2
+    rel_contrib(shift) = @inbounds wrap_val(pixel_image[pixel_index+shift].val - pix_val, range)^2
     # for N=3, pixel_shifts[14] is null shift, can avoid if manually unrolling loop
     sum_val = sum(rel_contrib, pixel_shifts)
     return sum_val
