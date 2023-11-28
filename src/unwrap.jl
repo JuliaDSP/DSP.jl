@@ -268,7 +268,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
     end
 
     pixel_shifts_border = similar(pixel_shifts)
-    new_ps = zeros(N)
+    new_ps = zeros(Int, N)
     for (idx_dim, connected) in enumerate(circular_dims)
         if connected
             # first border
