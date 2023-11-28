@@ -321,7 +321,7 @@ function groupzp(z, p)
     i = 1
     while i <= n
         p_i = p[i]
-        closest_zero_idx = argmin(x -> abs(x - p_i), z)
+        _, closest_zero_idx = findmin(x -> abs(x - p_i), z)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
