@@ -316,7 +316,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
         append!(piecewiseResult, thisY)
     end
 
-    commonLen = minimum(length, (naiveResult, statelessResult, statefulResult, piecewiseResult))
+    commonLen = minimum(length.((naiveResult, statelessResult, statefulResult, piecewiseResult)))
     resize!(naiveResult, commonLen)
     resize!(statelessResult, commonLen)
     resize!(statefulResult, commonLen)
