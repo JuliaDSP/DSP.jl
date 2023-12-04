@@ -62,9 +62,10 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     initial_si = si
+    si = similar(si, axes(si, 1))
     for col = 1:ncols
         # Reset the filter state
-        si = initial_si[:, N > 1 ? col : 1]
+        copyto!(si, view(initial_si, :, N > 1 ? col : 1))
         if as > 1
             _filt_iir!(out, b, a, x, si, col)
         elseif bs <= SMALL_FILT_CUTOFF
