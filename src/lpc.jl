@@ -3,7 +3,7 @@ module LPC
 
 using ..DSP: xcorr
 
-using LinearAlgebra: dot
+using LinearAlgebra: dot, BlasComplex, BLAS
 
 export lpc, arburg, levinson, LPCBurg, LPCLevinson
 
@@ -130,12 +130,12 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     a = zeros(T, p)
     reflection_coeffs = zeros(T, p)
     a[1] = reflection_coeffs[1] = k
-    rev_buf = similar(a, p - 1)     # buffer to store a in reverse
+    rev_a = similar(a, p - 1)     # buffer to store a in reverse
 
     @views for m = 2:p
-        k = -(R_xx[m+1] + reverse_dot(R_xx[2:m], a[1:m-1])) / prediction_err
-        copyto!(rev_buf, CartesianIndices((1:m-1,)), a, CartesianIndices((m-1:-1:1,)))
-        @. a[1:m-1] += k * conj(rev_buf[1:m-1])
+        copyto!(rev_a, CartesianIndices((1:m-1,)), a, CartesianIndices((m-1:-1:1,)))
+        k = -(R_xx[m+1] + dotu(R_xx[2:m], rev_a[1:m-1])) / prediction_err
+        @. a[1:m-1] += k * conj(rev_a[1:m-1])
         a[m] = reflection_coeffs[m] = k
         prediction_err *= (one(R) - abs2(k))
     end
@@ -144,8 +144,16 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     a, prediction_err, reflection_coeffs
 end
 
-# workaround for 1.6 BLAS incompatibility with negative stride views
-reverse_dot(x, y) = mapreduce(*, +, x, Iterators.reverse(y))
+# for convenience, define dotu as dot for real vectors
+dotu(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = dot(x, y)
+dotu(x::AbstractVector{T}, y::AbstractVector{T}) where T<:BlasComplex = BLAS.dotu(x, y)
+function dotu(x::AbstractVector{T}, y::AbstractVector{V}) where {T,V}
+    dotprod = zero(promote_type(T, V))
+    for i in eachindex(x, y)
+        dotprod += x[i] * y[i]
+    end
+    dotprod
+end
 
 # Default users to using Burg estimation as it is in general more stable
 lpc(x, p) = lpc(x, p, LPCBurg())
