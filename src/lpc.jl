@@ -62,11 +62,14 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     rev_buf = similar(a, p)             # buffer to store a in reverse
     reflection_coeffs = similar(a, p)   # reflection coefficients
 
-    cf = pop!(ef)
-    cb = popfirst!(eb)
-    den = sum(abs2, eb) + sum(abs2, ef)
+    den = 2sum(abs2, ef)
+    ratio = one(R)
 
     @views for m in 1:p
+        cf = pop!(ef)
+        cb = popfirst!(eb)
+        den = ratio * den - abs2(cf) - abs2(cb)
+
         k = -2 * dot(eb, ef) / den
         reflection_coeffs[m] = k
 
@@ -82,10 +85,6 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
 
         ratio = one(R) - abs2(k)
         prediction_err *= ratio
-        den = ratio * den - abs2(cf) - abs2(cb)
-
-        cf = pop!(ef)
-        cb = popfirst!(eb)
     end
 
     return conj!(a), prediction_err, reflection_coeffs
