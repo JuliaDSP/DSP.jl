@@ -8,8 +8,8 @@ using LinearAlgebra: dot
 export lpc, LPCBurg, LPCLevinson
 
 # Dispatch types for lpc()
-mutable struct LPCBurg; end
-mutable struct LPCLevinson; end
+struct LPCBurg end
+struct LPCLevinson end
 
 """
     lpc(x::AbstractVector, p::Int, [LPCBurg()])
@@ -35,25 +35,28 @@ implements the mathematics published in [1].
 (DAFX 2003 article, Lagrange et al)
 http://www.sylvain-marchand.info/Publications/dafx03.pdf
 """
-function lpc(x::AbstractVector{T}, p::Int, ::LPCBurg) where T <: Number
-    ef = x                      # forward error
-    eb = x                      # backwards error
-    a = [1; zeros(T, p)]        # prediction coefficients
+function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCBurg)
+    # Initialize prediction error with the variance of the signal
+    prediction_err = sum(abs2, x) / length(x)
+    T = typeof(prediction_err)
 
-    # Initialize prediction error wtih the variance of the signal
-    prediction_err = (sum(abs2, x) ./ length(x))[1]
+    ef = collect(T, x)                  # forward error
+    eb = copy(ef)                       # backwards error
+    a = zeros(T, p + 1); a[1] = 1       # prediction coefficients
 
     for m in 1:p
-        efp = ef[1:end-1]
-        ebp = eb[2:end]
-        k = -2 * dot(ebp,efp) / (sum(abs2, ebp) + sum(abs2,efp))
-        ef = efp + k .* ebp
-        eb = ebp + k .* efp
-        a[1:m+1] = [a[1:m]; 0] + k .* [0; a[m:-1:1]]
-        prediction_err *= (1 - k*k)
+        pop!(ef)
+        popfirst!(eb)
+        k = -2 * dot(ef, eb) / (sum(abs2, eb) + sum(abs2, ef))
+        for i in eachindex(ef, eb)
+            ef[i], eb[i] = ef[i] + k * eb[i], eb[i] + k * ef[i]
+        end
+        @views @. a[2:m+1] += k * a[m:-1:1]
+        prediction_err *= (1 - k^2)
     end
 
-    return a[2:end], prediction_err
+    popfirst!(a)
+    return a, prediction_err
 end
 
 """
@@ -68,22 +71,21 @@ https://doi.org/10.1002/sapm1946251261)
 """
 function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCLevinson)
     R_xx = xcorr(x,x)[length(x):end]
-    a = zeros(p,p)
-    prediction_err = zeros(1,p)
+    a = zeros(p)
 
     # for m = 1
-    a[1,1] = -R_xx[2]/R_xx[1]
-    prediction_err[1] = R_xx[1]*(1-a[1,1]^2)
+    a[1] = -R_xx[2] / R_xx[1]
+    prediction_err = R_xx[1] * (1 - a[1]^2)
 
     # for m = 2,3,4,..p
-    for m = 2:p
-        a[m,m] = (-(R_xx[m+1] + dot(a[m-1,1:m-1],R_xx[m:-1:2]))/prediction_err[m-1])
-        a[m,1:m-1] = a[m-1,1:m-1] + a[m,m] * a[m-1,m-1:-1:1]
-        prediction_err[m] = prediction_err[m-1]*(1-a[m,m]^2)
+    @views for m = 2:p
+        a[m] = (-(R_xx[m+1] + dot(a[1:m-1], R_xx[m:-1:2])) / prediction_err)
+        @. a[1:m-1] += a[m] * a[m-1:-1:1]
+        prediction_err *= (1 - a[m]^2)
     end
 
     # Return autocorrelation coefficients and error estimate
-    a[p,:], prediction_err[p]
+    a, prediction_err
 end
 
 
