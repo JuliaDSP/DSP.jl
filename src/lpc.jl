@@ -16,12 +16,12 @@ struct LPCLevinson end
 
 Given input signal `x` and prediction order `p`, returns IIR coefficients `a`
 and average reconstruction error `prediction_err`. Note that this method does
-NOT return the leading `1` present in the true autocorrelative estimate; it
+NOT return the leading ``1`` present in the true autocorrelative estimate; it
 omits it as it is implicit in every LPC estimate, and must be manually
 reintroduced if the returned vector should be treated as a polynomial.
 
 The algorithm used is determined by the last optional parameter, and can be
-either `LPCBurg` or `LPCLevinson`.
+either `LPCBurg` ([`arburg`](@ref)) or `LPCLevinson` ([`levinson`](@ref)).
 """
 function lpc end
 
@@ -34,22 +34,21 @@ end
 """
     arburg(x::AbstractVector, p::Integer)
 
-LPC (Linear-Predictive-Code) estimation, using the Burg method.
-This function implements the mathematics published in [1], and
-the recursion relation as noted in [2], in turn referenced from [3].
+LPC (Linear Predictive Coding) estimation, using the Burg method.
+This function implements the mathematics published in [^Lagrange], and
+the recursion relation as noted in [^Vos], in turn referenced from [^Andersen].
 
-[1] - Enhanced Partial Tracking Using Linear Prediction
-(DAFX 2003 article, Lagrange et al)
-http://www.sylvain-marchand.info/Publications/dafx03.pdf
+[^Lagrange]: Enhanced Partial Tracking Using Linear Prediction.
+    [DAFX 2003 article, Lagrange et al]
+    (http://www.sylvain-marchand.info/Publications/dafx03.pdf)
 
-[2] - A Fast Implementation of Burg’s Method © 2013, Koen Vos.\\
-https://www.opus-codec.org/docs/vos_fastburg.pdf
+[^Vos]: [A Fast Implementation of Burg’s Method]
+    (https://www.opus-codec.org/docs/vos_fastburg.pdf).
+    © 2013 Koen Vos, licensed under [CC BY 3.0]
+    (https://creativecommons.org/licenses/by/3.0/)
 
-This work is licensed under a Creative Commons Attribution 3.0 Unported License.\\
-https://creativecommons.org/licenses/by/3.0/
-
-[3] - N. Andersen. Comments on the performance of maximum entropy algorithms.\\
-Proceedings of the IEEE 66.11: 1581-1582, 1978.
+[^Andersen]: N. Andersen. Comments on the performance of maximum entropy algorithms.
+    Proceedings of the IEEE 66.11: 1581-1582, 1978.
 """
 function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
@@ -101,12 +100,12 @@ end
 """
     levinson(x::AbstractVector, p::Integer)
 
-LPC (Linear-Predictive-Code) estimation, using the Levinson method. This
-function implements the mathematics described in [1].
+Implements Levinson recursion, as described in [^Levinson].
+This function can be used for LPC (Linear Predictive Coding) estimation.
 
-[1] - The Wiener (RMS) Error Criterion in Filter Design and Prediction
-(N. Levinson, Studies in Applied Mathematics 25(1946), 261-278,
-https://doi.org/10.1002/sapm1946251261)
+[^Levinson]: The Wiener (RMS) Error Criterion in Filter Design and Prediction.
+    N. Levinson, Studies in Applied Mathematics 25(1946), 261-278.\\
+    <https://doi.org/10.1002/sapm1946251261>
 """
 function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     # for m = 1
@@ -133,7 +132,7 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     a, prediction_err, reflection_coeffs
 end
 
-"workaround for 1.6 BLAS incompatibility with negative stride views"
+# workaround for 1.6 BLAS incompatibility with negative stride views
 reverse_dot(x, y) = mapreduce(*, +, x, Iterators.reverse(y))
 
 # Default users to using Burg estimation as it is in general more stable
