@@ -69,7 +69,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         if as > 1
             _filt_iir!(out, b, a, x, si, col)
         elseif bs <= SMALL_FILT_CUTOFF
-            _small_filt_fir!(out, b, x, si, col)
+            _small_filt_fir!(out, b, x, si, col, Val(bs))
         else
             _filt_fir!(out, b, x, si, col)
         end
@@ -132,27 +132,13 @@ end
 end
 
 # Convert array filter tap input to tuple for small-filtering
-let chain = :(throw(ArgumentError("invalid tuple size")))
-    for n = SMALL_FILT_CUTOFF:-1:2
-        chain = quote
-            if length(h) == $n
-                _filt_fir!(
-                    out,
-                    ($([:(@inbounds(h[$i])) for i = 1:n]...),),
-                    x,
-                    si,
-                    col
-                )
-            else
-                $chain
-            end
-        end
-    end
+@generated function _small_filt_fir!(
+    out::AbstractArray, h::AbstractVector{T}, x::AbstractArray,
+        si, col, ::Val{N}) where {T,N}
 
-    @eval function _small_filt_fir!(
-        out::AbstractArray, h::AbstractVector{T}, x::AbstractArray, si, col
-    ) where T
-        $chain
+    N < 2 && throw(ArgumentError("invalid tuple size"))
+    quote
+        _filt_fir!(out, Base.@ntuple($N, j->@inbounds(h[j])), x, si, col)
     end
 end
 
