@@ -109,22 +109,26 @@ end
 # filt implementation for FIR filters (faster than Base)
 #
 
-for n = 2:SMALL_FILT_CUTOFF
-    silen = n-1
-    si = [Symbol("si$i") for i = 1:silen]
-    # Transposed direct form II
-    @eval function _filt_fir!(out, b::NTuple{$n,T}, x, siarr, col) where {T}
+# Transposed direct form II
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
+    silen = N - 1
+    q = quote
         offset = (col - 1) * size(x, 1)
 
-        $(Expr(:block, [:(@inbounds $(si[i]) = siarr[$i]) for i = 1:silen]...))
-        @inbounds for i=1:size(x, 1)
+        Base.@nexprs $silen j -> (si_j = siarr[j])
+        for i in axes(x, 1)
             xi = x[i+offset]
-            val = muladd(xi, b[1], $(si[1]))
-            $(Expr(:block, [:($(si[j]) = muladd(xi, b[$(j+1)], $(si[j+1]))) for j = 1:(silen-1)]...))
-            $(si[silen]) = b[$(silen+1)]*xi
+            val = muladd(xi, b[1], si_1)
+            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1], si_{j+1}))
+            $(Symbol(:si_, silen)) = b[N] * xi
             out[i+offset] = val
         end
     end
+
+    if N > 23
+        q = Expr(:macrocall, Symbol("@inbounds"), @__MODULE__, q)
+    end
+    q
 end
 
 # Convert array filter tap input to tuple for small-filtering
