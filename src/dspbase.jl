@@ -125,8 +125,11 @@ end
         end
     end
 
-    if N > 23
-        q = Expr(:macrocall, Symbol("@inbounds"), @__MODULE__, q)
+    if N > 18
+        loop_args = q.args[6].args[2].args
+        for i in (2, 10)
+            loop_args[i] = :(@inbounds $(loop_args[i]))
+        end
     end
     q
 end
