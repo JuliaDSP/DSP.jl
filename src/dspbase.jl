@@ -83,11 +83,11 @@ function _filt_iir!(out, b, a, x, si, col)
     @inbounds for i=1:size(x, 1)
         xi = x[i,col]
         val = muladd(xi, b[1], si[1])
+        out[i, col] = val
         for j=1:(silen-1)
             si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
         si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
-        out[i,col] = val
     end
 end
 
@@ -96,12 +96,11 @@ function _filt_fir!(out, b, x, si, col)
     silen = length(si)
     @inbounds for i=1:size(x, 1)
         xi = x[i,col]
-        val = muladd(xi, b[1], si[1])
+        out[i, col] = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
             si[j] = muladd(xi, b[j+1], si[j+1])
         end
         si[silen] = b[silen+1]*xi
-        out[i,col] = val
     end
 end
 
