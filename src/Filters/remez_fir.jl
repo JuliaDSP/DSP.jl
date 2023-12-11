@@ -88,7 +88,7 @@ C CODE BANNER
 # RemezFilterType:
 #    Type I and II symmetric linear phase: neg==0   (filter_type==bandpass)
 #    Type III and IV negative symmetric linear phase: neg==1   (filter_type==hilbert or differentiator)
-@enum RemezFilterType filter_type_bandpass=1 filter_type_differentiator=2 filter_type_hilbert=3
+@enum RemezFilterType filter_type_bandpass filter_type_differentiator filter_type_hilbert
 
 
 
@@ -439,7 +439,7 @@ function remez(numtaps::Integer, band_defs;
         #
         # Start next iteration
         #
-      @label L100
+    #   @label L100
         iext[nzz] = ngrid + 1
         niter += 1
         if niter > maxiter
@@ -493,6 +493,8 @@ function remez(numtaps::Integer, band_defs;
         klow = 0
         nut = -nu
         j = 1
+
+        local comp
 
       @label L200
         j == nzz && (ynz = comp)   # equivalent to "if (j == nzz) ynz = comp; end"
@@ -603,13 +605,13 @@ function remez(numtaps::Integer, band_defs;
             iext[nzz-j] = iext[nz-j]
         end
         iext[1] = k1
-        @goto L100
+        continue    # @goto L100
       @label L350
         for j = 1:nz
             iext[j] = iext[j+1]
         end
 
-        @goto L100
+        continue    # @goto L100
       @label L370
 
 
