@@ -73,7 +73,7 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
         k = -2 * dot(eb, ef) / den
         reflection_coeffs[m] = k
 
-        copyto!(rev_buf, CartesianIndices((1:m,)), a, CartesianIndices((m:-1:1,)))
+        rev_buf[1:m] .= a[m:-1:1]
         @. a[2:m+1] += k * conj(rev_buf[1:m])
 
         # update prediction errors
@@ -132,7 +132,7 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     rev_a = similar(a, p - 1)     # buffer to store a in reverse
 
     @views for m = 2:p
-        copyto!(rev_a, CartesianIndices((1:m-1,)), a, CartesianIndices((m-1:-1:1,)))
+        rev_a[1:m-1] .= a[m-1:-1:1]
         k = -(R_xx[m+1] + dotu(R_xx[2:m], rev_a[1:m-1])) / prediction_err
         @. a[1:m-1] += k * conj(rev_a[1:m-1])
         a[m] = reflection_coeffs[m] = k

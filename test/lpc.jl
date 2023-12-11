@@ -7,6 +7,6 @@
         # Analyze the filtered noise, attempt to reconstruct the coefficients above
         ar, e = lpc(x[1000:end], length(coeffs)-1, method)
 
-        @test all(<(0.01), abs.(ar - coeffs[2:end]))
+        @test all(<(0.01), abs.(ar .- coeffs[2:end]))
     end
 end
