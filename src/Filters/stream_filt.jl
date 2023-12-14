@@ -431,16 +431,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::
     return xLen
 end
 
-function filt(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
-end
-
 
 #
 # Interpolation
@@ -480,16 +470,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}},
     self.history        = shiftin!(history, x)
 
     return bufIdx
-end
-
-function filt(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
 end
 
 
@@ -538,15 +518,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::
     return bufIdx
 end
 
-function filt(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-    return buffer
-end
-
 
 #
 # Decimation
@@ -588,16 +559,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
     self.history        = shiftin!(history, x)
 
     return bufIdx
-end
-
-function filt(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
 end
 
 
@@ -667,7 +628,7 @@ function filt!(
     return bufIdx
 end
 
-function filt(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
+function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
     bufLen         = outputlength(self, length(x))
     buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
