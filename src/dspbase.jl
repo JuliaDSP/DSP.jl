@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-import Base: trailingsize
+using Base: trailingsize
 
 const SMALL_FILT_CUTOFF = 58
 
@@ -60,17 +60,19 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
     1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
-    initial_si = si
-    si = similar(si, axes(si, 1))
-    for col = 1:ncols
-        # Reset the filter state
-        copyto!(si, view(initial_si, :, N > 1 ? col : 1))
-        if as > 1
-            _filt_iir!(out, b, a, x, si, col)
-        elseif bs <= SMALL_FILT_CUTOFF
-            _small_filt_fir!(out, b, x, si, col, Val(bs))
-        else
-            _filt_fir!(out, b, x, si, col)
+    if as == 1 && bs <= SMALL_FILT_CUTOFF
+        _small_filt_fir!(out, b, x, si, Val(bs))
+    else
+        initial_si = si
+        si = similar(si, axes(si, 1))
+        for col = 1:ncols
+            # Reset the filter state
+            copyto!(si, view(initial_si, :, N > 1 ? col : 1))
+            if as > 1
+                _filt_iir!(out, b, a, x, si, col)
+            else
+                _filt_fir!(out, b, x, si, col)
+            end
         end
     end
     return out
@@ -113,7 +115,7 @@ end
     q = quote
         offset = (col - 1) * size(x, 1)
 
-        Base.@nexprs $silen j -> (si_j = siarr[j])
+        Base.@nextract $silen si siarr
         for i in axes(x, 1)
             xi = x[i+offset]
             val = muladd(xi, b[1], si_1)
@@ -134,12 +136,16 @@ end
 
 # Convert array filter tap input to tuple for small-filtering
 @generated function _small_filt_fir!(
-    out::AbstractArray, h::AbstractVector{T}, x::AbstractArray,
-        si, col, ::Val{N}) where {T,N}
+    out::AbstractArray, h::AbstractVector, x::AbstractArray,
+        si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
 
-    N < 2 && throw(ArgumentError("invalid tuple size"))
+    bs < 2 && throw(ArgumentError("invalid tuple size"))
     quote
-        _filt_fir!(out, Base.@ntuple($N, j->@inbounds(h[j])), x, si, col)
+        b = Base.@ntuple($bs, j -> @inbounds(h[j]))
+        for col in axes(x, 2)
+            v_si = view(si, :, N > 1 ? col : 1)
+            _filt_fir!(out, b, x, v_si, col)
+        end
     end
 end
 
