@@ -6,16 +6,19 @@ makedocs(
     modules = [DSP],
     format = Documenter.HTML(),
     sitename = "DSP.jl",
-    pages = Any[
+    pages = [
         "Contents" => "contents.md",
-        "periodograms.md",
-        "estimation.md",
-        "windows.md",
-        "filters.md",
-        "util.md",
-        "convolutions.md",
-        "lpc.md",
-        "index.md",
+        "Submodules" => [
+            "periodograms.md",
+            "estimation.md",
+            "windows.md",
+            "filters.md",
+            "util.md",
+            "convolutions.md",
+            "lpc.md"
+        ],
+        "Internals" => "internals.md",
+        "index.md"
     ],
 )
 
