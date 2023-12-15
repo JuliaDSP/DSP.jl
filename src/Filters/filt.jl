@@ -44,7 +44,7 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     g = f.g
     biquads = f.biquads
     n = length(biquads)
-    @inbounds for i = 1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         yi = x[i, col]
         for fi = 1:n
             biquad = biquads[fi]
@@ -86,7 +86,7 @@ _zerosi(f::Biquad{:z,T}, x::AbstractArray{S}) where {T,S} =
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
                 x::AbstractArray, col::Int)
-    @inbounds for i = 1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i, col]
         yi = si1 + f.b0*xi
         si1 = si2 + f.b1*xi - f.a1*yi
@@ -170,7 +170,7 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
     if n == 1
         mul!(out, x, b[1])
     else
-        @inbounds for i=1:length(x)
+        @inbounds for i in eachindex(x, out)
             xi = x[i]
             val = si[1] + b[1]*xi
             for j=2:n-1

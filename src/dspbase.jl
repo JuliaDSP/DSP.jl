@@ -80,7 +80,7 @@ end
 # Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i,col]
         val = muladd(xi, b[1], si[1])
         out[i, col] = val
@@ -94,7 +94,7 @@ end
 # Transposed direct form II
 function _filt_fir!(out, b, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i,col]
         out[i, col] = muladd(xi, b[1], si[1])
         for j=1:(silen-1)

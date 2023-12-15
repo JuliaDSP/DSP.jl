@@ -214,7 +214,7 @@ function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
 
-    for j = 1:length(ad)
+    for j in eachindex(ad)
         c = ad[j] / (xf - x[j])
         d += c
         p += c * y[j]
@@ -448,7 +448,9 @@ function remez(numtaps::Integer, band_defs;
             break
         end
 
-        x[1:nz] = grid[iext[1:nz]]
+        for j = 1:nz
+            x[j] = grid[iext[j]]
+        end
 
         for j = 1 : nz
             ad[j] = lagrange_interp(j, nz, jet, x)

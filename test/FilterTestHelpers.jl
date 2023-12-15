@@ -63,7 +63,7 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothin
     z2, p2 = sort(f2.z, lt=lt), sort(f2.p, lt=lt)
     accurate_z, accurate_p = sort(accurate_f.z, lt=lt), sort(accurate_f.p, lt=lt)
     if !isempty(z1) || !isempty(z2) || !isempty(accurate_z)
-        if eps != nothing
+        if eps !== nothing
             @test ≈(z1, accurate_z, atol=eps)
             @test ≈(z2, accurate_z, atol=eps)
         else
@@ -72,7 +72,7 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothin
         end
         accuracy_check(loss(z1, accurate_z), loss(z2, accurate_z), "z", relerr)
     end
-    if eps != nothing
+    if eps !== nothing
         @test ≈(p1, accurate_p, atol=eps)
         @test ≈(p2, accurate_p, atol=eps)
         @test ≈(f1.k, accurate_f.k, atol=eps)
