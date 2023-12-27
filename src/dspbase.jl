@@ -523,6 +523,7 @@ function unsafe_conv_kern_os!(out,
         lastfull > 1 ? [1:firstfull - 1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
+    val_dims = ntuple(Val, Val(N))
     # Buffer to store ranges of indices for a single region of the perimeter
     perimeter_range = Vector{UnitRange{Int}}(undef, N)
 
@@ -538,7 +539,7 @@ function unsafe_conv_kern_os!(out,
     #                         2 | Edges of Cube
     #                         3 | Corners of Cube
     #
-    for n_edges in all_dims
+    for n_edges in val_dims
         unsafe_conv_kern_os_edge!(
             # These arrays and buffers will be mutated
             out,
@@ -546,7 +547,7 @@ function unsafe_conv_kern_os!(out,
             fdbuff,
             perimeter_range,
             # Number of edge dimensions to pad and convolve
-            Val(n_edges),
+            n_edges,
             # Data to be convolved
             u,
             filter_fd,

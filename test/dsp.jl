@@ -179,16 +179,16 @@ end
     end
 
     @testset "Overlap-Save" begin
-        to_sizetuple = (diml, N) -> ntuple(_ -> diml, N)
-        function os_test_data(eltype, diml, N)
+        to_sizetuple(diml, N) = ntuple(_ -> diml, N)
+        function os_test_data(::Type{T}, diml, N) where T
             s = to_sizetuple(diml, N)
-            arr = rand(eltype, s)
+            arr = rand(T, s)
             s, arr
         end
-        function test_os(eltype, nu, nv, N, nfft)
+        function test_os(::Type{T}, nu, nv, N, nfft) where T
             nffts = to_sizetuple(nfft, N)
-            su, u = os_test_data(eltype, nu, N)
-            sv, v = os_test_data(eltype, nv, N)
+            su, u = os_test_data(T, nu, N)
+            sv, v = os_test_data(T, nv, N)
             sout = su .+ sv .- 1
             out = _conv_similar(u, sout, axes(u), axes(v))
             unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
@@ -202,13 +202,9 @@ end
         nlarge = 128
 
         regular_nsmall = [12, 128]
-        for numdim in Ns
-            for elt in eltypes
-                for nsmall in regular_nsmall
-                    nfft = optimalfftfiltlength(nsmall, nlarge)
-                    test_os(elt, nlarge, nsmall, Val{numdim}(), nfft)
-                end
-            end
+        for numdim in Ns, elt in eltypes, nsmall in regular_nsmall
+            nfft = optimalfftfiltlength(nsmall, nlarge)
+            test_os(elt, nlarge, nsmall, Val{numdim}(), nfft)
         end
 
         # small = 12, fft = 256 exercises output being smaller than the normal
