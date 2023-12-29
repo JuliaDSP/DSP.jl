@@ -683,8 +683,8 @@ const RealOrComplexFloat = Union{AbstractFloat, Complex{T} where T<:AbstractFloa
 """
     conv(u,v)
 
-Convolution of two arrays. Uses either FFT convolution or overlap-save,
-depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
+Convolution of two arrays by using FFT-convolution.
+`u` and `v` can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
 function conv(u::AbstractArray{T, N},
@@ -767,9 +767,7 @@ end
 """
     xcorr(u,v; padmode = :none)
 
-Compute the cross-correlation of two vectors, by calculating the similarity
-between `u` and `v` with various offsets of `v`. Delaying `u` relative to `v`
-will shift the result to the right.
+Compute the cross-correlation of two vectors, `u` and `v`, through FFT-correlation. 
 
 The size of the output depends on the padmode keyword argument: with padmode =
 :none the length of the result will be length(u) + length(v) - 1, as with conv.
