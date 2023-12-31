@@ -308,7 +308,7 @@ end
     buff = similar(u, nffts)
 
     p = plan_fft!(buff)
-    ip = plan_bfft!(buff)
+    ip = inv(p).p
 
     buff, buff, p, ip # Only one buffer for complex
 end
@@ -627,10 +627,11 @@ function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
     upad = _zeropad(u, nffts)
     vpad = _zeropad(v, nffts)
     p! = plan_fft!(upad)
+    ip! = inv(p!)
     p! * upad # Operates in place on upad
     p! * vpad
     upad .*= vpad
-    ifft!(upad)
+    ip! * upad
     copyto!(out,
             CartesianIndices(out),
             upad,
