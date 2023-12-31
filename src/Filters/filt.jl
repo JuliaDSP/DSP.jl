@@ -469,26 +469,21 @@ function _fftfilt!(
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
-    for colstart = 0:nx:length(x)-1
-        off = 1
-        while off <= nx
-            npadbefore = max(0, nb - off)
-            xstart = off - nb + npadbefore + 1
-            n = min(nfft - npadbefore, nx - xstart + 1)
+    for colstart = 0:nx:length(x)-1, off = 1:L:nx
+        npadbefore = max(0, nb - off)
+        xstart = off - nb + npadbefore + 1
+        n = min(nfft - npadbefore, nx - xstart + 1)
 
-            tmp1[1:npadbefore] .= zero(W)
-            tmp1[npadbefore+n+1:end] .= zero(W)
+        tmp1[1:npadbefore] .= zero(W)
+        tmp1[npadbefore+n+1:end] .= zero(W)
 
-            copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            mul!(tmp2, p1, tmp1)
-            broadcast!(*, tmp2, tmp2, filterft)
-            mul!(tmp1, p2, tmp2)
+        copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
+        mul!(tmp2, p1, tmp1)
+        broadcast!(*, tmp2, tmp2, filterft)
+        mul!(tmp1, p2, tmp2)
 
-            # Copy to output
-            copyto!(out, colstart+off, tmp1, nb, min(L, nx - off + 1))
-
-            off += L
-        end
+        # Copy to output
+        copyto!(out, colstart+off, tmp1, nb, min(L, nx - off + 1))
     end
 
     out
