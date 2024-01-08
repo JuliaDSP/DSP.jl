@@ -50,13 +50,13 @@ using DSP, Test
     # [n, Wn] = buttord(Wp, Ws, Rp, Rs)
     #
 
-    (nbp, Wnbp) = buttord(tuple(100 / 500, 200 / 500), tuple(50 / 500, 250 / 500), 3, 40, domain=:z)
+    (nbp, Wnbp) = buttord((100 / 500, 200 / 500), (50 / 500, 250 / 500), 3, 40, domain=:z)
     @test nbp == 8
     @test Wnbp[1] ≈ 0.195101359239
     @test Wnbp[2] ≈ 0.408043633382
 
     # s-domain
-    (nbps, Wnbps) = buttord(tuple(100 / 500, 200 / 500), tuple(50 / 500, 250 / 500), 3, 40, domain=:s)
+    (nbps, Wnbps) = buttord((100 / 500, 200 / 500), (50 / 500, 250 / 500), 3, 40, domain=:s)
     @test nbps == 9
     @test Wnbps[1] ≈ 0.198730150231
     @test Wnbps[2] ≈ 0.402555927759
@@ -70,13 +70,13 @@ using DSP, Test
 
     # this test may be more sensitive...MATLAB's implementation of bounded minimization
     # will yield different results in comparison to Optim.jl.
-    (nbs, Wnbs) = buttord(tuple(3200 / 22050, 7800 / 22050), tuple(4800 / 22050, 5600 / 22050), 2, 60, domain=:z)
+    (nbs, Wnbs) = buttord((3200 / 22050, 7800 / 22050), (4800 / 22050, 5600 / 22050), 2, 60, domain=:z)
     @test nbs == 5
     @test ≈(Wnbs[1], 0.172660908966, rtol=Δ)
     @test ≈(Wnbs[2], 0.314956388749, rtol=Δ)
 
     # s-domain
-    (nbss, Wnbss) = buttord(tuple(3200 / 22050, 7800 / 22050), tuple(4800 / 22050, 5600 / 22050), 2, 60, domain=:s)
+    (nbss, Wnbss) = buttord((3200 / 22050, 7800 / 22050), (4800 / 22050, 5600 / 22050), 2, 60, domain=:s)
     @test ≈(Wnbss[1], 0.173677826752, rtol=Δ)
     @test ≈(Wnbss[2], 0.318267164272, rtol=Δ)
 
@@ -88,8 +88,8 @@ end
 @testset "ellipord" begin
 
     Rp, Rs = 3, 40
-    Wp = tuple(0.2, 0.7)
-    Ws = tuple(0.1, 0.8)
+    Wp = (0.2, 0.7)
+    Ws = (0.1, 0.8)
 
     # Lowpass
     (nl, Wnl) = ellipord(0.1, 0.2, Rp, Rs, domain=:z)
@@ -127,8 +127,8 @@ end
 
 @testset "cheb1ord" begin
     Rp, Rs = 2, 70
-    Wp = tuple(0.2, 0.5)
-    Ws = tuple(0.1, 0.6)
+    Wp = (0.2, 0.5)
+    Ws = (0.1, 0.6)
 
     # Lowpass
     (nl, Wnl) = cheb1ord(0.1, 0.21, Rp, Rs, domain=:z)
@@ -165,8 +165,8 @@ end
 
 @testset "cheb2ord" begin
     Rp, Rs = 1.2, 80
-    Wp = tuple(0.22, 0.51)
-    Ws = tuple(0.14, 0.63)
+    Wp = (0.22, 0.51)
+    Ws = (0.14, 0.63)
 
     # Lowpass
     (nl, Wnl) = cheb2ord(0.1, 0.21, Rp, Rs, domain=:z)

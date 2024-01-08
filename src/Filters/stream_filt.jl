@@ -320,7 +320,7 @@ function outputlength(inputlength::Integer, ratio::Union{Integer,Rational}, init
     ceil(Int, outLen)
 end
 
-function outputlength(kernel::FIRStandard, inputlength::Integer)
+function outputlength(::FIRStandard, inputlength::Integer)
     inputlength
 end
 
@@ -357,7 +357,7 @@ function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialœ
     floor(Int, inLen)
 end
 
-function inputlength(kernel::FIRStandard, outputlength::Integer)
+function inputlength(::FIRStandard, outputlength::Integer)
     outputlength
 end
 
