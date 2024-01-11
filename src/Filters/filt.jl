@@ -49,9 +49,9 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
         for fi = 1:n
             biquad = biquads[fi]
             xi = yi
-            yi = si[1, fi] + biquad.b0*xi
-            si[1, fi] = si[2, fi] + biquad.b1*xi - biquad.a1*yi
-            si[2, fi] = biquad.b2*xi - biquad.a2*yi
+            yi = muladd(biquad.b0, xi, si[1, fi])
+            si[1, fi] = muladd(biquad.a1, -yi, muladd(biquad.b1, xi, si[2, fi]))
+            si[2, fi] = muladd(biquad.b2, xi, -biquad.a2 * yi)
         end
         out[i, col] = yi*g
     end
@@ -88,9 +88,9 @@ function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
                 x::AbstractArray, col::Int)
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
-        yi = si1 + f.b0*xi
-        si1 = si2 + f.b1*xi - f.a1*yi
-        si2 = f.b2*xi - f.a2*yi
+        yi = muladd(f.b0, xi, si1)
+        si1 = muladd(f.a1, -yi, muladd(f.b1, xi, si2))
+        si2 = muladd(f.b2, xi, -f.a2 * yi)
         out[i, col] = yi
     end
     (si1, si2)
@@ -171,11 +171,11 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
     else
         @inbounds for i in eachindex(x, out)
             xi = x[i]
-            val = si[1] + b[1]*xi
+            val = muladd(b[1], xi, si[1])
             for j=2:n-1
-                si[j-1] = si[j] + b[j]*xi - a[j]*val
+                si[j-1] = muladd(a[j], -val, muladd(b[j], xi, si[j]))
             end
-            si[n-1] = b[n]*xi - a[n]*val
+            si[n-1] = muladd(b[n], xi, -a[n] * val)
             out[i] = val
         end
     end
@@ -374,6 +374,7 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
+        a1, a2, b0, b1, b2 = biquad.a1, biquad.a2, biquad.b0, biquad.b1, biquad.b2
 
         # At steady state, we have:
         #  y = s1 + b0*x
@@ -381,11 +382,10 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
         # s2 = b2*x - a2*y
         # where x is the input and y is the output. Solving these
         # equations yields the following.
-        si[1, i] = (-(biquad.a1 + biquad.a2)*biquad.b0 + biquad.b1 + biquad.b2)/
-                   (1 + biquad.a1 + biquad.a2)*y
-        si[2, i] = (biquad.a1*biquad.b2 - biquad.a2*(biquad.b0 + biquad.b1) + biquad.b2)/
-                   (1 + biquad.a1 + biquad.a2)*y
-        y *= (biquad.b0 + biquad.b1 + biquad.b2)/(1 + biquad.a1 + biquad.a2)
+        den = (1 + a1 + a2)
+        si[1, i] = muladd((a1 + a2), -b0, b1 + b2) / den * y
+        si[2, i] = muladd(a1, b2, muladd(-a2, (b0 + b1), b2)) / den * y
+        y *= (b0 + b1 + b2) / den
     end
     si
 end
@@ -411,7 +411,7 @@ function tdfilt!(out::AbstractArray, h::AbstractVector{H}, x::AbstractArray) whe
 end
 
 filt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T} =
-    filt!(Array{promote_type(H,T)}(undef, size(x)), h, x)
+    filt!(Array{promote_type(H, T)}(undef, size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -453,7 +453,7 @@ function _fftfilt!(
     nb = length(b)
     nx = size(x, 1)
     normfactor = nfft
-    W = promote_type(H,T)
+    W = promote_type(H, T)
 
     L = min(nx, nfft - (nb - 1))
     tmp1 = Vector{W}(undef, nfft)
