@@ -362,7 +362,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
 
     # construct the companion matrix A and vector B:
     A = [-a[2:end] Matrix{T}(I, sz-1, sz-2)]
-    B = @. b[2:end] - a[2:end] * b[1]
+    B = @views @. muladd(a[2:end], -b[1], b[2:end])
     # Solve si = A*si + B
     # (I - A)*si = B
     scale_factor \ (I - A) \ B

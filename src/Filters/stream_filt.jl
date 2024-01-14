@@ -568,7 +568,7 @@ end
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
 #   [1] uses a phase accumilator that increments by Δ (Nϕ/rate)
 
-function update(kernel::FIRArbitrary)
+function update!(kernel::FIRArbitrary)
     kernel.ϕAccumulator += kernel.Δ
 
     if kernel.ϕAccumulator > kernel.Nϕ
@@ -618,8 +618,8 @@ function filt!(
 
         # Used to have @inbounds. Restore @inbounds if buffer length
         # can be verified prior to access.
-        buffer[bufIdx] = yLower + yUpper * kernel.α
-        update(kernel)
+        buffer[bufIdx] = muladd(yUpper, kernel.α, yLower)
+        update!(kernel)
     end
 
     kernel.inputDeficit = kernel.xIdx - xLen

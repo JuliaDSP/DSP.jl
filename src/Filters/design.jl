@@ -153,7 +153,7 @@ function asne(w::Number, k::Real)
         # Eq. (50)
         k = abs2(k/(1+sqrt(1-abs2(k))))
         # Eq. (56)
-        w = 2*w/((1+k)*(1+sqrt(1-abs2(kold)*w^2)))
+        w = 2w / ((1 + k) * (1 + sqrt(muladd(-abs2(kold), w^2, 1))))
     end
     2*asin(w)/π
 end
@@ -355,7 +355,7 @@ function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain{:s})
     for (oldc, newc) in ((p, newp), (z, newz))
         for i in eachindex(oldc)
             b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
-            pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+            pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
             newc[2i-1] = b + pm
             newc[2i] = b - pm
         end
@@ -378,8 +378,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     num = one(eltype(z))
     for i = 1:nz
         num *= -z[i]
-        b = (ftype.w2 - ftype.w1)/2/z[i]
-        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        b = (ftype.w2 - ftype.w1)/2z[i]
+        pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
         newz[2i-1] = b - pm
         newz[2i] = b + pm
     end
@@ -387,8 +387,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     den = one(eltype(p))
     for i = 1:np
         den *= -p[i]
-        b = (ftype.w2 - ftype.w1)/2/p[i]
-        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        b = (ftype.w2 - ftype.w1)/2p[i]
+        pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
         newp[2i-1] = b - pm
         newp[2i] = b + pm
     end

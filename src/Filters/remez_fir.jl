@@ -217,7 +217,7 @@ function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     for j in eachindex(ad)
         c = ad[j] / (xf - x[j])
         d += c
-        p += c * y[j]
+        p = muladd(c, y[j], p)
     end
 
     p/d
@@ -461,8 +461,8 @@ function remez(numtaps::Integer, band_defs;
         k = 1
         for j = 1 : nz
             l = iext[j]
-            dnum += ad[j] * des[l]
-            dden += k * ad[j] / wt[l]
+            dnum = muladd(ad[j], des[l], dnum)
+            dden = muladd(k, ad[j] / wt[l], dden)
             k = -k
         end
         dev = dnum / dden
@@ -672,9 +672,9 @@ function remez(numtaps::Integer, band_defs;
     for j = 1 : nfcns
         dtemp = 0.0
         for k = 1 : nm1
-            dtemp += a[k+1] * cospi(2 * (j-1) * delf * k)
+            dtemp = muladd(a[k+1], cospi(2 * (j-1) * delf * k), dtemp)
         end
-        alpha[j] = 2.0 * dtemp + a[1]
+        alpha[j] = 2dtemp + a[1]
     end
 
     for j = 2 : nfcns
@@ -683,7 +683,7 @@ function remez(numtaps::Integer, band_defs;
     alpha[1] *= delf
 
     if !full_grid
-        p[1] = 2.0*alpha[nfcns]*bb+alpha[nm1]
+        p[1] = muladd(2alpha[nfcns], bb, alpha[nm1])
         p[2] = 2.0*aa*alpha[nfcns]
         q[1] = alpha[nfcns-2]-alpha[nfcns]
         for j = 2 : nm1
@@ -696,12 +696,12 @@ function remez(numtaps::Integer, band_defs;
                 a[k] = p[k]
                 p[k] = 2.0 * bb * a[k]
             end
-            p[2] += a[1] * 2.0 *aa
+            p[2] = muladd(a[1], 2aa, p[2])
             for k = 1 : j-1
-                p[k] += q[k] + aa * a[k+1]
+                p[k] += muladd(aa, a[k+1], q[k])
             end
             for k = 3 : j+1
-                p[k] += aa * a[k-1]
+                p[k] = muladd(aa, a[k-1], p[k])
             end
 
             if j != nm1
@@ -735,7 +735,7 @@ function remez(numtaps::Integer, band_defs;
             for j = 2 : nm1
                 h[j] = 0.25 * (alpha[nz-j] + alpha[nfcns+2-j])
             end
-            h[nfcns] = 0.5*alpha[1] + 0.25*alpha[2]
+            h[nfcns] = muladd(0.5, alpha[1], 0.25 * alpha[2])
         end
     else
         if nodd
@@ -744,14 +744,14 @@ function remez(numtaps::Integer, band_defs;
             for j = 1 : nm1
                 h[j] = 0.25 * (alpha[nz-j] - alpha[nfcns+3-j])
             end
-            h[nfcns] = 0.5 * alpha[1] - 0.25 * alpha[3]
+            h[nfcns] = muladd(0.5, alpha[1], -0.25 * alpha[3])
             h[nz] = 0.0
         else
             h[1] = 0.25 * alpha[nfcns]
             for j = 2 : nm1
                 h[j] = 0.25 * (alpha[nz-j] - alpha[nfcns+2-j])
             end
-            h[nfcns] = 0.5 * alpha[1] - 0.25 * alpha[2]
+            h[nfcns] = muladd(0.5, alpha[1], -0.25 * alpha[2])
         end
     end
 

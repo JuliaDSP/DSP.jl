@@ -62,7 +62,7 @@ toprototype(Wp::Real, Ws::Real, ::Type{Lowpass}) = Ws / Wp
 toprototype(Wp::Real, Ws::Real, ::Type{Highpass}) = Wp / Ws
 function toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, ::Type{Bandpass})
     # bandpass filter must have two corner frequencies we're computing with
-    Wa = (Ws .^ 2 .- (Wp[1] * Wp[2])) ./ (Ws .* (Wp[1] - Wp[2]))
+    Wa = muladd.(-Wp[1], Wp[2], Ws .^ 2) ./ (Ws .* (Wp[1] - Wp[2]))
     min(abs.(Wa)...)
 end
 toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real, ::Type{Bandstop}) = butterworth_bsfmin(Wp, Ws, Rp, Rs)
@@ -72,7 +72,7 @@ fromprototype(Wp::Real, Wscale::Real, ::Type{Highpass}) = Wp / Wscale
 function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ::Type{Bandstop})
     diff = Wp[2] - Wp[1]
     prod = Wp[2] * Wp[1]
-    k = sqrt(diff^2 + 4 * (Wscale^2) * prod)
+    k = sqrt(muladd(4 * (Wscale^2), prod, diff^2))
     den = 2 * Wscale
     Wa = (diff + k) / den, (diff - k) / den
     sort_W(abs.(Wa))
@@ -82,7 +82,7 @@ function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ::Type{Bandpass})
     Wsc = (-Wscale, Wscale)
     diff = Wp[2] - Wp[1]
     prod = Wp[2] * Wp[1]
-    Wa = sqrt(Wscale^2 / 4 * diff^2 + prod) .- Wsc .* diff ./ 2
+    Wa = muladd.(.-Wsc, diff ./ 2, sqrt(muladd(Wscale^2 / 4, diff^2, prod)))
     sort_W(abs.(Wa))
 end
 
@@ -118,7 +118,7 @@ function brent(f, x1::T, x2::T) where {T<:AbstractFloat}
     k1 = zero(T)
 
     # first interval calculation.
-    m = a + g * (b - a)
+    m = muladd(g, (b - a), a)
     m1, m2 = m, m
     fm = f(m)
     fm1, fm2 = fm, fm
@@ -135,7 +135,7 @@ function brent(f, x1::T, x2::T) where {T<:AbstractFloat}
         if (abs(k1) > xt) # trial parabolic fit
             r = (m - m1) * (fm - fm2)
             q = (m - m2) * (fm - fm1)
-            p = (m - m2) * q - (m - m1) * r
+            p = muladd((m - m2), q, -(m - m1) * r)
             q = 2 * (q - r)
             if (q > 0)
                 p = -p
@@ -203,7 +203,7 @@ for filt in (:butterworth, :elliptic, :chebyshev)
             Wpc = uselowband ? (Wx, Wp[2]) : (Wp[1], Wx)
 
             # get the new warp frequency.
-            warp = min(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ (Ws .^ 2 .- (Wpc[1] * Wpc[2])))...)
+            warp = min(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ muladd.(-Wpc[1], Wpc[2], Ws .^ 2))...)
 
             # use the new frequency to determine the filter order.
             $(Symbol(filt, :_order_estimate))(Rp, Rs, warp)
@@ -219,7 +219,7 @@ for filt in (:butterworth, :elliptic, :chebyshev)
             p2 = brent(C₂, Ws[2] + Δ, Wp[2])
             Wadj = (p1, p2)
 
-            Wa = (Ws .* (p1 - p2)) ./ (Ws .^ 2 .- (p1 * p2))
+            Wa = (Ws .* (p1 - p2)) ./ muladd.(-p1, p2, Ws .^ 2)
             min(abs.(Wa)...), Wadj
         end
     end
@@ -381,7 +381,7 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
             # pre-warp to analog if z-domain.
             (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
             if (ftype == Bandpass)
-                Wa = (Ωs .^ 2 .- (Ωp[1] * Ωp[2])) ./ (Ωs .* (Ωp[1] - Ωp[2]))
+                Wa = muladd.(-Ωp[1], Ωp[2], Ωs .^ 2) ./ (Ωs .* (Ωp[1] - Ωp[2]))
                 Ωpadj = Ωp
             else
                 (Wa, Ωpadj) = $(Symbol(est, :_bsfmin))(Ωp, Ωs, Rp, Rs) # check scipy.
@@ -441,7 +441,7 @@ function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real
     if (ftype == Bandpass)
         prod = Ωp[1] * Ωp[2]
         diff = Ωp[1] - Ωp[2]
-        Wa = (Ωs .^ 2 .- prod) ./ (Ωs .* diff)
+        Wa = muladd.(Ωs, Ωs, -prod) ./ (Ωs .* diff)
     else
         (Wa, Ωpadj) = chebyshev_bsfmin(Ωp, Ωs, Rp, Rs)
         prod = Ωpadj[1] * Ωpadj[2]
@@ -456,7 +456,7 @@ function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real
     if (ftype == Bandpass)
         Wna1 = diff / (2 * wnew) + √(diff^2 / (4 * wnew^2) + prod)
     else
-        Wna1 = (diff * wnew) / 2 + √(diff^2 * wnew^2 / 4 + prod)
+        Wna1 = (diff * wnew) / 2 + √(muladd(diff^2, wnew^2 / 4, prod))
     end
     Wna2 = prod / Wna1
     ωn = (domain == :z) ? ((2 / π) * atan(Wna1), (2 / π) * atan(Wna2)) : (Wna1, Wna2)
@@ -484,9 +484,9 @@ function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     (0 > Wp > 0.5) || (0 > Ws > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))
     L1, L2 = log10(Rp), log10(Rs)
     df = abs(Ws - Wp) # works in HPF case if passband/stopband edges are flipped
-    A = (5.309e-3 * L1^2) + (7.114e-2 * L1) - 0.4761
-    B = (2.66e-3 * L1^2) + (0.5941 * L1) + 0.4278
-    Kf = 0.51244 * (L1 - L2) + 11.01217
-    D = A * L2 - B
-    return ceil(Int, ((D - Kf * df^2) / df))
+    A = muladd(5.309e-3, L1^2, muladd(7.114e-2, L1, -0.4761))
+    B = muladd(2.66e-3, L1^2, muladd(0.5941, L1, 0.4278))
+    Kf = muladd(0.51244, (L1 - L2), 11.01217)
+    D = muladd(A, L2, -B)
+    return ceil(Int, (muladd(-Kf, df^2, D) / df))
 end
