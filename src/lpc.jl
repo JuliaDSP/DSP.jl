@@ -52,7 +52,8 @@ the recursion relation as noted in [^Vos], in turn referenced from [^Andersen].
 """
 function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
-    prediction_err = sum(abs2, x) / length(x)
+    unnormed_err = dot(x, x)
+    prediction_err = unnormed_err / length(x)
     R = typeof(prediction_err)
     F = promote_type(R, Base.promote_union(T))
 
@@ -62,25 +63,25 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     rev_buf = similar(a, p)             # buffer to store a in reverse
     reflection_coeffs = similar(a, p)   # reflection coefficients
 
-    den = 2sum(abs2, ef)
+    den = convert(R, 2unnormed_err)
     ratio = one(R)
 
     @views for m in 1:p
         cf = pop!(ef)
         cb = popfirst!(eb)
-        den = ratio * den - abs2(cf) - abs2(cb)
+        den = muladd(ratio, den, -(abs2(cf) + abs2(cb)))
 
         k = -2 * dot(eb, ef) / den
         reflection_coeffs[m] = k
 
         rev_buf[1:m] .= a[m:-1:1]
-        @. a[2:m+1] += k * conj(rev_buf[1:m])
+        @. a[2:m+1] = muladd(k, conj(rev_buf[1:m]), a[2:m+1])
 
         # update prediction errors
         for i in eachindex(ef, eb)
             ef_i, eb_i = ef[i], eb[i]
-            ef[i] += k * eb_i
-            eb[i] += conj(k) * ef_i
+            ef[i] = muladd(k, eb_i, ef[i])
+            eb[i] = muladd(conj(k), ef_i, eb[i])
         end
 
         ratio = one(R) - abs2(k)
@@ -134,7 +135,7 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     @views for m = 2:p
         rev_a[1:m-1] .= a[m-1:-1:1]
         k = -(R_xx[m+1] + dotu(R_xx[2:m], rev_a[1:m-1])) / prediction_err
-        @. a[1:m-1] += k * conj(rev_a[1:m-1])
+        @. a[1:m-1] = muladd(k, conj(rev_a[1:m-1]), a[1:m-1])
         a[m] = reflection_coeffs[m] = k
         prediction_err *= (one(R) - abs2(k))
     end
@@ -149,7 +150,7 @@ dotu(x::AbstractVector{T}, y::AbstractVector{T}) where T<:BlasComplex = BLAS.dot
 function dotu(x::AbstractVector{T}, y::AbstractVector{V}) where {T,V}
     dotprod = zero(promote_type(T, V))
     for i in eachindex(x, y)
-        dotprod += x[i] * y[i]
+        dotprod = muladd(x[i], y[i], dotprod)
     end
     dotprod
 end
