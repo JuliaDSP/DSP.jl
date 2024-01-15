@@ -52,7 +52,7 @@ the recursion relation as noted in [^Vos], in turn referenced from [^Andersen].
 """
 function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     # Initialize prediction error with the variance of the signal
-    unnormed_err = dot(x, x)
+    unnormed_err = abs(dot(x, x))
     prediction_err = unnormed_err / length(x)
     R = typeof(prediction_err)
     F = promote_type(R, Base.promote_union(T))
