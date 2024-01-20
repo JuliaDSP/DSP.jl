@@ -28,11 +28,13 @@ end
     sr = cos.(2π*fr*t .+ π/4.2)
     f_est_real = jacobsen(sr, fs)
     @test isapprox(f_est_real, fr, atol = 0.5)
+    @test jacobsen(zeros(10)) == 0.1
     # complex input
     fc = -40.3
     sc = cis.(2π*fc*t .+ π/1.4)
     f_est_complex = jacobsen(sc, fs)
     @test isapprox(f_est_complex, fc, atol = 1e-2)
+    @test jacobsen(zeros(ComplexF64, 10)) == -0.5
 end
 
 @testset "quinn" begin
