@@ -158,13 +158,7 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
     fₙ = Fs/2
     T = length(x)
 
-    # Run a quick estimate of largest sinusoid in x
-    if f0 == 0.0
-        f_est = jacobsen(x, Fs)
-        ω̂ = π*f_est/fₙ
-    else
-        ω̂ = π*f0/fₙ
-    end
+    ω̂ = π*f0/fₙ
 
     # Remove any DC term in x
     x .= x .- complex(mean(real.(x)), mean(imag.(x)))
