@@ -59,7 +59,7 @@ function jacobsen(x::Vector{<:Real}, Fs::Real = 1.0)
         δ = 0.0
     end
 
-    (k + δ)*Fs/N
+    return (k - 1 + δ)*Fs/N
 end
 
 function jacobsen(x::Vector{<:Complex}, Fs::Real = 1.0)
