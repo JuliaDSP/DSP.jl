@@ -104,7 +104,7 @@ estimated frequency, and `reachedmaxiters` is `true` if the algorithm finished
 after running for `maxiters` iterations (this may indicate that the algorithm
 did not converge).
 
-If the signal `x` is real, then the algorithm used is [^Quinn]. If the signal is
+If the signal `x` is real, then the algorithm used is [^Quinn1991]. If the signal is
 complex, the algorithm is [^Quinn2009].
 
 [^Quinn1991]: B Quinn and J Fernandes, "A fast efficient technique for the
