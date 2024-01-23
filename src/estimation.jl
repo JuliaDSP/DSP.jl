@@ -123,12 +123,7 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
     T = length(x)
 
     # Run a quick estimate of largest sinusoid in x
-    if f0 == 0.0
-        f_est = jacobsen(x, Fs)
-        ω̂ = π*f_est/fₙ  # estimate ranges from 0 to π
-    else
-        ω̂ = π*f0/fₙ
-    end
+    ω̂ = π*f0/fₙ
 
     # remove DC
     x .= x .- mean(x)
