@@ -180,7 +180,7 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
                 end
                 s
             end
-        num = imag(S*exp(complex(0,-ω̂)))
+        num = imag(S*cis(-ω̂)))
         den = sum(abs2.(ξ[1:end-1]))
         ω̂ += 2*num/den
 
