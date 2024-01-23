@@ -116,7 +116,7 @@ Signal Processing, Vol. 19 (2009), Elsevier.
 """
 quinn(x ; kwargs...) = quinn(x, jacobsen(x, Fs), 1.0 ; kwargs...)
 
-quinn(x, Fs ; kwargs...) = quinn(x, 0.0, Fs ; kwargs...)
+quinn(x, Fs ; kwargs...) = quinn(x, jacobsen(x, Fs), Fs ; kwargs...)
 
 function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
     fₙ = Fs/2
