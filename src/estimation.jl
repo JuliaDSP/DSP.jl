@@ -114,7 +114,7 @@ estimation of frequency", Biometrika, Vol. 78 (1991).
 Signal Processing, Vol. 19 (2009), Elsevier.
 
 """
-quinn(x ; kwargs...) = quinn(x, 0.0, 1.0 ; kwargs...)
+quinn(x ; kwargs...) = quinn(x, jacobsen(x, Fs), 1.0 ; kwargs...)
 
 quinn(x, Fs ; kwargs...) = quinn(x, 0.0, Fs ; kwargs...)
 
