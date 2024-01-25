@@ -53,7 +53,8 @@ function jacobsen(x::Vector{<:Real}, Fs::Real = 1.0)
     N = length(x)
     X = rfft(x)
     k = argmax(abs.(X))  # index of DFT peak
-    if (k+1 <= N) && (k-1 >= 1)
+    if ((k != div(N,2)+1) && (k != 1))  # avoid out-of-bounds indexing
+        # Jacoben's formula
         δ = -real((X[k+1] - X[k-1]) / (2X[k] - X[k-1] - X[k+1]) )
     else
         δ = 0.0
@@ -66,18 +67,19 @@ function jacobsen(x::Vector{<:Complex}, Fs::Real = 1.0)
     N = length(x)
     X = fftshift(fft(x))
     k = argmax(abs.(X))  # index of DFT peak
-    f = fftshift(fftfreq(N, Fs))[k]  # frequency at index k
-    if (k+1 <= N) && (k-1 >= 1)
+    fpeak = fftshift(fftfreq(N, Fs))[k]  # peak frequency
+    if ((k != N) && (k != 1))  # avoid out-of-bounds indexing
+        # jacobsen's formula
         δ = -real((X[k+1] - X[k-1]) / (2X[k] - X[k-1] - X[k+1]) )
     else
         δ = 0.0
     end
 
-    f + δ*Fs/N
+    return fpeak + δ*Fs/N
 end
 
 """
-    quinn(x::Vector, f0::Real = 0.0, Fs::Real = 1.0 ; tol = 1e-6, maxiters = 20)
+    quinn(x::Vector, f0::Real, Fs::Real = 1.0 ; tol = 1e-6, maxiters = 20)
 
     quinn(x::Vector, Fs::Real = 1.0 ; kwargs...)
 
@@ -88,9 +90,9 @@ signal `x` and an initial guess `f0`, estimate and return the frequency of the
 largest sinusoid in `x`. `Fs` is the sampling frequency. All frequencies are
 expressed in Hz.
 
-If the initial guess `f0` is not provided or if it is equal to zero, then a guess
-is calculated by `quinn` using Jacobsen's estimator. The sampling frequency `Fs`
-defaults to `1.0`.
+If the initial guess `f0` is not provided, then a guess is calculated using
+Jacobsen's estimator. If the sampling frequency `Fs` is not provided, then it
+is assumed that `Fs = 1.0`.
 
 The following keyword arguments control the algorithm's behavior:
 
@@ -114,7 +116,7 @@ estimation of frequency", Biometrika, Vol. 78 (1991).
 Signal Processing, Vol. 19 (2009), Elsevier.
 
 """
-quinn(x ; kwargs...) = quinn(x, jacobsen(x, Fs), 1.0 ; kwargs...)
+quinn(x ; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0 ; kwargs...)
 
 quinn(x, Fs ; kwargs...) = quinn(x, jacobsen(x, Fs), Fs ; kwargs...)
 
@@ -161,7 +163,7 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
     ω̂ = π*f0/fₙ
 
     # Remove any DC term in x
-    x .= x .- complex(mean(real.(x)), mean(imag.(x)))
+    x .= x .- mean(x)
 
     # iteration
     ξ = zeros(eltype(x), T)
@@ -180,7 +182,7 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
                 end
                 s
             end
-        num = imag(S*cis(-ω̂)))
+        num = imag(S*cis(-ω̂))
         den = sum(abs2.(ξ[1:end-1]))
         ω̂ += 2*num/den
 
