@@ -38,7 +38,7 @@ end
     f_est_real = jacobsen(sr, fs)
     @test isapprox(f_est_real, fr, atol = 1e-5)
     # test at lower extreme of DFT
-    @test jacobsen(zeros(10)) == 0.0
+    @test jacobsen(ones(10)) == 0.0
     # complex input: test at two arbitrary frequencies
     fc = -40.3
     sc = cis.(2π*fc*t .+ π/1.4)
