@@ -122,7 +122,7 @@ quinn(x, Fs ; kwargs...) = quinn(x, jacobsen(x, Fs), Fs ; kwargs...)
 
 function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
     fₙ = Fs/2
-    T = length(x)
+    N = length(x)
 
     # Run a quick estimate of largest sinusoid in x
     ω̂ = π*f0/fₙ
@@ -134,18 +134,18 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
     α = 2cos(ω̂)
 
     # iteration
-    ξ = zeros(eltype(x), T)
+    ξ = zeros(eltype(x), N)
     β = zero(eltype(x))
     iter = 0
     @inbounds while iter < maxiters
         iter += 1
         ξ[1] = x[1]
         ξ[2] = x[2] + α*ξ[1]
-        for t in 3:T
+        for t in 3:N
             ξ[t] = x[t] + α*ξ[t-1] - ξ[t-2]
         end
         β = ξ[2]/ξ[1]
-        for t = 3:T
+        for t = 3:N
             β += (ξ[t]+ξ[t-2])*ξ[t-1]
         end
         β = β/(ξ[1:end-1]'*ξ[1:end-1])
@@ -158,7 +158,7 @@ end
 
 function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
     fₙ = Fs/2
-    T = length(x)
+    N = length(x)
 
     ω̂ = π*f0/fₙ
 
@@ -166,18 +166,18 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters =
     x .= x .- mean(x)
 
     # iteration
-    ξ = zeros(eltype(x), T)
+    ξ = zeros(eltype(x), N)
     iter = 0
     @inbounds while iter < maxiters
         iter += 1
         # step 2
         ξ[1] = x[1]
-        for t in 2:T
+        for t in 2:N
             ξ[t] = x[t] + exp(complex(0,ω̂))*ξ[t-1]
         end
         # step 3
         S = let s = 0.0
-                for t=2:T
+                for t=2:N
                     s += x[t]*conj(ξ[t-1])
                 end
                 s
