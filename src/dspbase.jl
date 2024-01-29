@@ -1,7 +1,5 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-using Base: trailingsize
-
 const SMALL_FILT_CUTOFF = 58
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
@@ -39,7 +37,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs = length(b)
     sz = max(as, bs)
     silen = sz - 1
-    ncols = trailingsize(x, 2)
+    ncols = size(x, 2)
 
     if size(si, 1) != silen
         throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
@@ -48,13 +46,13 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     end
 
     iszero(size(x, 1)) && return out
-    isone(sz) && return mul!(out, x, b[1] / a[1]) # Simple scaling without memory
+    isone(sz) && return (k = b[1] / a[1]; @noinline mul!(out, x, k)) # Simple scaling without memory
 
     # Filter coefficient normalization
     if !isone(a[1])
         norml = a[1]
-        a = a ./ norml
-        b = b ./ norml
+        a = @noinline broadcast(/, a, norml)
+        b = @noinline broadcast(/, b, norml)
     end
     # Pad the coefficients with zeros if needed
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
@@ -112,20 +110,23 @@ end
 # Transposed direct form II
 @generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
     silen = N - 1
-    q = quote
-        offset = (col - 1) * size(x, 1)
+    si_end = Symbol(:si_, silen)
+    SMALL_FILT_VECT_CUTOFF = 18
+    si_check = N > SMALL_FILT_VECT_CUTOFF ? :(nothing) : :(@assert length(siarr) == $silen)
 
+    q = quote
+        $si_check
         Base.@nextract $silen si siarr
         for i in axes(x, 1)
-            xi = x[i+offset]
+            xi = x[i, col]
             val = muladd(xi, b[1], si_1)
             Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1], si_{j+1}))
-            $(Symbol(:si_, silen)) = b[N] * xi
-            out[i+offset] = val
+            $si_end = b[N] * xi
+            out[i, col] = val
         end
     end
 
-    if N > 18
+    if N > SMALL_FILT_VECT_CUTOFF
         loop_args = q.args[6].args[2].args
         for i in (2, 10)
             loop_args[i] = :(@inbounds $(loop_args[i]))
@@ -135,17 +136,15 @@ end
 end
 
 # Convert array filter tap input to tuple for small-filtering
-@generated function _small_filt_fir!(
+function _small_filt_fir!(
     out::AbstractArray, h::AbstractVector, x::AbstractArray,
         si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
-    quote
-        b = Base.@ntuple($bs, j -> @inbounds(h[j]))
-        for col in axes(x, 2)
-            v_si = view(si, :, N > 1 ? col : 1)
-            _filt_fir!(out, b, x, v_si, col)
-        end
+    b = ntuple(j -> @inbounds(h[j]), Val(bs))
+    for col in axes(x, 2)
+        v_si = view(si, :, N > 1 ? col : 1)
+        _filt_fir!(out, b, x, v_si, col)
     end
 end
 
