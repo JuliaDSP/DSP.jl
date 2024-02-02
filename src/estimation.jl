@@ -51,15 +51,16 @@ algorithm [^Jacobsen2007].
 """
 function jacobsen(x::Vector{<:Real}, Fs::Real = 1.0)
     N = length(x)
-    X = rfft(x)
-    k = argmax(abs.(X))  # index of DFT peak
-    if ((k != div(N,2)+1) && (k != 1))  # avoid out-of-bounds indexing
-        # Jacoben's formula
-        δ = -real((X[k+1] - X[k-1]) / (2X[k] - X[k-1] - X[k+1]) )
+    R = rfft(x)
+    m = length(R)
+    k = argmax(abs.(R))
+    if (k == 1)
+        δ = -real( imag(R[2]) / (R[1] - real(R[2])) )
+    elseif (k == m)
+        δ = real( imag(R[m-1]) / (R[m] - real(R[m-1])) )
     else
-        δ = 0.0
+        δ = -real((R[k+1] - R[k-1]) / (2R[k] - R[k-1] - R[k+1]) )
     end
-
     return (k - 1 + δ)*Fs/N
 end
 
