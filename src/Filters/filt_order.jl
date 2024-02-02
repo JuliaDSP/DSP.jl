@@ -82,7 +82,7 @@ function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ::Type{Bandpass})
     Wsc = (-Wscale, Wscale)
     diff = Wp[2] - Wp[1]
     prod = Wp[2] * Wp[1]
-    Wa = muladd.(.-Wsc, diff ./ 2, sqrt(muladd(Wscale^2 / 4, diff^2, prod)))
+    Wa = muladd.(.-Wsc, diff / 2, sqrt(muladd(Wscale^2 / 4, diff^2, prod)))
     sort_W(abs.(Wa))
 end
 

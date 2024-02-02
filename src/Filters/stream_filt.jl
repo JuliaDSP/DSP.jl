@@ -10,7 +10,7 @@ mutable struct FIRStandard{T} <: FIRKernel{T}
 end
 
 function FIRStandard(h::Vector)
-    h    = reverse(h, dims=1)
+    h    = reverse(h)
     hLen = length(h)
     FIRStandard(h, hLen)
 end
@@ -48,7 +48,7 @@ mutable struct FIRDecimator{T} <: FIRKernel{T}
 end
 
 function FIRDecimator(h::Vector, decimation::Integer)
-    h            = reverse(h, dims=1)
+    h            = reverse(h)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)
@@ -268,7 +268,7 @@ end
 
 # For FIRFilter, set history vector to zeros of same type and required length
 function reset!(self::FIRFilter)
-    self.history = zeros(eltype(self.history), self.historyLen)
+    fill!(self.history, 0)
     reset!(self.kernel)
     self
 end
