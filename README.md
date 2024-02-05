@@ -17,6 +17,6 @@ DSP.jl provides a number of common [digital signal processing](https://en.wikipe
 - [Window functions](https://docs.juliadsp.org/stable/windows)
 - [Utility functions](https://docs.juliadsp.org/stable/util)
 
-More details can be found in the [Online Documentation](https://docs.juliadsp.org/dev).
+More details can be found in the [Online Documentation](https://docs.juliadsp.org/stable).
 
-The documentation for pre-releases (master) can be found [here](https://docs.juliadsp.org/latest/contents/).
+The documentation for pre-releases (master) can be found [here](https://docs.juliadsp.org/dev/).
