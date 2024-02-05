@@ -468,11 +468,12 @@ digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
 """
     iirnotch(Wn, bandwidth[; fs])
 
-Second-order digital IIR notch filter [^Orfandis] at frequency `Wn` with
+Second-order digital IIR notch filter [^Orfanidis] at frequency `Wn` with
 bandwidth `bandwidth`. If `fs` is not specified, `Wn` is
 interpreted as a normalized frequency in half-cycles/sample.
 
-[^Orfandis]: Orfanidis, S. J. (1996). Introduction to signal processing. Englewood Cliffs, N.J: Prentice Hall, p. 370.
+[^Orfanidis]: Orfanidis, S. J. (1996). Introduction to signal processing.
+    Englewood Cliffs, N.J: Prentice Hall, p. 370.
 """
 function iirnotch(w::Real, bandwidth::Real; fs=2)
     w = normalize_freq(w, fs)
