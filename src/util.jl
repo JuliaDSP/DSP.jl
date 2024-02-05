@@ -135,7 +135,7 @@ const dBa = dBaconvert()
 Convert dB to a power ratio. This function call also be called
 using `a*dB`, i.e. `3dB == db2pow(3)`. The inverse of `pow2db`.
 """
-db2pow(a::Real) = 10^(a/10)
+db2pow(a::Real) = exp10(a/10)
 
 """
     db2amp(a)
@@ -143,7 +143,7 @@ db2pow(a::Real) = 10^(a/10)
 Convert dB to an amplitude ratio. This function call also be called
 using `a*dBa`, i.e. `3dBa == db2amp(3)`. The inverse of `amp2db`.
 """
-db2amp(a::Real) = 10^(a/20)
+db2amp(a::Real) = exp10(a/20)
 
 """
     pow2db(a)
@@ -354,13 +354,13 @@ the spaces with zeros. For circular shifting, use circshift.
 # Example
 ```jldoctest
 julia> shiftsignal([1, 2, 3], 2)
-3-element Array{Int64,1}:
+3-element Vector{Int64}:
  0
  0
  1
 
 julia> shiftsignal([1, 2, 3], -2)
-3-element Array{Int64,1}:
+3-element Vector{Int64}:
  3
  0
  0

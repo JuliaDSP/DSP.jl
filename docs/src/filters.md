@@ -23,23 +23,23 @@ SecondOrderSections
 
 These filter coefficient objects support the following arithmetic operations:
 inversion (`inv`), multiplication (`*`) for series connection, and integral
-power (`^`) for repeated mutlpilcation with itself. For example:
+power (`^`) for repeated multiplication with itself. For example:
 
 ```jldoctest; setup = :(using DSP)
 julia> H = PolynomialRatio([1.0], [1.0, 0.3])
-PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.3*z⁻¹ + 1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0), LaurentPolynomial(0.3*z⁻¹ + 1.0))
 
 julia> inv(H)
-PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(0.3*z⁻¹ + 1.0), Polynomials.LaurentPolynomial(1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(0.3*z⁻¹ + 1.0), LaurentPolynomial(1.0))
 
 julia> H * H
-PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0), LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
 
 julia> H^2
-PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(1.0), Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0), LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0))
 
 julia> H^-2
-PolynomialRatio{:z,Float64}(Polynomials.LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0), Polynomials.LaurentPolynomial(1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(0.09*z⁻² + 0.6*z⁻¹ + 1.0), LaurentPolynomial(1.0))
 
 ```
 
@@ -79,23 +79,30 @@ Most analog and digital filters are constructed by composing
 [response types](@ref response-types), which determine the frequency
 response of the filter, with [design methods](@ref design-methods),
 which determine how the filter is constructed.
+
 The response type is [`Lowpass`](@ref), [`Highpass`](@ref), [`Bandpass`](@ref)
 or [`Bandstop`](@ref) and includes the edges of the bands.
-The design method is [`Butterworth`](@ref), [`Chebyshev1`](@ref), [`Chebyshev2`](@ref), 
+
+The design method is [`Butterworth`](@ref), [`Chebyshev1`](@ref), [`Chebyshev2`](@ref),
 [`Elliptic`](@ref), or [`FIRWindow`](@ref), and includes any
 necessary parameters for the method that affect the shape of the response,
 such as filter order, ripple, and attenuation.
+
+[Filter order estimation methods](@ref order-est-methods)
+are available in [`buttord`](@ref), [`cheb1ord`](@ref), [`cheb2ord`](@ref),
+and [`ellipord`](@ref) if the corner frequencies for different IIR filter types are known.
+[`remezord`](@ref) can be used for an initial FIR filter order estimate.
 
 ```@docs
 analogfilter
 digitalfilter
 ```
 
-For some filters, the design method is more general or 
+For some filters, the design method is more general or
 inherently implies a response type;
 these [direct design methods](@ref direct-design-methods)
 include [`remez`](@ref) which designs equiripple FIR
-filters of all types, and [`iirnotch`](@ref) which designs a 
+filters of all types, and [`iirnotch`](@ref) which designs a
 2nd order "biquad" IIR notch filter.
 
 
@@ -117,6 +124,23 @@ Butterworth
 Chebyshev1
 Chebyshev2
 Elliptic
+```
+
+### [Filter order estimation methods](@id order-est-methods)
+
+#### IIR filter order estimation methods
+
+```@docs
+buttord
+cheb1ord
+cheb2ord
+ellipord
+```
+
+#### FIR filter order estimation methods
+
+```@docs
+remezord
 ```
 
 #### FIR filter design methods
@@ -179,4 +203,12 @@ window FIR lowpass filter at 5 Hz:
 responsetype = Lowpass(5; fs=50)
 designmethod = FIRWindow(hanning(64))
 filt(digitalfilter(responsetype, designmethod), x)
+```
+
+Estimate a Lowpass Elliptic filter order with a normalized
+passband cutoff frequency of 0.2, a stopband cutoff frequency of 0.4,
+3 dB of passband ripple, and 40 dB attenuation in the stopband:
+
+```julia
+(N, ωn) = ellipord(0.2, 0.4, 3, 40)
 ```

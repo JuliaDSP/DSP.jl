@@ -6,16 +6,19 @@ makedocs(
     modules = [DSP],
     format = Documenter.HTML(),
     sitename = "DSP.jl",
-    pages = Any[
-        "Contents" => "contents.md",
-        "periodograms.md",
-        "estimation.md",
-        "windows.md",
-        "filters.md",
-        "util.md",
-        "convolutions.md",
-        "lpc.md",
-        "index.md",
+    pages = [
+        "Home" => "index.md",
+        "Submodules" => [
+            "periodograms.md",
+            "estimation.md",
+            "windows.md",
+            "filters.md",
+            "util.md",
+            "convolutions.md",
+            "lpc.md"
+        ],
+        "Internals" => "internals.md",
+        "Index" => "appendix.md"
     ],
 )
 
@@ -24,4 +27,5 @@ deploydocs(
     target = "build",
     deps   = nothing,
     make   = nothing,
+    push_preview = true,
 )

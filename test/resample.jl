@@ -1,5 +1,6 @@
 using DSP
 using Test
+using DelimitedFiles: readdlm
 
 @testset "rational ratio" begin
     # AM Modulator
@@ -44,6 +45,31 @@ using Test
     y4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_2_3.txt"),'\t'))
     y4_jl = resample(x_ml, rate, h4_ml)
     @test y4_jl ≈ y4_ml
+end
+
+@testset "array signal" begin
+    rate   = 1//2
+    x_ml   = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
+    h1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
+    y1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
+
+    expected_result = [y1_ml 2y1_ml]
+    X = [x_ml 2x_ml]
+    y1_jl  = resample(X, rate, h1_ml, dims=1)
+    @test y1_jl ≈ expected_result
+
+    y1_jl  = resample(X', rate, h1_ml, dims=2)
+    @test y1_jl ≈ expected_result'
+
+    expected_result_3d = permutedims(reshape(expected_result, (size(expected_result, 1), size(expected_result, 2), 1)), (3, 1, 2))
+    X_3d = permutedims(reshape(X, (size(X, 1), size(X, 2), 1)), (3, 1, 2))
+    y1_jl  = resample(X_3d, rate, h1_ml, dims=2)
+    @test y1_jl ≈ expected_result_3d
+
+    expected_result_3d = permutedims(expected_result_3d, (1, 3, 2))
+    X_3d = permutedims(X_3d, (1, 3, 2))
+    y1_jl  = resample(X_3d, rate, h1_ml, dims=3)
+    @test y1_jl ≈ expected_result_3d
 end
 
 @testset "irrational ratio" begin

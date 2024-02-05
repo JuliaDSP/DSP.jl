@@ -3,11 +3,17 @@
 module Periodograms
 using LinearAlgebra: mul!
 using ..Util, ..Windows
-export arraysplit, nextfastfft, periodogram, welch_pgram, mt_pgram,
-       spectrogram, power, freq, stft
+using Statistics: mean!
+export arraysplit, nextfastfft, periodogram, welch_pgram,
+       spectrogram, power, freq, stft,
+       MTConfig, mt_pgram, mt_pgram!,
+       MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
+       MTCrossSpectraConfig, mt_cross_power_spectra, mt_cross_power_spectra!,
+       MTCoherenceConfig, mt_coherence, mt_coherence!,
+       coherence
+import ..DSP: allocate_output
 using FFTW
 import FFTW: Frequencies, fftfreq, rfftfreq
-
 ## ARRAY SPLITTER
 
 struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
@@ -22,7 +28,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
-        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, div((length(s) - n), n - noverlap)+1)
+        new{Ti,Si,Wi}(s, zeros(Si, nfft), n, noverlap, window, length(s) >= n ? div((length(s) - n), n - noverlap)+1 : 0)
     end
 end
 ArraySplit(s::AbstractVector, n, noverlap, nfft, window) =
@@ -62,7 +68,7 @@ Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
 ## UTILITY FUNCTIONS
 
 # Convert the output of an FFT to a PSD and add it to out
-function fft2pow!(out::Array{T}, s_fft::Vector{Complex{T}}, nfft::Int, r::Real, onesided::Bool, offset::Int=0) where T
+function fft2pow!(out::AbstractArray{T}, s_fft::AbstractVector{Complex{T}}, nfft::Int, r::Real, onesided::Bool, offset::Int=0) where T
     m1 = convert(T, 1/r)
     n = length(s_fft)
     if onesided
@@ -184,12 +190,12 @@ end
 
 ## PERIODOGRAMS
 abstract type TFR{T} end
-struct Periodogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
-    power::Vector{T}
+struct Periodogram{T,F<:Union{Frequencies,AbstractRange}, V <: AbstractVector{T}} <: TFR{T}
+    power::V
     freq::F
 end
-struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies,AbstractRange}} <: TFR{T}
-    power::Matrix{T}
+struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
+    power::M
     freq1::F1
     freq2::F2
 end
@@ -197,21 +203,24 @@ end
 """
     power(p)
 
-For a Periodogram, returns the computed power at each frequency as
+For a `Periodogram`, returns the computed power at each frequency as
 a Vector.
 
-For a Spectrogram, returns the computed power at each frequency and
+For a `Spectrogram`, returns the computed power at each frequency and
 time bin as a Matrix. Dimensions are frequency × time.
+
+For a `CrossPowerSpectra`, returns the pairwise power between each pair
+of channels at each frequency. Dimensions are channel x channel x frequency.
 """
 power(p::TFR) = p.power
 
 """
     freq(p)
 
-Returns the frequency bin centers for a given Periodogram or
-Spectrogram object.
+Returns the frequency bin centers for a given `Periodogram`,
+`Spectrogram`, `CrossPowerSpectra`, or `Coherence` object.
 
-Returns a tuple of frequency bin centers for a given Periodogram2
+Returns a tuple of frequency bin centers for a given `Periodogram2`
 object.
 """
 freq(p::TFR) = p.freq
@@ -381,64 +390,14 @@ function welch_pgram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
     Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
 end
 
-"""
-    mt_pgram(s; onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, nw=4, ntapers=iceil(2nw)-1, window=dpss(length(s), nw, ntapers))
-
-Computes the multitaper periodogram of a signal `s`.
-
-If `window` is not specified, the signal is tapered with
-`ntapers` discrete prolate spheroidal sequences with
-time-bandwidth product `nw`. Each sequence is equally weighted;
-adaptive multitaper is not (yet) supported.
-
-If `window` is specified, each column is applied as a taper. The
-sum of periodograms is normalized by the total sum of squares of
-`window`.
-
-See also: [`dpss`](@ref)
-"""
-function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
-                  nfft::Int=nextfastfft(length(s)), fs::Real=1,
-                  nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
-                  window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= length(s) || error("nfft must be >= n")
-
-    if isa(window, Nothing)
-        window = dpss(length(s), nw, ntapers)
-        r::T = fs*ntapers
-    else
-        size(window, 1) == length(s) ||
-            error(DimensionMismatch("length of signal $(length(s)) must match first dimension of window $(size(window,1))"))
-        r = fs*sum(abs2, window)
-    end
-
-    out = zeros(fftabs2type(T), onesided ? (nfft >> 1)+1 : nfft)
-    input = zeros(fftintype(T), nfft)
-    tmp = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
-
-    plan = forward_plan(input, tmp)
-    for j = 1:size(window, 2)
-        for i = 1:size(window, 1)
-            @inbounds input[i] = window[i, j]*s[i]
-        end
-        mul!(tmp, plan, input)
-        fft2pow!(out, tmp, nfft, r, onesided)
-    end
-
-    Periodogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs))
-end
-
 ## SPECTROGRAM
 
-@static if isdefined(Base, :StepRangeLen)
-    const FloatRange{T} = StepRangeLen{T,Base.TwicePrecision{T},Base.TwicePrecision{T}}
-end
+const Float64Range = typeof(range(0.0, step=1.0, length=2))
 
-struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}} <: TFR{T}
-    power::Matrix{T}
+struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
+    power::M
     freq::F
-    time::FloatRange{Float64}
+    time::Float64Range
 end
 FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
     Spectrogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
@@ -507,5 +466,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
     end
     out
 end
+
+include("multitaper.jl")
 
 end # end module definition

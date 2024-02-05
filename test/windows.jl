@@ -49,8 +49,10 @@ end
     @test rect(128) == ones(128)
 
     hanning_jl = hanning(128)
+    hann_jl = hann(128)
     hanning_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hanning128.txt"), '\t')
     @test hanning_jl ≈ hanning_ml
+    @test hann_jl ≈ hanning_ml
 
     hamming_jl = hamming(128)
     hamming_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hamming128.txt"), '\t')
@@ -75,6 +77,7 @@ end
     blackman_jl = blackman(128)
     blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
     @test blackman_jl ≈ blackman_ml
+    @test minimum(blackman_jl) == 0.0
 
     kaiser_jl = kaiser(128, 0.4/π)
     kaiser_ml = readdlm(joinpath(dirname(@__FILE__), "data", "kaiser128,0.4.txt"), '\t')

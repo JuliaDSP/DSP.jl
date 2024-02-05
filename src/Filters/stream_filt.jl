@@ -706,7 +706,7 @@ but performs additional operations to make resampling a signal easier.
 It compensates for the `FIRFilter`'s delay (ramp-up), and appends
 zeros to `x`. The result is that when the input and output signals
 are plotted on top of each other, they correlate very well, but one
-signal will have more samples that the other.
+signal will have more samples than the other.
 """
 function resample(x::AbstractVector, rate::Real, h::Vector)
     self = FIRFilter(h, rate)
@@ -731,6 +731,17 @@ end
 function resample(x::AbstractVector, rate::Real)
     h = resample_filter(rate)
     resample(x, rate, h)
+end
+
+"""
+    resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
+
+Resample an array `x` along dimension `dims`.
+"""
+function resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
+    mapslices(x; dims=dims) do x
+        resample(x, rate, h)
+    end
 end
 
 #
