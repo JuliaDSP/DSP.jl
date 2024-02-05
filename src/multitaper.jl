@@ -255,7 +255,7 @@ end
 struct MTSpectrogramConfig{T,C<:MTConfig{T}}
     n_samples::Int
     n_overlap_samples::Int
-    time::FloatRange{Float64}
+    time::Float64Range
     mt_config::C
 end
 
@@ -294,7 +294,7 @@ end
 
 """
     mt_spectrogram!(output, signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-        n_overlap::Int=n >> 1; fs::Int=1, onesided::Bool=T <: Real, kwargs...) where {T}
+        n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real, kwargs...) where {T}
     mt_spectrogram!(destination::AbstractMatrix, signal::AbstractVector, config::MTSpectrogramConfig)
 
 Computes a multitaper spectrogram using the parameters specified in `config`. Arguments:
@@ -310,7 +310,7 @@ See also [`mt_spectrogram`](@ref).
 mt_spectrogram!
 
 function mt_spectrogram!(output, signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-    n_overlap::Int=n >> 1; fs::Int=1, onesided::Bool=T <: Real,
+    n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
     kwargs...) where {T}
     config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
         fft_flags=FFTW.ESTIMATE, kwargs...)
@@ -348,7 +348,7 @@ end
 
 """
     mt_spectrogram(signal::AbstractVector{T}, n::Int=length(s) >> 3,
-                                  n_overlap::Int=n >> 1; fs::Int=1,
+                                  n_overlap::Int=n >> 1; fs=1,
                                   onesided::Bool=T <: Real, kwargs...) where {T}
     mt_spectrogram(signal::AbstractVector, config::MTSpectrogramConfig)
 
@@ -363,7 +363,7 @@ See also [`mt_spectrogram!`](@ref).
 mt_spectrogram
 
 function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-                        n_overlap::Int=n >> 1; fs::Int=1, onesided::Bool=T <: Real,
+                        n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
                         kwargs...) where {T}
     config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
                                     fft_flags=FFTW.ESTIMATE, kwargs...)

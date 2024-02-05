@@ -1,7 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
 import Base: trailingsize
-import LinearAlgebra.BLAS
 
 const SMALL_FILT_CUTOFF = 58
 
@@ -677,6 +676,9 @@ function _conv(u, v, su, sv)
     _conv!(out, u, v, su, sv, outsize)
 end
 
+# We use this type definition for clarity
+const RealOrComplexFloat = Union{AbstractFloat, Complex{T} where T<:AbstractFloat}
+
 # May switch argument order
 """
     conv(u,v)
@@ -686,18 +688,18 @@ depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
 with arbitrary indexing offsets, but their axes must be a `UnitRange`.
 """
 function conv(u::AbstractArray{T, N},
-              v::AbstractArray{T, N}) where {T<:BLAS.BlasFloat, N}
+              v::AbstractArray{T, N}) where {T<:RealOrComplexFloat, N}
     su = size(u)
     sv = size(v)
-    if prod(su) >= prod(sv)
+    if length(u) >= length(v)
         _conv(u, v, su, sv)
     else
         _conv(v, u, sv, su)
     end
 end
 
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
+function conv(u::AbstractArray{<:RealOrComplexFloat, N},
+              v::AbstractArray{<:RealOrComplexFloat, N}) where N
     fu, fv = promote(u, v)
     conv(fu, fv)
 end
@@ -709,11 +711,11 @@ conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
     conv(float(u), float(v))
 
 function conv(u::AbstractArray{<:Number, N},
-              v::AbstractArray{<:BLAS.BlasFloat, N}) where N
+              v::AbstractArray{<:RealOrComplexFloat, N}) where N
     conv(float(u), v)
 end
 
-function conv(u::AbstractArray{<:BLAS.BlasFloat, N},
+function conv(u::AbstractArray{<:RealOrComplexFloat, N},
               v::AbstractArray{<:Number, N}) where N
     conv(u, float(v))
 end
