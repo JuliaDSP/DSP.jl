@@ -118,7 +118,7 @@ H(s) = \\frac{\\verb!b[1]! s^{m-1} + \\ldots + \\verb!b[m]!}{\\verb!a[1]! s^{n-1
 returns `PolynomialRatio` object with specified `b` and `a` coefficients.
 ```jldoctest
 julia> PolynomialRatio{:s}([1,2,3],[2,3,4])
-PolynomialRatio{:s, Int64}(Polynomials.LaurentPolynomial(3 + 2*s + s²), Polynomials.LaurentPolynomial(4 + 3*s + 2*s²))
+PolynomialRatio{:s, Int64}(LaurentPolynomial(3 + 2*s + s²), LaurentPolynomial(4 + 3*s + 2*s²))
 ```
 
 """
