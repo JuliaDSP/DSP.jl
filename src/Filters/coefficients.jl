@@ -109,7 +109,7 @@ returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficient
 julia> PolynomialRatio([1,1],[1,2])
 PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0*z⁻¹ + 1.0), LaurentPolynomial(2.0*z⁻¹ + 1.0))
 julia> PolynomialRatio{:z}([1,2,3],[2,3,4])
-PolynomialRatio{:z, Float64}(Polynomials.LaurentPolynomial(1.5*z⁻² + 1.0*z⁻¹ + 0.5), Polynomials.LaurentPolynomial(2.0*z⁻² + 1.5*z⁻¹ + 1.0))
+PolynomialRatio{:z, Float64}(LaurentPolynomial(1.5*z⁻² + 1.0*z⁻¹ + 0.5), LaurentPolynomial(2.0*z⁻² + 1.5*z⁻¹ + 1.0))
 ```
 - Transfer function in s domain (zero & positive s powers):
 ```math
