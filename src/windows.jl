@@ -83,7 +83,7 @@ $zerophase_docs
 
 Example:
 
-```
+```julia
 function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.5*(1+cos(2pi*x))
@@ -223,18 +223,20 @@ window. For `α == 1`, the window is a Hann window.
 
 The window is defined by sampling the continuous function:
 
-           ⎛              ⎛    ⎛    1 - α⎞⎞
-           ⎜      1 + cos ⎜2πα ⎜x + ─────⎟⎟             1 - α
-           ⎜              ⎝    ⎝      2  ⎠⎠         x ≤ ─────
-           ⎜      ─────────────────────────               2
+           ⎛              ⎛2π ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜── ⎜x + ─────⎟⎟             1 - α
+           ⎜              ⎝ α ⎝      2  ⎠⎠       x ≤ - ─────
+           ⎜      ─────────────────────────              2
            ⎜                  2
            ⎜
-    w(x) = ⎜      1                                 -α/2 < x ≤ α/2
+           ⎜                                       1 - α       1 - α
+    w(x) = ⎜      1                              - ───── < x ≤ ─────
+           ⎜                                         2           2
            ⎜
-           ⎜              ⎛    ⎛    1 - α⎞⎞
-           ⎜      1 + cos ⎜2πα ⎜x - ─────⎟⎟             1 - α
-           ⎜              ⎝    ⎝      2  ⎠⎠         x > ─────
-           ⎜      ─────────────────────────               2
+           ⎜              ⎛2π ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜── ⎜x - ─────⎟⎟           1 - α
+           ⎜              ⎝ α ⎝      2  ⎠⎠       x > ─────
+           ⎜      ─────────────────────────            2
            ⎝                  2
 
 in the range `[-0.5, 0.5]`
