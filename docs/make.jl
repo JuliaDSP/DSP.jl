@@ -7,7 +7,7 @@ makedocs(
     format = Documenter.HTML(),
     sitename = "DSP.jl",
     pages = [
-        "Contents" => "contents.md",
+        "Home" => "index.md",
         "Submodules" => [
             "periodograms.md",
             "estimation.md",
@@ -18,7 +18,7 @@ makedocs(
             "lpc.md"
         ],
         "Internals" => "internals.md",
-        "index.md"
+        "Index" => "appendix.md"
     ],
 )
 
