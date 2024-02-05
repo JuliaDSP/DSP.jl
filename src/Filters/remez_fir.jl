@@ -53,7 +53,7 @@ C CODE BANNER
 
 /********************************************************
  *
- *  Code taken from remez.c by Erik Kvaleberg which was 
+ *  Code taken from remez.c by Erik Kvaleberg which was
  *    converted from an original FORTRAN by:
  *
  * AUTHORS: JAMES H. MCCLELLAN
@@ -71,8 +71,8 @@ C CODE BANNER
  *         BELL LABORATORIES
  *         MURRAY HILL, NEW JERSEY 07974
  *
- *  
- *  Adaptation to C by 
+ *
+ *  Adaptation to C by
  *      egil kvaleberg
  *      husebybakken 14a
  *      0379 oslo, norway
@@ -92,8 +92,8 @@ C CODE BANNER
 
 
 
-"""/*
-lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
+"""
+    lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
 
 CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
 """
@@ -112,8 +112,9 @@ end
 
 
 """
-build_grid(numtaps, band_defs, Hz, grid_density, neg)
-return "grid" and "des" and "wt" arrays
+    build_grid(numtaps, band_defs, Hz, grid_density, neg)
+
+Returns `grid`, `des`, and `wt` arrays
 """
 function build_grid(nfilt, band_defs, Hz, grid_density, neg)
     nodd = isodd(nfilt)
@@ -201,11 +202,12 @@ function _buildgrid!(grid, des, wt, j, fs, neg, nodd, Hz, des_wt)
 end
 
 """
-function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+    function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
   LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
+
 -----------------------------------------------------------------------
 """
 function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
@@ -263,7 +265,7 @@ Banner from C code
 Calculate the minimax optimal filter using the Remez exchange algorithm [^McClellan1973a] [^McClellan1973b].
 
 This is the simplified API that accepts just 2 required arguments (numtaps, band_defs).
-For a scipy compatible version see the 3 arguments version (numtaps, bands, desired). 
+For a scipy compatible version see the 3 arguments version (numtaps, bands, desired).
 
 Calculate the filter-coefficients for the finite impulse response
 (FIR) filter whose transfer function minimizes the maximum error
@@ -271,12 +273,12 @@ between the desired gain and the realized gain in the specified
 frequency bands using the Remez exchange algorithm.
 
 # Arguments
-- `numtaps::Integer`: The desired number of taps in the filter. 
-    The number of taps is the number of terms in the filter, or the filter 
+- `numtaps::Integer`: The desired number of taps in the filter.
+    The number of taps is the number of terms in the filter, or the filter
     order plus one.
 - `bands_defs`: A sequence of band definitions.
     This sequence defines the bands. Each entry is a pair. The pair's
-    first item is a tuple of band edges (low, high). The pair's second item 
+    first item is a tuple of band edges (low, high). The pair's second item
     defines the desired response and weight in that band. The weight is optional
     and defaults to 1.0. Both the desired response and weight may be either scalars
     or functions. If a function, the function should accept a real frequency and
@@ -300,33 +302,30 @@ frequency bands using the Remez exchange algorithm.
 - `h::Array{Float64,1}`: A rank-1 array containing the coefficients of the optimal
     (in a minimax sense) filter.
 
-[^McClellan1973a]: 
-J. H. McClellan and T. W. Parks, A unified approach to the
-design of optimum FIR linear phase digital filters,
-IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
+[^McClellan1973a]: J. H. McClellan and T. W. Parks,
+    A unified approach to the design of optimum FIR linear phase digital filters,
+    IEEE Trans. Circuit Theory, vol. CT-20, pp. 697-701, 1973.
 
-[^McClellan1973b]: 
-J. H. McClellan, T. W. Parks and L. R. Rabiner, A Computer
-Program for Designing Optimum FIR Linear Phase Digital
-Filters, IEEE Trans. Audio Electroacoust., vol. AU-21,
-pp. 506-525, 1973.
+[^McClellan1973b]: J. H. McClellan, T. W. Parks and L. R. Rabiner,
+    A Computer Program for Designing Optimum FIR Linear Phase Digital Filters,
+    IEEE Trans. Audio Electroacoust., vol. AU-21, pp. 506-525, 1973.
 
 # Examples
-Construct a length 35 filter with a passband at 0.15-0.4 Hz 
+Construct a length 35 filter with a passband at 0.15-0.4 Hz
 (desired response of 1), and stop bands at 0-0.1 Hz and 0.45-0.5 Hz
-(desired response of 0). Note: the behavior in the frequency ranges between 
+(desired response of 0). Note: the behavior in the frequency ranges between
 those bands - the transition bands - is unspecified.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0]);
 ```
 
-You can trade-off maximum error achieved for transition bandwidth. 
+You can trade-off maximum error achieved for transition bandwidth.
 The wider the transition bands, the lower the maximum error in the
 bands specified. Here is a bandpass filter with the same passband, but
 wider transition bands.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0]);
 ```
 
@@ -345,44 +344,44 @@ julia> grid()
 # Examples from the unittests - standard (even) symmetry.
 
 Length 151 LPF (Low Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(151, [(0, 0.475) => 1, (0.5, 1.0) => 0]; Hz=2.0);
 ```
 
 Length 152 LPF. Non-default "weight" input.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(152, [(0, 0.475) => (1, 1), (0.5, 1.0) => (0, 2)]; Hz=2.0);
 ```
 
 Length 51 HPF (High Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(51, [(0, 0.75) => 0, (0.8, 1.0) => 1]; Hz=2.0);
 ```
 
 Length 180 BPF (Band Pass Filter).
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(180, [(0, 0.375) => 0, (0.4, 0.5) => 1, (0.525, 1.0) => 0]; Hz=2.0, maxiter=30);
 ```
 
 # Examples from the unittests - Odd-symmetric filters - hilbert and differentiators type.
 Even length - has a much better approximation since the response is not constrained to 0 at
 the nyquist frequency.  Length 20 Hilbert transformer.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(20, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 ```
 
 Length 21 Hilbert transformer.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(21, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 ```
 
 Length 200 differentiator.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(200, [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 ```
 
 Length 201 differentiator.
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(201, [(0.05, 0.95) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 ```
 
@@ -427,19 +426,19 @@ function remez(numtaps::Integer, band_defs;
         iext[j] = (j-1)*(ngrid-1) ÷ nfcns + 1
     end
 
-    dev = 0.0     # deviation from the desired function, 
+    dev = 0.0     # deviation from the desired function,
                   # that is, the amount of "ripple" on the extremal set
     devl = -1.0   # deviation on last iteration
     niter = 0
     ad = zeros(Float64, nz)
-    
+
     jet = ((nfcns-1) ÷ 15) + 1
 
     while true
-    
+
         #
         # Start next iteration
-        #        
+        #
       @label L100
         iext[nzz] = ngrid + 1
         niter += 1
@@ -468,7 +467,7 @@ function remez(numtaps::Integer, band_defs;
 
         fill!(y, 0.0)
         nu, dev = initialize_y(dev, nz, iext, des, wt, y)
-        
+
         if dev <= devl
             # finished
             throw(ErrorException("remez() - failure to converge at iteration $niter, try reducing transition band width"))
@@ -478,15 +477,15 @@ function remez(numtaps::Integer, band_defs;
         #
         # SEARCH FOR THE EXTREMAL FREQUENCIES OF THE BEST APPROXIMATION
         #
-    
+
         # Between here and L370, the extremal index set is updated in a loop
         # roughly over the index "j" - although the logic is complicated as
         # the extremal set may grow or shrink in an iteration.
         # j - the index of the current extremal being updated
         # nz - the number of cosines in the approximation (including the constant term).
-        #      nz = nfcns + 1 where nfcns = nfilt / 2, and 
-        #      nfilt is the filter length or number of taps. 
-        #      For example, for a length 15 filter, nfcns = 7 and nz = 8. 
+        #      nz = nfcns + 1 where nfcns = nfilt / 2, and
+        #      nfilt is the filter length or number of taps.
+        #      For example, for a length 15 filter, nfcns = 7 and nz = 8.
         # jchgne - the number of extremal indices that changed this iteration
         jchnge = 0
         k1 = iext[1]
@@ -708,7 +707,7 @@ function remez(numtaps::Integer, band_defs;
                 q[1] += alpha[nfcns - 1 - j]
             end
         end
-        for j = 1 : nfcns 
+        for j = 1 : nfcns
             alpha[j] = p[j]
         end
     end
@@ -716,7 +715,7 @@ function remez(numtaps::Integer, band_defs;
     if nfcns <= 3
         alpha[nfcns+1] = alpha[nfcns+2] = 0.0
     end
-    
+
     #
     # CALCULATE THE IMPULSE RESPONSE.
     #
@@ -763,22 +762,22 @@ function remez(numtaps::Integer, band_defs;
     if neg && nodd
         h[nz] = 0.0
     end
-    
+
     return h
 end
 
 
 """
-    remez(numtaps::Integer, 
-          bands::Vector, 
-          desired::Vector; 
-          weight::Vector=[], 
-          Hz::Real=1.0, 
+    remez(numtaps::Integer,
+          bands::Vector,
+          desired::Vector;
+          weight::Vector=[],
+          Hz::Real=1.0,
           filter_type::RemezFilterType=filter_type_bandpass,
-          maxiter::Integer=25, 
+          maxiter::Integer=25,
           grid_density::Integer=16)
 
-This is the scipy compatible version that requires 3 arguments (numtaps, bands, desired). 
+This is the scipy compatible version that requires 3 arguments (numtaps, bands, desired).
 For a simplified API, see the 2 argument version (numtaps, band_defs). The filters
 designed are equivalent, the inputs are just specified in a different way.
 Below the arguments and examples are described that differ from the simplified
@@ -788,7 +787,7 @@ API version.
 - `bands::Vector`: A monotonic sequence containing the band edges in Hz.
     All elements must be non-negative and less than half the sampling
     frequency as given by `Hz`.
-- `desired::Vector`:A sequence half the size of bands containing the desired 
+- `desired::Vector`:A sequence half the size of bands containing the desired
     gain in each of the specified bands.
 - `weight::Vector`: (optional)
     A relative weighting to give to each band region. The length of
@@ -805,32 +804,32 @@ API version.
 
 # Examples
 Compare the examples with the simplified API and the Scipy API.
-Each of the following blocks first designs a filter using the 
+Each of the following blocks first designs a filter using the
 simplified (recommended) API, and then designs the same filter
 using the Scipy-compatible API.
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass = remez(35, [(0, 0.1)=>0, (0.15, 0.4)=>1, (0.45, 0.5)=>0]);
 
 julia> bpass = remez(35, [0, 0.1, 0.15, 0.4, 0.45, 0.5], [0, 1, 0]);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> bpass2 = remez(35, [(0, 0.08)=>0, (0.15, 0.4)=>1, (0.47, 0.5)=>0]);
 
 julia> bpass2 = remez(35, [0, 0.08, 0.15, 0.4, 0.47, 0.5], [0, 1, 0]);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(20, [(0.1, 0.95) => 1]; neg=true, Hz=2.0);
 
 julia> h = remez(20, [0.1, 0.95], [1]; filter_type=filter_type_hilbert, Hz=2.0);
 
 ```
 
-```jldoctest; setup = :(using DSP)
+```jldoctest
 julia> h = remez(200, [(0.01, 0.99) => (f -> f/2, f -> 1/f)]; neg=true, Hz=2.0);
 
 julia> h = remez(200, [0.01, 0.99], [1]; filter_type=filter_type_differentiator, Hz=2.0);

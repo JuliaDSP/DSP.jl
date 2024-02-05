@@ -5,17 +5,20 @@ export diric
 
 Dirichlet kernel, also known as periodic sinc function,
 where `n` should be a positive integer.
-Returns `sin(Ω * n/2) / (n * sin(Ω / 2))` typically,
-but `±1` when `Ω` is a multiple of 2π.
 
-In the usual case where 'n' is odd, the output is equivalent to
-``1/n \\sum_{k=-(n-1)/2}^{(n-1)/2} e^{i k Ω}``,
+Typically returns ``\\frac{\\sin(Ω \\cdot n/2)}{n * \\sin(Ω / 2)}``,
+but returns ``±1`` when `Ω` is a multiple of 2π.
+
+In the usual case where `n` is odd, the output is equivalent to
+``\\frac{1}{n} \\sum_{k=-(n-1)/2}^{(n-1)/2} e^{i k Ω}``,
 which is the discrete-time Fourier transform (DTFT)
 of a `n`-point moving average filter.
 
 When `n` is odd or even, the function is 2π or 4π periodic, respectively.
 The formula for general `n` is
-`diric(Ω,n) = ``e^{-i (n-1) Ω/2}/n \\sum_{k=0}^{n-1} e^{i k Ω}``,
+```math
+\\mathrm{diric}(Ω,n) = \\frac{e^{-i (n-1) Ω/2}}{n} \\sum_{k=0}^{n-1} e^{i k Ω}
+```
 which is a real and symmetric function of `Ω`.
 
 As of 2021-03-19, the Wikipedia definition has different factors.

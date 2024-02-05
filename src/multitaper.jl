@@ -730,7 +730,7 @@ function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
 end
 
 """
-    Coherence
+    Coherence{T, F, A<:AbstractArray{T, 3}}
 
 Holds an `n_channels` x `n_channels` x `length(freq)` array consisting of the pairwise coherences between each channel for each frequency which is accessed by [`coherence`](@ref), as well
 as the frequencies accessed by [`freq`](@ref).
