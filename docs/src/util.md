@@ -19,6 +19,7 @@ rms
 rmsfft
 meanfreq
 finddelay
+shiftin!
 shiftsignal
 shiftsignal!
 alignsignals

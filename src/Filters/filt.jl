@@ -340,7 +340,7 @@ end
 function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     zi = filt_stepstate(f)
     pad_length = 6 * length(f.biquads)
-    t = Base.promote_type(T, G, S)
+    t = promote_type(T, G, S)
     zitmp = similar(zi, t)
     extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)

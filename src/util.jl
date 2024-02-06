@@ -266,31 +266,32 @@ function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T
     return dotprod
 end
 
+"""
+    shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
 
+Shifts `b` into the end of `a`.
 
-# Shifts b into the end a.
-# julia> DSP.Util.shiftin!( [1,2,3,4], [5, 6])
-# 4-element Array{Int64,1}:
-#  3
-#  4
-#  5
-#  6
+```jldoctest
+julia> shiftin!([1,2,3,4], [5, 6])
+4-element Vector{Int64}:
+ 3
+ 4
+ 5
+ 6
+```
+"""
 function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     aLen = length(a)
     bLen = length(b)
+    fi_a = firstindex(a)
+    fi_b = firstindex(b)
+    copy_fn! = (a isa Vector && b isa Vector) ? unsafe_copyto! : copyto!
 
     if bLen >= aLen
-        copyto!(a, 1, b, bLen - aLen + 1, aLen)
+        copy_fn!(a, fi_a, b, fi_b + bLen - aLen, aLen)
     else
-
-        for i in 1:aLen-bLen
-            @inbounds a[i] = a[i+bLen]
-        end
-        bIdx = 1
-        for i in aLen-bLen+1:aLen
-            @inbounds a[i] = b[bIdx]
-            bIdx += 1
-        end
+        copy_fn!(a, fi_a, a, fi_a + bLen, aLen - bLen)
+        copy_fn!(a, fi_a + aLen - bLen, b, fi_b, bLen)
     end
 
     return a
