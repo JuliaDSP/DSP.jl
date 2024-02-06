@@ -56,32 +56,34 @@ Source Software, 2018. https://github.com/JuliaNLSolvers/Optim.jl/blob/master/sr
 
 ====================================================================#
 
+sort_W((a, b)::Tuple{Real,Real}) = (a > b) ? (b, a) : (a, b)
 
-
-toprototype(Wp::Real, Ws::Real, ftype::Type{Lowpass}) = Ws / Wp
-toprototype(Wp::Real, Ws::Real, ftype::Type{Highpass}) = Wp / Ws
-function toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, ftype::Type{Bandpass})
+toprototype(Wp::Real, Ws::Real, ::Type{Lowpass}) = Ws / Wp
+toprototype(Wp::Real, Ws::Real, ::Type{Highpass}) = Wp / Ws
+function toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, ::Type{Bandpass})
     # bandpass filter must have two corner frequencies we're computing with
-    Wa = (Ws .^ 2 .- Wp[1] * Wp[2]) ./ (Ws .* (Wp[1] - Wp[2]))
-    minimum(abs.(Wa))
+    Wa = muladd.(-Wp[1], Wp[2], Ws .^ 2) ./ (Ws .* (Wp[1] - Wp[2]))
+    min(abs.(Wa)...)
 end
-toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real, ftype::Type{Bandstop}) = butterworth_bsfmin(Wp, Ws, Rp, Rs)
-fromprototype(Wp::Real, Wscale::Real, ftype::Type{Lowpass}) = Wp * Wscale
-fromprototype(Wp::Real, Wscale::Real, ftype::Type{Highpass}) = Wp / Wscale
+toprototype(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real, ::Type{Bandstop}) = butterworth_bsfmin(Wp, Ws, Rp, Rs)
+fromprototype(Wp::Real, Wscale::Real, ::Type{Lowpass}) = Wp * Wscale
+fromprototype(Wp::Real, Wscale::Real, ::Type{Highpass}) = Wp / Wscale
 
-function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandstop})
-    Wa = zeros(2)
+function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ::Type{Bandstop})
     diff = Wp[2] - Wp[1]
     prod = Wp[2] * Wp[1]
-    Wa[1] = (diff + sqrt(diff^2 + 4 * (Wscale^2) * prod)) / (2 * Wscale)
-    Wa[2] = (diff - sqrt(diff^2 + 4 * (Wscale^2) * prod)) / (2 * Wscale)
-    sort!(abs.(Wa))
+    k = sqrt(muladd(4 * (Wscale^2), prod, diff^2))
+    den = 2 * Wscale
+    Wa = (diff + k) / den, (diff - k) / den
+    sort_W(abs.(Wa))
 end
 
-function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ftype::Type{Bandpass})
-    Wsc = [-Wscale, Wscale]
-    Wa = -Wsc .* (Wp[2] - Wp[1]) ./ 2 .+ sqrt.(Wsc .^ 2 / 4 * (Wp[2] - Wp[1]) .^ 2 .+ Wp[1] * Wp[2])
-    sort!(abs.(Wa))
+function fromprototype(Wp::Tuple{Real,Real}, Wscale::Real, ::Type{Bandpass})
+    Wsc = (-Wscale, Wscale)
+    diff = Wp[2] - Wp[1]
+    prod = Wp[2] * Wp[1]
+    Wa = muladd.(.-Wsc, diff / 2, sqrt(muladd(Wscale^2 / 4, diff^2, prod)))
+    sort_W(abs.(Wa))
 end
 
 butterworth_order_estimate(Rp::Real, Rs::Real, warp::Real) = (log(db2pow(Rs) - 1) - log(db2pow(Rp) - 1)) / (2 * log(warp))
@@ -94,8 +96,8 @@ function elliptic_order_estimate(Rp::Real, Rs::Real, Wa::Real)
     k = Wa^-1
     (k^2 < 1) || throw(DomainError(k^2, "Selectivity parameter specifies too narrow of a transition width.")) # check if in-bounds (k₁ << k <~ 1)
     (1 - k₁^2 < 1) || throw(DomainError(1 - k₁^2, "Discrimination parameter specifies too deep of a stopband."))
-    K = tuple(ellipk(k^2), ellipk(1 - k^2)) # define the complementary moduli
-    K₁ = tuple(ellipk(k₁^2), ellipk(1 - k₁^2))
+    K = (ellipk(k^2), ellipk(1 - k^2)) # define the complementary moduli
+    K₁ = (ellipk(k₁^2), ellipk(1 - k₁^2))
 
     # other order approach would be using (k₁'/k₁) / (k′/k).
     (K[1] * K₁[2]) / (K[2] * K₁[1])
@@ -116,7 +118,7 @@ function brent(f, x1::T, x2::T) where {T<:AbstractFloat}
     k1 = zero(T)
 
     # first interval calculation.
-    m = a + g * (b - a)
+    m = muladd(g, (b - a), a)
     m1, m2 = m, m
     fm = f(m)
     fm1, fm2 = fm, fm
@@ -133,7 +135,7 @@ function brent(f, x1::T, x2::T) where {T<:AbstractFloat}
         if (abs(k1) > xt) # trial parabolic fit
             r = (m - m1) * (fm - fm2)
             q = (m - m2) * (fm - fm1)
-            p = (m - m2) * q - (m - m1) * r
+            p = muladd((m - m2), q, -(m - m1) * r)
             q = 2 * (q - r)
             if (q > 0)
                 p = -p
@@ -196,29 +198,29 @@ end
 #
 for filt in (:butterworth, :elliptic, :chebyshev)
     @eval begin
-        function $(Symbol(string(filt, "_bsfcost")))(Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+        function $(Symbol(filt, :_bsfcost))(Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
             # override one of the passband edges with the test frequency.
-            Wpc = uselowband ? tuple(Wx, Wp[2]) : tuple(Wp[1], Wx)
+            Wpc = uselowband ? (Wx, Wp[2]) : (Wp[1], Wx)
 
             # get the new warp frequency.
-            warp = minimum(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ (Ws .^ 2 .- (Wpc[1] * Wpc[2]))))
+            warp = min(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ muladd.(-Wpc[1], Wpc[2], Ws .^ 2))...)
 
             # use the new frequency to determine the filter order.
-            $(Symbol(string(filt, "_order_estimate")))(Rp, Rs, warp)
+            $(Symbol(filt, :_order_estimate))(Rp, Rs, warp)
         end
 
-        function $(Symbol(string(filt, "_bsfmin")))(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+        function $(Symbol(filt, :_bsfmin))(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
             # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
             Δ = eps(typeof(Wp[1]))^(2 / 3)
-            C₁(w) = $(Symbol(string(filt, "_bsfcost")))(w, true, Wp, Ws, Rp, Rs)
+            C₁(w) = $(Symbol(filt, :_bsfcost))(w, true, Wp, Ws, Rp, Rs)
             p1 = brent(C₁, Wp[1], Ws[1] - Δ)
 
-            C₂(w) = $(Symbol(string(filt, "_bsfcost")))(w, false, tuple(p1, Wp[2]), Ws, Rp, Rs)
+            C₂(w) = $(Symbol(filt, :_bsfcost))(w, false, (p1, Wp[2]), Ws, Rp, Rs)
             p2 = brent(C₂, Ws[2] + Δ, Wp[2])
-            Wadj = tuple(p1, p2)
+            Wadj = (p1, p2)
 
-            Wa = (Ws .* (Wadj[1] - Wadj[2])) ./ (Ws .^ 2 .- (Wadj[1] * Wadj[2]))
-            minimum(abs.(Wa)), Wadj
+            Wa = (Ws .* (p1 - p2)) ./ muladd.(-p1, p2, Ws .^ 2)
+            min(abs.(Wa)...), Wadj
         end
     end
 end
@@ -237,8 +239,8 @@ domain is `:z`, interpretting the input frequencies as normalized from 0 to 1, w
 function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
     # make sure the band edges are in increasing order.
-    Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
-    Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
+    Wps = sort_W(Wp)
+    Wss = sort_W(Ws)
 
     # infer filter type based on ordering of edges.
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
@@ -350,7 +352,7 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
             end
             # Lowpass/Highpass prototype xform is same as Butterworth.
             wa = toprototype(Ωp, Ωs, ftype)
-            N = ceil(Int, $(Symbol(string(est, "_order_estimate")))(Rp, Rs, wa))
+            N = ceil(Int, $(Symbol(est, :_order_estimate))(Rp, Rs, wa))
             if (domain == :z)
                 ωn = (2 / π) * atan(Ωp)
             else
@@ -372,19 +374,19 @@ for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
         frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
         """
         function $fcn(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
-            Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
-            Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
+            Wps = sort_W(Wp)
+            Wss = sort_W(Ws)
             (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
             ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
             # pre-warp to analog if z-domain.
             (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
             if (ftype == Bandpass)
-                Wa = (Ωs .^ 2 .- (Ωp[1] * Ωp[2])) ./ (Ωs .* (Ωp[1] - Ωp[2]))
+                Wa = muladd.(-Ωp[1], Ωp[2], Ωs .^ 2) ./ (Ωs .* (Ωp[1] - Ωp[2]))
                 Ωpadj = Ωp
             else
-                (Wa, Ωpadj) = $(Symbol(string(est, "_bsfmin")))(Ωp, Ωs, Rp, Rs) # check scipy.
+                (Wa, Ωpadj) = $(Symbol(est, :_bsfmin))(Ωp, Ωs, Rp, Rs) # check scipy.
             end
-            N = ceil(Int, $(Symbol(string(est, "_order_estimate")))(Rp, Rs, minimum(abs.(Wa))))
+            N = ceil(Int, $(Symbol(est, :_order_estimate))(Rp, Rs, min(abs.(Wa)...)))
             ωn = (domain == :z) ? Wps : Ωpadj
             N, ωn
         end
@@ -431,31 +433,33 @@ order and natural frequencies for an analog filter. The default domain is `:z`, 
 frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
 """
 function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
-    Wps = (Wp[1] > Wp[2]) ? tuple(Wp[2], Wp[1]) : tuple(Wp[1], Wp[2])
-    Wss = (Ws[1] > Ws[2]) ? tuple(Ws[2], Ws[1]) : tuple(Ws[1], Ws[2])
+    Wps = sort_W(Wp)
+    Wss = sort_W(Ws)
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
     (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
     if (ftype == Bandpass)
-        Wa = (Ωs .^ 2 .- (Ωp[1] * Ωp[2])) ./ (Ωs .* (Ωp[1] - Ωp[2]))
+        prod = Ωp[1] * Ωp[2]
+        diff = Ωp[1] - Ωp[2]
+        Wa = muladd.(Ωs, Ωs, -prod) ./ (Ωs .* diff)
     else
         (Wa, Ωpadj) = chebyshev_bsfmin(Ωp, Ωs, Rp, Rs)
+        prod = Ωpadj[1] * Ωpadj[2]
+        diff = Ωpadj[1] - Ωpadj[2]
     end
-    N = ceil(Int, chebyshev_order_estimate(Rp, Rs, minimum(abs.(Wa))))
+    N = ceil(Int, chebyshev_order_estimate(Rp, Rs, min(abs.(Wa)...)))
 
     # new frequency for stopband spec.
     wnew = 1 / cosh(1 / N * acosh(√(db2pow(Rs) - 1) / √(db2pow(Rp) - 1)))
 
     # lowpass prototype to analog filter re-map.
-    Wna = zeros(2)
     if (ftype == Bandpass)
-        Wna[1] = (Ωp[1] - Ωp[2]) / (2 * wnew) + √((Ωp[2] - Ωp[1])^2 / (4 * wnew^2) + Ωp[1] * Ωp[2])
-        Wna[2] = (Ωp[1] * Ωp[2]) / Wna[1]
+        Wna1 = diff / (2 * wnew) + √(diff^2 / (4 * wnew^2) + prod)
     else
-        Wna[1] = ((Ωpadj[1] - Ωpadj[2]) * wnew) / 2 + √((Ωpadj[1] - Ωpadj[2])^2 * wnew^2 / 4 + (Ωpadj[1] * Ωpadj[2]))
-        Wna[2] = (Ωpadj[1] * Ωpadj[2]) / Wna[1]
+        Wna1 = (diff * wnew) / 2 + √(muladd(diff^2, wnew^2 / 4, prod))
     end
-    ωn = (domain == :z) ? tuple((2 / π) * atan(Wna[1]), (2 / π) * atan(Wna[2])) : tuple(Wna[1], Wna[2])
+    Wna2 = prod / Wna1
+    ωn = (domain == :z) ? ((2 / π) * atan(Wna1), (2 / π) * atan(Wna2)) : (Wna1, Wna2)
     N, ωn
 end
 
@@ -480,9 +484,9 @@ function remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     (0 > Wp > 0.5) || (0 > Ws > 0.5) && throw(ArgumentError("Pass and stopband edges must be greater than DC and less than Nyquist."))
     L1, L2 = log10(Rp), log10(Rs)
     df = abs(Ws - Wp) # works in HPF case if passband/stopband edges are flipped
-    A = (5.309e-3 * L1^2) + (7.114e-2 * L1) - 0.4761
-    B = (2.66e-3 * L1^2) + (0.5941 * L1) + 0.4278
-    Kf = 0.51244 * (L1 - L2) + 11.01217
-    D = A * L2 - B
-    return ceil(Int, ((D - Kf * df^2) / df))
+    A = muladd(5.309e-3, L1^2, muladd(7.114e-2, L1, -0.4761))
+    B = muladd(2.66e-3, L1^2, muladd(0.5941, L1, 0.4278))
+    Kf = muladd(0.51244, (L1 - L2), 11.01217)
+    D = muladd(A, L2, -B)
+    return ceil(Int, (muladd(-Kf, df^2, D) / df))
 end

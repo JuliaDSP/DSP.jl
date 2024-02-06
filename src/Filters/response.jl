@@ -39,13 +39,17 @@ _freq(filter::FilterCoefficients) = x::Number -> _freq(filter, x)
 
 _freq(filter::FilterCoefficients, x::Number) =
     _freq(convert(PolynomialRatio, filter), x)
-_freq(filter::PolynomialRatio, x::Number) = filter.b(x) ./ filter.a(x)
-_freq(filter::ZeroPoleGain, x::Number) =
-    filter.k * prod([x - z for z in filter.z]) / prod([x - p for p in filter.p])
+_freq(filter::PolynomialRatio, x::Number) = filter.b(x) / filter.a(x)
+
+_prod_freq(f, v::Vector{<:Union{Z,Biquad{D,Z}}}, ::Type{T}) where {D,T<:Number,Z<:Number} =
+    mapreduce(f, Base.mul_prod, v; init=one(promote_type(T, Z)))
+
+_freq(filter::ZeroPoleGain, x::T) where {T<:Number} =
+    filter.k * _prod_freq(z -> x - z, filter.z, T) / _prod_freq(p -> x - p, filter.p, T)
 _freq(filter::Biquad, x::Number) =
-    ((filter.b0*x + filter.b1)*x + filter.b2) / ((x + filter.a1)*x  + filter.a2)
-_freq(filter::SecondOrderSections, x::Number) =
-    filter.g * prod([_freq(b, x) for b in filter.biquads])
+    muladd(muladd(filter.b0, x, filter.b1), x, filter.b2) / muladd((x + filter.a1), x, filter.a2)
+_freq(filter::SecondOrderSections, x::T) where {T<:Number} =
+    filter.g * _prod_freq(b -> _freq(b, x), filter.biquads, T)
 
 
 """
