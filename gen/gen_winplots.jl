@@ -3,7 +3,7 @@
 using UnicodePlots
 using DSP
 
-open(joinpath(@__DIR__, "src", "winplots.jl"), "w") do io
+open(joinpath(@__DIR__, "..", "src", "winplots.jl"), "w") do io
 
     println(io, """
     #####################################################
