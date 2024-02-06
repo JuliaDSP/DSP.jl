@@ -433,21 +433,28 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     freq_inds::T6
     ensure_aligned::Bool
     mt_config::C
-    function MTCrossSpectraConfig(n_channels::Int, normalization_weights::T1, x_mt::T2,
-            demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
-            freq_inds::T6, ensure_aligned::Bool, mt_config::C
-            ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
-        check_onesided_real(mt_config) # this restriction is artifical; the code needs to be generalized
-        return new{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels, normalization_weights, x_mt,
-            demean, mean_per_channel, demeaned_signal, freq, freq_range,
-            freq_inds, ensure_aligned, mt_config)
-    end
-    MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels::Int, normalization_weights::T1, x_mt::T2,
+    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
+        n_channels::Int, normalization_weights::T1, x_mt::T2,
         demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
-        freq_inds::T6, ensure_aligned::Bool, mt_config::C) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}} =
-        new(n_channels, normalization_weights, x_mt,
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+    ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
+        check_onesided_real(mt_config)  # this restriction is artificial; the code needs to be generalized
+        return new{T,T1,T2,T3,T4,F,T5,T6,C}(
+            n_channels, normalization_weights, x_mt,
             demean, mean_per_channel, demeaned_signal, freq, freq_range,
-            freq_inds, ensure_aligned, mt_config)
+            freq_inds, ensure_aligned, mt_config
+        )
+    end
+    function MTCrossSpectraConfig(n_channels::Int, normalization_weights::T1, x_mt::T2,
+        demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+    ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
+        MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
+            n_channels, normalization_weights, x_mt,
+            demean, mean_per_channel, demeaned_signal, freq, freq_range,
+            freq_inds, ensure_aligned, mt_config
+        )
+    end
 end
 
 """
