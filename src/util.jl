@@ -35,7 +35,7 @@ function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
     X = zeros(Complex{T}, N)
     p = plan_rfft(x)
     mul!(view(X, 1:(N >> 1)+1), p, x)
-    for i = 2:div(N, 2)+isodd(N)
+    for i = 2:N÷2+isodd(N)
         @inbounds X[i] *= 2.0
     end
     return ifft!(X)

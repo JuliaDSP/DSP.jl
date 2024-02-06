@@ -12,7 +12,7 @@ function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     n > 0 || throw(DomainError(n, "n must be positive"))
 
     poles = zeros(Complex{T}, n)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         w = convert(T, 2i-1)/2n
         pole = complex(-sinpi(w), cospi(w))
         poles[2i-1] = pole
@@ -40,14 +40,14 @@ function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
     μ = asinh(convert(T, 1)/ε)/n
     b = -sinh(μ)
     c = cosh(μ)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         w = convert(T, 2i-1)/2n
         pole = complex(b*sinpi(w), c*cospi(w))
         p[2i-1] = pole
         p[2i] = conj(pole)
     end
     if isodd(n)
-        w = convert(T, 2*div(n, 2)+1)/2n
+        w = convert(T, 2*(n÷2)+1)/2n
         pole = b*sinpi(w)
         p[end] = pole
     end
@@ -61,7 +61,7 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     ε = sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
     k = one(T)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         k *= abs2(p[2i])
     end
     if iseven(n)
@@ -90,7 +90,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 
     z = zeros(Complex{T}, n-isodd(n))
     k = one(T)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         w = convert(T, 2i-1)/2n
         ze = complex(zero(T), -inv(cospi(w)))
         z[2i-1] = ze
@@ -178,7 +178,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
 
     # Eq. (47)
     k′ = one(T)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         k′ *= sne(convert(T, 2i-1)/n, k1′_landen)
     end
     k′ = k1′²^(convert(T, n)/2)*k′^4
@@ -189,10 +189,10 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     # Eq. (65)
     v0 = -im/convert(T, n)*asne(im/εp, k1)
 
-    z = Vector{Complex{T}}(undef, 2*div(n, 2))
+    z = Vector{Complex{T}}(undef, 2*(n÷2))
     p = Vector{Complex{T}}(undef, n)
     gain = one(T)
-    for i = 1:div(n, 2)
+    for i = 1:n÷2
         # Eq. (43)
         w = convert(T, 2i-1)/n
 
@@ -588,7 +588,7 @@ function firprototype(n::Integer, ftype::Highpass, fs::Real)
     isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
 
     out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
-    out[div(n, 2)+1] += 1
+    out[n÷2+1] += 1
     out
 end
 
@@ -598,7 +598,7 @@ function firprototype(n::Integer, ftype::Bandstop, fs::Real)
     isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
 
     out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
-    out[div(n, 2)+1] += 1
+    out[n÷2+1] += 1
     out
 end
 
