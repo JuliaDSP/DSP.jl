@@ -173,11 +173,8 @@ function fft2oneortwosided!(out::Array{Complex{T}}, s_fft::Vector{Complex{T}}, n
     copyto!(out, offset+1, s_fft, 1, n)
     if !onesided && n != nfft
         # Convert real FFT to two-sided
-        @inbounds for i = 2:n-1
+        @inbounds for i = 2:n-iseven(nfft)
             out[offset+nfft-i+2] = conj(s_fft[i])
-        end
-        if isodd(nfft)
-            out[offset+n+1] = conj(s_fft[n])
         end
     end
     out
