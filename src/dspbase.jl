@@ -775,6 +775,18 @@ The size of the output depends on the padmode keyword argument: with padmode =
 With padmode = :longest the shorter of the arguments will be padded so they are
 equal length. This gives a result with length 2*max(length(u), length(v))-1,
 with the zero-lag condition at the center.
+
+# Examples
+
+```jldoctest
+julia> xcorr([1,2,3],[1,2,3])
+5-element Vector{Int64}:
+  3
+  8
+ 14
+  8
+  3
+```
 """
 function xcorr(
     u::AbstractVector, v::AbstractVector; padmode::Symbol = :none

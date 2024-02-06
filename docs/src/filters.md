@@ -73,6 +73,7 @@ tdfilt
 tdfilt!
 resample
 ```
+
 ## Filter design
 
 Most analog and digital filters are constructed by composing
@@ -104,7 +105,6 @@ these [direct design methods](@ref direct-design-methods)
 include [`remez`](@ref) which designs equiripple FIR
 filters of all types, and [`iirnotch`](@ref) which designs a
 2nd order "biquad" IIR notch filter.
-
 
 ### [Filter response types](@id response-types)
 
@@ -150,6 +150,7 @@ FIRWindow
 ```
 
 ### [Direct filter design methods](@id direct-design-methods)
+
 ```@docs
 remez
 iirnotch
