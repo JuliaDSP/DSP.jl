@@ -614,7 +614,7 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
 
         eig = 0.0
         for j = 1:size(A, 1)
-            eig += seq[j]*tmp1[j]
+            eig = muladd(seq[j], tmp1[j], eig)
         end
         q[i] = 2w * eig / nfft
     end

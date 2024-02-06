@@ -615,7 +615,7 @@ function scalefactor(coefs::Vector, ftype::Bandpass, fs::Real)
     freq = normalize_freq(middle(ftype.w1, ftype.w2), fs)
     c = zero(coefs[1])
     for k = 0:n-1
-        c += coefs[k+1]*cospi(freq*(k-(n-1)/2))
+        c = muladd(coefs[k+1], cospi(freq*(k-(n-1)/2)), c)
     end
     c
 end
