@@ -110,25 +110,23 @@ function fft2pow!(out::AbstractArray{T}, s_fft::AbstractVector{Complex{T}}, nfft
 end
 
 # Convert the output of a 2-d FFT to a 2-d PSD and add it to out
-function fft2pow2!(out::Matrix{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real) where T
+function fft2pow2!(out::Matrix{T}, s_fft::Matrix{Complex{T}}, r::Real) where T
     m1 = convert(T, 1/r)
-    for j = 1:n2
-        for i = 1:n1
-            @inbounds out[i,j] += abs2(s_fft[i,j])*m1
-        end
+    for i in eachindex(out, s_fft)
+        @inbounds out[i] = abs2(s_fft[i]) * m1
     end
     out
 end
 # Convert the output of a 2-d FFT to a radial PSD and add it to out
 function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::Int, r::Real, ptype::Int) where T
-    nmin = min(n1,n2)
-    n1max = n1>>1 + 1    # since rfft is used
-    n1max != size(s_fft,1) && error("fft size incorrect")
+    nmin = min(n1, n2)
+    n1max = n1 >> 1 + 1  # since rfft is used
+    n1max != size(s_fft, 1) && throw(ArgumentError("fft size incorrect"))
     m1 = convert(T, 1/r)
     m2 = convert(T, 2/r)
     wavenum = 0          # wavenumber index
     kmax = length(out)   # the highest wavenumber
-    wc = zeros(Int,kmax) # wave count for radial average
+    wc = zeros(Int, kmax) # wave count for radial average
     if n1 == nmin        # scale the wavevector for non-square s_fft
         c1 = 1
         c2 = n1/n2
@@ -349,14 +347,14 @@ function periodogram(s::AbstractMatrix{T};
 
     if ptype == 0
         s_fft = fft(input)
-        out = zeros(fftabs2type(T), nfft)
-        fft2pow2!(out,s_fft,nfft...,fs*norm2)
-        return Periodogram2(out, fftfreq(nfft[1],fs), fftfreq(nfft[2],fs))
+        out = Matrix{fftabs2type(T)}(undef, nfft)
+        fft2pow2!(out, s_fft, fs * norm2)
+        return Periodogram2(out, fftfreq(nfft[1], fs), fftfreq(nfft[2], fs))
     else
         s_fft = rfft(input)
         out = zeros(fftabs2type(T), nmin>>1 + 1)
-        fft2pow2radial!(out,s_fft,nfft...,fs*norm2, ptype)
-        return Periodogram(out, Frequencies(length(out), length(out), fs/nmin))
+        fft2pow2radial!(out, s_fft, nfft..., fs * norm2, ptype)
+        return Periodogram(out, Frequencies(length(out), length(out), fs / nmin))
     end
 end
 
