@@ -179,14 +179,22 @@ function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     end
 end
 
+function _rev_zeropad(v::AbstractVector{T}, n, pad_len=n) where T
+    padded_v = zeros(T, length(v) + n)
+    copyto!(padded_v, 1 + pad_len, Iterators.reverse(v))
+end
+
+coef_s(p::LaurentPolynomial) = _rev_zeropad(coeffs(p), firstindex(p), 0)
+coef_z(p::LaurentPolynomial) = _rev_zeropad(coeffs(p), -lastindex(p))
+
 """
     coefb(f)
 
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.b)); coeffs(f.b)])
-coefb(f::PolynomialRatio{:z}) = reverse([coeffs(f.b); zeros(-lastindex(f.b))])
+coefb(f::PolynomialRatio{:s}) = coef_s(f.b)
+coefb(f::PolynomialRatio{:z}) = coef_z(f.b)
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -195,8 +203,8 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.a)); coeffs(f.a)])
-coefa(f::PolynomialRatio{:z}) = reverse([coeffs(f.a); zeros(-lastindex(f.a))])
+coefa(f::PolynomialRatio{:s}) = coef_s(f.a)
+coefa(f::PolynomialRatio{:z}) = coef_z(f.a)
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
@@ -324,15 +332,8 @@ function groupzp(z, p)
     groupedz = similar(z, n)
     i = 1
     while i <= n
-        closest_zero_idx = 0
-        closest_zero_val = Inf
-        for j = 1:length(z)
-            val = abs(z[j] - p[i])
-            if val < closest_zero_val
-                closest_zero_idx = j
-                closest_zero_val = val
-            end
-        end
+        p_i = p[i]
+        _, closest_zero_idx = findmin(x -> abs(x - p_i), z)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
@@ -340,8 +341,7 @@ function groupzp(z, p)
         end
         i += 1
     end
-    ret = (groupedz, p[1:n])
-    splice!(p, 1:n)
+    ret = (groupedz, splice!(p, 1:n))
     ret
 end
 

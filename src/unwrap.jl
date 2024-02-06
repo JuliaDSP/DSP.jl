@@ -145,7 +145,7 @@ end
 # function to broadcast
 function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
     pixel_image = similar(wrapped_image, Pixel{T})
-    @Threads.threads for i in eachindex(wrapped_image)
+    Threads.@threads for i in eachindex(wrapped_image)
         @inbounds pixel_image[i] = Pixel(wrapped_image[i], rng)
     end
     return pixel_image
@@ -160,7 +160,7 @@ function gather_pixels!(pixel_image, edges)
 end
 
 function unwrap_image!(dest, pixel_image, range)
-    @Threads.threads for i in eachindex(dest)
+    Threads.@threads for i in eachindex(dest)
         @inbounds dest[i] = range * pixel_image[i].periods + pixel_image[i].val
     end
 end
