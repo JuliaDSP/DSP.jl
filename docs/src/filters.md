@@ -105,6 +105,13 @@ include [`remez`](@ref) which designs equiripple FIR
 filters of all types, and [`iirnotch`](@ref) which designs a
 2nd order "biquad" IIR notch filter.
 
+For a more general application of creating a digital filter from s-domain
+representation of an analog filter, one can use [`bilinear`](@ref):
+
+```@docs
+bilinear
+```
+
 
 ### [Filter response types](@id response-types)
 
