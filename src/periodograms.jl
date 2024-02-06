@@ -89,13 +89,13 @@ function fft2pow!(out::AbstractArray{T}, s_fft::AbstractVector{Complex{T}}, nfft
         out[offset+n] = muladd(abs2(s_fft[end]), ifelse(iseven(nfft), m1, m2), out[offset+n])
     else
         if n == nfft
-            for i = 1:length(s_fft)
+            for i in eachindex(s_fft)
                 @inbounds out[offset+i] = muladd(abs2(s_fft[i]), m1, out[offset+i])
             end
         else
             # Convert real FFT to two-sided
             out[offset+1] = muladd(abs2(s_fft[1]), m1, out[offset+1])
-            @inbounds for i = 2:length(s_fft)-1
+            @inbounds for i = 2:n-1
                 k = abs2(s_fft[i])
                 out[offset+i] = muladd(k, m1, out[offset+i])
                 out[offset+nfft-i+2] = muladd(k, m1, out[offset+nfft-i+2])
@@ -277,12 +277,12 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=T<:Real,
     nfft >= length(s) || error("nfft must be >= n")
 
     win, norm2 = compute_window(window, length(s))
-    if nfft == length(s) && win == nothing && isa(s, StridedArray)
+    if nfft == length(s) && win === nothing && isa(s, StridedArray)
         input = s # no need to pad
     else
         input = zeros(fftintype(T), nfft)
-        if win != nothing
-            for i = 1:length(s)
+        if win !== nothing
+            for i in eachindex(s)
                 @inbounds input[i] = s[i]*win[i]
             end
         else

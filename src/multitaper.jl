@@ -143,7 +143,7 @@ end
 function mt_fft_tapered!(fft_output, signal, taper_index, config)
     # Create the input: tapered + zero-padded version of the signal
     fft_input = config.fft_input_tmp
-    @inbounds for i in 1:length(signal)
+    @inbounds for i in eachindex(signal)
         fft_input[i] = config.window[i, taper_index] * signal[i]
     end
     fft_input[(length(signal) + 1):(config.nfft)] .= 0
