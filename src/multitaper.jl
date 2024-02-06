@@ -269,13 +269,13 @@ function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_s
     f = samples_per_window / 2
     hop = samples_per_window - n_overlap_samples
 
-    len = n_samples < samples_per_window ? 0 : div(n_samples - samples_per_window, samples_per_window - n_overlap_samples) + 1
+    len = n_samples < samples_per_window ? 0 : div(n_samples - samples_per_window, hop) + 1
     time = range(f, step = hop, length = len) / mt_config.fs
     return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples, time,
                                                     mt_config)
 end
 
-# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}` 
+# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}`
 function MTSpectrogramConfig{T}(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
     return MTSpectrogramConfig(n_samples, mt_config, n_overlap_samples)
 end
@@ -304,9 +304,8 @@ See also [`mt_spectrogram`](@ref).
 mt_spectrogram!
 
 function mt_spectrogram!(output, signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-    n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
-    kwargs...) where {T}
-    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
+        n_overlap::Int=n >> 1; kwargs...) where {T}
+    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap;
         fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_spectrogram!(output, signal, config)
 end
@@ -357,12 +356,9 @@ See also [`mt_spectrogram!`](@ref).
 mt_spectrogram
 
 function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-                        n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
-                        kwargs...) where {T}
-    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
-                                    fft_flags=FFTW.ESTIMATE, kwargs...)
-    X = allocate_output(config)
-    return mt_spectrogram!(X, signal, config)
+                        n_overlap::Int=n >> 1; kwargs...) where {T}
+    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fft_flags=FFTW.ESTIMATE, kwargs...)
+    return mt_spectrogram(signal, config)
 end
 
 
@@ -392,8 +388,7 @@ spec2 = mt_spectrogram(signal2, mt_config, 250) # same `mt_config`, different si
 function mt_spectrogram(signal::AbstractVector, mt_config::MTConfig{T},
                         n_overlap::Int=mt_config.n_samples >> 1) where {T}
     config = MTSpectrogramConfig{T}(length(signal), mt_config, n_overlap)
-    X = allocate_output(config)
-    return mt_spectrogram!(X, signal, config)
+    return mt_spectrogram(signal, config)
 end
 
 #####
@@ -487,7 +482,7 @@ MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; kwargs...) where {T}
 function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
         freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
 
-    n_samples = mt_config.n_samples                             
+    n_samples = mt_config.n_samples
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
         demeaned_signal = Matrix{T}(undef, n_channels, n_samples)
@@ -603,7 +598,7 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, eachindex(freq_inds))
     @boundscheck checkbounds(x_mt, freq_inds, eachindex(normalization_weights), 1:n_channels)
     output .= zero(eltype(output))
-    # Up to the `normalization_weights` scaling, we have 
+    # Up to the `normalization_weights` scaling, we have
     # J_k^l(f) = x_mt[k, f, l]
     # Ŝ^lm(f) = output[l, m, f]
     # using the notation from https://en.wikipedia.org/wiki/Multitaper#The_method
@@ -611,7 +606,7 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     @inbounds for (fi, f) in enumerate(freq_inds),
                   m in 1:n_channels,
                   l in 1:n_channels,
-                  k in 1:length(normalization_weights)
+                  k in eachindex(normalization_weights)
 
         output[l, m, fi] += normalization_weights[k] * x_mt[f, k, l] * conj(x_mt[f, k, m])
     end
@@ -620,7 +615,7 @@ end
 
 """
     mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
-    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
 
 Computes multitapered cross power spectra between channels of a signal. Arguments:
 
@@ -642,7 +637,7 @@ function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) wher
     return mt_cross_power_spectra(signal, config)
 end
 
-function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
     output = allocate_output(config)
     return mt_cross_power_spectra!(output, signal, config)
 end
@@ -682,11 +677,8 @@ end
 MTCoherenceConfig{T}(n_channels, mt_config::MTConfig{T}; kwargs...) where T =
     MTCoherenceConfig(n_channels, mt_config; kwargs...)
 
-function MTCoherenceConfig(n_channels, mt_config::MTConfig{T};
-        demean=false, freq_range=nothing,
-        ensure_aligned = T == Float32 || T == ComplexF32) where {T}
-    cs_config = MTCrossSpectraConfig(n_channels, mt_config; demean=demean,
-              freq_range=freq_range, ensure_aligned=ensure_aligned)
+function MTCoherenceConfig(n_channels, mt_config::MTConfig{T}; kwargs...) where {T}
+    cs_config = MTCrossSpectraConfig(n_channels, mt_config; kwargs...)
     return MTCoherenceConfig(cs_config)
 end
 
@@ -753,7 +745,7 @@ coherence(c::Coherence) = c.coherence
 
 Computes the pairwise coherences between channels.
 
-* `output`: `n_channels` x `n_channels` matrix 
+* `output`: `n_channels` x `n_channels` matrix
 * `signal`: `n_samples` x `n_channels` matrix
 * `config`: optional configuration object that pre-allocates temporary variables and choose settings.
 
@@ -783,12 +775,9 @@ function mt_coherence!(output, signal::AbstractMatrix,
     return Coherence(output, config.cs_config.freq)
 end
 
-function mt_coherence!(output, signal::AbstractMatrix{T}; fs=1, freq_range=nothing, demean=false,
-    kwargs...) where {T}
+function mt_coherence!(output, signal::AbstractMatrix{T}; kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCoherenceConfig{T}(n_channels, n_samples; fs=fs, demean=demean,
-                freq_range=freq_range,
-                fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_coherence!(output, signal, config)
 end
 
