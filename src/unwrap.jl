@@ -161,7 +161,7 @@ end
 
 function unwrap_image!(dest, pixel_image, range)
     Threads.@threads for i in eachindex(dest)
-        @inbounds dest[i] = range * pixel_image[i].periods + pixel_image[i].val
+        @inbounds dest[i] = muladd(range, pixel_image[i].periods, pixel_image[i].val)
     end
 end
 

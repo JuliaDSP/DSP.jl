@@ -82,27 +82,27 @@ function fft2pow!(out::AbstractArray{T}, s_fft::AbstractVector{Complex{T}}, nfft
     n = length(s_fft)
     if onesided
         m2 = convert(T, 2/r)
-        out[offset+1] += abs2(s_fft[1])*m1
+        out[offset+1] = muladd(abs2(s_fft[1]), m1, out[offset+1])
         for i = 2:n-1
-            @inbounds out[offset+i] += abs2(s_fft[i])*m2
+            @inbounds out[offset+i] = muladd(abs2(s_fft[i]), m2, out[offset+i])
         end
-        out[offset+n] += abs2(s_fft[end])*ifelse(iseven(nfft), m1, m2)
+        out[offset+n] = muladd(abs2(s_fft[end]), ifelse(iseven(nfft), m1, m2), out[offset+n])
     else
         if n == nfft
             for i = 1:length(s_fft)
-                @inbounds out[offset+i] += abs2(s_fft[i])*m1
+                @inbounds out[offset+i] = muladd(abs2(s_fft[i]), m1, out[offset+i])
             end
         else
             # Convert real FFT to two-sided
-            out[offset+1] += abs2(s_fft[1])*m1
+            out[offset+1] = muladd(abs2(s_fft[1]), m1, out[offset+1])
             @inbounds for i = 2:length(s_fft)-1
-                v = abs2(s_fft[i])*m1
-                out[offset+i] += v
-                out[offset+nfft-i+2] += v
+                k = abs2(s_fft[i])
+                out[offset+i] = muladd(k, m1, out[offset+i])
+                out[offset+nfft-i+2] = muladd(k, m1, out[offset+nfft-i+2])
             end
-            out[offset+n] += abs2(s_fft[n])*m1
+            out[offset+n] = muladd(abs2(s_fft[n]), m1, out[offset+n])
             if isodd(nfft)
-                out[offset+n+1] += abs2(s_fft[n])*m1
+                out[offset+n+1] = muladd(abs2(s_fft[n]), m1, out[offset+n+1])
             end
         end
     end
@@ -137,26 +137,28 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
         c2 = 1
     end
 
+    sqrt_muladd(a, k) = sqrt(muladd(a, a, k))
+
     @inbounds begin
         for j = 1:n2
             kj2 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
             kj2 = (kj2*c2)^2
 
-            wavenum = round(Int, sqrt( (c1*(1-1))^2 + kj2 )) + 1
+            wavenum = round(Int, sqrt_muladd(c1 * (1 - 1), kj2)) + 1
             if wavenum<=kmax
-                out[wavenum] += abs2(s_fft[1,j])*m1
+                out[wavenum] = muladd(abs2(s_fft[1, j]), m1, out[wavenum])
                 wc[wavenum] += 1
             end
             for i = 2:n1max-1
-                wavenum = round(Int, sqrt( (c1*(i-1))^2 + kj2 )) + 1
+                wavenum = round(Int, sqrt_muladd(c1 * (i - 1), kj2)) + 1
                 if wavenum<=kmax
-                    out[wavenum] += abs2(s_fft[i,j])*m2
+                    out[wavenum] = muladd(abs2(s_fft[i, j]), m2, out[wavenum])
                     wc[wavenum] += 2
                 end
             end
-            wavenum = round(Int, sqrt( (c1*(n1max-1))^2 + kj2 )) + 1
+            wavenum = round(Int, sqrt_muladd(c1 * (n1max - 1), kj2)) + 1
             if wavenum<=kmax
-                out[wavenum] += abs2(s_fft[n1max,j])*ifelse(iseven(n1), m1, m2)
+                out[wavenum] = muladd(abs2(s_fft[n1max, j]), ifelse(iseven(n1), m1, m2), out[wavenum])
                 wc[wavenum] += ifelse(iseven(n1), 1, 2)
             end
         end
