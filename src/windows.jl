@@ -628,8 +628,8 @@ end
 # input windows when making a 2D window
 argdup(arg::Tuple) = arg
 argdup(arg::Real) = (arg, arg)
-const IntegerOr2 = Union{Tuple{<:Integer, <:Integer}, Integer}
-const RealOr2 = Union{Tuple{<:Real, <:Real}, Real}
+const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
+const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
