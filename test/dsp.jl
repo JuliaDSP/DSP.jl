@@ -262,6 +262,8 @@ end
 
     # Issue #288
     @test xcorr(off_a, off_b, padmode = :longest) == OffsetVector(vcat(0, exp), -3:1)
+
+    @test_throws ArgumentError xcorr([1], [2]; padmode=:bug)
 end
 
 @testset "deconv" begin
