@@ -12,8 +12,8 @@
     end
 end
 
-# test dotu, levinson with Int coefficients
-@test isapprox(levinson(1:10, 3)[1], -[1.25, 0, 0.25])
+# test dotu, levinson with complex Int coefficients
+@test isapprox(levinson(complex(1:10), 3)[1] |> real, -[1.25, 0, 0.25])
 
 # test that lpc defaults to Burg
 @test let v = rand(1000)
