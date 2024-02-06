@@ -27,7 +27,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
 
     function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window;
         buffer::Vector{Si}=zeros(Si, max(nfft, 0))) where {Ti<:AbstractVector,Si,Wi}
-        
+
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
@@ -39,8 +39,8 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     end
 
 end
-ArraySplit(s::AbstractVector, n, noverlap, nfft, window; kwargs...) =
-    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window; kwargs...)
+ArraySplit(s::T, n, noverlap, nfft, window::W; kwargs...) where {S,T<:AbstractVector{S},W} =
+    ArraySplit{T,fftintype(S),W}(s, n, noverlap, nfft, window; kwargs...)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
     (i >= 1 && i <= x.k) || throw(BoundsError())
@@ -236,15 +236,15 @@ object.
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Periodogram{T,<:Frequencies} where T) =
     Periodogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-FFTW.fftshift(p::Periodogram{T,F}) where {T,F<:AbstractRange} = p
+FFTW.fftshift(p::Periodogram{T,<:AbstractRange} where T) = p
 # 2-d
-FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:Frequencies,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,<:Frequencies,<:Frequencies} where T) =
     Periodogram2(p.freq1.n_nonnegative == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:Frequencies} =
+FFTW.fftshift(p::Periodogram2{T,<:AbstractRange,<:Frequencies} where T) =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-FFTW.fftshift(p::Periodogram2{T,F1,F2}) where {T,F1<:AbstractRange,F2<:AbstractRange} = p
+FFTW.fftshift(p::Periodogram2{T,<:AbstractRange,<:AbstractRange} where T) = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -270,7 +270,7 @@ periodogram is normalized so that the area under the periodogram is
 equal to the uncentered variance (or average power) of the original
 signal.
 """
-function periodogram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
+function periodogram(s::AbstractVector{T}; onesided::Bool=T<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
@@ -376,7 +376,7 @@ struct WelchConfig{F,Fr,W,P,T1,T2,R}
     plan::P
     inbuf::T1
     outbuf::T2
-    r::R # inverse normalization 
+    r::R # inverse normalization
 end
 
 """
@@ -430,7 +430,7 @@ end
 # Modified Periodograms."  P. Welch, IEEE Transactions on Audio and Electroacoustics,
 # vol AU-15, pp 70-73, 1967.
 """
-    welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, 
+    welch_pgram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real,
                 nfft=nextfastfft(n), fs=1, window=nothing)
 
 Computes the Welch periodogram of a signal `s` based on segments with `n` samples
@@ -443,8 +443,8 @@ function welch_pgram(s::AbstractVector, n::Int=length(s)>>3, noverlap::Int=n>>1;
 end
 
 """
-    welch_pgram!(out::AbstractVector, in::AbstractVector, n=div(length(s), 8), 
-                 noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), 
+    welch_pgram!(out::AbstractVector, in::AbstractVector, n=div(length(s), 8),
+                 noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n),
                  fs=1, window=nothing)
 
 Computes the Welch periodogram of a signal `s`, storing the result in `out`, based on
@@ -508,9 +508,9 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} 
     freq::F
     time::Float64Range
 end
-FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:Frequencies} =
+FFTW.fftshift(p::Spectrogram{T,<:Frequencies} where T) =
     Spectrogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-FFTW.fftshift(p::Spectrogram{T,F}) where {T,F<:AbstractRange} = p
+FFTW.fftshift(p::Spectrogram{T,<:AbstractRange} where T) = p
 
 """
     time(p)
@@ -527,7 +527,7 @@ with overlap of `noverlap` samples, and returns a Spectrogram object. See
 [`periodogram`](@ref) for description of optional keyword arguments.
 """
 function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1;
-                     onesided::Bool=eltype(s)<:Real,
+                     onesided::Bool=T<:Real,
                      nfft::Int=nextfastfft(n), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T
 
@@ -538,8 +538,8 @@ function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
 end
 
 struct PSDOnly end
-stfttype(T::Type, psdonly::PSDOnly) = fftabs2type(T)
-stfttype(T::Type, psdonly::Nothing) = fftouttype(T)
+stfttype(T::Type, ::PSDOnly) = fftabs2type(T)
+stfttype(T::Type, ::Nothing) = fftouttype(T)
 
 """
     stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
@@ -551,7 +551,7 @@ keyword arguments.
 """
 function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
               psdonly::Union{Nothing,PSDOnly}=nothing;
-              onesided::Bool=eltype(s)<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
+              onesided::Bool=T<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
               window::Union{Function,AbstractVector,Nothing}=nothing) where T
     onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
 
