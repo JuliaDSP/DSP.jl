@@ -57,21 +57,22 @@ function hilbert(x::AbstractArray{T}) where T<:Real
     out = similar(x, fftouttype(T))
 
     p1 = plan_rfft(xc)
-    Xsub = view(X, 1:(N >> 1)+1)
     p2 = plan_bfft!(X)
+    Xsub = view(X, 1:(N >> 1)+1)
+    Xm = view(X, 2:N÷2+isodd(N))
+    Xtail = view(X, (N >> 1)+2:N)
 
     normalization = 1/N
-    off = 1
-    for i = 1:Base.trailingsize(x, 2)
-        copyto!(xc, 1, x, off, N)
+    for off = 0:N:N*(Base.trailingsize(x, 2) - 1)
+        copyto!(xc, 1, x, 1 + off, N)
 
         # fft
-        fill!(X, 0)
+        fill!(Xtail, 0)
         mul!(Xsub, p1, xc)
 
         # scale real part
-        for i = 2:div(N, 2)+isodd(N)
-            @inbounds X[i] *= 2.0
+        for i in eachindex(Xm)
+            @inbounds Xm[i] *= 2
         end
 
         # ifft
@@ -79,10 +80,8 @@ function hilbert(x::AbstractArray{T}) where T<:Real
 
         # scale and copy to output
         @simd for j = 1:N
-            @inbounds out[off+j-1] = X[j]*normalization
+            @inbounds out[off+j] = X[j] * normalization
         end
-
-        off += N
     end
 
     out
