@@ -1,8 +1,7 @@
 module Util
 using ..DSP: xcorr
 import Base: *
-import LinearAlgebra.BLAS
-using LinearAlgebra: mul!
+using LinearAlgebra: mul!, BLAS
 using FFTW
 using Statistics: mean
 

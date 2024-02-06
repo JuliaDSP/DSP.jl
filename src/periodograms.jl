@@ -14,7 +14,7 @@ export arraysplit, nextfastfft, periodogram,
        coherence
 import ..DSP: allocate_output
 using FFTW
-import FFTW: Frequencies, fftfreq, rfftfreq
+
 ## ARRAY SPLITTER
 
 struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}

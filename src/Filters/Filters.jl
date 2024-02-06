@@ -7,8 +7,9 @@ import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
 using SpecialFunctions: ellipk
-import ..DSP: filt, filt!, optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
-import Compat
+using ..DSP: optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
+import ..DSP: filt, filt!
+using Compat: Compat
 using FFTW
 
 include("coefficients.jl")
