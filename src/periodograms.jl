@@ -29,8 +29,8 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         buffer::Vector{Si}=zeros(Si, max(nfft, 0))) where {Ti<:AbstractVector,Si,Wi}
 
         # n = noverlap is a problem - the algorithm will not terminate.
-        (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
-        nfft >= n || error("nfft must be >= n")
+        (0 ≤ noverlap < n) || throw(DomainError((noverlap=noverlap, n=n), "noverlap must be between zero and n"))
+        nfft >= n || throw(DomainError((nfft=nfft, n=n), "nfft must be >= n"))
         length(buffer) == nfft ||
             throw(ArgumentError("buffer length ($(length(buffer))) must equal `nfft` ($nfft)"))
 
@@ -43,12 +43,12 @@ ArraySplit(s::T, n, noverlap, nfft, window::W; kwargs...) where {S,T<:AbstractVe
     ArraySplit{T,fftintype(S),W}(s, n, noverlap, nfft, window; kwargs...)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
-    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + 1, x.n)
+    (1 <= i <= x.k) || throw(BoundsError(x, i))
+    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + firstindex(x.s), x.n)
 end
 function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
-    (i >= 1 && i <= x.k) || throw(BoundsError())
-    offset = (i-1)*(x.n-x.noverlap)
+    (1 <= i <= x.k) || throw(BoundsError(x, i))
+    offset = (i-1)*(x.n-x.noverlap) + firstindex(x.s) - 1
     window = x.window
     for i = 1:x.n
         @inbounds x.buf[i] = x.s[offset+i]*window[i]
@@ -273,8 +273,8 @@ signal.
 function periodogram(s::AbstractVector{T}; onesided::Bool=T<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= length(s) || error("nfft must be >= n")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
+    nfft >= length(s) || throw(DomainError((nfft=nfft, n=length(s)), "nfft must be >= n = length(s)"))
 
     win, norm2 = compute_window(window, length(s))
     if nfft == length(s) && win === nothing && isa(s, StridedArray)
@@ -282,8 +282,8 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=T<:Real,
     else
         input = zeros(fftintype(T), nfft)
         if win !== nothing
-            for i in eachindex(s)
-                @inbounds input[i] = s[i]*win[i]
+            for i in eachindex(s, win)
+                @inbounds input[i] = s[i] * win[i]
             end
         else
             copyto!(input, s)
@@ -360,9 +360,9 @@ function periodogram(s::AbstractMatrix{T};
     end
 end
 
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
+forward_plan(X::AbstractArray{T}, ::AbstractArray{Complex{T}}) where {T<:Union{Float32, Float64}} =
     plan_rfft(X)
-forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
+forward_plan(X::AbstractArray{T}, ::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
 
 struct WelchConfig{F,Fr,W,P,T1,T2,R}
@@ -553,7 +553,7 @@ function stft(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>>1,
               psdonly::Union{Nothing,PSDOnly}=nothing;
               onesided::Bool=T<:Real, nfft::Int=nextfastfft(n), fs::Real=1,
               window::Union{Function,AbstractVector,Nothing}=nothing) where T
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
 
     win, norm2 = compute_window(window, n)
     sig_split = arraysplit(s, n, noverlap, nfft, win)
