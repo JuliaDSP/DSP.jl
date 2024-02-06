@@ -9,7 +9,7 @@ abstract type FilterType end
 #
 
 function Butterworth(::Type{T}, n::Integer) where {T<:Real}
-    n > 0 || error("n must be positive")
+    n > 0 || throw(DomainError(n, "n must be positive"))
 
     poles = zeros(Complex{T}, n)
     for i = 1:div(n, 2)
@@ -55,8 +55,8 @@ function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
 end
 
 function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
-    n > 0 || error("n must be positive")
-    ripple >= 0 || error("ripple must be non-negative")
+    n > 0 || throw(DomainError(n, "n must be positive"))
+    ripple >= 0 || throw(DomainError(ripple, "ripple must be non-negative"))
 
     ε = sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
@@ -81,8 +81,8 @@ the passband.
 Chebyshev1(n::Integer, ripple::Real) = Chebyshev1(Float64, n, ripple)
 
 function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
-    n > 0 || error("n must be positive")
-    ripple >= 0 || error("ripple must be non-negative")
+    n > 0 || throw(DomainError(n, "n must be positive"))
+    ripple >= 0 || throw(DomainError(ripple, "ripple must be non-negative"))
 
     ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
@@ -159,9 +159,9 @@ function asne(w::Number, k::Real)
 end
 
 function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
-    n > 0 || error("n must be positive")
-    rp > 0 || error("rp must be positive")
-    rp < rs || error("rp must be less than rs")
+    n > 0 || throw(DomainError(n, "n must be positive"))
+    rp > 0 || throw(DomainError(rp, "rp must be positive"))
+    rp < rs || throw(DomainError(rp, "rp must be less than rs"))
 
     # Eq. (2)
     εp = sqrt(10^(convert(T, rp)/10)-1)
@@ -169,7 +169,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
 
     # Eq. (3)
     k1 = εp/εs
-    k1 >= 1 && error("filter order is too high for parameters")
+    k1 >= 1 && throw(ArgumentError("filter order is too high for parameters"))
 
     # Eq. (20)
     k1′² = 1 - abs2(k1)
@@ -234,9 +234,9 @@ Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 
 # returns frequency in half-cycles per sample ∈ (0, 1)
 function normalize_freq(w::Real, fs::Real)
-    w <= 0 && error("frequencies must be positive")
+    w <= 0 && throw(DomainError(w, "frequencies must be positive"))
     f = 2*w/fs
-    f >= 1 && error("frequencies must be less than the Nyquist frequency $(fs/2)")
+    f >= 1 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs/2)"))
     f
 end
 
@@ -273,7 +273,7 @@ end
 Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
 function Bandpass(w1::Real, w2::Real)
-    w1 < w2 || error("w1 must be less than w2")
+    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
     Bandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
@@ -288,7 +288,7 @@ end
 Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
 function Bandstop(w1::Real, w2::Real)
-    w1 < w2 || error("w1 must be less than w2")
+    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
     Bandstop{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 

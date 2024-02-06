@@ -226,8 +226,8 @@ end
 function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen = size(a, 1)
     bLen = length(b)
-    bLen == aLen-1  || error( "length(b) must equal to length(a)[1] - 1" )
-    cLastIdx < aLen || error( "cLastIdx but be < length(a)")
+    bLen == aLen-1  || throw(ArgumentError("length(b) must equal size(a, 1) - 1"))
+    cLastIdx < aLen || throw(DomainError(cLastIdx, "cLastIdx must be < length(a)"))
 
     dotprod = a[1, aColIdx] * b[cLastIdx]
     @simd for i in 2:aLen-cLastIdx
@@ -342,7 +342,7 @@ See also [`shiftsignal`](@ref).
 function shiftsignal!(x::AbstractVector, s::Integer)
     l = length(x)
     if abs(s) > l
-        error("The absolute value of s must not be greater than the length of x")
+        throw(DomainError(s, "The absolute value of s must not be greater than the length of x"))
     end
     if s > 0
         x[s + 1:l] = x[1:l - s]

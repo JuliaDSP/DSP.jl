@@ -193,7 +193,7 @@ function compute_window(window::Function, n::Int)
     (win, norm2)
 end
 function compute_window(window::AbstractVector, n::Int)
-    length(window) == n || error("length of window must match input")
+    length(window) == n || throw(DimensionMismatch("length of window must match input"))
     (window, sum(abs2, window))
 end
 

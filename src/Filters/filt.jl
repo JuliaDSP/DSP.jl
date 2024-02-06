@@ -63,9 +63,9 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
     biquads = f.biquads
     ncols = Base.trailingsize(x, 2)
 
-    size(x) != size(out) && error("out size must match x")
+    size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && Base.trailingsize(si, 3) != ncols)) &&
-        error("si must be 2 x nbiquads or 2 x nbiquads x nsignals")
+        throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
     initial_si = si
     g = f.g
@@ -101,9 +101,9 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     ncols = Base.trailingsize(x, 2)
 
-    size(x) != size(out) && error("out size must match x")
+    size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
-        error("si must have two rows and 1 or nsignals columns")
+        throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
     for col = 1:ncols
         _filt!(out, si[1, N > 1 ? col : 1], si[2, N > 1 ? col : 1], f, x, col)
@@ -248,7 +248,7 @@ DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
 # in place in output. The istart and n parameters determine the portion
 # of the input signal x to extrapolate.
 function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
-    length(out) >= n+2*pad_length || error("output is incorrectly sized")
+    length(out) >= n+2*pad_length || throw(ArgumentError("output is incorrectly sized"))
     x = 2*sig[istart]
     for i = 1:pad_length
         out[ostart+i-1] = x - sig[istart+pad_length+1-i]
@@ -377,7 +377,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     bs = length(b)
     as = length(a)
     sz = max(bs, as)
-    sz > 0 || error("a and b must have at least one element each")
+    sz > 0 || throw(ArgumentError("a and b must have at least one element each"))
     sz == 1 && return T[]
 
     # Pad the coefficients with zeros if needed

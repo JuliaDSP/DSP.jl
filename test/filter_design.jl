@@ -947,18 +947,18 @@ end
 #
 @testset "errors" begin
     # zero pole
-    @test_throws ErrorException Butterworth(0)
-    @test_throws ErrorException Chebyshev1(0, 1)
-    @test_throws ErrorException Chebyshev2(0, 1)
-    @test_throws ErrorException Elliptic(0, 0.1, 0.5)
+    @test_throws DomainError Butterworth(0)
+    @test_throws DomainError Chebyshev1(0, 1)
+    @test_throws DomainError Chebyshev2(0, 1)
+    @test_throws DomainError Elliptic(0, 0.1, 0.5)
 
     # too much passband ripple
-    @test_throws ErrorException Elliptic(2, 0.5, 0.1)
+    @test_throws DomainError Elliptic(2, 0.5, 0.1)
 
     # negative ripple
-    @test_throws ErrorException Chebyshev1(2, -1)
-    @test_throws ErrorException Chebyshev2(2, -1)
-    @test_throws ErrorException Elliptic(2, 0.1, -0.5)
+    @test_throws DomainError Chebyshev1(2, -1)
+    @test_throws DomainError Chebyshev2(2, -1)
+    @test_throws DomainError Elliptic(2, 0.1, -0.5)
 end
 
 #

@@ -247,7 +247,7 @@ $zerophase_docs
 """
 function tukey(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     # check that α is reasonable
-    !(0 <= α <= 1) && error("α must be in the range 0 <= α <= 1.")
+    !(0 <= α <= 1) && throw(DomainError(α, "α must be in the range [0, 1]."))
 
     # if α is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
@@ -414,7 +414,7 @@ $(twoD_docs("σ"))
 $zerophase_docs
 """
 function gaussian(n::Integer, σ::Real; padding::Integer=0, zerophase::Bool=false)
-    σ > 0.0 || error("σ must be positive")
+    σ > 0.0 || throw(DomainError(σ, "σ must be positive"))
     makewindow(n, padding, zerophase) do x
         exp(-0.5*(x/σ)^2)
     end
@@ -538,8 +538,8 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
     if zerophase
         n += 1
     end
-    0 < ntapers <= n || error("ntapers must be in interval (0, n]")
-    0 <= nw < n/2 || error("nw must be in interval [0, n/2)")
+    0 < ntapers <= n || throw(DomainError(ntapers, "ntapers must be in the interval (0, n]"))
+    0 <= nw < n/2 || throw(DomainError(nw, "nw must be in the interval [0, n/2)"))
 
     # Construct symmetric tridiagonal matrix
     v = cospi(2*nw/n)
@@ -600,7 +600,7 @@ power within the main lobe to the total power (main and sidelobes).
 time-bandwidth product provided to [`dpss`](@ref) as input.
 """
 function dpsseig(A::Matrix{Float64}, nw::Real)
-    0 <= nw < size(A, 1)/2 || error("nw must be in interval [0, n/2)")
+    0 <= nw < size(A, 1)/2 || throw(DomainError(nw, "nw must be in the interval [0, n/2)"))
 
     w = nw/size(A, 1)
 
