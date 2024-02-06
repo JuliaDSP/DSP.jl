@@ -42,23 +42,22 @@ end
 ArraySplit(s::T, n, noverlap, nfft, window::W; kwargs...) where {S,T<:AbstractVector{S},W} =
     ArraySplit{T,fftintype(S),W}(s, n, noverlap, nfft, window; kwargs...)
 
-function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
-    (1 <= i <= x.k) || throw(BoundsError(x, i))
-    copyto!(x.buf, 1, x.s, (i-1)*(x.n-x.noverlap) + firstindex(x.s), x.n)
+function Base.getindex(x::ArraySplit{T,S,Nothing} where {T<:AbstractVector,S}, i::Int)
+    @boundscheck (1 <= i <= x.k) || throw(BoundsError(x, i))
+    copyto!(x.buf, 1, x.s, (i - 1) * (x.n - x.noverlap) + firstindex(x.s), x.n)
 end
-function Base.getindex(x::ArraySplit{T,S,W}, i::Int) where {T,S,W}
-    (1 <= i <= x.k) || throw(BoundsError(x, i))
-    offset = (i-1)*(x.n-x.noverlap) + firstindex(x.s) - 1
+function Base.getindex(x::ArraySplit, i::Int)
+    @boundscheck (1 <= i <= x.k) || throw(BoundsError(x, i))
+    offset = (i - 1) * (x.n - x.noverlap) + firstindex(x.s) - 1
     window = x.window
     for i = 1:x.n
-        @inbounds x.buf[i] = x.s[offset+i]*window[i]
+        @inbounds x.buf[i] = x.s[offset+i] * window[i]
     end
     x.buf
 end
 
-function Base.iterate(x::ArraySplit, i::Int = 1)
-    i > x.k ? nothing : (x[i], i+1)
-end
+Base.IndexStyle(::ArraySplit) = IndexLinear()
+Base.iterate(x::ArraySplit, i::Int = 1) = (i > x.k ? nothing : (x[i], i+1))
 Base.size(x::ArraySplit) = (x.k,)
 
 """
