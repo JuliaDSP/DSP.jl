@@ -10,7 +10,7 @@ mutable struct FIRStandard{T} <: FIRKernel{T}
 end
 
 function FIRStandard(h::Vector)
-    h    = reverse(h, dims=1)
+    h    = reverse(h)
     hLen = length(h)
     FIRStandard(h, hLen)
 end
@@ -48,7 +48,7 @@ mutable struct FIRDecimator{T} <: FIRKernel{T}
 end
 
 function FIRDecimator(h::Vector, decimation::Integer)
-    h            = reverse(h, dims=1)
+    h            = reverse(h)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)
@@ -268,7 +268,7 @@ end
 
 # For FIRFilter, set history vector to zeros of same type and required length
 function reset!(self::FIRFilter)
-    self.history = zeros(eltype(self.history), self.historyLen)
+    fill!(self.history, 0)
     reset!(self.kernel)
     self
 end
@@ -320,7 +320,7 @@ function outputlength(inputlength::Integer, ratio::Union{Integer,Rational}, init
     ceil(Int, outLen)
 end
 
-function outputlength(kernel::FIRStandard, inputlength::Integer)
+function outputlength(::FIRStandard, inputlength::Integer)
     inputlength
 end
 
@@ -357,7 +357,7 @@ function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initial�
     floor(Int, inLen)
 end
 
-function inputlength(kernel::FIRStandard, outputlength::Integer)
+function inputlength(::FIRStandard, outputlength::Integer)
     outputlength
 end
 
@@ -431,16 +431,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::
     return xLen
 end
 
-function filt(self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
-end
-
 
 #
 # Interpolation
@@ -480,16 +470,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}},
     self.history        = shiftin!(history, x)
 
     return bufIdx
-end
-
-function filt(self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
 end
 
 
@@ -538,15 +518,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::
     return bufIdx
 end
 
-function filt(self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-    return buffer
-end
-
 
 #
 # Decimation
@@ -590,16 +561,6 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
     return bufIdx
 end
 
-function filt(self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
-    bufLen         = outputlength(self, length(x))
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
-
-    return buffer
-end
-
 
 #
 # Arbitrary resampling
@@ -607,7 +568,7 @@ end
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
 #   [1] uses a phase accumilator that increments by Δ (Nϕ/rate)
 
-function update(kernel::FIRArbitrary)
+function update!(kernel::FIRArbitrary)
     kernel.ϕAccumulator += kernel.Δ
 
     if kernel.ϕAccumulator > kernel.Nϕ
@@ -657,8 +618,8 @@ function filt!(
 
         # Used to have @inbounds. Restore @inbounds if buffer length
         # can be verified prior to access.
-        buffer[bufIdx] = yLower + yUpper * kernel.α
-        update(kernel)
+        buffer[bufIdx] = muladd(yUpper, kernel.α, yLower)
+        update!(kernel)
     end
 
     kernel.inputDeficit = kernel.xIdx - xLen
@@ -667,7 +628,7 @@ function filt!(
     return bufIdx
 end
 
-function filt(self::FIRFilter{FIRArbitrary{Th}}, x::AbstractVector{Tx}) where {Th,Tx}
+function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
     bufLen         = outputlength(self, length(x))
     buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
