@@ -68,10 +68,10 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
         throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
     initial_si = si
-    g = f.g
-    n = length(biquads)
+    si = similar(si, axes(si)[1:2])
     for col = 1:ncols
-        _filt!(out, initial_si[:, :, N > 2 ? col : 1], f, x, col)
+        copyto!(si, view(initial_si, :, :, N > 2 ? col : 1))
+        _filt!(out, si, f, x, col)
     end
     out
 end
