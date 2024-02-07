@@ -1,7 +1,5 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-import Base: trailingsize
-
 const SMALL_FILT_CUTOFF = 58
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
@@ -39,38 +37,40 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs = length(b)
     sz = max(as, bs)
     silen = sz - 1
-    ncols = trailingsize(x,2)
+    ncols = size(x, 2)
 
     if size(si, 1) != silen
         throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
-    end
-    if N > 1 && trailingsize(si,2) != ncols
-        throw(ArgumentError("initial state vector si must be a vector or have the same number of columns as x"))
+    elseif N > 1 && size(si, 2) != ncols
+        throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
     end
 
-    size(x,1) == 0 && return out
-    sz == 1 && return mul!(out, x, b[1]/a[1]) # Simple scaling without memory
+    iszero(size(x, 1)) && return out
+    isone(sz) && return (k = b[1] / a[1]; Compat.@noinline mul!(out, x, k)) # Simple scaling without memory
 
     # Filter coefficient normalization
-    if a[1] != 1
+    if !isone(a[1])
         norml = a[1]
-        a = a ./ norml
-        b = b ./ norml
+        a = Compat.@noinline broadcast(/, a, norml)
+        b = Compat.@noinline broadcast(/, b, norml)
     end
     # Pad the coefficients with zeros if needed
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
     1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
-    initial_si = si
-    for col = 1:ncols
-        # Reset the filter state
-        si = initial_si[:, N > 1 ? col : 1]
-        if as > 1
-            _filt_iir!(out, b, a, x, si, col)
-        elseif bs <= SMALL_FILT_CUTOFF
-            _small_filt_fir!(out, b, x, si, col)
-        else
-            _filt_fir!(out, b, x, si, col)
+    if as == 1 && bs <= SMALL_FILT_CUTOFF
+        _small_filt_fir!(out, b, x, si, Val(bs))
+    else
+        initial_si = si
+        si = similar(si, axes(si, 1))
+        for col = 1:ncols
+            # Reset the filter state
+            copyto!(si, view(initial_si, :, N > 1 ? col : 1))
+            if as > 1
+                _filt_iir!(out, b, a, x, si, col)
+            else
+                _filt_fir!(out, b, x, si, col)
+            end
         end
     end
     return out
@@ -79,28 +79,27 @@ end
 # Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
-        xi = x[i,col]
+    @inbounds for i in axes(x, 1)
+        xi = x[i, col]
         val = muladd(xi, b[1], si[1])
+        out[i, col] = val
         for j=1:(silen-1)
             si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
         si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
-        out[i,col] = val
     end
 end
 
 # Transposed direct form II
 function _filt_fir!(out, b, x, si, col)
     silen = length(si)
-    @inbounds for i=1:size(x, 1)
-        xi = x[i,col]
-        val = muladd(xi, b[1], si[1])
+    @inbounds for i in axes(x, 1)
+        xi = x[i, col]
+        out[i, col] = muladd(xi, b[1], si[1])
         for j=1:(silen-1)
             si[j] = muladd(xi, b[j+1], si[j+1])
         end
-        si[silen] = b[silen+1]*xi
-        out[i,col] = val
+        si[silen] = b[silen+1] * xi
     end
 end
 
@@ -108,46 +107,44 @@ end
 # filt implementation for FIR filters (faster than Base)
 #
 
-for n = 2:SMALL_FILT_CUTOFF
-    silen = n-1
-    si = [Symbol("si$i") for i = 1:silen]
-    # Transposed direct form II
-    @eval function _filt_fir!(out, b::NTuple{$n,T}, x, siarr, col) where {T}
-        offset = (col - 1) * size(x, 1)
+# Transposed direct form II
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
+    silen = N - 1
+    si_end = Symbol(:si_, silen)
+    SMALL_FILT_VECT_CUTOFF = 18
+    si_check = N > SMALL_FILT_VECT_CUTOFF ? :(nothing) : :(@assert length(siarr) == $silen)
 
-        $(Expr(:block, [:(@inbounds $(si[i]) = siarr[$i]) for i = 1:silen]...))
-        @inbounds for i=1:size(x, 1)
-            xi = x[i+offset]
-            val = muladd(xi, b[1], $(si[1]))
-            $(Expr(:block, [:($(si[j]) = muladd(xi, b[$(j+1)], $(si[j+1]))) for j = 1:(silen-1)]...))
-            $(si[silen]) = b[$(silen+1)]*xi
-            out[i+offset] = val
+    q = quote
+        $si_check
+        Base.@nextract $silen si siarr
+        for i in axes(x, 1)
+            xi = x[i, col]
+            val = muladd(xi, b[1], si_1)
+            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1], si_{j+1}))
+            $si_end = b[N] * xi
+            out[i, col] = val
         end
     end
+
+    if N > SMALL_FILT_VECT_CUTOFF
+        loop_args = q.args[6].args[2].args
+        for i in (2, 10)
+            loop_args[i] = :(@inbounds $(loop_args[i]))
+        end
+    end
+    q
 end
 
 # Convert array filter tap input to tuple for small-filtering
-let chain = :(throw(ArgumentError("invalid tuple size")))
-    for n = SMALL_FILT_CUTOFF:-1:2
-        chain = quote
-            if length(h) == $n
-                _filt_fir!(
-                    out,
-                    ($([:(@inbounds(h[$i])) for i = 1:n]...),),
-                    x,
-                    si,
-                    col
-                )
-            else
-                $chain
-            end
-        end
-    end
+function _small_filt_fir!(
+    out::AbstractArray, h::AbstractVector, x::AbstractArray,
+        si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
 
-    @eval function _small_filt_fir!(
-        out::AbstractArray, h::AbstractVector{T}, x::AbstractArray, si, col
-    ) where T
-        $chain
+    bs < 2 && throw(ArgumentError("invalid tuple size"))
+    b = ntuple(j -> @inbounds(h[j]), Val(bs))
+    for col in axes(x, 2)
+        v_si = view(si, :, N > 1 ? col : 1)
+        _filt_fir!(out, b, x, v_si, col)
     end
 end
 
@@ -310,7 +307,7 @@ end
     buff = similar(u, nffts)
 
     p = plan_fft!(buff)
-    ip = plan_bfft!(buff)
+    ip = inv(p).p
 
     buff, buff, p, ip # Only one buffer for complex
 end
@@ -525,6 +522,7 @@ function unsafe_conv_kern_os!(out,
         lastfull > 1 ? [1:firstfull - 1, lastfull + 1 : nblock] : [1:nblock]
     end
     all_dims = 1:N
+    val_dims = ntuple(Val, Val(N))
     # Buffer to store ranges of indices for a single region of the perimeter
     perimeter_range = Vector{UnitRange{Int}}(undef, N)
 
@@ -540,7 +538,7 @@ function unsafe_conv_kern_os!(out,
     #                         2 | Edges of Cube
     #                         3 | Corners of Cube
     #
-    for n_edges in all_dims
+    for n_edges in val_dims
         unsafe_conv_kern_os_edge!(
             # These arrays and buffers will be mutated
             out,
@@ -548,7 +546,7 @@ function unsafe_conv_kern_os!(out,
             fdbuff,
             perimeter_range,
             # Number of edge dimensions to pad and convolve
-            Val(n_edges),
+            n_edges,
             # Data to be convolved
             u,
             filter_fd,
@@ -628,10 +626,11 @@ function _conv_kern_fft!(out, u, v, su, sv, outsize, nffts)
     upad = _zeropad(u, nffts)
     vpad = _zeropad(v, nffts)
     p! = plan_fft!(upad)
+    ip! = inv(p!)
     p! * upad # Operates in place on upad
     p! * vpad
     upad .*= vpad
-    ifft!(upad)
+    ip! * upad
     copyto!(out,
             CartesianIndices(out),
             upad,
@@ -776,6 +775,18 @@ The size of the output depends on the padmode keyword argument: with padmode =
 With padmode = :longest the shorter of the arguments will be padded so they are
 equal length. This gives a result with length 2*max(length(u), length(v))-1,
 with the zero-lag condition at the center.
+
+# Examples
+
+```jldoctest
+julia> xcorr([1,2,3],[1,2,3])
+5-element Vector{Int64}:
+  3
+  8
+ 14
+  8
+  3
+```
 """
 function xcorr(
     u::AbstractVector, v::AbstractVector; padmode::Symbol = :none

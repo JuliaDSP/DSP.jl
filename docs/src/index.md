@@ -5,6 +5,7 @@ DSP.jl provides a number of common [digital signal processing](https://en.wikipe
 ## Table of contents
 ```@contents
 Pages = [
+    "index.md",
     "periodograms.md",
     "estimation.md",
     "windows.md",
@@ -13,6 +14,6 @@ Pages = [
     "convolutions.md",
     "lpc.md",
     "internals.md",
-    "index.md",
+    "appendix.md"
 ]
 ```

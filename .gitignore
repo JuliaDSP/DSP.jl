@@ -23,6 +23,7 @@
 *.creator
 *.user
 *.orig
+*.vscode
 
 *.cov
 
