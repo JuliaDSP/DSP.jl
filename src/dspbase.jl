@@ -798,26 +798,23 @@ function xcorr(
     u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
 )
     su = size(u, 1); sv = size(v, 1)
-    res = if padmode == :longest
+
+    if scaling == :biased && su != sv
+        throw(DimensionMismatch("scaling only valid for vectors of same length"))
+    end
+
+    if padmode == :longest
         if su < sv
             u = _zeropad_keep_offset(u, sv)
         elseif sv < su
             v = _zeropad_keep_offset(v, su)
         end
-        conv(u, dsp_reverse(conj(v), axes(v)))
-    elseif padmode == :none
-        conv(u, dsp_reverse(conj(v), axes(v)))
-    else
+    elseif padmode != :none
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
 
-    if scaling == :biased
-        if su == sv
-            res ./= su
-        else
-            throw(DimensionMismatch("scaling only valid for vectors of same length"))
-        end
-    end
+    res = conv(u, dsp_reverse(conj(v), axes(v)))
+    scaling == :biased && res ./= su
 
     res
 end
