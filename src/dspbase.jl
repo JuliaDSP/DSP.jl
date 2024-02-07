@@ -795,8 +795,8 @@ julia> xcorr([1,2,3],[1,2,3])
 ```
 """
 function xcorr(
-    u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
-)
+    u::AbstractVector{U}, v::AbstractVector{V}; padmode::Symbol=:none, scaling::Symbol=:none
+) where {U,V}
     su = size(u, 1); sv = size(v, 1)
 
     if scaling == :biased && su != sv
@@ -814,9 +814,14 @@ function xcorr(
     end
 
     res = conv(u, dsp_reverse(conj(v), axes(v)))
-    scaling == :biased && res ./= su
+    if scaling == :biased
+        res = _normalize(res, su)
+    end
 
     res
 end
+
+_normalize(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)
+_normalize(x::AbstractArray, sz::Int) = (x ./= sz)
 
 xcorr(u::AbstractVector; kwargs...) = xcorr(u, u; kwargs...)
