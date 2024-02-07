@@ -818,7 +818,7 @@ function xcorr(
         res = _normalize(res, su)
     end
 
-    res
+    return res
 end
 
 _normalize(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)

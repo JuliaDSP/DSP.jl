@@ -28,7 +28,7 @@ function lpc end
 function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCBurg)
     a, prediction_err = arburg(x, p)
     popfirst!(a)
-    a, prediction_err
+    return a, prediction_err
 end
 
 """
@@ -94,7 +94,7 @@ end
 function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
     R_xx = xcorr(x; scaling=:biased)[length(x):end]
     a, prediction_err = levinson(R_xx, p)
-    a, prediction_err
+    return a, prediction_err
 end
 
 """
@@ -141,7 +141,7 @@ function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     end
 
     # Return autocorrelation coefficients, error estimate, and reflection coefficients
-    a, prediction_err, reflection_coeffs
+    return a, prediction_err, reflection_coeffs
 end
 
 # for convenience, define dotu as dot for real vectors
