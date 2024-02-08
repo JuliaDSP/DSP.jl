@@ -215,9 +215,19 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::Abstrac
     out
 end
 
-# Variant that allocates the output
+"""
+    filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V}
+
+Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
+
+!!! warning
+    The output array has eltype `promote_type(T, V)`, where
+    `T` is the eltype of the filter state.\n
+    For more control over the output type, provide a preallocated
+    output array `out` to `filt!(out, f, x)`.
+"""
 filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
-    filt!(Vector{promote_type(T,V)}(undef, length(x)), f, x)
+    filt!(Vector{promote_type(T, V)}(undef, length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
