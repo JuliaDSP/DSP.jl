@@ -795,8 +795,8 @@ julia> xcorr([1,2,3],[1,2,3])
 ```
 """
 function xcorr(
-    u::AbstractVector{U}, v::AbstractVector{V}; padmode::Symbol=:none, scaling::Symbol=:none
-) where {U,V}
+    u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
+)
     su = size(u, 1); sv = size(v, 1)
 
     if scaling == :biased && su != sv
@@ -815,13 +815,14 @@ function xcorr(
 
     res = conv(u, dsp_reverse(conj(v), axes(v)))
     if scaling == :biased
-        res = _normalize(res, su)
+        res = _normalize!(res, su)
     end
 
     return res
 end
 
-_normalize(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)
-_normalize(x::AbstractArray, sz::Int) = (x ./= sz)
+_normalize!(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)   # does not mutate x
+_normalize!(x::AbstractArray, sz::Int) = (x ./= sz)
 
+# TODO: write specialized (r/)fft-ed autocorrelation functions
 xcorr(u::AbstractVector; kwargs...) = xcorr(u, u; kwargs...)
