@@ -264,6 +264,10 @@ end
     @test xcorr(off_a, off_b, padmode = :longest) == OffsetVector(vcat(0, exp), -3:1)
 
     @test_throws ArgumentError xcorr([1], [2]; padmode=:bug)
+    @test_throws DimensionMismatch xcorr([1], [2,3]; scaling=:biased)
+
+    # check that :biased doesn't throw InexactError
+    @test xcorr([1, 2], [3, 4]; scaling=:biased) == [2.0, 5.5, 3.0]
 end
 
 @testset "deconv" begin

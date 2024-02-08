@@ -764,17 +764,23 @@ end
 
 
 """
-    xcorr(u,v; padmode = :none)
+    xcorr(u; padmode::Symbol=:none, scaling::Symbol=:none)
+    xcorr(u, v; padmode::Symbol=:none, scaling::Symbol=:none)
 
-Compute the cross-correlation of two vectors, by calculating the similarity
-between `u` and `v` with various offsets of `v`. Delaying `u` relative to `v`
-will shift the result to the right.
+With two arguments, compute the cross-correlation of two vectors, by calculating
+the similarity between `u` and `v` with various offsets of `v`. Delaying `u`
+relative to `v` will shift the result to the right. If one argument is provided,
+calculate `xcorr(u, u; kwargs...)`.
 
-The size of the output depends on the padmode keyword argument: with padmode =
-:none the length of the result will be length(u) + length(v) - 1, as with conv.
-With padmode = :longest the shorter of the arguments will be padded so they are
-equal length. This gives a result with length 2*max(length(u), length(v))-1,
+The size of the output depends on the `padmode` keyword argument: with `padmode =
+:none` the length of the result will be `length(u) + length(v) - 1`, as with `conv`.
+With `padmode = :longest`, the shorter of the arguments will be padded so they
+are of equal length. This gives a result with length `2*max(length(u), length(v))-1`,
 with the zero-lag condition at the center.
+
+The keyword argument `scaling` can be provided. Possible arguments are the default
+`:none` and `:biased`. `:biased` is valid only if the vectors have the same length,
+or only one vector is provided, dividing the result by `length(u)`.
 
 # Examples
 
@@ -789,19 +795,34 @@ julia> xcorr([1,2,3],[1,2,3])
 ```
 """
 function xcorr(
-    u::AbstractVector, v::AbstractVector; padmode::Symbol = :none
+    u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
 )
-    su = size(u,1); sv = size(v,1)
+    su = size(u, 1); sv = size(v, 1)
+
+    if scaling == :biased && su != sv
+        throw(DimensionMismatch("scaling only valid for vectors of same length"))
+    end
+
     if padmode == :longest
         if su < sv
             u = _zeropad_keep_offset(u, sv)
         elseif sv < su
             v = _zeropad_keep_offset(v, su)
         end
-        conv(u, dsp_reverse(conj(v), axes(v)))
-    elseif padmode == :none
-        conv(u, dsp_reverse(conj(v), axes(v)))
-    else
+    elseif padmode != :none
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
+
+    res = conv(u, dsp_reverse(conj(v), axes(v)))
+    if scaling == :biased
+        res = _normalize!(res, su)
+    end
+
+    return res
 end
+
+_normalize!(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)   # does not mutate x
+_normalize!(x::AbstractArray, sz::Int) = (x ./= sz)
+
+# TODO: write specialized (r/)fft-ed autocorrelation functions
+xcorr(u::AbstractVector; kwargs...) = xcorr(u, u; kwargs...)
