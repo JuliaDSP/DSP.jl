@@ -412,7 +412,44 @@ analogfilter(ftype::FilterType, proto::FilterCoefficients) =
     transform_prototype(ftype, proto)
 
 # Bilinear transform
+"""
+    bilinear(f::FilterCoefficients{:s}, fs::Real)
+
+Calculate the digital filter (z-domain) ZPK representation of an analog filter defined
+in s-domain using bilinear transform with sampling frequency `fs`. The s-domain
+representation is first converted to a ZPK representation in s-domain and then
+transformed to z-domain using bilinear transform.
+"""
 bilinear(f::FilterCoefficients{:s}, fs::Real) = bilinear(convert(ZeroPoleGain, f), fs)
+
+"""
+    bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
+
+Calculate the digital filter (z-domain) ZPK representation of an analog filter defined
+as a ZPK representation in s-domain using bilinear transform with sampling frequency
+`fs`.
+
+Input s-domain representation must be a `ZeroPoleGain{:s, Z, P, K}` object:
+```math
+H(s) = f.k\\frac{(s - \\verb!f.z[1]!) \\ldots (s - \\verb!f.z[m]!)}{(s - \\verb!f.p[1]!) \\ldots (s - \\verb!f.p[n]!)}
+```
+Output z-domain representation is a `ZeroPoleGain{:z, Z, P, K}` object:
+```math
+H(z) = K\\frac{(z - \\verb!Z[1]!) \\ldots (z - \\verb!Z[m]!)}{(z - \\verb!P[1]!) \\ldots (z - \\verb!P[n]!)}
+```
+where `Z, P, K` are calculated as:
+```math
+Z[i] = \\frac{(2 + \\verb!f.z[i]!/\\verb!fs!)}{(2 - \\verb!f.z[i]!/\\verb!fs!)} \\quad \\text{for } i = 1, \\ldots, m
+```
+```math
+P[i] = \\frac{(2 + \\verb!f.p[i]!/\\verb!fs!)}{(2 - \\verb!f.p[i]!/\\verb!fs!)} \\quad \\text{for } i = 1, \\ldots, n
+```
+```math
+K = f.k \\ \\mathcal{Re} \\left[ \\frac{\\prod_{i=1}^m (2*fs - f.z[i])}{\\prod_{i=1}^n (2*fs - f.p[i])} \\right]
+```
+Here, `m` and `n` are respectively the numbers of zeros and poles in the s-domain representation. If `m < n`,
+then additional `n-m` zeros are added at `z = -1`.
+"""
 function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
     ztype = typeof(0 + zero(Z)/fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
