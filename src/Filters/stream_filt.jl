@@ -1,6 +1,5 @@
 const PFB{T} = Matrix{T}          # polyphase filter bank
 
-abstract type Filter end
 abstract type FIRKernel{T} end
 
 # Single rate FIR kernel
@@ -137,7 +136,7 @@ end
 
 
 # FIRFilter - the kernel does the heavy lifting
-mutable struct FIRFilter{Tk<:FIRKernel} <: Filter
+mutable struct FIRFilter{Tk<:FIRKernel}
     kernel::Tk
     history::Vector
     historyLen::Int
