@@ -230,9 +230,10 @@ end
     @test_throws DimensionMismatch welch_pgram!(empty!(out), data, config)
 
     # Test fftshift
-    p = periodogram(data)
-    @test power(p) == power(fftshift(p))
-    @test freq(p) ≈ freq(fftshift(p))
+    p = periodogram(data); p_shifted = fftshift(p)
+    @test power(p) == power(p_shifted)
+    @test freq(p) ≈ freq(p_shifted)
+    @test p_shifted == fftshift(p_shifted)
 
     p = periodogram(data; onesided=false)
     @test fftshift(power(p)) == power(fftshift(p))
@@ -242,13 +243,21 @@ end
 @testset "fftshift" begin
     data = 1:100
 
-    p = spectrogram(data)
-    @test power(p) == power(fftshift(p))
-    @test freq(p) ≈ freq(fftshift(p))
+    p = spectrogram(data); p_shifted = fftshift(p)
+    @test power(p) == power(p_shifted)
+    @test freq(p) ≈ freq(p_shifted)
+    @test p_shifted == fftshift(p_shifted)
 
     p = spectrogram(data; onesided=false)
     @test fftshift(power(p), 1) == power(fftshift(p))
     @test fftshift(freq(p)) == freq(fftshift(p))
+
+    using DSP.Periodograms: Periodogram2
+
+    # for coverage, not very useful...
+    p = Periodogram2([1 2; 3 4], 1:2, fftfreq(2)); ps = fftshift(p)
+    @test ps.power == fftshift(p.power, 2)
+    @test (ps.freq1, ps.freq2) == (p.freq1, fftshift(p.freq2))
 end
 
 @testset "2D" begin
@@ -284,10 +293,11 @@ end
         end
     end
     # Test fftshift
-    p = periodogram(data2d)
+    p = periodogram(data2d); p_shifted = fftshift(p)
     @test fftshift(power(p)) == power(fftshift(p))
+    @test p_shifted == fftshift(p_shifted)
     f = freq(p)
-    @test (fftshift(f[1]),fftshift(f[2])) == freq(fftshift(p))
+    @test (fftshift(f[1]),fftshift(f[2])) == freq(p_shifted)
 end
 
 @testset "radial" begin
