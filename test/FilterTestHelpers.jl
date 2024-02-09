@@ -21,18 +21,18 @@ end
 
 function zpkfilter_eq(f1, f2)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test map(ComplexF64, sort(f1.z, lt=lt)) ≈ map(ComplexF64, sort(f2.z, lt=lt))
+        @test map(ComplexF64, sort(f1.z; lt)) ≈ map(ComplexF64, sort(f2.z; lt))
     end
-    @test map(ComplexF64, sort(f1.p, lt=lt)) ≈ map(ComplexF64, sort(f2.p, lt=lt))
+    @test map(ComplexF64, sort(f1.p; lt)) ≈ map(ComplexF64, sort(f2.p; lt))
     @test map(Float64, f1.k) ≈ map(Float64, f2.k)
 end
 
 function zpkfilter_eq(f1, f2, eps)
     if !isempty(f1.z) || !isempty(f2.z)
-        @test ≈(map(ComplexF64, sort(f1.z, lt=lt)), map(ComplexF64, sort(f2.z, lt=lt)), atol=eps)
+        @test ≈(map(ComplexF64, sort(f1.z; lt)), map(ComplexF64, sort(f2.z; lt)); atol=eps)
     end
-    @test ≈(map(ComplexF64, sort(f1.p, lt=lt)), map(ComplexF64, sort(f2.p, lt=lt)), atol=eps)
-    @test ≈(map(Float64, f1.k), map(Float64, f2.k), atol=eps)
+    @test ≈(map(ComplexF64, sort(f1.p; lt)), map(ComplexF64, sort(f2.p; lt)); atol=eps)
+    @test ≈(map(Float64, f1.k), map(Float64, f2.k); atol=eps)
 end
 
 loss(x::Real, y::Real) = abs(float(x) - float(y))/eps(float(x))
@@ -59,13 +59,13 @@ function tffilter_accuracy(f1, f2, accurate_f)
 end
 
 function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothing, eps=nothing)
-    z1, p1 = sort(f1.z, lt=lt), sort(f1.p, lt=lt)
-    z2, p2 = sort(f2.z, lt=lt), sort(f2.p, lt=lt)
-    accurate_z, accurate_p = sort(accurate_f.z, lt=lt), sort(accurate_f.p, lt=lt)
+    z1, p1 = sort(f1.z; lt), sort(f1.p; lt)
+    z2, p2 = sort(f2.z; lt), sort(f2.p; lt)
+    accurate_z, accurate_p = sort(accurate_f.z; lt), sort(accurate_f.p; lt)
     if !isempty(z1) || !isempty(z2) || !isempty(accurate_z)
         if eps !== nothing
-            @test ≈(z1, accurate_z, atol=eps)
-            @test ≈(z2, accurate_z, atol=eps)
+            @test ≈(z1, accurate_z; atol=eps)
+            @test ≈(z2, accurate_z; atol=eps)
         else
             @test z1 ≈ accurate_z
             @test z2 ≈ accurate_z
@@ -73,10 +73,10 @@ function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothin
         accuracy_check(loss(z1, accurate_z), loss(z2, accurate_z), "z", relerr)
     end
     if eps !== nothing
-        @test ≈(p1, accurate_p, atol=eps)
-        @test ≈(p2, accurate_p, atol=eps)
-        @test ≈(f1.k, accurate_f.k, atol=eps)
-        @test ≈(f2.k, accurate_f.k, atol=eps)
+        @test ≈(p1, accurate_p; atol=eps)
+        @test ≈(p2, accurate_p; atol=eps)
+        @test ≈(f1.k, accurate_f.k; atol=eps)
+        @test ≈(f2.k, accurate_f.k; atol=eps)
     else
         @test p1 ≈ accurate_p
         @test p2 ≈ accurate_p

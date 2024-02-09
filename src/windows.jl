@@ -246,7 +246,7 @@ function tukey(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     # if α is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
     # here, it will blow up below.
-    abs(α) <= eps() && return rect(n; padding=padding, zerophase=zerophase)
+    abs(α) <= eps() && return rect(n; padding, zerophase)
 
     makewindow(n, padding, zerophase) do x
         if x <= -(1-α)/2

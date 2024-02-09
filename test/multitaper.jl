@@ -157,7 +157,7 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
     @test coh ≈ coh4
 
     # Construct the config via an `MTConfig`
-    mt_config = MTConfig{T}(size(phase_shift, 2); fs=fs)
+    mt_config = MTConfig{T}(size(phase_shift, 2); fs)
     config = MTCoherenceConfig(size(phase_shift, 1), mt_config; freq_range)
     coh5 = avg_coh(mt_coherence(phase_shift, config))
     @test coh ≈ coh5
@@ -261,7 +261,7 @@ end
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
 
-    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
+    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCoherenceConfig(2, mt_config; freq_range = (10,15), demean=true)
     result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1), config))
     @test result[2, 1] ≈ coh
@@ -288,7 +288,7 @@ end
     csd_array_multitaper_values = csd_array_multitaper_values_re + im*csd_array_multitaper_values_im
 
     signal = dropdims(data; dims=1)
-    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
+    mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCrossSpectraConfig(2, mt_config; demean=true)
     result = mt_cross_power_spectra(signal, config)
     @test signal isa Matrix{Float64}
@@ -304,7 +304,7 @@ end
     @test power(result) ≈ power(result2)
 
     # Float32 output:
-    mt_config32 = DSP.Periodograms.dpss_config(Float32, n_samples; fs=fs, keep_only_large_evals=true, weight_by_evals=true)
+    mt_config32 = DSP.Periodograms.dpss_config(Float32, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCrossSpectraConfig(size(signal, 1), mt_config32; demean=true)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float32}
@@ -329,24 +329,24 @@ end
     t = (0:1023) ./ fs
     noise = vec(readdlm(joinpath(@__DIR__, "data", "noise.txt")))
     signal = sin.(2π * 12.0 * t) .+ 3 * noise
-    cs = mt_cross_power_spectra(reshape(signal, 1, :); fs=fs)
-    p = mt_pgram(signal; fs=fs)
+    cs = mt_cross_power_spectra(reshape(signal, 1, :); fs)
+    p = mt_pgram(signal; fs)
 
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # out-of-place with config
-    config = MTCrossSpectraConfig{Float64}(1, length(signal); fs=fs)
+    config = MTCrossSpectraConfig{Float64}(1, length(signal); fs)
     cs = mt_cross_power_spectra(reshape(signal, 1, :), config)
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # in-place without config
     out = allocate_output(config)
-    cs = mt_cross_power_spectra!(out, reshape(signal, 1, :); fs=fs)
+    cs = mt_cross_power_spectra!(out, reshape(signal, 1, :); fs)
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # rm once two-sided FFTs supported
-    @test_throws ArgumentError mt_cross_power_spectra(reshape(complex.(signal), 1, :); fs=fs)
+    @test_throws ArgumentError mt_cross_power_spectra(reshape(complex.(signal), 1, :); fs)
 end

@@ -29,8 +29,8 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         buffer::Vector{Si}=zeros(Si, max(nfft, 0))) where {Ti<:AbstractVector,Si,Wi}
 
         # n = noverlap is a problem - the algorithm will not terminate.
-        (0 ≤ noverlap < n) || throw(DomainError((noverlap=noverlap, n=n), "noverlap must be between zero and n"))
-        nfft >= n || throw(DomainError((nfft=nfft, n=n), "nfft must be >= n"))
+        (0 ≤ noverlap < n) || throw(DomainError((; noverlap, n), "noverlap must be between zero and n"))
+        nfft >= n || throw(DomainError((; nfft, n), "nfft must be >= n"))
         length(buffer) == nfft ||
             throw(ArgumentError("buffer length ($(length(buffer))) must equal `nfft` ($nfft)"))
 
@@ -268,7 +268,7 @@ function periodogram(s::AbstractVector{T}; onesided::Bool=T<:Real,
                      nfft::Int=nextfastfft(length(s)), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T<:Number
     onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
-    nfft >= length(s) || throw(DomainError((nfft=nfft, n=length(s)), "nfft must be >= n = length(s)"))
+    nfft >= length(s) || throw(DomainError((; nfft, n=length(s)), "nfft must be >= n = length(s)"))
 
     win, norm2 = compute_window(window, length(s))
     if nfft == length(s) && win === nothing && isa(s, StridedArray)
@@ -525,7 +525,7 @@ function spectrogram(s::AbstractVector{T}, n::Int=length(s)>>3, noverlap::Int=n>
                      nfft::Int=nextfastfft(n), fs::Real=1,
                      window::Union{Function,AbstractVector,Nothing}=nothing) where T
 
-    out = stft(s, n, noverlap, PSDOnly(); onesided=onesided, nfft=nfft, fs=fs, window=window)
+    out = stft(s, n, noverlap, PSDOnly(); onesided, nfft, fs, window)
     Spectrogram(out, onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs),
                 (n/2 : n-noverlap : (size(out,2)-1)*(n-noverlap)+n/2) / fs)
 

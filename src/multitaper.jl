@@ -73,7 +73,7 @@ function dpss_config(::Type{T}, n_samples; nw=4, ntapers = 2nw-1, fs=1, keep_onl
         taper_weights = fill(1/ntapers, ntapers)
     end
 
-    return MTConfig{T}(n_samples; window=window, nw=nw, ntapers=ntapers, taper_weights=taper_weights, fs=fs, kwargs...)
+    return MTConfig{T}(n_samples; window, nw, ntapers, taper_weights, fs, kwargs...)
 end
 
 
@@ -179,9 +179,9 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   nfft::Int=nextfastfft(length(s)), fs::Real=1,
                   nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
                   window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s); fs = fs,
-        nfft = nfft, window = window, nw = nw, ntapers = ntapers, onesided = onesided,
-        fft_flags = FFTW.ESTIMATE)
+    config = MTConfig{T}(length(s); fs,
+        nfft, window, nw, ntapers, onesided,
+        fft_flags=FFTW.ESTIMATE)
     out = allocate_output(config)
     return mt_pgram!(out, s, config)
 end
@@ -190,9 +190,9 @@ function mt_pgram!(output, s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     nfft::Int=nextfastfft(length(s)), fs::Real=1,
     nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
     window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s); fs = fs,
-    nfft = nfft, window = window, nw = nw, ntapers = ntapers, onesided = onesided,
-    fft_flags = FFTW.ESTIMATE)
+    config = MTConfig{T}(length(s); fs,
+        nfft, window, nw, ntapers, onesided,
+        fft_flags=FFTW.ESTIMATE)
     return mt_pgram!(output, s, config)
 end
 
@@ -283,7 +283,7 @@ end
 # Create the `MTConfig` if it's not passed
 function MTSpectrogramConfig{T}(n_samples::Int, samples_per_window::Int,
                                 n_overlap_samples::Int; fs=1, kwargs...) where {T}
-    return MTSpectrogramConfig(n_samples, MTConfig{T}(samples_per_window; fs=fs, kwargs...), n_overlap_samples)
+    return MTSpectrogramConfig(n_samples, MTConfig{T}(samples_per_window; fs, kwargs...), n_overlap_samples)
 end
 
 """
@@ -478,8 +478,8 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false,
                                  freq_range=nothing,
                                  ensure_aligned = T == Float32 || T == Complex{Float32},
                                  kwargs...) where {T}
-    mt_config = MTConfig{T}(n_samples; fs=fs, kwargs...)
-    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean=demean, freq_range=freq_range, ensure_aligned=ensure_aligned)
+    mt_config = MTConfig{T}(n_samples; fs, kwargs...)
+    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean, freq_range, ensure_aligned)
 end
 
 # extra method to ensure it's ok to pass the redundant type parameter {T}
@@ -543,7 +543,7 @@ mt_cross_power_spectra!
 
 function mt_cross_power_spectra!(output, signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra!(output, signal, config)
 end
@@ -639,7 +639,7 @@ mt_cross_power_spectra
 
 function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra(signal, config)
 end
