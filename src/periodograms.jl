@@ -4,7 +4,8 @@ module Periodograms
 using LinearAlgebra: mul!
 using ..Util, ..Windows
 using Statistics: mean!
-export arraysplit, nextfastfft, periodogram, WelchConfig, welch_pgram,
+export arraysplit, nextfastfft, periodogram,
+       WelchConfig, welch_pgram, welch_pgram!,
        spectrogram, power, freq, stft,
        MTConfig, mt_pgram, mt_pgram!,
        MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
@@ -462,7 +463,7 @@ Computes the Welch periodogram of the given signal using the predefined config o
 [WelchConfig](@ref).
 """
 function welch_pgram(s::AbstractVector{T}, config::WelchConfig) where T<:Number
-    out = zeros(fftabs2type(T), config.onesided ? (config.nfft >> 1)+1 : config.nfft)
+    out = Vector{fftabs2type(T)}(undef, config.onesided ? (config.nfft >> 1)+1 : config.nfft)
     return welch_pgram_helper!(out, s, config)
 end
 
@@ -472,7 +473,7 @@ end
 Computes the Welch periodogram of the given signal, storing the result in `out`, using the
 predefined config object [WelchConfig](@ref).
 """
-function welch_pgram!(out::AbstractVector, in::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
+function welch_pgram!(out::AbstractVector, s::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
     if length(out) != length(config.freq)
         throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
             got `length(output)` = $(length(out)) and `length(config.freq)` = $(length(config.freq))"""))
@@ -480,11 +481,12 @@ function welch_pgram!(out::AbstractVector, in::AbstractVector{T}, config::WelchC
         throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected "*
                             "type: $(fftabs2type(T))."))
     end
-    welch_pgram_helper!(out, in, config)
+    welch_pgram_helper!(out, s, config)
 end
 
-function welch_pgram_helper!(out, in, config)
-    sig_split = arraysplit(in, config.nsamples, config.noverlap, config.nfft, config.window;
+function welch_pgram_helper!(out, s, config)
+    fill!(out, 0)
+    sig_split = arraysplit(s, config.nsamples, config.noverlap, config.nfft, config.window;
                            buffer=config.inbuf)
 
     r = length(sig_split) * config.r

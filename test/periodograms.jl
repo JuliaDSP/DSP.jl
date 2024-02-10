@@ -222,6 +222,13 @@ end
     config = WelchConfig(data; n=length(data), noverlap=0, window=hamming, nfft=32)
     @test power(welch_pgram(data, config)) == expected
 
+    # test welch_pgram!
+    out = similar(expected)
+    @test power(welch_pgram!(out, data, config)) == expected
+    @test power(welch_pgram!(out, data, length(data), 0; window=hamming, nfft=32)) == expected
+    @test_throws ArgumentError welch_pgram!(convert(Vector{Float32}, out), data, config)
+    @test_throws DimensionMismatch welch_pgram!(empty!(out), data, config)
+
     # Test fftshift
     p = periodogram(data)
     @test power(p) == power(fftshift(p))
