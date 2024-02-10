@@ -363,20 +363,7 @@ forward_plan(X::AbstractArray{T}, Y::AbstractArray{Complex{T}}) where {T<:Union{
 forward_plan(X::AbstractArray{T}, Y::AbstractArray{T}) where {T<:Union{ComplexF32, ComplexF64}} =
     plan_fft(X)
 
-"""
-    AbstractPGramConfig
-
-Abstract type representing a configuration object used for computing a periodogram.
-
-# See Also
-
-- [`MTConfig`](@ref)
-- [`WelchConfig`](@ref)
-
-"""
-abstract type AbstractPGramConfig end
-
-struct WelchConfig{F,Fr,W,P,T1,T2,R} <: AbstractPGramConfig
+struct WelchConfig{F,Fr,W,P,T1,T2,R}
     nsamples::Int
     noverlap::Int
     onesided::Bool
@@ -413,14 +400,14 @@ returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
 
 """
 function WelchConfig(nsamples, ::Type{T}; n::Int=nsamples >> 3, noverlap::Int=n >> 1,
-    onesided::Bool=T<:Real, nfft::Int=nextfastfft(n),
+    onesided::Bool=T <: Real, nfft::Int=nextfastfft(n),
     fs::Real=1, window::Union{Function,AbstractVector,Nothing}=nothing) where T
 
-    onesided && T <: Complex && error("cannot compute one-sided FFT of a complex signal")
-    nfft >= n || error("nfft must be >= n")
+    onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
+    nfft >= n || throw(DomainError((; nfft, n), "nfft must be >= n"))
 
     win, norm2 = compute_window(window, n)
-    r = fs*norm2
+    r = fs * norm2
     inbuf = zeros(float(T), nfft)
     outbuf = Vector{fftouttype(T)}(undef, T<:Real ? (nfft >> 1)+1 : nfft)
     plan = forward_plan(inbuf, outbuf)
@@ -465,7 +452,7 @@ description of optional keyword arguments.
 """
 function welch_pgram!(output::AbstractVector, s::AbstractVector, n::Int=length(s)>>3, noverlap::Int=n>>1;
                       kwargs...)
-    welch_pgram!(output, s, WelchConfig(s; n, overlap, kwargs...))
+    welch_pgram!(output, s, WelchConfig(s; n, noverlap, kwargs...))
 end
 
 """
@@ -486,12 +473,11 @@ Computes the Welch periodogram of the given signal, storing the result in `out`,
 predefined config object [WelchConfig](@ref).
 """
 function welch_pgram!(out::AbstractVector, in::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
-    if length(output) != length(config.freq)
+    if length(out) != length(config.freq)
         throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
-            got `length(output) = $(length(output)) and `length(config.freq)` = $(length(config.freq))"""))
-    end
-    if eltype(out) == fftabs2type(T)
-        throw(ArgumentError("Eltype of output ($eltype(out)) doesn't matched the expected "*
+            got `length(output)` = $(length(out)) and `length(config.freq)` = $(length(config.freq))"""))
+    elseif eltype(out) != fftabs2type(T)
+        throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected "*
                             "type: $(fftabs2type(T))."))
     end
     welch_pgram_helper!(out, in, config)
@@ -501,7 +487,7 @@ function welch_pgram_helper!(out, in, config)
     sig_split = arraysplit(in, config.nsamples, config.noverlap, config.nfft, config.window;
                            buffer=config.inbuf)
 
-    r = length(sig_split)*config.r
+    r = length(sig_split) * config.r
 
     for sig in sig_split
         mul!(config.outbuf, config.plan, sig)
