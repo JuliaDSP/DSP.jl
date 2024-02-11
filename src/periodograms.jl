@@ -387,8 +387,8 @@ end
              onesided=eltype<:Real, nfft=nextfastfft(n),
              fs=1, window=nothing)
 
-Captures all configuration options for the [welch_pgram](@ref) in a single struct. (Akin to
-[MTConfig](@ref)). When passed on the second argument of [`welch_pgram`](@ref), computes the
+Captures all configuration options for [`welch_pgram`](@ref) in a single struct (akin to
+[`MTConfig`](@ref)). When passed on the second argument of [`welch_pgram`](@ref), computes the
 periodogram based on segments with `n` samples with overlap of `noverlap` samples, and
 returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
 [`periodogram`](@ref) for description of optional keyword arguments.
@@ -459,8 +459,7 @@ end
 """
     welch_pgram(signal::AbstractVector, config::WelchConfig)
 
-Computes the Welch periodogram of the given signal using the predefined config object
-[WelchConfig](@ref).
+Computes the Welch periodogram of the given signal using a predefined [`WelchConfig`](@ref) object.
 """
 function welch_pgram(s::AbstractVector{T}, config::WelchConfig) where T<:Number
     out = Vector{fftabs2type(T)}(undef, config.onesided ? (config.nfft >> 1)+1 : config.nfft)
@@ -470,8 +469,8 @@ end
 """
     welch_pgram!(out::AbstractVector, in::AbstractVector, config::WelchConfig)
 
-Computes the Welch periodogram of the given signal, storing the result in `out`, using the
-predefined config object [WelchConfig](@ref).
+Computes the Welch periodogram of the given signal, storing the result in `out`,
+using a predefined [`WelchConfig`](@ref) object.
 """
 function welch_pgram!(out::AbstractVector, s::AbstractVector{T}, config::WelchConfig{T}) where T<:Number
     if length(out) != length(config.freq)
