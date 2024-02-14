@@ -244,19 +244,15 @@ function normalize_complex_freq(w::Real, fs::Real)
     f
 end
 
-struct Lowpass{T} <: FilterType
-    w::T
-end
-
 """
     Lowpass(Wn::Real)
 
 Low pass filter with cutoff frequency `Wn`.
 """
-Lowpass(w::Real) = Lowpass{typeof(w/1)}(w)
-
-struct Highpass{T} <: FilterType
+struct Lowpass{T<:Real} <: FilterType
     w::T
+    Lowpass{T}(w::Real) where T <: Real = new{typeof(one(T) / 1)}(w)
+    Lowpass(w::T) where T = Lowpass{T}(w)
 end
 
 """
@@ -264,11 +260,10 @@ end
 
 High pass filter with cutoff frequency `Wn`.
 """
-Highpass(w::Real) = Highpass{typeof(w/1)}(w)
-
-struct Bandpass{T} <: FilterType
-    w1::T
-    w2::T
+struct Highpass{T<:Real} <: FilterType
+    w::T
+    Highpass{T}(w::Real) where T <: Real = new{typeof(one(T) / 1)}(w)
+    Highpass(w::T) where T = Highpass{T}(w)
 end
 
 """
@@ -276,29 +271,31 @@ end
 
 Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
-function Bandpass(w1::Real, w2::Real)
-    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-    Bandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
-end
-
-struct Bandstop{T} <: FilterType
+struct Bandpass{T<:Real} <: FilterType
     w1::T
     w2::T
-end
-
-struct ComplexBandpass{T} <: FilterType
-    w1::T
-    w2::T
+    function Bandpass{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
+        new{typeof(one(T) / 1)}(w1, w2)
+    end
+    Bandpass(w1::T, w2::V) where {T<:Real,V<:Real} =
+        Bandpass{promote_type(T, V)}(w1, w2)
 end
 
 """
     ComplexBandpass(Wn1, Wn2)
 
-Complex band pass filter with stop band frequencies (`Wn1`, `Wn2`).
+Complex band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
-function ComplexBandpass(w1::Real, w2::Real)
-    w1 < w2 || error("w1 must be less than w2")
-    ComplexBandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
+struct ComplexBandpass{T<:Real} <: FilterType
+    w1::T
+    w2::T
+    function ComplexBandpass{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || error("w1 must be less than w2")
+        new{typeof(one(T) / 1)}(w1, w2)
+    end
+    ComplexBandpass(w1::T, w2::V) where {T,V} =
+        ComplexBandpass{promote_type(T, V)}(w1, w2)
 end
 
 """
@@ -306,9 +303,15 @@ end
 
 Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
-function Bandstop(w1::Real, w2::Real)
-    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-    Bandstop{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
+struct Bandstop{T<:Real} <: FilterType
+    w1::T
+    w2::T
+    function Bandstop{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
+        new{typeof(one(T) / 1)}(w1, w2)
+    end
+    Bandstop(w1::T, w2::V) where {T,V} =
+        Bandstop{promote_type(T, V)}(w1, w2)
 end
 
 #
@@ -608,7 +611,7 @@ function firprototype(n::Integer, ftype::ComplexBandpass, fs::Real)
     w_center = (w2 + w1) / 2
     w_cutoff = (w2 - w1) / 2
     lp = Lowpass(w_cutoff)
-    firprototype(n, lp, fs) .* cis.(π * w_center * (0:(n-1)))
+    firprototype(n, lp, fs) .* cispi.(w_center * (0:(n-1)))
 end
 
 function firprototype(n::Integer, ftype::Highpass, fs::Real)
