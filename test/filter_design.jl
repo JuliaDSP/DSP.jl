@@ -1012,6 +1012,13 @@ end
     winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandpass_fc0.1_0.2_fs1.0.txt"),'\t')
     @test winfirtaps_jl ≈ winfirtaps_scipy
 
+    @test_throws ArgumentError ComplexBandpass(2, 1)
+
+    # TODO: write actual tests for ComplexBandpass
+    winfirtaps_jl = digitalfilter(ComplexBandpass(0.1, 0.2), FIRWindow(hamming(128), scale=false); fs=1)
+    winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_128_complexbandpass_fc1.txt"), '\t', ComplexF64)
+    @test winfirtaps_jl ≈ winfirtaps_scipy  # replace with real test data
+
     @test_throws ArgumentError digitalfilter(Bandstop(0.1, 0.2),FIRWindow(hamming(128), scale=false); fs=1)
 
     winfirtaps_jl    = digitalfilter(Bandstop(0.1, 0.2),FIRWindow(hamming(129), scale=false); fs=1)
