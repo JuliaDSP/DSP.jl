@@ -26,22 +26,21 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     k::Int
 
     function ArraySplit{Ti,Si,Wi}(s, n, noverlap, nfft, window;
-        buffer::Union{Nothing,Vector{Si}}=nothing) where {Ti<:AbstractVector,Si,Wi}
+        buffer::Vector{Si}=zeros(Si, max(nfft, 0))) where {Ti<:AbstractVector,Si,Wi}
         
         # n = noverlap is a problem - the algorithm will not terminate.
         (0 ≤ noverlap < n) || error("noverlap must be between zero and n")
         nfft >= n || error("nfft must be >= n")
-        buf_ = isnothing(buffer) ? zeros(Si, nfft) : buffer
-        length(buf_) == nfft ||
-            error("buffer length ($(length(buffer)) must be length of `nfft` ($nfft)")
+        length(buffer) == nfft ||
+            throw(ArgumentError("buffer length ($(length(buffer))) must equal `nfft` ($nfft)"))
 
-        new{Ti,Si,Wi}(s, buf_, n, noverlap, window, length(s) >= n ? div((length(s) - n),
+        new{Ti,Si,Wi}(s, buffer, n, noverlap, window, length(s) >= n ? div((length(s) - n),
             n - noverlap) + 1 : 0)
     end
 
 end
-ArraySplit(s::AbstractVector, n, noverlap, nfft, window; buffer=nothing) =
-    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window; buffer)
+ArraySplit(s::AbstractVector, n, noverlap, nfft, window; kwargs...) =
+    ArraySplit{typeof(s),fftintype(eltype(s)),typeof(window)}(s, n, noverlap, nfft, window; kwargs...)
 
 function Base.getindex(x::ArraySplit{T,S,Nothing}, i::Int) where {T,S}
     (i >= 1 && i <= x.k) || throw(BoundsError())
@@ -70,7 +69,7 @@ of length `m`. Iterating or indexing the returned AbstractVector
 always yields the same Vector with different contents.
 Optionally provide a buffer of length `nfft`
 """
-arraysplit(s, n, noverlap, nfft=n, window=nothing; buffer=nothing) = ArraySplit(s, n, noverlap, nfft, window; buffer)
+arraysplit(s, n, noverlap, nfft=n, window=nothing; kwargs...) = ArraySplit(s, n, noverlap, nfft, window; kwargs...)
 
 ## Make collect() return the correct split arrays rather than repeats of the last computed copy
 Base.collect(x::ArraySplit) = collect(copy(a) for a in x)
