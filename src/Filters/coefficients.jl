@@ -181,7 +181,7 @@ end
 
 function _rev_zeropad(v::AbstractVector{T}, n, pad_len=n) where T
     padded_v = zeros(T, length(v) + n)
-    copyto!(padded_v, 1 + pad_len, Iterators.reverse(v))
+    return copyto!(padded_v, 1 + pad_len, Iterators.reverse(v))
 end
 
 coef_s(p::LaurentPolynomial) = _rev_zeropad(coeffs(p), firstindex(p), 0)
@@ -341,8 +341,7 @@ function groupzp(z, p)
         end
         i += 1
     end
-    ret = (groupedz, splice!(p, 1:n))
-    ret
+    return (groupedz, splice!(p, 1:n))
 end
 
 # Sort zeros or poles lexicographically (so that poles are adjacent to
