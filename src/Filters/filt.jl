@@ -120,11 +120,18 @@ filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSection
 
 """
     DF2TFilter(coef[, si])
+    DF2TFilter(coef[, sitype::Type])
 
 Construct a stateful direct form II transposed filter with
-coefficients `coef`. `si` is an optional array representing the
-initial filter state (defaults to zeros). If `f` is a
-`PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
+coefficients `coef`.
+
+One can optionally specify as the second argument either
+- `si`, an array representing the initial filter state, or
+- `sitype`, the eltype of a zeroed `si`
+
+The initial filter state defaults to zeros if called with one argument.
+
+If `f` is a `PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
 filtering is implemented directly. If `f` is a `ZeroPoleGain`
 object, it is first converted to a `SecondOrderSections` object.
 """
@@ -148,10 +155,15 @@ struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
     end
 end
 
+DF2TFilter(coef::Union{PolynomialRatio{:z,T},Biquad{:z,T}}, state::Vector{S}) where {T,S} =
+    DF2TFilter{typeof(coef),Vector{S}}(coef, state)
+
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, state::Matrix{S}) where {T,G,S} =
+    DF2TFilter{SecondOrderSections{:z,T,G},Matrix{S}}(coef, state)
+
 ## PolynomialRatio
-DF2TFilter(coef::PolynomialRatio{:z,T},
-           state::Vector{S}=zeros(T, max(length(coefa(coef)), length(coefb(coef)))-1)) where {T,S} =
-    DF2TFilter{PolynomialRatio{:z,T}, Vector{S}}(coef, state)
+DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1))
 
 function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
@@ -183,9 +195,8 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
 end
 
 ## SecondOrderSections
-DF2TFilter(coef::SecondOrderSections{:z,T,G},
-           state::Matrix{S}=zeros(promote_type(T, G), 2, length(coef.biquads))) where {T,G,S} =
-    DF2TFilter{SecondOrderSections{:z,T,G}, Matrix{S}}(coef, state)
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T) where {T,G,V} =
+    DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads)))
 
 function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
@@ -194,8 +205,9 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix
 end
 
 ## Biquad
-DF2TFilter(coef::Biquad{:z,T}, state::Vector{S}=zeros(T, 2)) where {T,S} =
-    DF2TFilter{Biquad{:z,T}, Vector{S}}(coef, state)
+DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), 2))
+
 function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     si = f.state
@@ -203,12 +215,24 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::Abstrac
     out
 end
 
-# Variant that allocates the output
-filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector) where {T} =
-    filt!(Vector{T}(undef, length(x)), f, x)
+"""
+    filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V}
+
+Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
+
+!!! warning
+    The output array has eltype `promote_type(T, V)`, where
+    `T` is the eltype of the filter state.\n
+    For more control over the output type, provide a preallocated
+    output array `out` to `filt!(out, f, x)`.
+"""
+filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
+    filt!(Vector{promote_type(T, V)}(undef, length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
+DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
+    DF2TFilter(convert(SecondOrderSections, coef), arg)
 
 #
 # filtfilt
