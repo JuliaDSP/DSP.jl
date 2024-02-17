@@ -109,35 +109,36 @@ function _filt_fir!(out, b, x, si, col)
 end
 
 #
-# filt implementation for FIR filters (faster than Base)
+# filt implementation for FIR filters
 #
+
+### NOTE ###
+# Fragile because of the impact of @inbounds and checkbounds
+# on the effects system
 
 # Transposed direct form II
 @generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
     silen = N - 1
     si_end = Symbol(:si_, silen)
     SMALL_FILT_VECT_CUTOFF = 18
-    si_check = N > SMALL_FILT_VECT_CUTOFF ? :(nothing) : :(@assert length(siarr) == $silen)
+    if N > SMALL_FILT_VECT_CUTOFF
+        store_out = :(@inbounds out[i, col] = val)
+    else
+        store_out = :(out[i, col] = val)
+    end
 
-    q = quote
-        $si_check
+    quote
         Base.@nextract $silen si siarr
+        checkbounds(x, :, col)
+        size(x) == size(out) || throw(DimensionMismatch("size(x) != size(out)"))
         for i in axes(x, 1)
             xi = x[i, col]
-            val = muladd(xi, b[1], si_1)
-            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1], si_{j+1}))
-            $si_end = b[N] * xi
-            out[i, col] = val
+            val = muladd(xi, b[1].value, si_1)
+            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1].value, si_{j+1}))
+            $si_end = xi * b[N].value
+            $store_out
         end
     end
-
-    if N > SMALL_FILT_VECT_CUTOFF
-        loop_args = q.args[6].args[2].args
-        for i in (2, 10)
-            loop_args[i] = :(@inbounds $(loop_args[i]))
-        end
-    end
-    q
 end
 
 # Convert array filter tap input to tuple for small-filtering
@@ -146,9 +147,10 @@ function _small_filt_fir!(
         si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
-    b = ntuple(j -> @inbounds(h[j]), Val(bs))
+    length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
+    b = ntuple(j -> VecElement(h[j]), Val(bs))
     for col in axes(x, 2)
-        v_si = view(si, :, N > 1 ? col : 1)
+        v_si = N > 1 ? view(si, :, col) : si
         _filt_fir!(out, b, x, v_si, col)
     end
 end
