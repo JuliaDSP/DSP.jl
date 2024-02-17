@@ -122,6 +122,8 @@ end
     q = quote
         $si_check
         Base.@nextract $silen si siarr
+        checkbounds(x, :, col)
+        size(x) == size(out) || throw(DimensionMismatch("size(x) != size(out)"))
         for i in axes(x, 1)
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
@@ -132,10 +134,8 @@ end
     end
 
     if N > SMALL_FILT_VECT_CUTOFF
-        loop_args = q.args[6].args[2].args
-        for i in (2, 10)
-            loop_args[i] = :(@inbounds $(loop_args[i]))
-        end
+        loop_args = q.args[10].args[2].args
+        loop_args[10] = :(@inbounds $(loop_args[10]))
     end
     q
 end
