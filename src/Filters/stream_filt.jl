@@ -630,6 +630,19 @@ end
 
 function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
     bufLen         = outputlength(self, length(x))
+    # In some cases when `filt(::FIRFilter{FIRArbitrary}, x)` is called
+    # with certain values of `x`, `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
+    # tries to write one sample too many to the buffer and a `BoundsError`
+    # is thrown.  Add one extra sample to catch these exceptional cases.
+    #
+    # See https://github.com/JuliaDSP/DSP.jl/issues/317
+    #
+    # FIXME: Remove this if and when the code in
+    #        `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
+    #        is updated to properly account for pathological arbitrary rates.
+    if Tk <: FIRArbitrary
+        bufLen += 1
+    end
     buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
