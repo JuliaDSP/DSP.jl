@@ -541,7 +541,7 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
     rv = reverse!(eigvec; dims=2)::Matrix{Float64}
 
     # Slepian's convention; taper starts with a positive element
-    sgn = fill!(resize!(dv, ntapers), 1)
+    sgn = fill!(resize!(dv, ntapers), 1) # save one allocation by re-purposing dv
     for i = 2:2:size(rv, 2)
         s = zero(eltype(rv))
         for j = 1:n
