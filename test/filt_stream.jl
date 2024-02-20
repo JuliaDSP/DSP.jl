@@ -1,18 +1,18 @@
 using DSP, Test
 
 # Naive rational resampler
-function naivefilt(h::Vector, x::Vector, resamplerate::Union{Integer, Rational}=1)
+function naivefilt(h::Vector, x::Vector{T}, resamplerate::Union{Integer, Rational}=1) where T
 
     upfactor     = numerator(resamplerate)
     downfactor   = denominator(resamplerate)
     xLen         = length(x)
-    xZeroStuffed = zeros(eltype(x), length(x) * upfactor)
+    xZeroStuffed = zeros(T, xLen * upfactor)
 
-    for n in 0:length(x)-1
+    for n in 0:xLen-1
         xZeroStuffed[n*upfactor+1] = x[n+1]
     end
 
-    y = filt(h, one(eltype(x)), xZeroStuffed)
+    y = filt(h, one(T), xZeroStuffed)
     y = [y[n] for n = 1:downfactor:length(y)]
 end
 
@@ -45,14 +45,16 @@ function naivefilt(h::Vector, x::Vector, resamplerate::AbstractFloat, numfilters
     return y
 end
 
-# Disable time and printf macros when not running interactivly ( for travis )
+# Disable time and printf macros when not running interactively ( for travis )
 if isinteractive()
     macro timeifinteractive(ex)
         :(@time $(esc(ex)))
     end
 
-    macro printfifinteractive(args...)
-        :(@printf($(map(esc, args)...)))
+    using Printf: @printf
+
+    macro printfifinteractive(s, args...)
+        :(@printf($s, $(map(esc, args)...)))
     end
 else
     macro timeifinteractive(ex)
@@ -79,36 +81,36 @@ function test_singlerate(h, x)
     @printfifinteractive( "____ _ _  _ ____ _    ____    ____ ____ ___ ____\n" )
     @printfifinteractive( "[__  | |\\ | | __ |    |___    |__/ |__|  |  |___\n" )
     @printfifinteractive( "___] | | \\| |__] |___ |___    |  \\ |  |  |  |___\n" )
-    @printfifinteractive( "\nTesting single-rate fitering, h is %s, x is %s. xLen = %d, hLen = %d", string(eltype(h)), string(eltype(x)), xLen, hLen )
+    @printfifinteractive( "\nTesting single-rate filtering, h::%s, x::%s. xLen = %d, hLen = %d\n", typeof(h), typeof(x), xLen, hLen )
 
-    @printfifinteractive( "\n\tBase.filt\n\t\t")
+    @printfifinteractive( "\n\tfilt\n\t\t")
     @timeifinteractive naiveResult = filt(h, 1.0, x)
 
-    @printfifinteractive( "\n\tDSP.filt( h, x, 1//1 )\n\t\t" )
-    @timeifinteractive statelesResult = DSP.filt( h, x )
-    @test naiveResult ≈ statelesResult
+    @printfifinteractive( "\n\tfilt( h, x, 1//1 )\n\t\t" )
+    @timeifinteractive statelessResult = filt( h, x )
+    @test naiveResult ≈ statelessResult
 
-    @printfifinteractive( "\n\tDSP.filt. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = DSP.FIRFilter(h, 1//1)
+    @printfifinteractive( "\n\tfilt. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
+    myfilt = FIRFilter(h, 1//1)
     @timeifinteractive begin
-        y1 = DSP.filt(myfilt, x1)
-        y2 = DSP.filt(myfilt, x2)
+        y1 = filt(myfilt, x1)
+        y2 = filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
     @test naiveResult ≈ statefulResult
 
-    @printfifinteractive( "\n\tDSP.filt filt. Piecewise for first %d inputs\n\t\t", length(x1) )
-    DSP.reset!(myfilt)
+    @printfifinteractive( "\n\tfilt filt. Piecewise for first %d inputs\n\t\t", length(x1) )
+    reset!(myfilt)
     @timeifinteractive begin
         for i in 1:length(x1)
-            y1[i] = DSP.filt(myfilt, x1[i:i])[1]
+            y1[i] = filt(myfilt, x1[i:i])[1]
         end
-        y2 = DSP.filt(myfilt, x2)
+        y2 = filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
     @test naiveResult ≈ piecewiseResult
 
-    DSP.reset!(myfilt)
+    reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
@@ -128,37 +130,37 @@ function test_decimation(h, x, decimation)
     @printfifinteractive( "___  ____ ____ _ _  _ ____ ___ _ ____ _  _ \n" )
     @printfifinteractive( "|  \\ |___ |    | |\\/| |__|  |  | |  | |\\ | \n" )
     @printfifinteractive( "|__/ |___ |___ | |  | |  |  |  | |__| | \\| \n" )
-    @printfifinteractive( "\nTesting decimation. h::%s, x::%s. xLen = %d, hLen = %d, decimation = %d", string(typeof(h)), string(typeof(h)), xLen, hLen, decimation )
+    @printfifinteractive( "\nTesting decimation. h::%s, x::%s. xLen = %d, hLen = %d, decimation = %d\n", typeof(h), typeof(x), xLen, hLen, decimation )
 
     @printfifinteractive( "\n\tNaive decimation\n\t\t")
     @timeifinteractive naiveResult = naivefilt(h, x, 1//decimation)
 
-    @printfifinteractive( "\n\tDSP.filt( h, x, 1//%d)\n\t\t", decimation )
-    @timeifinteractive statelesResult = DSP.filt(h, x, 1//decimation)
-    @test naiveResult ≈ statelesResult
+    @printfifinteractive( "\n\tfilt( h, x, 1//%d)\n\t\t", decimation )
+    @timeifinteractive statelessResult = filt(h, x, 1//decimation)
+    @test naiveResult ≈ statelessResult
 
-    @printfifinteractive( "\n\tDSP.filt decimation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = DSP.FIRFilter(h, 1//decimation)
+    @printfifinteractive( "\n\tfilt decimation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
+    myfilt = FIRFilter(h, 1//decimation)
     @timeifinteractive begin
-        y1 = DSP.filt(myfilt, x1)
-        y2 = DSP.filt(myfilt, x2)
+        y1 = filt(myfilt, x1)
+        y2 = filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
     @test naiveResult ≈ statefulResult
 
-    @printfifinteractive( "\n\tDSP.filt decimation. Piecewise for first %d inputs.\n\t\t", length(x1) )
-    DSP.reset!(myfilt)
+    @printfifinteractive( "\n\tfilt decimation. Piecewise for first %d inputs.\n\t\t", length(x1) )
+    reset!(myfilt)
     y1 = similar( x, 0 )
     @timeifinteractive begin
         for i in 1:length(x1)
-            append!(y1, DSP.filt(myfilt, x1[i:i]))
+            append!(y1, filt(myfilt, x1[i:i]))
         end
-        y2 = DSP.filt(myfilt, x2)
+        y2 = filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
     @test ≈(naiveResult, piecewiseResult, atol=sqrt(eps(real(one(eltype(x))))))
 
-    DSP.reset!(myfilt)
+    reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
@@ -167,8 +169,8 @@ end
 # Interpolation
 #
 
-function test_interpolation(h, x, interpolation)
-    xLen       = length(x)
+function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpolation) where {T,V}
+    xLen = length(x)
     hLen       = length(h)
     pivotPoint = min(rand(50:150), div(xLen, 4))
     x1         = x[1:pivotPoint]
@@ -178,44 +180,44 @@ function test_interpolation(h, x, interpolation)
     @printfifinteractive( "_ _  _ ___ ____ ____ ___  _    ____ ____ ___ _ ____ _  _ \n" )
     @printfifinteractive( "| |\\ |  |  |___ |__/ |__] |    |  | |__|  |  | |  | |\\ | \n" )
     @printfifinteractive( "| | \\|  |  |___ |  \\ |    |___ |__| |  |  |  | |__| | \\| \n" )
-    @printfifinteractive( "\nTesting interpolation, h::%s, x::%s. xLen = %d, hLen = %d, interpolation = %d", typeof(h), typeof(x), xLen, hLen, interpolation )
+    @printfifinteractive( "\nTesting interpolation, h::%s, x::%s. xLen = %d, hLen = %d, interpolation = %d\n", typeof(h), typeof(x), xLen, hLen, interpolation )
 
-    @printfifinteractive( "\n\tNaive interpolation with Base.filt\n\t\t")
+    @printfifinteractive( "\n\tNaive interpolation with filt\n\t\t")
     @timeifinteractive begin
-        xZeroStuffed = zeros(eltype(x), xLen * interpolation)
-        for n = 0:xLen-1;
+        xZeroStuffed = zeros(V, xLen * interpolation)
+        for n = 0:xLen-1
             xZeroStuffed[n*interpolation+1] = x[n+1]
         end
-        naiveResult = filt(h, one(eltype(h)), xZeroStuffed)
+        naiveResult = filt(h, one(T), xZeroStuffed)
     end
 
-    @printfifinteractive( "\n\tDSP.filt( h, x, %d//1 )\n\t\t", interpolation )
-    @timeifinteractive statelesResult = DSP.filt( h, x, interpolation//1 )
-    @test naiveResult ≈ statelesResult
+    @printfifinteractive( "\n\tfilt( h, x, %d//1 )\n\t\t", interpolation )
+    @timeifinteractive statelessResult = filt( h, x, interpolation//1 )
+    @test naiveResult ≈ statelessResult
 
-    @printfifinteractive( "\n\tDSP.filt interpolation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = DSP.FIRFilter( h, interpolation//1 )
+    @printfifinteractive( "\n\tfilt interpolation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
+    myfilt = FIRFilter( h, interpolation//1 )
     @timeifinteractive begin
-        y1 = DSP.filt(myfilt, x1)
-        y2 = DSP.filt(myfilt, x2)
+        y1 = filt(myfilt, x1)
+        y2 = filt(myfilt, x2)
     end
     statefulResult = [y1; y2]
     @test naiveResult ≈ statefulResult
 
-    DSP.reset!(myfilt)
+    reset!(myfilt)
     @test inputlength(myfilt, length(statefulResult)) == xLen
 
-    @printfifinteractive( "\n\tDSP.filt interpolation. Piecewise for first %d inputs\n\t\t", length(x1) )
-    DSP.reset!(myfilt)
+    @printfifinteractive( "\n\tfilt interpolation. Piecewise for first %d inputs\n\t\t", length(x1) )
+    reset!(myfilt)
     y1 = similar(x, 0)
     @timeifinteractive begin
         for i in 1:length(x1)
-            append!(y1, DSP.filt(myfilt, x1[i:i]))
+            append!(y1, filt(myfilt, x1[i:i]))
         end
-        y2 = DSP.filt(myfilt, x2)
+        y2 = filt(myfilt, x2)
     end
     piecewiseResult = [y1; y2]
-    @test ≈(naiveResult, piecewiseResult, atol=sqrt(eps(real(one(eltype(x))))))
+    @test ≈(naiveResult, piecewiseResult, atol=sqrt(eps(real(one(V)))))
 end
 
 
@@ -241,36 +243,36 @@ function test_rational(h, x, ratio)
     @printfifinteractive( "____ ____ ____ ____ _  _ ___  _    _ _  _ ____\n" )
     @printfifinteractive( "|__/ |___ [__  |__| |\\/| |__] |    | |\\ | | __\n" )
     @printfifinteractive( "|  \\ |___ ___] |  | |  | |    |___ | | \\| |__]\n" )
-    @printfifinteractive( "\n\nTesting rational resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d//%d", string(typeof(h)), string(typeof(x)), xLen, hLen, upfactor, downfactor )
+    @printfifinteractive( "\n\nTesting rational resampling, h::%s, x::%s. xLen = %d, hLen = %d, ratio = %d//%d\n", typeof(h), typeof(x), xLen, hLen, upfactor, downfactor )
 
     @printfifinteractive( "\n\tNaive rational resampling\n\t\t")
     @timeifinteractive naiveResult = naivefilt(h, x, ratio)
 
-    @printfifinteractive( "\n\tDSP.filt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
-    @timeifinteractive statelesResult = DSP.filt(h, x, ratio)
-    @test naiveResult ≈ statelesResult
+    @printfifinteractive( "\n\tfilt( h, x, %d//%d )\n\t\t", upfactor, downfactor )
+    @timeifinteractive statelessResult = filt(h, x, ratio)
+    @test naiveResult ≈ statelessResult
 
-    @printfifinteractive( "\n\tDSP.filt rational resampling. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = DSP.FIRFilter(h, ratio)
+    @printfifinteractive( "\n\tfilt rational resampling. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
+    myfilt = FIRFilter(h, ratio)
     @timeifinteractive begin
-        s1 = DSP.filt(myfilt, x1)
-        s2 = DSP.filt(myfilt, x2)
+        s1 = filt(myfilt, x1)
+        s2 = filt(myfilt, x2)
     end
     statefulResult = [s1; s2]
     @test naiveResult ≈ statefulResult
 
-    @printfifinteractive( "\n\tDSP.filt rational. Piecewise for all %d inputs\n\t\t", length( x ) )
+    @printfifinteractive( "\n\tfilt rational. Piecewise for all %d inputs\n\t\t", length( x ) )
     reset!(myfilt)
     y1 = similar(x, 0)
     @timeifinteractive begin
         for i in 1:length(x)
-            append!(y1, DSP.filt(myfilt, x[i:i]))
+            append!(y1, filt(myfilt, x[i:i]))
         end
     end
     piecewiseResult = y1
     @test naiveResult ≈ piecewiseResult
 
-    DSP.reset!(myfilt)
+    reset!(myfilt)
     @test inputlength(myfilt, length(piecewiseResult)) == xLen
 end
 
@@ -284,45 +286,46 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     transitionWidth = 0.05
     h               = digitalfilter(Lowpass(cutoffFreq, fs=numFilters), FIRWindow(transitionwidth=transitionWidth/numFilters)) .* numFilters
     h               = convert(Vector{Th}, h)
-    myfilt          = DSP.FIRFilter(h, resampleRate, numFilters)
+    myfilt          = FIRFilter(h, resampleRate, numFilters)
     xLen            = length(x)
 
+    @printfifinteractive("\n\n")
     @printfifinteractive( "____ ____ ___      ____ ____ ____ ____ _  _ ___  _    _ _  _ ____\n" )
     @printfifinteractive( "|__| |__/ |__]     |__/ |___ [__  |__| |\\/| |__] |    | |\\ | | __\n" )
     @printfifinteractive( "|  | |  \\ |__] .   |  \\ |___ ___] |  | |  | |    |___ | | \\| |__]\n" )
-    @printfifinteractive( "\n\nh::%s, x::%s, rate = %f, Nϕ = %d, xLen = %d, ", string(typeof(h)), string(typeof(x)), resampleRate, numFilters, length(x) )
+    @printfifinteractive( "\nh::%s, x::%s, rate = %f, Nϕ = %d, xLen = %d\n", typeof(h), typeof(x), resampleRate, numFilters, xLen )
 
     @printfifinteractive( "\n\tNaive arbitrary resampling\n\t\t" )
     @timeifinteractive naiveResult = naivefilt(h, x, resampleRate, numFilters)
 
     @printfifinteractive( "\n\tStateless arbitrary resampling\n\t\t" )
-    @timeifinteractive statelessResult = DSP.filt(h, x, resampleRate, numFilters)
+    @timeifinteractive statelessResult = filt(h, x, resampleRate, numFilters)
 
     @printfifinteractive( "\n\tStateful arbitrary resampling\n\t\t" )
-    @timeifinteractive statefulResult = DSP.filt(myfilt, x)
+    @timeifinteractive statefulResult = filt(myfilt, x)
 
-    # DSP.reset!(myfilt)
+    # reset!(myfilt)
     # TODO: figure out why this fails
     # @test inputlength(myfilt, length(statefulResult)) == xLen
 
     @printfifinteractive( "\n\tPiecewise arbitrary resampling\n\t\t" )
     reset!(myfilt)
-    piecwiseResult = eltype(x)[]
-    sizehint!(piecwiseResult, ceil(Int, length(x)*resampleRate))
+    piecewiseResult = similar(x, 0)
+    sizehint!(piecewiseResult, ceil(Int, length(x)*resampleRate))
     @timeifinteractive for i in 1:length(x)
         thisY = filt(myfilt, x[i:i])
-        append!(piecwiseResult, thisY)
+        append!(piecewiseResult, thisY)
     end
 
-    commonLen = min(length(naiveResult), length(statelessResult), length(statefulResult), length(piecwiseResult))
+    commonLen = minimum(length.((naiveResult, statelessResult, statefulResult, piecewiseResult)))
     resize!(naiveResult, commonLen)
     resize!(statelessResult, commonLen)
     resize!(statefulResult, commonLen)
-    resize!(piecwiseResult, commonLen)
+    resize!(piecewiseResult, commonLen)
 
     @test naiveResult ≈ statelessResult
     @test naiveResult ≈ statefulResult
-    @test naiveResult ≈ piecwiseResult
+    @test naiveResult ≈ piecewiseResult
 end
 
 #

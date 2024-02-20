@@ -691,7 +691,7 @@ function conv(u::AbstractArray{T, N},
               v::AbstractArray{T, N}) where {T<:RealOrComplexFloat, N}
     su = size(u)
     sv = size(v)
-    if prod(su) >= prod(sv)
+    if length(u) >= length(v)
         _conv(u, v, su, sv)
     else
         _conv(v, u, sv, su)

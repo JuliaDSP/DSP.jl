@@ -5,6 +5,7 @@ using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
 using FFTW
 
 export  rect,
+        hann,
         hanning,
         hamming,
         tukey,
@@ -82,7 +83,7 @@ $zerophase_docs
 
 Example:
 
-```
+```julia
 function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
     makewindow(n, padding, zerophase) do x
         0.5*(1+cos(2pi*x))
@@ -159,11 +160,16 @@ The window is defined by sampling the continuous function:
 
 in the range `[-0.5, 0.5]`
 
-The `hanning` window satisfies the Constant Overlap-Add (COLA) property with an
+The `hanning` window satisfies the Constant Overlap-Add (COLA) property with a
 hop of 0.5, which means that adding together a sequence of delayed windows with
 50% overlap will result in a constant signal. This is useful when synthesizing
 a signal from a number of overlapping frames (each with a roughly rectangular
 window), to eliminate windowing amplitude modulation.
+
+While this windowing function was originally named after its inventor Julius
+Von Hann, coloquial usage has adjusted to refer to it as the "Hanning" window,
+to better match the similarly-named "Hamming" window.  Because of this, both
+`hann()` and `hanning()` are exported from this module.
 
 Note that the `hanning` window is the `cosine` window squared.
 
@@ -176,6 +182,7 @@ function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
         0.5*(1+cos(2pi*x))
     end
 end
+const hann = hanning
 
 """
 $hamming_winplot
@@ -216,18 +223,20 @@ window. For `α == 1`, the window is a Hann window.
 
 The window is defined by sampling the continuous function:
 
-           ⎛              ⎛    ⎛    1 - α⎞⎞
-           ⎜      1 + cos ⎜2πα ⎜x + ─────⎟⎟             1 - α
-           ⎜              ⎝    ⎝      2  ⎠⎠         x ≤ ─────
-           ⎜      ─────────────────────────               2
+           ⎛              ⎛2π ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜── ⎜x + ─────⎟⎟             1 - α
+           ⎜              ⎝ α ⎝      2  ⎠⎠       x ≤ - ─────
+           ⎜      ─────────────────────────              2
            ⎜                  2
            ⎜
-    w(x) = ⎜      1                                 -α/2 < x ≤ α/2
+           ⎜                                       1 - α       1 - α
+    w(x) = ⎜      1                              - ───── < x ≤ ─────
+           ⎜                                         2           2
            ⎜
-           ⎜              ⎛    ⎛    1 - α⎞⎞
-           ⎜      1 + cos ⎜2πα ⎜x - ─────⎟⎟             1 - α
-           ⎜              ⎝    ⎝      2  ⎠⎠         x > ─────
-           ⎜      ─────────────────────────               2
+           ⎜              ⎛2π ⎛    1 - α⎞⎞
+           ⎜      1 + cos ⎜── ⎜x - ─────⎟⎟           1 - α
+           ⎜              ⎝ α ⎝      2  ⎠⎠       x > ─────
+           ⎜      ─────────────────────────            2
            ⎝                  2
 
 in the range `[-0.5, 0.5]`
