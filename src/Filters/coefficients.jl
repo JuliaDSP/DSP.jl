@@ -56,11 +56,9 @@ end
 # Transfer function form
 #
 
-function shiftpoly(p::LaurentPolynomial, i)
-    if i > 0
-        return p * LaurentPolynomial([one(eltype(p))], 1, indeterminate(p))^i
-    elseif i < 0
-        return p * LaurentPolynomial([one(eltype(p))], -1, indeterminate(p))^-i
+function shiftpoly(p::LaurentPolynomial{T}, i::Integer) where {T<:Number}
+    if !iszero(i)
+        return p * LaurentPolynomial([one(T)], i, indeterminate(p))
     end
     return p
 end
@@ -179,13 +177,8 @@ function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     end
 end
 
-function _rev_zeropad(v::AbstractVector{T}, n, pad_len=n) where T
-    padded_v = zeros(T, length(v) + n)
-    return copyto!(padded_v, 1 + pad_len, Iterators.reverse(v))
-end
-
-coef_s(p::LaurentPolynomial) = _rev_zeropad(coeffs(p), firstindex(p), 0)
-coef_z(p::LaurentPolynomial) = _rev_zeropad(coeffs(p), -lastindex(p))
+coef_s(p::LaurentPolynomial{T}) where T = (n = firstindex(p);  append!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
+coef_z(p::LaurentPolynomial{T}) where T = (n = -lastindex(p); prepend!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
 
 """
     coefb(f)
@@ -358,10 +351,10 @@ function split_real_complex(x::Vector{T}; sortby=nothing) where T
     end
 
     c = T[]
-    r = typeof(real(zero(T)))[]
+    r = real(T)[]
     ks = collect(keys(d))
     if sortby !== nothing
-        sort!(ks, by=sortby)
+        sort!(ks; by=sortby)
     end
     for k in ks
         if imag(k) != 0
