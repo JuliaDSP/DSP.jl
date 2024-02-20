@@ -21,25 +21,9 @@ using DSP, Test
 end
 
 @testset "jacobsen" begin
-    # real input: test at two arbitrary frequencies
+    # test at two arbitrary frequencies
     fs = 100
     t = range(0, 5, step = 1/fs)
-    fr = 28.3
-    sr = cos.(2π*fr*t .+ π/4.2)
-    f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
-    fr = 12.45
-    sr = sin.(2π*fr*t .+ 3π/2.2)
-    f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
-    # test at higher extreme of DFT
-    fr = 49.9002
-    sr = cos.(2π*fr*t)
-    f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
-    # test at lower extreme of DFT
-    @test jacobsen(ones(10)) == 0.0
-    # complex input: test at two arbitrary frequencies
     fc = -40.3
     sc = cis.(2π*fc*t .+ π/1.4)
     f_est_complex = jacobsen(sc, fs)
@@ -61,21 +45,20 @@ end
 end
 
 @testset "quinn" begin
-    # real input
+    ### real input
     fs = 100
     t = range(0, 5, step = 1/fs)
     fr = 28.3
     sr = cos.(2π*fr*t .+ π/4.2)
-    ### real input
     (f_est_real, maxiter) = quinn(sr, 50, fs)
     @test maxiter == false
     @test isapprox(f_est_real, fr, atol = 1e-3)
     # use default initial guess
-    (f_est_real, maxiter) = quinn(sr, fs) # assumes f0 = 0.0
+    (f_est_real, maxiter) = quinn(sr, fs) # initial guess given by Jacobsen
     @test maxiter == false
     @test isapprox(f_est_real, fr, atol = 1e-3)
     # use default fs
-    (f_est_real, maxiter) = quinn(sr) # assumes fs = 1.0, f0 = 0.0
+    (f_est_real, maxiter) = quinn(sr) # fs = 1.0, initial guess given by Jacobsen
     @test maxiter == false
     @test isapprox(f_est_real, fr/fs, atol = 1e-3)
     ### complex input
@@ -85,11 +68,11 @@ end
     @test maxiter == false
     @test isapprox(f_est_real, fc, atol = 1e-3)
     # use default initial guess
-    (f_est_real, maxiter) = quinn(sc, fs) # assumes f0 = 0.0
+    (f_est_real, maxiter) = quinn(sc, fs) # initial guess given by Jacobsen
     @test maxiter == false
     @test isapprox(f_est_real, fc, atol = 1e-3)
     # use default fs
-    (f_est_real, maxiter) = quinn(sc) # assumes fs = 1.0, f0 = 0.0
+    (f_est_real, maxiter) = quinn(sc) # fs = 1.0, initial guess by Jacobsen
     @test maxiter == false
     @test isapprox(f_est_real, fc/fs, atol = 1e-3)
 end

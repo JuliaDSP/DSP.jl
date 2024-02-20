@@ -41,30 +41,19 @@ function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
 end
 
 """
-    jacobsen(x::Vector, Fs::Real = 1.0)
+    jacobsen(x::AbstractVector, Fs::Real = 1.0)
 
-Estimate the largest frequency (in Hz) in the signal `x` using Jacobsen's
-algorithm [^Jacobsen2007].
+Estimate the largest frequency in the signal `x` using Jacobsen's algorithm
+[^Jacobsen2007]. Argument `Fs` is the sampling frequency.  All frequencies are
+expressed in Hz.
+
+If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
+1.0`.
 
 [^Jacobsen2007]: E Jacobsen and P Kootsookos, "Fast, Accurate Frequency Estimators", Chapter
 10 in "Streamlining Digital Signal Processing", edited by R. Lyons, 2007, IEEE Press.
 """
-function jacobsen(x::Vector{<:Real}, Fs::Real = 1.0)
-    N = length(x)
-    R = rfft(x)
-    m = length(R)
-    k = argmax(abs.(R))
-    if (k == 1)
-        δ = -real( imag(R[2]) / (R[1] - real(R[2])) )
-    elseif (k == m)
-        δ = real( imag(R[m-1]) / (R[m] - real(R[m-1])) )
-    else
-        δ = -real((R[k+1] - R[k-1]) / (2R[k] - R[k-1] - R[k+1]) )
-    end
-    return (k - 1 + δ)*Fs/N
-end
-
-function jacobsen(x::Vector{<:Complex}, Fs::Real = 1.0)
+function jacobsen(x::AbstractVector, Fs::Real = 1.0)
     N = length(x)
     X = fftshift(fft(x))
     k = argmax(abs.(X))  # index of DFT peak
@@ -97,9 +86,8 @@ is assumed that `Fs = 1.0`.
 
 The following keyword arguments control the algorithm's behavior:
 
-- `tol`: () the algorithm stops when the absolut value of the
-  difference between two consecutive estimates is less than `tol`. Defaults to
-  `1e-6`.
+- `tol`: the algorithm stops when the absolut value of the difference between
+   two consecutive estimates is less than `tol`. Defaults to `1e-6`.
 - `maxiters`: the maximum number of iterations to run. Defaults to `20`.
 
 Returns a tuple `(estimate, reachedmaxiters)`, where `estimate` is the
