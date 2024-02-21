@@ -83,6 +83,9 @@ end
     n = (5,6)
     for x in ( randn(n), randn(n)+randn(n)im )
         @test rms(x) ≈ sqrt(mean(abs.(x).^2))
+        @test rms(x; dims=1) ≈ sqrt.(mean(abs.(x).^2; dims=1))
+        @test rms(x; dims=2) ≈ sqrt.(mean(abs.(x).^2; dims=2))
+        @test rms(x; dims=1:2) ≈ sqrt.(mean(abs.(x).^2; dims=1:2))
         @test rmsfft(fft(x)) ≈ rms(x)
     end # for
 end

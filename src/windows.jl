@@ -1,6 +1,6 @@
 module Windows
 using ..Util
-import SpecialFunctions: besseli
+using Bessels: besseli0
 using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
 using FFTW
 
@@ -501,9 +501,9 @@ $(twoD_docs("α"))
 $zerophase_docs
 """
 function kaiser(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
-    pf = 1.0/besseli(0,pi*α)
+    pf = 1.0/besseli0(pi*α)
     makewindow(n, padding, zerophase) do x
-        pf*besseli(0, pi*α*(sqrt(1 - (2x)^2)))
+        pf*besseli0(pi*α*(sqrt(1 - (2x)^2)))
     end
 end
 

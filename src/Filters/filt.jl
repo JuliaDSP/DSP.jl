@@ -6,7 +6,7 @@
 
 
 ## PolynomialRatio
-_zerosi(f::PolynomialRatio{:z,T}, x::AbstractArray{S}) where {T,S} =
+_zerosi(f::PolynomialRatio{:z,T}, ::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), max(-firstindex(f.a), -firstindex(f.b)))
 
 """
@@ -35,7 +35,7 @@ selected based on the data and filter length.
 filt(f::PolynomialRatio{:z}, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
 
 ## SecondOrderSections
-_zerosi(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S} =
+_zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
     zeros(promote_type(T, G, S), 2, length(f.biquads))
 
 # filt! algorithm (no checking, returns si)
@@ -44,14 +44,14 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     g = f.g
     biquads = f.biquads
     n = length(biquads)
-    @inbounds for i = 1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         yi = x[i, col]
         for fi = 1:n
             biquad = biquads[fi]
             xi = yi
-            yi = si[1, fi] + biquad.b0*xi
-            si[1, fi] = si[2, fi] + biquad.b1*xi - biquad.a1*yi
-            si[2, fi] = biquad.b2*xi - biquad.a2*yi
+            yi = muladd(biquad.b0, xi, si[1, fi])
+            si[1, fi] = muladd(biquad.a1, -yi, muladd(biquad.b1, xi, si[2, fi]))
+            si[2, fi] = muladd(biquad.b2, xi, -biquad.a2 * yi)
         end
         out[i, col] = yi*g
     end
@@ -80,17 +80,17 @@ filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) wher
     filt!(Array{promote_type(T, G, S)}(undef, size(x)), f, x, si)
 
 ## Biquad
-_zerosi(f::Biquad{:z,T}, x::AbstractArray{S}) where {T,S} =
+_zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
     zeros(promote_type(T, S), 2)
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
                 x::AbstractArray, col::Int)
-    @inbounds for i = 1:size(x, 1)
+    @inbounds for i in axes(x, 1)
         xi = x[i, col]
-        yi = si1 + f.b0*xi
-        si1 = si2 + f.b1*xi - f.a1*yi
-        si2 = f.b2*xi - f.a2*yi
+        yi = muladd(f.b0, xi, si1)
+        si1 = muladd(f.a1, -yi, muladd(f.b1, xi, si2))
+        si2 = muladd(f.b2, xi, -f.a2 * yi)
         out[i, col] = yi
     end
     (si1, si2)
@@ -105,9 +105,8 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
     (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
         error("si must have two rows and 1 or nsignals columns")
 
-    initial_si = si
     for col = 1:ncols
-        _filt!(out, initial_si[1, N > 1 ? col : 1], initial_si[2, N > 1 ? col : 1], f, x, col)
+        _filt!(out, si[1, N > 1 ? col : 1], si[2, N > 1 ? col : 1], f, x, col)
     end
     out
 end
@@ -121,11 +120,18 @@ filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSection
 
 """
     DF2TFilter(coef[, si])
+    DF2TFilter(coef[, sitype::Type])
 
 Construct a stateful direct form II transposed filter with
-coefficients `coef`. `si` is an optional array representing the
-initial filter state (defaults to zeros). If `f` is a
-`PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
+coefficients `coef`.
+
+One can optionally specify as the second argument either
+- `si`, an array representing the initial filter state, or
+- `sitype`, the eltype of a zeroed `si`
+
+The initial filter state defaults to zeros if called with one argument.
+
+If `f` is a `PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
 filtering is implemented directly. If `f` is a `ZeroPoleGain`
 object, it is first converted to a `SecondOrderSections` object.
 """
@@ -149,10 +155,15 @@ struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
     end
 end
 
+DF2TFilter(coef::Union{PolynomialRatio{:z,T},Biquad{:z,T}}, state::Vector{S}) where {T,S} =
+    DF2TFilter{typeof(coef),Vector{S}}(coef, state)
+
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, state::Matrix{S}) where {T,G,S} =
+    DF2TFilter{SecondOrderSections{:z,T,G},Matrix{S}}(coef, state)
+
 ## PolynomialRatio
-DF2TFilter(coef::PolynomialRatio{:z,T},
-           state::Vector{S}=zeros(T, max(length(coefa(coef)), length(coefb(coef)))-1)) where {T,S} =
-    DF2TFilter{PolynomialRatio{:z,T}, Vector{S}}(coef, state)
+DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1))
 
 function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
@@ -170,13 +181,13 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
     if n == 1
         mul!(out, x, b[1])
     else
-        @inbounds for i=1:length(x)
+        @inbounds for i in eachindex(x, out)
             xi = x[i]
-            val = si[1] + b[1]*xi
+            val = muladd(b[1], xi, si[1])
             for j=2:n-1
-                si[j-1] = si[j] + b[j]*xi - a[j]*val
+                si[j-1] = muladd(a[j], -val, muladd(b[j], xi, si[j]))
             end
-            si[n-1] = b[n]*xi - a[n]*val
+            si[n-1] = muladd(b[n], xi, -a[n] * val)
             out[i] = val
         end
     end
@@ -184,9 +195,8 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
 end
 
 ## SecondOrderSections
-DF2TFilter(coef::SecondOrderSections{:z,T,G},
-           state::Matrix{S}=zeros(promote_type(T, G), 2, length(coef.biquads))) where {T,G,S} =
-    DF2TFilter{SecondOrderSections{:z,T,G}, Matrix{S}}(coef, state)
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T) where {T,G,V} =
+    DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads)))
 
 function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
@@ -195,21 +205,34 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix
 end
 
 ## Biquad
-DF2TFilter(coef::Biquad{:z,T}, state::Vector{S}=zeros(T, 2)) where {T,S} =
-    DF2TFilter{Biquad{:z,T}, Vector{S}}(coef, state)
+DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), 2))
+
 function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::AbstractVector)
     length(x) != length(out) && throw(ArgumentError("out size must match x"))
     si = f.state
-    (si[1], si[2]) =_filt!(out, si[1], si[2], f.coef, x, 1)
+    (si[1], si[2]) = _filt!(out, si[1], si[2], f.coef, x, 1)
     out
 end
 
-# Variant that allocates the output
-filt(f::DF2TFilter{<:FilterCoefficients{:z},S}, x::AbstractVector) where {S<:Array} =
-    filt!(Vector{eltype(S)}(undef, length(x)), f, x)
+"""
+    filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V}
+
+Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
+
+!!! warning
+    The output array has eltype `promote_type(T, V)`, where
+    `T` is the eltype of the filter state.\n
+    For more control over the output type, provide a preallocated
+    output array `out` to `filt!(out, f, x)`.
+"""
+filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
+    filt!(Vector{promote_type(T, V)}(undef, length(x)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
+DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
+    DF2TFilter(convert(SecondOrderSections, coef), arg)
 
 #
 # filtfilt
@@ -346,7 +369,7 @@ filtfilt(f::PolynomialRatio{:z}, x) = filtfilt(coefb(f), coefa(f), x)
 # response to a step function is steady state.
 function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{T}, T}) where T<:Number
     scale_factor = a[1]
-    if scale_factor != 1.0
+    if !isone(scale_factor)
         a = a ./ scale_factor
         b = b ./ scale_factor
     end
@@ -362,8 +385,8 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     # construct the companion matrix A and vector B:
-    A = [-a[2:end] [I; zeros(T, 1, sz-2)]]
-    B = b[2:end] - a[2:end] * b[1]
+    A = [-a[2:end] Matrix{T}(I, sz-1, sz-2)]
+    B = @views @. muladd(a[2:end], -b[1], b[2:end])
     # Solve si = A*si + B
     # (I - A)*si = B
     scale_factor \ (I - A) \ B
@@ -375,6 +398,7 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     y = one(T)
     for i = 1:length(biquads)
         biquad = biquads[i]
+        a1, a2, b0, b1, b2 = biquad.a1, biquad.a2, biquad.b0, biquad.b1, biquad.b2
 
         # At steady state, we have:
         #  y = s1 + b0*x
@@ -382,11 +406,10 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
         # s2 = b2*x - a2*y
         # where x is the input and y is the output. Solving these
         # equations yields the following.
-        si[1, i] = (-(biquad.a1 + biquad.a2)*biquad.b0 + biquad.b1 + biquad.b2)/
-                   (1 + biquad.a1 + biquad.a2)*y
-        si[2, i] = (biquad.a1*biquad.b2 - biquad.a2*(biquad.b0 + biquad.b1) + biquad.b2)/
-                   (1 + biquad.a1 + biquad.a2)*y
-        y *= (biquad.b0 + biquad.b1 + biquad.b2)/(1 + biquad.a1 + biquad.a2)
+        den = (1 + a1 + a2)
+        si[1, i] = muladd((a1 + a2), -b0, b1 + b2) / den * y
+        si[2, i] = muladd(a1, b2, muladd(-a2, (b0 + b1), b2)) / den * y
+        y *= (b0 + b1 + b2) / den
     end
     si
 end
@@ -397,8 +420,8 @@ end
 Apply filter or filter coefficients `h` along the first dimension
 of array `x` using a naïve time-domain algorithm
 """
-function tdfilt(h::AbstractVector, x::AbstractArray{T}) where T<:Real
-    filt!(Array{T}(undef, size(x)), h, ones(eltype(h), 1), x)
+function tdfilt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T<:Real}
+    filt(h, one(H), x)
 end
 
 """
@@ -407,12 +430,12 @@ end
 Like `tdfilt`, but writes the result into array `out`. Output array `out` may
 not be an alias of `x`, i.e. filtering may not be done in place.
 """
-function tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
-    filt!(out, h, ones(eltype(h), 1), x)
+function tdfilt!(out::AbstractArray, h::AbstractVector{H}, x::AbstractArray) where H
+    filt!(out, h, one(H), x)
 end
 
-filt(h::AbstractArray, x::AbstractArray) =
-    filt!(Array{eltype(x)}(undef, size(x)), h, x)
+filt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T} =
+    filt!(Array{promote_type(H, T)}(undef, size(x)), h, x)
 
 #
 # fftfilt and filt
@@ -447,48 +470,44 @@ end
 # Like fftfilt! but does not check if out and x are the same size
 function _fftfilt!(
     out::AbstractArray{<:Real},
-    b::AbstractVector{<:Real},
+    b::AbstractVector{H},
     x::AbstractArray{T},
     nfft::Integer
-) where T<:Real
+) where {T<:Real,H<:Real}
     nb = length(b)
     nx = size(x, 1)
-    normfactor = 1/nfft
+    normfactor = nfft
+    W = promote_type(H, T)
 
     L = min(nx, nfft - (nb - 1))
-    tmp1 = Vector{T}(undef, nfft)
-    tmp2 = Vector{Complex{T}}(undef, nfft >> 1 + 1)
+    tmp1 = Vector{W}(undef, nfft)
+    tmp2 = Vector{Complex{W}}(undef, nfft >> 1 + 1)
 
     p1 = plan_rfft(tmp1)
     p2 = plan_brfft(tmp2, nfft)
 
     # FFT of filter
     filterft = similar(tmp2)
-    tmp1[1:nb] .= b .* normfactor
-    tmp1[nb+1:end] .= zero(T)
+    tmp1[1:nb] .= b ./ normfactor
+    tmp1[nb+1:end] .= zero(W)
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
-    for colstart = 0:nx:length(x)-1
-        off = 1
-        while off <= nx
-            npadbefore = max(0, nb - off)
-            xstart = off - nb + npadbefore + 1
-            n = min(nfft - npadbefore, nx - xstart + 1)
+    for colstart = 0:nx:length(x)-1, off = 1:L:nx
+        npadbefore = max(0, nb - off)
+        xstart = off - nb + npadbefore + 1
+        n = min(nfft - npadbefore, nx - xstart + 1)
 
-            tmp1[1:npadbefore] .= zero(T)
-            tmp1[npadbefore+n+1:end] .= zero(T)
+        tmp1[1:npadbefore] .= zero(W)
+        tmp1[npadbefore+n+1:end] .= zero(W)
 
-            copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
-            mul!(tmp2, p1, tmp1)
-            broadcast!(*, tmp2, tmp2, filterft)
-            mul!(tmp1, p2, tmp2)
+        copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
+        mul!(tmp2, p1, tmp1)
+        broadcast!(*, tmp2, tmp2, filterft)
+        mul!(tmp1, p2, tmp2)
 
-            # Copy to output
-            copyto!(out, colstart+off, tmp1, nb, min(L, nx - off + 1))
-
-            off += L
-        end
+        # Copy to output
+        copyto!(out, colstart+off, tmp1, nb, min(L, nx - off + 1))
     end
 
     out
@@ -524,6 +543,6 @@ function filt_choose_alg!(
     end
 end
 
-function filt_choose_alg!(out::AbstractArray, b::AbstractArray, x::AbstractArray)
+function filt_choose_alg!(out::AbstractArray, b::AbstractVector, x::AbstractArray)
     tdfilt!(out, b, x)
 end

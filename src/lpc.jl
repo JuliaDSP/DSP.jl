@@ -3,89 +3,157 @@ module LPC
 
 using ..DSP: xcorr
 
-using LinearAlgebra: dot
+using LinearAlgebra: dot, BlasComplex, BLAS
 
-export lpc, LPCBurg, LPCLevinson
+export lpc, arburg, levinson, LPCBurg, LPCLevinson
 
 # Dispatch types for lpc()
-mutable struct LPCBurg; end
-mutable struct LPCLevinson; end
+struct LPCBurg end
+struct LPCLevinson end
 
 """
-    lpc(x::AbstractVector, p::Int, [LPCBurg()])
+    lpc(x::AbstractVector, p::Integer, [LPCBurg()])
 
 Given input signal `x` and prediction order `p`, returns IIR coefficients `a`
 and average reconstruction error `prediction_err`. Note that this method does
-NOT return the leading `1` present in the true autocorrelative estimate; it
+NOT return the leading ``1`` present in the true autocorrelative estimate; it
 omits it as it is implicit in every LPC estimate, and must be manually
 reintroduced if the returned vector should be treated as a polynomial.
 
 The algorithm used is determined by the last optional parameter, and can be
-either `LPCBurg` or `LPCLevinson`.
+either `LPCBurg` ([`arburg`](@ref)) or `LPCLevinson` ([`levinson`](@ref)).
 """
 function lpc end
 
-"""
-    lpc(x::AbstractVector, p::Int, LPCBurg())
-
-LPC (Linear-Predictive-Code) estimation, using the Burg method. This function
-implements the mathematics published in [1].
-
-[1] - Enhanced Partial Tracking Using Linear Prediction
-(DAFX 2003 article, Lagrange et al)
-http://www.sylvain-marchand.info/Publications/dafx03.pdf
-"""
-function lpc(x::AbstractVector{T}, p::Int, ::LPCBurg) where T <: Number
-    ef = x                      # forward error
-    eb = x                      # backwards error
-    a = [1; zeros(T, p)]        # prediction coefficients
-
-    # Initialize prediction error wtih the variance of the signal
-    prediction_err = (sum(abs2, x) ./ length(x))[1]
-
-    for m in 1:p
-        efp = ef[1:end-1]
-        ebp = eb[2:end]
-        k = -2 * dot(ebp,efp) / (sum(abs2, ebp) + sum(abs2,efp))
-        ef = efp + k .* ebp
-        eb = ebp + k .* efp
-        a[1:m+1] = [a[1:m]; 0] + k .* [0; a[m:-1:1]]
-        prediction_err *= (1 - k*k)
-    end
-
-    return a[2:end], prediction_err
+function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCBurg)
+    a, prediction_err = arburg(x, p)
+    popfirst!(a)
+    return a, prediction_err
 end
 
 """
-    lpc(x::AbstractVector, p::Int, LPCLevinson())
+    arburg(x::AbstractVector, p::Integer)
 
-LPC (Linear-Predictive-Code) estimation, using the Levinson method. This
-function implements the mathematics described in [1].
+LPC (Linear Predictive Coding) estimation, using the Burg method.
+This function implements the mathematics published in [^Lagrange], and
+the recursion relation as noted in [^Vos], in turn referenced from [^Andersen].
 
-[1] - The Wiener (RMS) Error Criterion in Filter Design and Prediction
-(N. Levinson, Studies in Applied Mathematics 25(1946), 261-278,
-https://doi.org/10.1002/sapm1946251261)
+[^Lagrange]: Enhanced Partial Tracking Using Linear Prediction.
+    [DAFX 2003 article, Lagrange et al]
+    (http://www.sylvain-marchand.info/Publications/dafx03.pdf)
+
+[^Vos]: [A Fast Implementation of Burg’s Method]
+    (https://www.opus-codec.org/docs/vos_fastburg.pdf).
+    © 2013 Koen Vos, licensed under [CC BY 3.0]
+    (https://creativecommons.org/licenses/by/3.0/)
+
+[^Andersen]: N. Andersen. Comments on the performance of maximum entropy algorithms.
+    Proceedings of the IEEE 66.11: 1581-1582, 1978.
 """
-function lpc(x::AbstractVector{<:Number}, p::Int, ::LPCLevinson)
-    R_xx = xcorr(x,x)[length(x):end]
-    a = zeros(p,p)
-    prediction_err = zeros(1,p)
+function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
+    # Initialize prediction error with the variance of the signal
+    unnormed_err = abs(dot(x, x))
+    prediction_err = unnormed_err / length(x)
+    R = typeof(prediction_err)
+    F = promote_type(R, Base.promote_union(T))
 
+    ef = collect(F, x)                  # forward error
+    eb = copy(ef)                       # backwards error
+    a = zeros(F, p + 1); a[1] = 1       # prediction coefficients
+    rev_buf = similar(a, p)             # buffer to store a in reverse
+    reflection_coeffs = similar(a, p)   # reflection coefficients
+
+    den = convert(R, 2unnormed_err)
+    ratio = one(R)
+
+    @views for m in 1:p
+        cf = pop!(ef)
+        cb = popfirst!(eb)
+        den = muladd(ratio, den, -(abs2(cf) + abs2(cb)))
+
+        k = -2 * dot(eb, ef) / den
+        reflection_coeffs[m] = k
+
+        rev_buf[1:m] .= a[m:-1:1]
+        @. a[2:m+1] = muladd(k, conj(rev_buf[1:m]), a[2:m+1])
+
+        # update prediction errors
+        for i in eachindex(ef, eb)
+            ef_i, eb_i = ef[i], eb[i]
+            ef[i] = muladd(k, eb_i, ef[i])
+            eb[i] = muladd(conj(k), ef_i, eb[i])
+        end
+
+        ratio = one(R) - abs2(k)
+        prediction_err *= ratio
+    end
+
+    return conj!(a), prediction_err, reflection_coeffs
+end
+
+function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
+    R_xx = xcorr(x; scaling=:biased)[length(x):end]
+    a, prediction_err = levinson(R_xx, p)
+    return a, prediction_err
+end
+
+"""
+    levinson(x::AbstractVector, p::Integer)
+
+Implements Levinson recursion, as described in [^Levinson], to find
+the solution `a` of the linear equation
+```math
+\\mathbf{T} (-\\vec{a})
+=
+\\begin{bmatrix}
+    x_2 \\\\
+    \\vdots \\\\
+    x_{p+1}
+\\end{bmatrix}
+```
+in the case where ``\\mathbf{T}`` is Hermitian and Toeplitz, with first column `x[1:p]`.
+This function can be used for LPC (Linear Predictive Coding) estimation,
+by providing `LPCLevinson()` as an argument to `lpc`.
+
+[^Levinson]: The Wiener (RMS) Error Criterion in Filter Design and Prediction.
+    N. Levinson, Studies in Applied Mathematics 25(1946), 261-278.\\
+    <https://doi.org/10.1002/sapm1946251261>
+"""
+function levinson(R_xx::AbstractVector{U}, p::Integer) where U<:Number
     # for m = 1
-    a[1,1] = -R_xx[2]/R_xx[1]
-    prediction_err[1] = R_xx[1]*(1-a[1,1]^2)
+    k = -R_xx[2] / R_xx[1]
+    F = promote_type(Base.promote_union(U), typeof(k))
+    prediction_err = real(R_xx[1] * (one(F) - abs2(k)))
+    R = typeof(prediction_err)
+    T = promote_type(F, R)
 
-    # for m = 2,3,4,..p
-    for m = 2:p
-        a[m,m] = (-(R_xx[m+1] + dot(a[m-1,1:m-1],R_xx[m:-1:2]))/prediction_err[m-1])
-        a[m,1:m-1] = a[m-1,1:m-1] + a[m,m] * a[m-1,m-1:-1:1]
-        prediction_err[m] = prediction_err[m-1]*(1-a[m,m]^2)
+    a = zeros(T, p)
+    reflection_coeffs = zeros(T, p)
+    a[1] = reflection_coeffs[1] = k
+    rev_a = similar(a, p - 1)     # buffer to store a in reverse
+
+    @views for m = 2:p
+        rev_a[1:m-1] .= a[m-1:-1:1]
+        k = -(R_xx[m+1] + dotu(R_xx[2:m], rev_a[1:m-1])) / prediction_err
+        @. a[1:m-1] = muladd(k, conj(rev_a[1:m-1]), a[1:m-1])
+        a[m] = reflection_coeffs[m] = k
+        prediction_err *= (one(R) - abs2(k))
     end
 
-    # Return autocorrelation coefficients and error estimate
-    a[p,:], prediction_err[p]
+    # Return autocorrelation coefficients, error estimate, and reflection coefficients
+    return a, prediction_err, reflection_coeffs
 end
 
+# for convenience, define dotu as dot for real vectors
+dotu(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = dot(x, y)
+dotu(x::AbstractVector{T}, y::AbstractVector{T}) where T<:BlasComplex = BLAS.dotu(x, y)
+function dotu(x::AbstractVector{T}, y::AbstractVector{V}) where {T,V}
+    dotprod = zero(promote_type(T, V))
+    for i in eachindex(x, y)
+        dotprod = muladd(x[i], y[i], dotprod)
+    end
+    dotprod
+end
 
 # Default users to using Burg estimation as it is in general more stable
 lpc(x, p) = lpc(x, p, LPCBurg())

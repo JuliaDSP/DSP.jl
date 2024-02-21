@@ -86,9 +86,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 
     ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
     p = chebyshev_poles(T, n, ε)
-    for i = 1:length(p)
-        p[i] = inv(p[i])
-    end
+    map!(inv, p, p)
 
     z = zeros(Complex{T}, n-isodd(n))
     k = one(T)
@@ -155,7 +153,7 @@ function asne(w::Number, k::Real)
         # Eq. (50)
         k = abs2(k/(1+sqrt(1-abs2(k))))
         # Eq. (56)
-        w = 2*w/((1+k)*(1+sqrt(1-abs2(kold)*w^2)))
+        w = 2w / ((1 + k) * (1 + sqrt(muladd(-abs2(kold), w^2, 1))))
     end
     2*asin(w)/π
 end
@@ -247,26 +245,22 @@ struct Lowpass{T} <: FilterType
 end
 
 """
-    Lowpass(Wn[; fs])
+    Lowpass(Wn)
 
-Low pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+Low pass filter with cutoff frequency `Wn`.
 """
-Lowpass(w::Real; fs::Real=2) = Lowpass{typeof(w/1)}(normalize_freq(w, fs))
+Lowpass(w::Real) = Lowpass{typeof(w/1)}(w)
 
 struct Highpass{T} <: FilterType
     w::T
 end
 
 """
-    Highpass(Wn[; fs])
+    Highpass(Wn)
 
-High pass filter with cutoff frequency `Wn`. If `fs` is not
-specified, `Wn` is interpreted as a normalized frequency in
-half-cycles/sample.
+High pass filter with cutoff frequency `Wn`.
 """
-Highpass(w::Real; fs::Real=2) = Highpass{typeof(w/1)}(normalize_freq(w, fs))
+Highpass(w::Real) = Highpass{typeof(w/1)}(w)
 
 struct Bandpass{T} <: FilterType
     w1::T
@@ -274,15 +268,13 @@ struct Bandpass{T} <: FilterType
 end
 
 """
-    Bandpass(Wn1, Wn2[; fs])
+    Bandpass(Wn1, Wn2)
 
-Band pass filter with normalized pass band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
-function Bandpass(w1::Real, w2::Real; fs::Real=2)
+function Bandpass(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
-    Bandpass{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
+    Bandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
 struct Bandstop{T} <: FilterType
@@ -291,15 +283,13 @@ struct Bandstop{T} <: FilterType
 end
 
 """
-    Bandstop(Wn1, Wn2[; fs])
+    Bandstop(Wn1, Wn2)
 
-Band stop filter with normalized stop band (`Wn1`, `Wn2`). If
-`fs` is not specified, `Wn1` and `Wn2` are interpreted as
-normalized frequencies in half-cycles/sample.
+Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
-function Bandstop(w1::Real, w2::Real; fs::Real=2)
+function Bandstop(w1::Real, w2::Real)
     w1 < w2 || error("w1 must be less than w2")
-    Bandstop{Base.promote_typeof(w1/1, w2/1)}(normalize_freq(w1, fs), normalize_freq(w2, fs))
+    Bandstop{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
 end
 
 #
@@ -355,9 +345,9 @@ function transform_prototype(ftype::Bandpass, proto::ZeroPoleGain{:s})
     newz = zeros(TR, 2*nz+np-ncommon)
     newp = zeros(TR, 2*np+nz-ncommon)
     for (oldc, newc) in ((p, newp), (z, newz))
-        for i = 1:length(oldc)
+        for i in eachindex(oldc)
             b = oldc[i] * ((ftype.w2 - ftype.w1)/2)
-            pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+            pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
             newc[2i-1] = b + pm
             newc[2i] = b - pm
         end
@@ -372,7 +362,7 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     k = proto.k
     nz = length(z)
     np = length(p)
-    npairs = nz+np-min(nz, np)
+    npairs = max(nz, np)
     TR = Base.promote_eltype(z, p)
     newz = Vector{TR}(undef, 2*npairs)
     newp = Vector{TR}(undef, 2*npairs)
@@ -380,8 +370,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     num = one(eltype(z))
     for i = 1:nz
         num *= -z[i]
-        b = (ftype.w2 - ftype.w1)/2/z[i]
-        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        b = (ftype.w2 - ftype.w1)/2z[i]
+        pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
         newz[2i-1] = b - pm
         newz[2i] = b + pm
     end
@@ -389,8 +379,8 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
     den = one(eltype(p))
     for i = 1:np
         den *= -p[i]
-        b = (ftype.w2 - ftype.w1)/2/p[i]
-        pm = sqrt(b^2 - ftype.w2 * ftype.w1)
+        b = (ftype.w2 - ftype.w1)/2p[i]
+        pm = sqrt(muladd(-ftype.w2, ftype.w1, b^2))
         newp[2i-1] = b - pm
         newp[2i] = b + pm
     end
@@ -422,7 +412,44 @@ analogfilter(ftype::FilterType, proto::FilterCoefficients) =
     transform_prototype(ftype, proto)
 
 # Bilinear transform
+"""
+    bilinear(f::FilterCoefficients{:s}, fs::Real)
+
+Calculate the digital filter (z-domain) ZPK representation of an analog filter defined
+in s-domain using bilinear transform with sampling frequency `fs`. The s-domain
+representation is first converted to a ZPK representation in s-domain and then
+transformed to z-domain using bilinear transform.
+"""
 bilinear(f::FilterCoefficients{:s}, fs::Real) = bilinear(convert(ZeroPoleGain, f), fs)
+
+"""
+    bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
+
+Calculate the digital filter (z-domain) ZPK representation of an analog filter defined
+as a ZPK representation in s-domain using bilinear transform with sampling frequency
+`fs`.
+
+Input s-domain representation must be a `ZeroPoleGain{:s, Z, P, K}` object:
+```math
+H(s) = f.k\\frac{(s - \\verb!f.z[1]!) \\ldots (s - \\verb!f.z[m]!)}{(s - \\verb!f.p[1]!) \\ldots (s - \\verb!f.p[n]!)}
+```
+Output z-domain representation is a `ZeroPoleGain{:z, Z, P, K}` object:
+```math
+H(z) = K\\frac{(z - \\verb!Z[1]!) \\ldots (z - \\verb!Z[m]!)}{(z - \\verb!P[1]!) \\ldots (z - \\verb!P[n]!)}
+```
+where `Z, P, K` are calculated as:
+```math
+Z[i] = \\frac{(2 + \\verb!f.z[i]!/\\verb!fs!)}{(2 - \\verb!f.z[i]!/\\verb!fs!)} \\quad \\text{for } i = 1, \\ldots, m
+```
+```math
+P[i] = \\frac{(2 + \\verb!f.p[i]!/\\verb!fs!)}{(2 - \\verb!f.p[i]!/\\verb!fs!)} \\quad \\text{for } i = 1, \\ldots, n
+```
+```math
+K = f.k \\ \\mathcal{Re} \\left[ \\frac{\\prod_{i=1}^m (2*fs - f.z[i])}{\\prod_{i=1}^n (2*fs - f.p[i])} \\right]
+```
+Here, `m` and `n` are respectively the numbers of zeros and poles in the s-domain representation. If `m < n`,
+then additional `n-m` zeros are added at `z = -1`.
+"""
 function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
     ztype = typeof(0 + zero(Z)/fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
@@ -446,20 +473,20 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::Union{Lowpass, Highpass}) = (typeof(ftype))(prewarp(ftype.w))
-prewarp(ftype::Union{Bandpass, Bandstop}) = (typeof(ftype))(prewarp(ftype.w1), prewarp(ftype.w2))
+prewarp(ftype::Union{Lowpass, Highpass}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Union{Bandpass, Bandstop}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
 # freq in half-samples per cycle
 prewarp(f::Real) = 4*tan(pi*f/2)
 
 # Digital filter design
 """
-    digitalfilter(responsetype, designmethod)
+    digitalfilter(responsetype, designmethod[; fs])
 
 Construct a digital filter. See below for possible response and
 filter types.
 """
-digitalfilter(ftype::FilterType, proto::FilterCoefficients) =
-    bilinear(transform_prototype(prewarp(ftype), proto), 2)
+digitalfilter(ftype::FilterType, proto::FilterCoefficients; fs::Real=2) =
+    bilinear(transform_prototype(prewarp(ftype, fs), proto), 2)
 
 #
 # Special filter types
@@ -543,21 +570,21 @@ FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwi
     FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
 
 # Compute coefficients for FIR prototype with specified order
-function firprototype(n::Integer, ftype::Lowpass)
-    w = ftype.w
+function firprototype(n::Integer, ftype::Lowpass, fs::Real)
+    w = normalize_freq(ftype.w, fs)
 
     [w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
-function firprototype(n::Integer, ftype::Bandpass)
-    w1 = ftype.w1
-    w2 = ftype.w2
+function firprototype(n::Integer, ftype::Bandpass, fs::Real)
+    w1 = normalize_freq(ftype.w1, fs)
+    w2 = normalize_freq(ftype.w2, fs)
 
     [w2*sinc(w2*(k-(n-1)/2)) - w1*sinc(w1*(k-(n-1)/2)) for k = 0:(n-1)]
 end
 
-function firprototype(n::Integer, ftype::Highpass)
-    w = ftype.w
+function firprototype(n::Integer, ftype::Highpass, fs::Real)
+    w = normalize_freq(ftype.w, fs)
     isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
 
     out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
@@ -565,9 +592,9 @@ function firprototype(n::Integer, ftype::Highpass)
     out
 end
 
-function firprototype(n::Integer, ftype::Bandstop)
-    w1 = ftype.w1
-    w2 = ftype.w2
+function firprototype(n::Integer, ftype::Bandstop, fs::Real)
+    w1 = normalize_freq(ftype.w1, fs)
+    w2 = normalize_freq(ftype.w2, fs)
     isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
 
     out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
@@ -575,17 +602,17 @@ function firprototype(n::Integer, ftype::Bandstop)
     out
 end
 
-scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}) = sum(coefs)
-function scalefactor(coefs::Vector, ::Highpass)
+scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}, fs::Real) = sum(coefs)
+function scalefactor(coefs::Vector, ::Highpass, fs::Real)
     c = zero(coefs[1])
     for k = 1:length(coefs)
         c += ifelse(isodd(k), coefs[k], -coefs[k])
     end
     c
 end
-function scalefactor(coefs::Vector, ftype::Bandpass)
+function scalefactor(coefs::Vector, ftype::Bandpass, fs::Real)
     n = length(coefs)
-    freq = middle(ftype.w1, ftype.w2)
+    freq = normalize_freq(middle(ftype.w1, ftype.w2), fs)
     c = zero(coefs[1])
     for k = 0:n-1
         c += coefs[k+1]*cospi(freq*(k-(n-1)/2))
@@ -593,11 +620,11 @@ function scalefactor(coefs::Vector, ftype::Bandpass)
     c
 end
 
-function digitalfilter(ftype::FilterType, proto::FIRWindow)
-    coefs = firprototype(length(proto.window), ftype)
+function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
+    coefs = firprototype(length(proto.window), ftype, fs)
     @assert length(proto.window) == length(coefs)
     out = coefs .* proto.window
-    proto.scale ? rmul!(out, 1/scalefactor(out, ftype)) : out
+    proto.scale ? rmul!(out, 1/scalefactor(out, ftype, fs)) : out
 end
 
 

@@ -4,10 +4,16 @@ on:
     branches: [master]
     tags: ['*']
   pull_request:
+  workflow_dispatch:
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+
+    permissions:
+      actions: write
+      contents: read
+
     strategy:
       fail-fast: false
       matrix:
@@ -16,17 +22,29 @@ jobs:
           - '1'    # Current stable version
         os:
           - ubuntu-latest
-          - macos-latest
           - windows-latest
+          - macOS-13 # intel
+          - macOS-14 # arm
         arch:
           - x64
-        include:
+          - x86
+          - aarch64
+        exclude:
           - os: ubuntu-latest
-            arch: x86
-            version: 1
+            arch: aarch64
           - os: windows-latest
+            arch: aarch64
+          - os: macOS-13
             arch: x86
-            version: 1
+          - os: macOS-13
+            arch: aarch64
+          - os: macOS-14
+            arch: x86
+          - os: macOS-14
+            arch: x64
+          - os: macOS-14
+            arch: aarch64
+            version: '1.6'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
@@ -34,6 +52,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
+        with:
+          cache-registries: ${{ !(matrix.version == '1.6' && matrix.os == 'windows-latest') }}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
@@ -41,6 +61,7 @@ jobs:
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
   docs:
     name: Documentation
     runs-on: ubuntu-latest
