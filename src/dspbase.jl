@@ -680,6 +680,25 @@ function _conv(u, v, su, sv)
     _conv!(out, u, v, su, sv, outsize)
 end
 
+function _conv_td(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N}
+    output_indices = CartesianIndices(map(axes(u), axes(v)) do au, av
+        r = (first(au)+first(av)):(last(au)+last(av))
+        if au isa Base.OneTo && av isa Base.OneTo
+            return r
+        else
+            return Base.IdentityUnitRange(r)
+        end
+    end)
+    return [
+        sum(u[m] * v[n-m]
+            for m in CartesianIndices(ntuple(Val(N)) do d
+                max(firstindex(u,d),n[d]-lastindex(v,d)):min(lastindex(u,d), n[d]-firstindex(v,d))
+            end)
+        )
+        for n in output_indices
+    ]
+end
+
 # We use this type definition for clarity
 const RealOrComplexFloat = Union{AbstractFloat, Complex{T} where T<:AbstractFloat}
 
@@ -709,7 +728,7 @@ function conv(u::AbstractArray{<:RealOrComplexFloat, N},
 end
 
 conv(u::AbstractArray{<:Integer, N}, v::AbstractArray{<:Integer, N}) where {N} =
-    round.(Int, conv(float(u), float(v)))
+    _conv_td(u, v)
 
 conv(u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N} =
     conv(float(u), float(v))
