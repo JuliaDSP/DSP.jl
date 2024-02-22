@@ -42,6 +42,16 @@ end
     sr = cis.(2π*fr*t)
     f_est_real = jacobsen(sr, fs)
     @test isapprox(f_est_real, fr, atol = 1e-5)
+    # tests for real signals: test only around fs/4, where the
+    # expected error is small.
+    fr = 28.3
+    sr = cos.(2π*fr*t .+ π/4.2)
+    f_est_real = jacobsen(sr, fs)
+    @test isapprox(f_est_real, fr, atol = 1e-5)
+    fr = 23.45
+    sr = sin.(2π*fr*t .+ 3π/2.2)
+    f_est_real = jacobsen(sr, fs)
+    @test isapprox(f_est_real, fr, atol = 1e-5)
 end
 
 @testset "quinn" begin

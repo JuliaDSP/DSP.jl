@@ -46,9 +46,13 @@ end
 """
     jacobsen(x::AbstractVector, Fs::Real = 1.0)
 
-Estimate the largest frequency in the signal `x` using Jacobsen's algorithm
-[^Jacobsen2007]. Argument `Fs` is the sampling frequency.  All frequencies are
-expressed in Hz.
+Estimate the largest frequency in the complex signal `x` using Jacobsen's
+algorithm [^Jacobsen2007]. Argument `Fs` is the sampling frequency.  All
+frequencies are expressed in Hz.
+
+If the signal `x` is real, the estimated frequency is guaranteed to be
+positive, but it may be highly inaccurate (especially for frequencies close to
+zero or to `Fs/2`).
 
 If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
 1.0`.
@@ -67,8 +71,13 @@ function jacobsen(x::AbstractVector, Fs::Real = 1.0)
     else
         δ = 0.0
     end
+    estimate = fpeak + δ*Fs/N
 
-    return fpeak + δ*Fs/N
+    # if signal is real, return positive frequency
+    if eltype(x) <: Real
+        return abs(estimate)
+    end
+    return estimate
 end
 
 """
