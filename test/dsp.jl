@@ -59,9 +59,16 @@ end
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
+        # issue #410
+        n = 314159265
+        @test conv([n], [n]) == [n^2]
+
         offset_arr = OffsetVector{Int}(undef, -1:2)
         offset_arr[:] = a
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
+        offset_arr_f = OffsetVector{Float64}(undef, -1:2)
+        offset_arr_f[:] = fa
+        @test conv(offset_arr_f, 1:3) ≈ OffsetVector(fexp, 0:5)
         # Issue #352
         @test conv([1//2, 1//3, 1//4], [1, 2]) ≈ [1//2, 4//3, 11//12, 1//2]
         # Non-numerical arrays should not be convolved
