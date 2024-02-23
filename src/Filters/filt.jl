@@ -77,7 +77,7 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
 end
 
 filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(Array{promote_type(T, G, S)}(undef, size(x)), f, x, si)
+    filt!(similar(x, promote_type(T, G, S)), f, x, si)
 
 ## Biquad
 _zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
@@ -112,7 +112,7 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
 end
 
 filt(f::Biquad{:z,T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(Array{promote_type(T, S)}(undef, size(x)), f, x, si)
+    filt!(similar(x, promote_type(T, S)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
 filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
@@ -227,7 +227,7 @@ Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
     output array `out` to `filt!(out, f, x)`.
 """
 filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
-    filt!(Vector{promote_type(T, V)}(undef, length(x)), f, x)
+    filt!(similar(x, promote_type(T, V)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
@@ -435,7 +435,7 @@ function tdfilt!(out::AbstractArray, h::AbstractVector{H}, x::AbstractArray) whe
 end
 
 filt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T} =
-    filt!(Array{promote_type(H, T)}(undef, size(x)), h, x)
+    filt!(similar(x, promote_type(H, T)), h, x)
 
 #
 # fftfilt and filt
@@ -449,7 +449,7 @@ using an FFT-based overlap-save algorithm.
 """
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
-    _fftfilt!(Array{T}(undef, size(x)), b, x, nfft)
+    _fftfilt!(similar(x, T), b, x, nfft)
 end
 
 """
@@ -516,7 +516,7 @@ end
 # Filter x using FIR filter b, heuristically choosing to perform convolution in
 # the time domain using tdfilt or in the frequency domain using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
-    filt_choose_alg!(Array{T}(undef, size(x)), b, x)
+    filt_choose_alg!(similar(x, T), b, x)
 end
 
 # Like filt but mutates output array

@@ -59,7 +59,7 @@ end
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
-        offset_arr = OffsetArray{Int}(undef, -1:2)
+        offset_arr = OffsetVector{Int}(undef, -1:2)
         offset_arr[:] = a
         @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
         # Issue #352
@@ -106,7 +106,7 @@ end
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
-        offset_arr = OffsetArray{Int}(undef, -1:1, -1:1)
+        offset_arr = OffsetMatrix{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
         @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
     end

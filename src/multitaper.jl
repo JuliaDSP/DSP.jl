@@ -693,7 +693,7 @@ end
 function allocate_output(config::MTCoherenceConfig{T}) where {T}
     n_chan = config.cs_config.n_channels
     n_freqs = length(config.cs_config.freq)
-    return Array{real(T)}(undef, n_chan, n_chan, n_freqs)
+    return Array{real(T),3}(undef, n_chan, n_chan, n_freqs)
 end
 
 """
