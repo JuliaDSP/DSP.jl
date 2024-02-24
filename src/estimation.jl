@@ -62,17 +62,21 @@ If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
 """
 function jacobsen(x::AbstractVector, Fs::Real = 1.0)
     N = length(x)
-    X = fftshift(fft(x))
-    k = argmax(abs.(X))  # index of DFT peak
-    fpeak = fftshift(fftfreq(N, Fs))[k]  # peak frequency
-    if ((k != N) && (k != 1))  # avoid out-of-bounds indexing
-        # jacobsen's formula
-        δ = -real((X[k+1] - X[k-1]) / (2X[k] - X[k-1] - X[k+1]) )
+    X = fft(x)
+    k = argmax(abs.(X)) # index of DFT peak
+    fpeak = fftfreq(N, Fs)[k]  # peak frequency
+    if (k == N)     # k+1 is OOB -- X[k+1] = X[1]
+        Xkm1 = X[N-1]
+        Xkp1 = X[1]
+    elseif (k == 1) # k-1 is OOB -- X[k-1] = X[N]
+        Xkp1 = X[2]
+        Xkm1 = X[N]
     else
-        δ = 0.0
+        Xkp1 = X[k+1]
+        Xkm1 = X[k-1]
     end
+    δ = -real( (Xkp1 - Xkm1) / (2X[k] - Xkm1 - Xkp1) )
     estimate = fpeak + δ*Fs/N
-
     # if signal is real, return positive frequency
     if eltype(x) <: Real
         return abs(estimate)
