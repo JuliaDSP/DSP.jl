@@ -8,6 +8,7 @@ Common procedures like computing the [short-time Fourier transform](@ref stft),
 arraysplit
 periodogram(s::AbstractVector{T}) where T <: Number
 welch_pgram
+welch_pgram!
 spectrogram
 stft
 periodogram(s::AbstractMatrix{T}) where T <: Real
@@ -35,6 +36,7 @@ mt_coherence!
 ## Configuration objects
 
 ```@docs
+WelchConfig
 MTConfig
 MTSpectrogramConfig
 MTCrossSpectraConfig
