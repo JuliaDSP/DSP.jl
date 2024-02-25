@@ -21,9 +21,9 @@ using DSP, Test
 end
 
 @testset "jacobsen" begin
-    # test at two arbitrary frequencies
     fs = 100
     t = range(0, 5, step = 1/fs)
+    # test at two arbitrary frequencies
     fc = -40.3
     sc = cis.(2π*fc*t .+ π/1.4)
     f_est_complex = jacobsen(sc, fs)
@@ -31,17 +31,27 @@ end
     fc = 14.3
     sc = cis.(2π*fc*t .+ π/3)
     f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-2)
-    # test at higher extreme of DFT
-    fr = 49.90019
-    sr = cis.(2π*fr*t)
-    f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
-    # test at lower extreme of DFT
-    fr = -49.90019
-    sr = cis.(2π*fr*t)
-    f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
+    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    # test near fs/2
+    fc = 49.90019
+    sc = cis.(2π*fc*t)
+    f_est_complex = jacobsen(sc, fs)
+    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    # test near -fs/2
+    fc = -49.90019
+    sc = cis.(2π*fc*t)
+    f_est_complex = jacobsen(sc, fs)
+    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    # test near +zero
+    fc = 0.04
+    sc = cis.(2π*fc*t)
+    f_est_complex = jacobsen(sc, fs)
+    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    # test near -zero
+    fc = -0.1
+    sc = cis.(2π*fc*t)
+    f_est_complex = jacobsen(sc, fs)
+    @test isapprox(f_est_complex, fc, atol = 1e-5)
     # tests for real signals: test only around fs/4, where the
     # expected error is small.
     fr = 28.3
