@@ -102,7 +102,7 @@ Filter with:
 ```math
 H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[m]! z^{-m+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
 ```
-returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficients divided by `a[1]`. 
+returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficients divided by `a[1]`.
 ```jldoctest
 julia> PolynomialRatio([1,1],[1,2])
 PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0*z⁻¹ + 1.0), LaurentPolynomial(2.0*z⁻¹ + 1.0))

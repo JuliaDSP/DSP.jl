@@ -111,7 +111,7 @@ end
         @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
     end
 
-    @testset "seperable conv" begin
+    @testset "separable conv" begin
         u = [1, 2, 3, 2, 1]
         v = [6, 7, 3, 2]
         A = [1 2 3 4 5 6 7;

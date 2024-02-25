@@ -165,7 +165,7 @@ a signal from a number of overlapping frames (each with a roughly rectangular
 window), to eliminate windowing amplitude modulation.
 
 While this windowing function was originally named after its inventor Julius
-Von Hann, coloquial usage has adjusted to refer to it as the "Hanning" window,
+Von Hann, colloquial usage has adjusted to refer to it as the "Hanning" window,
 to better match the similarly-named "Hamming" window.  Because of this, both
 `hann()` and `hanning()` are exported from this module.
 
