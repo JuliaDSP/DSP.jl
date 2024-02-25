@@ -572,21 +572,21 @@ FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwi
 function firprototype(n::Integer, ftype::Lowpass, fs::Real)
     w = normalize_freq(ftype.w, fs)
 
-    [w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
+    [w*sinc(w*(k-(n+1)/2)) for k = 1:n]
 end
 
 function firprototype(n::Integer, ftype::Bandpass, fs::Real)
     w1 = normalize_freq(ftype.w1, fs)
     w2 = normalize_freq(ftype.w2, fs)
 
-    [w2*sinc(w2*(k-(n-1)/2)) - w1*sinc(w1*(k-(n-1)/2)) for k = 0:(n-1)]
+    [w2*sinc(w2*(k-(n+1)/2)) - w1*sinc(w1*(k-(n+1)/2)) for k = 1:n]
 end
 
 function firprototype(n::Integer, ftype::Highpass, fs::Real)
     w = normalize_freq(ftype.w, fs)
     isodd(n) || throw(ArgumentError("FIRWindow highpass filters must have an odd number of coefficients"))
 
-    out = [-w*sinc(w*(k-(n-1)/2)) for k = 0:(n-1)]
+    out = [-w*sinc(w*(k-(n+1)/2)) for k = 1:n]
     out[n÷2+1] += 1
     out
 end
@@ -596,25 +596,25 @@ function firprototype(n::Integer, ftype::Bandstop, fs::Real)
     w2 = normalize_freq(ftype.w2, fs)
     isodd(n) || throw(ArgumentError("FIRWindow bandstop filters must have an odd number of coefficients"))
 
-    out = [w1*sinc(w1*(k-(n-1)/2)) - w2*sinc(w2*(k-(n-1)/2)) for k = 0:(n-1)]
+    out = [w1*sinc(w1*(k-(n+1)/2)) - w2*sinc(w2*(k-(n+1)/2)) for k = 1:n]
     out[n÷2+1] += 1
     out
 end
 
 scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}, fs::Real) = sum(coefs)
-function scalefactor(coefs::Vector, ::Highpass, fs::Real)
-    c = zero(coefs[1])
+function scalefactor(coefs::Vector{T}, ::Highpass, fs::Real) where T
+    c = zero(T)
     for k = 1:length(coefs)
         c += ifelse(isodd(k), coefs[k], -coefs[k])
     end
     c
 end
-function scalefactor(coefs::Vector, ftype::Bandpass, fs::Real)
+function scalefactor(coefs::Vector{T}, ftype::Bandpass, fs::Real) where T
     n = length(coefs)
     freq = normalize_freq(middle(ftype.w1, ftype.w2), fs)
-    c = zero(coefs[1])
-    for k = 0:n-1
-        c = muladd(coefs[k+1], cospi(freq*(k-(n-1)/2)), c)
+    c = zero(T)
+    for k = 1:n
+        c = muladd(coefs[k], cospi(freq * (k - (n + 1) / 2)), c)
     end
     c
 end
