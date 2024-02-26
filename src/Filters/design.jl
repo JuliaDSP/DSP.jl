@@ -234,13 +234,13 @@ Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 # returns frequency in half-cycles per sample ∈ (0, 1)
 function normalize_freq(w::Real, fs::Real)
     w <= 0 && throw(DomainError(w, "frequencies must be positive"))
-    f = 2*w/fs
+    f = 2 * w / fs
     f >= 1 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs/2)"))
     f
 end
 function normalize_complex_freq(w::Real, fs::Real)
-    f = 2*w/fs
-    f >= 2 && error("frequencies must be less than the Nyquist frequency $(fs)")
+    f = 2 * w / fs
+    f >= 2 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs)"))
     f
 end
 
