@@ -32,7 +32,7 @@ length p real array of frequencies in units of Hz.
     <http://ieeexplore.ieee.org/abstract/document/1164935/>.
 """
 function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
-    count(v->v != 1, size(x)) <= 1 || error("`x` must be a 1D signal")
+    count(!isone, size(x)) <= 1 || throw(ArgumentError("`x` must be a 1D signal"))
     N = length(x)
     X = x[ (1:M) .+ (0:N-M)' ]
     U, _ = svd(X)

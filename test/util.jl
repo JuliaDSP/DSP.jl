@@ -166,4 +166,5 @@ end
     @test s == d
     @test y == [x; zeros(d)]
 
+    @test_throws DomainError shiftsignal([1], -2)
 end

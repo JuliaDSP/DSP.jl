@@ -56,11 +56,9 @@ end
 # Transfer function form
 #
 
-function shiftpoly(p::LaurentPolynomial, i)
-    if i > 0
-        return p * LaurentPolynomial([one(eltype(p))], 1, indeterminate(p))^i
-    elseif i < 0
-        return p * LaurentPolynomial([one(eltype(p))], -1, indeterminate(p))^-i
+function shiftpoly(p::LaurentPolynomial{T}, i::Integer) where {T<:Number}
+    if !iszero(i)
+        return p * LaurentPolynomial([one(T)], i, indeterminate(p))
     end
     return p
 end
@@ -104,7 +102,7 @@ Filter with:
 ```math
 H(z) = \\frac{\\verb!b[1]! + \\ldots + \\verb!b[m]! z^{-m+1}}{\\verb!a[1]! + \\ldots + \\verb!a[n]! z^{-n+1}}
 ```
-returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficients divided by `a[1]`. 
+returns `PolynomialRatio` object with `a[1] = 1` and other specified coefficients divided by `a[1]`.
 ```jldoctest
 julia> PolynomialRatio([1,1],[1,2])
 PolynomialRatio{:z, Float64}(LaurentPolynomial(1.0*z⁻¹ + 1.0), LaurentPolynomial(2.0*z⁻¹ + 1.0))
@@ -179,14 +177,17 @@ function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     end
 end
 
+coef_s(p::LaurentPolynomial{T}) where T = (n = firstindex(p);  append!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
+coef_z(p::LaurentPolynomial{T}) where T = (n = -lastindex(p); prepend!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
+
 """
     coefb(f)
 
 Coefficients of the numerator of a PolynomialRatio object, highest power
 first, i.e., the `b` passed to `filt()`
 """
-coefb(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.b)); coeffs(f.b)])
-coefb(f::PolynomialRatio{:z}) = reverse([coeffs(f.b); zeros(-lastindex(f.b))])
+coefb(f::PolynomialRatio{:s}) = coef_s(f.b)
+coefb(f::PolynomialRatio{:z}) = coef_z(f.b)
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
@@ -195,8 +196,8 @@ coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 Coefficients of the denominator of a PolynomialRatio object, highest power
 first, i.e., the `a` passed to `filt()`
 """
-coefa(f::PolynomialRatio{:s}) = reverse([zeros(firstindex(f.a)); coeffs(f.a)])
-coefa(f::PolynomialRatio{:z}) = reverse([coeffs(f.a); zeros(-lastindex(f.a))])
+coefa(f::PolynomialRatio{:s}) = coef_s(f.a)
+coefa(f::PolynomialRatio{:z}) = coef_z(f.a)
 coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 
 #
@@ -324,15 +325,8 @@ function groupzp(z, p)
     groupedz = similar(z, n)
     i = 1
     while i <= n
-        closest_zero_idx = 0
-        closest_zero_val = Inf
-        for j = 1:length(z)
-            val = abs(z[j] - p[i])
-            if val < closest_zero_val
-                closest_zero_idx = j
-                closest_zero_val = val
-            end
-        end
+        p_i = p[i]
+        _, closest_zero_idx = findmin(x -> abs(x - p_i), z)
         groupedz[i] = splice!(z, closest_zero_idx)
         if !isreal(groupedz[i])
             i += 1
@@ -340,9 +334,7 @@ function groupzp(z, p)
         end
         i += 1
     end
-    ret = (groupedz, p[1:n])
-    splice!(p, 1:n)
-    ret
+    return (groupedz, splice!(p, 1:n))
 end
 
 # Sort zeros or poles lexicographically (so that poles are adjacent to
@@ -359,10 +351,10 @@ function split_real_complex(x::Vector{T}; sortby=nothing) where T
     end
 
     c = T[]
-    r = typeof(real(zero(T)))[]
+    r = real(T)[]
     ks = collect(keys(d))
     if sortby !== nothing
-        sort!(ks, by=sortby)
+        sort!(ks; by=sortby)
     end
     for k in ks
         if imag(k) != 0

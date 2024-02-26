@@ -1,6 +1,5 @@
 const PFB{T} = Matrix{T}          # polyphase filter bank
 
-abstract type Filter end
 abstract type FIRKernel{T} end
 
 # Single rate FIR kernel
@@ -137,7 +136,7 @@ end
 
 
 # FIRFilter - the kernel does the heavy lifting
-mutable struct FIRFilter{Tk<:FIRKernel} <: Filter
+mutable struct FIRFilter{Tk<:FIRKernel}
     kernel::Tk
     history::Vector
     historyLen::Int
@@ -188,7 +187,7 @@ optional parameter which specifies the number of *phases* created from
 `h`. `Nϕ` defaults to 32.
 """
 function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
-    rate > 0.0 || error("rate must be greater than 0")
+    rate > 0.0 || throw(DomainError(rate, "rate must be greater than 0"))
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
     history    = zeros(historyLen)
@@ -416,7 +415,7 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::
     bufLen              = length(buffer)
     xLen                = length(x)
 
-    bufLen >= xLen || error("buffer length must be >= x length")
+    bufLen >= xLen || throw(ArgumentError("buffer length must be >= length(x)"))
 
     h = kernel.h
     for i = 1:min(kernel.hLen-1, xLen)
@@ -451,7 +450,7 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}},
     end
 
     inputIdx = kernel.inputDeficit
-    bufLen >= outputlength(self, xLen) || error("length(buffer) must be >= interpolation * length(x)")
+    bufLen >= outputlength(self, xLen) || throw(ArgumentError("length(buffer) must be >= interpolation * length(x)"))
 
     while inputIdx <= xLen
         bufIdx += 1
@@ -491,7 +490,7 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::
     end
 
     outLen = outputlength(xLen-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
-    bufLen >= outLen || error("buffer is too small")
+    bufLen >= outLen || throw(ArgumentError("buffer is too small"))
 
     interpolation       = numerator(kernel.ratio)
     decimation          = denominator(kernel.ratio)
@@ -700,7 +699,7 @@ end
 Resample an array `x` along dimension `dims`.
 """
 function resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
-    mapslices(x; dims=dims) do x
+    mapslices(x; dims) do x
         resample(x, rate, h)
     end
 end

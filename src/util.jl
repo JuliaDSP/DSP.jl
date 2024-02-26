@@ -1,8 +1,7 @@
 module Util
 using ..DSP: xcorr
 import Base: *
-import LinearAlgebra.BLAS
-using LinearAlgebra: mul!
+using LinearAlgebra: mul!, BLAS
 using FFTW
 using Statistics: mean
 
@@ -36,7 +35,7 @@ function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
     X = zeros(Complex{T}, N)
     p = plan_rfft(x)
     mul!(view(X, 1:(N >> 1)+1), p, x)
-    for i = 2:div(N, 2)+isodd(N)
+    for i = 2:N÷2+isodd(N)
         @inbounds X[i] *= 2.0
     end
     return ifft!(X)
@@ -57,21 +56,22 @@ function hilbert(x::AbstractArray{T}) where T<:Real
     out = similar(x, fftouttype(T))
 
     p1 = plan_rfft(xc)
-    Xsub = view(X, 1:(N >> 1)+1)
     p2 = plan_bfft!(X)
+    Xsub = view(X, 1:(N >> 1)+1)
+    Xm = view(X, 2:N÷2+isodd(N))
+    Xtail = view(X, (N >> 1)+2:N)
 
     normalization = 1/N
-    off = 1
-    for i = 1:Base.trailingsize(x, 2)
-        copyto!(xc, 1, x, off, N)
+    for off = 0:N:N*(Base.trailingsize(x, 2) - 1)
+        copyto!(xc, 1, x, 1 + off, N)
 
         # fft
-        fill!(X, 0)
+        fill!(Xtail, 0)
         mul!(Xsub, p1, xc)
 
         # scale real part
-        for i = 2:div(N, 2)+isodd(N)
-            @inbounds X[i] *= 2.0
+        for i in eachindex(Xm)
+            @inbounds Xm[i] *= 2
         end
 
         # ifft
@@ -79,10 +79,8 @@ function hilbert(x::AbstractArray{T}) where T<:Real
 
         # scale and copy to output
         @simd for j = 1:N
-            @inbounds out[off+j-1] = X[j]*normalization
+            @inbounds out[off+j] = X[j] * normalization
         end
-
-        off += N
     end
 
     out
@@ -106,7 +104,8 @@ fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 # Get next fast FFT size for a given signal length
-const FAST_FFT_SIZES = [2, 3, 5, 7]
+const FAST_FFT_SIZES = (2, 3, 5, 7)
+
 """
     nextfastfft(n)
 
@@ -172,7 +171,7 @@ function rms(s::AbstractArray{T}; dims=:) where {T<:Number}
     if dims === (:)
         return sqrt(mean(abs2, s))
     else
-        return sqrt.(mean(abs2, s; dims=dims))
+        return sqrt.(mean(abs2, s; dims))
     end
 end
 
@@ -225,8 +224,8 @@ end
 function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen = size(a, 1)
     bLen = length(b)
-    bLen == aLen-1  || error( "length(b) must equal to length(a)[1] - 1" )
-    cLastIdx < aLen || error( "cLastIdx but be < length(a)")
+    bLen == aLen-1  || throw(ArgumentError("length(b) must equal size(a, 1) - 1"))
+    cLastIdx < aLen || throw(DomainError(cLastIdx, "cLastIdx must be < length(a)"))
 
     dotprod = a[1, aColIdx] * b[cLastIdx]
     @simd for i in 2:aLen-cLastIdx
@@ -267,31 +266,32 @@ function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T
     return dotprod
 end
 
+"""
+    shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
 
+Shifts `b` into the end of `a`.
 
-# Shifts b into the end a.
-# julia> DSP.Util.shiftin!( [1,2,3,4], [5, 6])
-# 4-element Array{Int64,1}:
-#  3
-#  4
-#  5
-#  6
+```jldoctest
+julia> shiftin!([1,2,3,4], [5, 6])
+4-element Vector{Int64}:
+ 3
+ 4
+ 5
+ 6
+```
+"""
 function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
     aLen = length(a)
     bLen = length(b)
+    fi_a = firstindex(a)
+    fi_b = firstindex(b)
+    copy_fn! = (a isa Vector && b isa Vector) ? unsafe_copyto! : copyto!
 
     if bLen >= aLen
-        copyto!(a, 1, b, bLen - aLen + 1, aLen)
+        copy_fn!(a, fi_a, b, fi_b + bLen - aLen, aLen)
     else
-
-        for i in 1:aLen-bLen
-            @inbounds a[i] = a[i+bLen]
-        end
-        bIdx = 1
-        for i in aLen-bLen+1:aLen
-            @inbounds a[i] = b[bIdx]
-            bIdx += 1
-        end
+        copy_fn!(a, fi_a, a, fi_a + bLen, aLen - bLen)
+        copy_fn!(a, fi_a + aLen - bLen, b, fi_b, bLen)
     end
 
     return a
@@ -341,7 +341,7 @@ See also [`shiftsignal`](@ref).
 function shiftsignal!(x::AbstractVector, s::Integer)
     l = length(x)
     if abs(s) > l
-        error("The absolute value of s must not be greater than the length of x")
+        throw(DomainError(s, "The absolute value of s must not be greater than the length of x"))
     end
     if s > 0
         x[s + 1:l] = x[1:l - s]

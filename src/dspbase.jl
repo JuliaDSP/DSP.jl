@@ -12,7 +12,7 @@ state vector `si` (defaults to zeros).
 """
 function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
               x::AbstractArray{T}, si::AbstractArray{S} = _zerosi(b,a,T)) where {T,S}
-    filt!(Array{promote_type(eltype(b), eltype(a), T, S)}(undef, size(x)), b, a, x, si)
+    filt!(similar(x, promote_type(eltype(b), eltype(a), T, S)), b, a, x, si)
 end
 
 # in-place filtering: returns results in the out argument, which may shadow x
@@ -63,7 +63,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     else
         initial_si = si
         si = similar(si, axes(si, 1))
-        for col = 1:ncols
+        for col in axes(x, 2)
             # Reset the filter state
             copyto!(si, view(initial_si, :, N > 1 ? col : 1))
             if as > 1

@@ -16,8 +16,8 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     r::R2 # inverse normalization; e.g. equal to `fs*N` for an unwindowed/untapered periodogram of a signal of length `N`
           # e.g. equal to `fs*ntapers*ones(ntapers)` when tapered by properly normalized window functions (i.e. norm-2 equal to 1 for each taper)
           # can be adjusted to weight the tapers, e.g. by the eigenvalues of the DPSS windows
-    function MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp,
-                         fft_output_tmp, window, onesided, r) where {T}
+    function MTConfig{T}(n_samples, nfft, ntapers, freq::F, fs::R1, plan::P, fft_input_tmp::T1,
+                         fft_output_tmp::T2, window::W, onesided, r::R2) where {T,R1,F,P,T1,T2,W,R2}
         n_samples > 0 || throw(ArgumentError("`n_samples` must be positive"))
         nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
         ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
@@ -25,32 +25,26 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
         if size(plan) != size(fft_input_tmp)
             throw(DimensionMismatch("""Must have `size(plan) == size(fft_input_tmp)`;
                 got `size(plan)` = $(size(plan)) and `size(fft_input_tmp)` = $(size(fft_input_tmp))"""))
-        end
-        if size(fft_input_tmp) != (nfft,)
+        elseif size(fft_input_tmp) != (nfft,)
             throw(DimensionMismatch("""Must have `size(fft_input_tmp) == (nfft,)`;
                 got `size(fft_input_tmp)` = $(size(fft_input_tmp)) and `nfft` = $(nfft)"""))
-        end
-        if size(fft_output_tmp) != (length(freq),)
+        elseif size(fft_output_tmp) != (length(freq),)
             throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq),)`;
                 got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $(length(freq))"""))
-        end
-        if size(window) != (n_samples, ntapers)
+        elseif size(window) != (n_samples, ntapers)
             throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
                 got `size(window)` = $(size(window)) and `(ntapers, n_samples)` = $((n_samples, ntapers))"""))
-        end
-        if size(r) != (ntapers,)
+        elseif size(r) != (ntapers,)
             throw(DimensionMismatch("""Must have `size(r) == (ntapers,)`;
             got `size(r)` = $(size(r)) and `(ntapers,)` = $((ntapers,))"""))
-        end
-        if onesided && T <: Complex
+        elseif onesided && T <: Complex
             throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
         end
-        return new{T,typeof(fs),typeof(freq),typeof(plan),typeof(fft_input_tmp),
-                   typeof(fft_output_tmp),typeof(window),typeof(r)}(n_samples, fs, nfft,
-                                                                    ntapers, freq, plan,
-                                                                    fft_input_tmp,
-                                                                    fft_output_tmp, window,
-                                                                    onesided, r)
+        return new{T,R1,F,P,T1,T2,W,R2}(n_samples, fs, nfft,
+                                        ntapers, freq, plan,
+                                        fft_input_tmp,
+                                        fft_output_tmp, window,
+                                        onesided, r)
     end
 end
 
@@ -79,7 +73,7 @@ function dpss_config(::Type{T}, n_samples; nw=4, ntapers = 2nw-1, fs=1, keep_onl
         taper_weights = fill(1/ntapers, ntapers)
     end
 
-    return MTConfig{T}(n_samples; window=window, nw=nw, ntapers=ntapers, taper_weights=taper_weights, fs=fs, kwargs...)
+    return MTConfig{T}(n_samples; window, nw, ntapers, taper_weights, fs, kwargs...)
 end
 
 
@@ -149,7 +143,7 @@ end
 function mt_fft_tapered!(fft_output, signal, taper_index, config)
     # Create the input: tapered + zero-padded version of the signal
     fft_input = config.fft_input_tmp
-    @inbounds for i in 1:length(signal)
+    @inbounds for i in eachindex(signal)
         fft_input[i] = config.window[i, taper_index] * signal[i]
     end
     fft_input[(length(signal) + 1):(config.nfft)] .= 0
@@ -185,9 +179,9 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   nfft::Int=nextfastfft(length(s)), fs::Real=1,
                   nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
                   window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s); fs = fs,
-        nfft = nfft, window = window, nw = nw, ntapers = ntapers, onesided = onesided,
-        fft_flags = FFTW.ESTIMATE)
+    config = MTConfig{T}(length(s); fs,
+        nfft, window, nw, ntapers, onesided,
+        fft_flags=FFTW.ESTIMATE)
     out = allocate_output(config)
     return mt_pgram!(out, s, config)
 end
@@ -196,9 +190,9 @@ function mt_pgram!(output, s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     nfft::Int=nextfastfft(length(s)), fs::Real=1,
     nw::Real=4, ntapers::Int=ceil(Int, 2nw)-1,
     window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
-    config = MTConfig{T}(length(s); fs = fs,
-    nfft = nfft, window = window, nw = nw, ntapers = ntapers, onesided = onesided,
-    fft_flags = FFTW.ESTIMATE)
+    config = MTConfig{T}(length(s); fs,
+        nfft, window, nw, ntapers, onesided,
+        fft_flags=FFTW.ESTIMATE)
     return mt_pgram!(output, s, config)
 end
 
@@ -275,13 +269,13 @@ function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_s
     f = samples_per_window / 2
     hop = samples_per_window - n_overlap_samples
 
-    len = n_samples < samples_per_window ? 0 : div(n_samples - samples_per_window, samples_per_window - n_overlap_samples) + 1
+    len = n_samples < samples_per_window ? 0 : div(n_samples - samples_per_window, hop) + 1
     time = range(f, step = hop, length = len) / mt_config.fs
     return MTSpectrogramConfig{T,typeof(mt_config)}(n_samples, n_overlap_samples, time,
                                                     mt_config)
 end
 
-# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}` 
+# add a method for if the user specifies the type, i.e. `MTSpectrogramConfig{T}`
 function MTSpectrogramConfig{T}(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
     return MTSpectrogramConfig(n_samples, mt_config, n_overlap_samples)
 end
@@ -289,7 +283,7 @@ end
 # Create the `MTConfig` if it's not passed
 function MTSpectrogramConfig{T}(n_samples::Int, samples_per_window::Int,
                                 n_overlap_samples::Int; fs=1, kwargs...) where {T}
-    return MTSpectrogramConfig(n_samples, MTConfig{T}(samples_per_window; fs=fs, kwargs...), n_overlap_samples)
+    return MTSpectrogramConfig(n_samples, MTConfig{T}(samples_per_window; fs, kwargs...), n_overlap_samples)
 end
 
 """
@@ -310,9 +304,8 @@ See also [`mt_spectrogram`](@ref).
 mt_spectrogram!
 
 function mt_spectrogram!(output, signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-    n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
-    kwargs...) where {T}
-    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
+        n_overlap::Int=n >> 1; kwargs...) where {T}
+    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap;
         fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_spectrogram!(output, signal, config)
 end
@@ -363,12 +356,9 @@ See also [`mt_spectrogram!`](@ref).
 mt_spectrogram
 
 function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
-                        n_overlap::Int=n >> 1; fs=1, onesided::Bool=T <: Real,
-                        kwargs...) where {T}
-    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fs=fs, onesided=onesided,
-                                    fft_flags=FFTW.ESTIMATE, kwargs...)
-    X = allocate_output(config)
-    return mt_spectrogram!(X, signal, config)
+                        n_overlap::Int=n >> 1; kwargs...) where {T}
+    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fft_flags=FFTW.ESTIMATE, kwargs...)
+    return mt_spectrogram(signal, config)
 end
 
 
@@ -398,8 +388,7 @@ spec2 = mt_spectrogram(signal2, mt_config, 250) # same `mt_config`, different si
 function mt_spectrogram(signal::AbstractVector, mt_config::MTConfig{T},
                         n_overlap::Int=mt_config.n_samples >> 1) where {T}
     config = MTSpectrogramConfig{T}(length(signal), mt_config, n_overlap)
-    X = allocate_output(config)
-    return mt_spectrogram!(X, signal, config)
+    return mt_spectrogram(signal, config)
 end
 
 #####
@@ -444,13 +433,27 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     freq_inds::T6
     ensure_aligned::Bool
     mt_config::C
-    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels, normalization_weights,
-            x_mt, demean, mean_per_channel, demeaned_signal, freq, freq_range,
-            freq_inds, ensure_aligned, mt_config) where {T,T1,T2,T3,T4,F,T5,T6,C}
-        check_onesided_real(mt_config) # this restriction is artifical; the code needs to be generalized
-        return new{T,T1,T2,T3,T4,F,T5,T6,C}(n_channels, normalization_weights, x_mt,
+    function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
+        n_channels::Int, normalization_weights::T1, x_mt::T2,
+        demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+    ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
+        check_onesided_real(mt_config)  # this restriction is artificial; the code needs to be generalized
+        return new{T,T1,T2,T3,T4,F,T5,T6,C}(
+            n_channels, normalization_weights, x_mt,
             demean, mean_per_channel, demeaned_signal, freq, freq_range,
-            freq_inds, ensure_aligned, mt_config)
+            freq_inds, ensure_aligned, mt_config
+        )
+    end
+    function MTCrossSpectraConfig(n_channels::Int, normalization_weights::T1, x_mt::T2,
+        demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+    ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
+        MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
+            n_channels, normalization_weights, x_mt,
+            demean, mean_per_channel, demeaned_signal, freq, freq_range,
+            freq_inds, ensure_aligned, mt_config
+        )
     end
 end
 
@@ -475,19 +478,18 @@ function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false,
                                  freq_range=nothing,
                                  ensure_aligned = T == Float32 || T == Complex{Float32},
                                  kwargs...) where {T}
-    mt_config = MTConfig{T}(n_samples; fs=fs, kwargs...)
-    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean=demean, freq_range=freq_range, ensure_aligned=ensure_aligned)
+    mt_config = MTConfig{T}(n_samples; fs, kwargs...)
+    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean, freq_range, ensure_aligned)
 end
 
 # extra method to ensure it's ok to pass the redundant type parameter {T}
-MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; demean=false,
-        freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T} = MTCrossSpectraConfig(n_channels, mt_config; demean=demean,
-        freq_range=freq_range, ensure_aligned = ensure_aligned)
+MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; kwargs...) where {T} =
+    MTCrossSpectraConfig(n_channels, mt_config; kwargs...)
 
 function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
         freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
 
-    n_samples = mt_config.n_samples                             
+    n_samples = mt_config.n_samples
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
         demeaned_signal = Matrix{T}(undef, n_channels, n_samples)
@@ -508,17 +510,16 @@ function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
         freq_inds = eachindex(mt_config.freq)
         freq = mt_config.freq
     end
-    return MTCrossSpectraConfig{T,typeof(normalization_weights),typeof(x_mt),
-                                typeof(mean_per_channel),typeof(demeaned_signal),
-                                typeof(freq),typeof(freq_range),typeof(freq_inds),
-                                typeof(mt_config)}(n_channels, normalization_weights, x_mt, demean,
-                                                   mean_per_channel, demeaned_signal, freq,
-                                                   freq_range, freq_inds, ensure_aligned, mt_config)
+    return MTCrossSpectraConfig(n_channels, normalization_weights, x_mt, demean,
+                                mean_per_channel, demeaned_signal, freq,
+                                freq_range, freq_inds, ensure_aligned, mt_config)
 end
 
 function allocate_output(config::MTCrossSpectraConfig{T}) where {T}
-    return Array{fftouttype(T),3}(undef, config.n_channels, config.n_channels,
-                                  length(config.freq))
+    n_chan = config.n_channels
+    n_freqs = length(config.freq)
+    return Array{fftouttype(T),3}(undef, n_chan, n_chan,
+                                  n_freqs)
 end
 
 """
@@ -542,20 +543,24 @@ mt_cross_power_spectra!
 
 function mt_cross_power_spectra!(output, signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra!(output, signal, config)
 end
 
 @views function mt_cross_power_spectra!(output, signal::AbstractMatrix,
                                    config::MTCrossSpectraConfig)
-    if size(signal) != (config.n_channels, config.mt_config.n_samples)
+    n_chan = config.n_channels
+    n_samples = config.mt_config.n_samples
+    n_freqi = length(config.freq_inds)
+
+    if size(signal) != (n_chan, n_samples)
         throw(DimensionMismatch("Size of `signal` does not match `(config.n_channels, config.mt_config.n_samples)`;
-        got `size(signal)`=$(size(signal)) but `(config.n_channels, config.mt_config.n_samples)`=$((config.n_channels, config.mt_config.n_samples))"))
+        got `size(signal)`=$(size(signal)) but `(config.n_channels, config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
-    if size(output) != (config.n_channels, config.n_channels, length(config.freq_inds))
+    if size(output) != (n_chan, n_chan, n_freqi)
         throw(DimensionMismatch("Size of `output` does not match `(config.n_channels, config.n_channels, length(config.freq_inds))`;
-        got `size(output)`=$(size(output)) but `(config.n_channels, config.n_channels, length(config.freq_inds))`=$((config.n_channels, config.n_channels, length(config.freq_inds)))"))
+        got `size(output)`=$(size(output)) but `(config.n_channels, config.n_channels, length(config.freq_inds))`=$((n_chan, n_chan, n_freqi))"))
     end
 
     if config.demean
@@ -597,11 +602,10 @@ end
 function cs_inner!(output, normalization_weights, x_mt, config)
     freq_inds = config.freq_inds
     n_channels = config.n_channels
-    @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, 1:length(freq_inds))
-    @boundscheck checkbounds(normalization_weights, 1:length(normalization_weights))
-    @boundscheck checkbounds(x_mt, freq_inds, 1:length(normalization_weights), 1:n_channels)
+    @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, eachindex(freq_inds))
+    @boundscheck checkbounds(x_mt, freq_inds, eachindex(normalization_weights), 1:n_channels)
     output .= zero(eltype(output))
-    # Up to the `normalization_weights` scaling, we have 
+    # Up to the `normalization_weights` scaling, we have
     # J_k^l(f) = x_mt[k, f, l]
     # Ŝ^lm(f) = output[l, m, f]
     # using the notation from https://en.wikipedia.org/wiki/Multitaper#The_method
@@ -609,7 +613,7 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     @inbounds for (fi, f) in enumerate(freq_inds),
                   m in 1:n_channels,
                   l in 1:n_channels,
-                  k in 1:length(normalization_weights)
+                  k in eachindex(normalization_weights)
 
         output[l, m, fi] += normalization_weights[k] * x_mt[f, k, l] * conj(x_mt[f, k, m])
     end
@@ -618,7 +622,7 @@ end
 
 """
     mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
-    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+    mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
 
 Computes multitapered cross power spectra between channels of a signal. Arguments:
 
@@ -635,12 +639,12 @@ mt_cross_power_spectra
 
 function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra(signal, config)
 end
 
-function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig) 
+function mt_cross_power_spectra(signal::AbstractMatrix, config::MTCrossSpectraConfig)
     output = allocate_output(config)
     return mt_cross_power_spectra!(output, signal, config)
 end
@@ -665,40 +669,31 @@ with the same arugments as `MTCrossSpectraConfig` to construct the `MTCrossSpect
 
 See also [`mt_coherence`](@ref) and [`mt_coherence!`](@ref).
 """
-function MTCoherenceConfig(cs_config::MTCrossSpectraConfig{T}) where {T}
-    cs_matrix = allocate_output(cs_config)
-    return MTCoherenceConfig{T,typeof(cs_matrix),typeof(cs_config)}(cs_matrix, cs_config)
-end
+MTCoherenceConfig(cs_config::MTCrossSpectraConfig) =
+    MTCoherenceConfig(allocate_output(cs_config), cs_config)
 
 # add a method to cover the case in which the user specifies the `{T}` here
 MTCoherenceConfig{T}(cs_config::MTCrossSpectraConfig{T}) where {T} = MTCoherenceConfig(cs_config)
 
-function MTCoherenceConfig{T}(n_channels, n_samples; fs=1, demean=false,
-                              freq_range=nothing, kwargs...) where {T}
-    cs_config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs=fs, demean=demean,
-                                        freq_range=freq_range, kwargs...)
-    cs_matrix = allocate_output(cs_config)
-    return MTCoherenceConfig{T,typeof(cs_matrix),typeof(cs_config)}(cs_matrix, cs_config)
+function MTCoherenceConfig{T}(n_channels, n_samples; kwargs...) where {T}
+    cs_config = MTCrossSpectraConfig{T}(n_channels, n_samples; kwargs...)
+    return MTCoherenceConfig(cs_config)
 end
 
 # ensure it's OK to pass the extra {T} type parameter
-function MTCoherenceConfig{T}(n_channels, mt_config::MTConfig{T}; demean=false,
-    freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where T
-    return MTCoherenceConfig(n_channels, mt_config; demean=demean,
-    freq_range=freq_range, ensure_aligned = ensure_aligned)
-end
+MTCoherenceConfig{T}(n_channels, mt_config::MTConfig{T}; kwargs...) where T =
+    MTCoherenceConfig(n_channels, mt_config; kwargs...)
 
-function MTCoherenceConfig(n_channels, mt_config::MTConfig{T}; demean=false,
-    freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
-    cs_config = MTCrossSpectraConfig(n_channels, mt_config; demean=demean,
-              freq_range=freq_range, ensure_aligned=ensure_aligned)
-    cs_matrix = allocate_output(cs_config)
-    return MTCoherenceConfig{T,typeof(cs_matrix),typeof(cs_config)}(cs_matrix, cs_config)
+function MTCoherenceConfig(n_channels, mt_config::MTConfig{T}; kwargs...) where {T}
+    cs_config = MTCrossSpectraConfig(n_channels, mt_config; kwargs...)
+    return MTCoherenceConfig(cs_config)
 end
 
 
 function allocate_output(config::MTCoherenceConfig{T}) where {T}
-    return Array{real(T)}(undef, config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))
+    n_chan = config.cs_config.n_channels
+    n_freqs = length(config.cs_config.freq)
+    return Array{real(T),3}(undef, n_chan, n_chan, n_freqs)
 end
 
 """
@@ -712,19 +707,18 @@ function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
     @boundscheck checkbounds(output, 1:n_channels, 1:n_channels, 1:n_freqs)
     @boundscheck checkbounds(cs_matrix, 1:n_channels, 1:n_channels, 1:n_freqs)
     output .= zero(T)
-    @inbounds for ch2 in 1:n_channels
-        for ch1 in (ch2 + 1):n_channels # lower triangular matrix
-            for f in 1:n_freqs
-                output[ch1, ch2, f] += abs(cs_matrix[ch1, ch2, f]) /
-                                         sqrt(real(cs_matrix[ch1, ch1, f] *
-                                               cs_matrix[ch2, ch2, f]))
-            end
-        end
+    @inbounds for f in 1:n_freqs,
+                ch2 in 1:n_channels,
+                ch1 in (ch2 + 1):n_channels # lower triangular matrix
+
+        output[ch1, ch2, f] += abs(cs_matrix[ch1, ch2, f]) /
+                                 sqrt(real(cs_matrix[ch1, ch1, f] *
+                                       cs_matrix[ch2, ch2, f]))
     end
     output .+= PermutedDimsArray(output, (2, 1, 3)) # symmetrize
     # diagonal elements should be `1` for any frequency
-    @inbounds for i in 1:n_channels
-        output[i, i, :] .= one(T)
+    @inbounds for k in axes(output, 3), i in 1:n_channels
+        output[i, i, k] = one(T)
     end
     return nothing
 end
@@ -758,7 +752,7 @@ coherence(c::Coherence) = c.coherence
 
 Computes the pairwise coherences between channels.
 
-* `output`: `n_channels` x `n_channels` matrix 
+* `output`: `n_channels` x `n_channels` matrix
 * `signal`: `n_samples` x `n_channels` matrix
 * `config`: optional configuration object that pre-allocates temporary variables and choose settings.
 
@@ -770,13 +764,17 @@ mt_coherence!
 
 function mt_coherence!(output, signal::AbstractMatrix,
                        config::MTCoherenceConfig)
-    if size(signal) != (config.cs_config.n_channels, config.cs_config.mt_config.n_samples)
+    n_chan = config.cs_config.n_channels
+    n_samples = config.cs_config.mt_config.n_samples
+    n_freqs = length(config.cs_config.freq)
+
+    if size(signal) != (n_chan, n_samples)
         throw(DimensionMismatch("Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
-            got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((config.cs_config.n_channels, config.cs_config.mt_config.n_samples))"))
+            got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
-    if size(output) != (config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))
+    if size(output) != (n_chan, n_chan, n_freqs)
         throw(DimensionMismatch("Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`;
-        got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`=$((config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq)))"))
+        got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`=$((n_chan, n_chan, n_freqs))"))
     end
     cs = mt_cross_power_spectra!(config.cs_matrix, signal, config.cs_config)
     coherence_from_cs!(output, power(cs))
@@ -784,12 +782,9 @@ function mt_coherence!(output, signal::AbstractMatrix,
     return Coherence(output, config.cs_config.freq)
 end
 
-function mt_coherence!(output, signal::AbstractMatrix{T}; fs=1, freq_range=nothing, demean=false,
-    kwargs...) where {T}
+function mt_coherence!(output, signal::AbstractMatrix{T}; kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCoherenceConfig{T}(n_channels, n_samples; fs=fs, demean=demean,
-                freq_range=freq_range,
-                fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_coherence!(output, signal, config)
 end
 
@@ -809,12 +804,9 @@ See also [`mt_coherence`](@ref) and [`MTCoherenceConfig`](@ref).
 """
 mt_coherence
 
-function mt_coherence(signal::AbstractMatrix{T}; fs=1, freq_range=nothing, demean=false,
-                      kwargs...) where {T}
+function mt_coherence(signal::AbstractMatrix{T}; kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCoherenceConfig{T}(n_channels, n_samples; fs=fs, demean=demean,
-                                  freq_range=freq_range,
-                                  fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_coherence(signal, config)
 end
 

@@ -63,21 +63,21 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
     biquads = f.biquads
     ncols = Base.trailingsize(x, 2)
 
-    size(x) != size(out) && error("out size must match x")
+    size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && Base.trailingsize(si, 3) != ncols)) &&
-        error("si must be 2 x nbiquads or 2 x nbiquads x nsignals")
+        throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
     initial_si = si
-    g = f.g
-    n = length(biquads)
+    si = similar(si, axes(si)[1:2])
     for col = 1:ncols
-        _filt!(out, initial_si[:, :, N > 2 ? col : 1], f, x, col)
+        copyto!(si, view(initial_si, :, :, N > 2 ? col : 1))
+        _filt!(out, si, f, x, col)
     end
     out
 end
 
 filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(Array{promote_type(T, G, S)}(undef, size(x)), f, x, si)
+    filt!(similar(x, promote_type(T, G, S)), f, x, si)
 
 ## Biquad
 _zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
@@ -101,9 +101,9 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     ncols = Base.trailingsize(x, 2)
 
-    size(x) != size(out) && error("out size must match x")
+    size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
-        error("si must have two rows and 1 or nsignals columns")
+        throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
     for col = 1:ncols
         _filt!(out, si[1, N > 1 ? col : 1], si[2, N > 1 ? col : 1], f, x, col)
@@ -112,7 +112,7 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
 end
 
 filt(f::Biquad{:z,T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(Array{promote_type(T, S)}(undef, size(x)), f, x, si)
+    filt!(similar(x, promote_type(T, S)), f, x, si)
 
 ## For arbitrary filters, convert to SecondOrderSections
 filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
@@ -227,7 +227,7 @@ Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
     output array `out` to `filt!(out, f, x)`.
 """
 filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
-    filt!(Vector{promote_type(T, V)}(undef, length(x)), f, x)
+    filt!(similar(x, promote_type(T, V)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
@@ -248,7 +248,7 @@ DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
 # in place in output. The istart and n parameters determine the portion
 # of the input signal x to extrapolate.
 function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
-    length(out) >= n+2*pad_length || error("output is incorrectly sized")
+    length(out) >= n+2*pad_length || throw(ArgumentError("output is incorrectly sized"))
     x = 2*sig[istart]
     for i = 1:pad_length
         out[ostart+i-1] = x - sig[istart+pad_length+1-i]
@@ -340,7 +340,7 @@ end
 function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     zi = filt_stepstate(f)
     pad_length = 6 * length(f.biquads)
-    t = Base.promote_type(T, G, S)
+    t = promote_type(T, G, S)
     zitmp = similar(zi, t)
     extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
@@ -377,7 +377,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     bs = length(b)
     as = length(a)
     sz = max(bs, as)
-    sz > 0 || error("a and b must have at least one element each")
+    sz > 0 || throw(ArgumentError("a and b must have at least one element each"))
     sz == 1 && return T[]
 
     # Pad the coefficients with zeros if needed
@@ -435,7 +435,7 @@ function tdfilt!(out::AbstractArray, h::AbstractVector{H}, x::AbstractArray) whe
 end
 
 filt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T} =
-    filt!(Array{promote_type(H, T)}(undef, size(x)), h, x)
+    filt!(similar(x, promote_type(H, T)), h, x)
 
 #
 # fftfilt and filt
@@ -449,7 +449,7 @@ using an FFT-based overlap-save algorithm.
 """
 function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
                  nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
-    _fftfilt!(Array{T}(undef, size(x)), b, x, nfft)
+    _fftfilt!(similar(x, T), b, x, nfft)
 end
 
 """
@@ -516,7 +516,7 @@ end
 # Filter x using FIR filter b, heuristically choosing to perform convolution in
 # the time domain using tdfilt or in the frequency domain using fftfilt
 function filt(b::AbstractVector{T}, x::AbstractArray{T}) where T<:Number
-    filt_choose_alg!(Array{T}(undef, size(x)), b, x)
+    filt_choose_alg!(similar(x, T), b, x)
 end
 
 # Like filt but mutates output array

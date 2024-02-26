@@ -860,6 +860,6 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     end
     band_defs = [r => (d, w) for (r, d, w) in zip(band_ranges, eff, wate)]
     neg = filter_type in (filter_type_hilbert, filter_type_differentiator)
-    return remez(numtaps, band_defs; Hz=Hz, neg=neg, kwargs...)
+    return remez(numtaps, band_defs; Hz, neg, kwargs...)
 end
 

@@ -73,7 +73,7 @@ end
 function test_singlerate(h::AbstractVector{T}, x::AbstractVector) where T
     xLen       = length(x)
     hLen       = length(h)
-    pivotPoint = min(rand(50:150), div(xLen, 4))
+    pivotPoint = min(rand(50:150), xLen ÷ 4)
     x1         = x[1:pivotPoint]
     x2         = x[pivotPoint+1:end]
 
@@ -122,7 +122,7 @@ end
 function test_decimation(h, x, decimation)
     xLen       = length(x)
     hLen       = length(h)
-    pivotPoint = min(rand(50:150), div(xLen, 4))
+    pivotPoint = min(rand(50:150), xLen ÷ 4)
     x1         = x[1:pivotPoint]
     x2         = x[pivotPoint+1:end]
 
@@ -172,7 +172,7 @@ end
 function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpolation) where {T,V}
     xLen = length(x)
     hLen       = length(h)
-    pivotPoint = min(rand(50:150), div(xLen, 4))
+    pivotPoint = min(rand(50:150), xLen ÷ 4)
     x1         = x[1:pivotPoint]
     x2         = x[pivotPoint+1:end]
 
@@ -228,7 +228,7 @@ end
 function test_rational(h, x, ratio)
     xLen       = length(x)
     hLen       = length(h)
-    pivotPoint = min(rand(50:150), div(xLen, 4))
+    pivotPoint = min(rand(50:150), xLen ÷ 4)
     x1         = x[1:pivotPoint]
     x2         = x[pivotPoint+1:end]
     upfactor   = numerator(ratio)

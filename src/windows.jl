@@ -107,11 +107,11 @@ function makewindow(winfunc::Function, n::Integer, padding::Integer, zerophase::
         # difference if the window is symmetric), but it's necessary for when
         # there's padding, which ends up in the center of the vector length
         # n÷2+1
-        win[1:n÷2+1] .= winfunc.(range(0.0, stop=(n÷2)/n, length=n÷2+1))
+        win[1:n÷2+1] .= winfunc.(range(0.0, (n÷2)/n; length=n÷2+1))
         # length n÷2
-        win[end-n÷2+1:end] .= winfunc.(range(-(n÷2)/n, stop=-1/n, length=n÷2))
+        win[end-n÷2+1:end] .= winfunc.(range(-(n÷2)/n, -1/n; length=n÷2))
     else
-        win[1:n] .= winfunc.(range(-0.5, stop=0.5, length=n))
+        win[1:n] .= winfunc.(range(-0.5, 0.5; length=n))
     end
 
     win
@@ -137,9 +137,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function rect(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        1.0
-    end
+    makewindow(_ -> 1.0, n, padding, zerophase)
 end
 
 
@@ -167,7 +165,7 @@ a signal from a number of overlapping frames (each with a roughly rectangular
 window), to eliminate windowing amplitude modulation.
 
 While this windowing function was originally named after its inventor Julius
-Von Hann, coloquial usage has adjusted to refer to it as the "Hanning" window,
+Von Hann, colloquial usage has adjusted to refer to it as the "Hanning" window,
 to better match the similarly-named "Hamming" window.  Because of this, both
 `hann()` and `hanning()` are exported from this module.
 
@@ -178,9 +176,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function hanning(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        0.5*(1+cos(2pi*x))
-    end
+    makewindow(x -> 0.5 * (1 + cospi(2x)), n, padding, zerophase)
 end
 const hann = hanning
 
@@ -205,9 +201,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function hamming(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        0.54 + 0.46*cos(2pi*x)
-    end
+    makewindow(x -> muladd(0.46, cospi(2x), 0.54), n, padding, zerophase)
 end
 
 """
@@ -247,20 +241,20 @@ $zerophase_docs
 """
 function tukey(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     # check that α is reasonable
-    !(0 <= α <= 1) && error("α must be in the range 0 <= α <= 1.")
+    !(0 <= α <= 1) && throw(DomainError(α, "α must be in the range [0, 1]."))
 
     # if α is less than machine precision, call it zero and return the
     # rectangular window for this length.  if we don't short circuit this
     # here, it will blow up below.
-    abs(α) <= eps() && return rect(n; padding=padding, zerophase=zerophase)
+    abs(α) <= eps() && return rect(n; padding, zerophase)
 
     makewindow(n, padding, zerophase) do x
         if x <= -(1-α)/2
-            0.5*(1 + cos(2pi/α*(x+(1-α)/2)))
+            0.5*(1 + cospi(2/α*(x+(1-α)/2)))
         elseif x <= (1-α)/2
             1.0
         else
-            0.5*(1 + cos(2pi/α*(x-(1-α)/2)))
+            0.5*(1 + cospi(2/α*(x-(1-α)/2)))
         end
     end
 end
@@ -290,9 +284,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function cosine(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        cos(pi*x)
-    end
+    makewindow(cospi, n, padding, zerophase)
 end
 
 """
@@ -317,9 +309,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function lanczos(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        sinc(2x)
-    end
+    makewindow(x -> sinc(2x), n, padding, zerophase)
 end
 
 """
@@ -360,9 +350,7 @@ function triang(n::Integer; padding::Integer=0, zerophase::Bool=false)
     # window
     m = zerophase ? n+1 : n
     scale = iseven(m) ? 2(m-1)/m : 2(m-1)/(m+1)
-    makewindow(n, padding, zerophase) do x
-        1 - scale*abs(x)
-    end
+    makewindow(x -> muladd(-scale, abs(x), 1), n, padding, zerophase)
 end
 
 """
@@ -387,9 +375,7 @@ $(twoD_docs())
 $zerophase_docs
 """
 function bartlett(n::Integer; padding::Integer=0, zerophase::Bool=false)
-    makewindow(n, padding, zerophase) do x
-        1 - abs(2x)
-    end
+    makewindow(x -> 1 - abs(2x), n, padding, zerophase)
 end
 
 """
@@ -414,10 +400,8 @@ $(twoD_docs("σ"))
 $zerophase_docs
 """
 function gaussian(n::Integer, σ::Real; padding::Integer=0, zerophase::Bool=false)
-    σ > 0.0 || error("σ must be positive")
-    makewindow(n, padding, zerophase) do x
-        exp(-0.5*(x/σ)^2)
-    end
+    σ > 0.0 || throw(DomainError(σ, "σ must be positive"))
+    makewindow(x -> exp(-0.5*(x/σ)^2), n, padding, zerophase)
 end
 
 """
@@ -442,7 +426,7 @@ $zerophase_docs
 function bartlett_hann(n::Integer; padding::Integer=0, zerophase::Bool=false)
     a0, a1, a2 = 0.62, 0.48, 0.38
     makewindow(n, padding, zerophase) do x
-        a0 - a1*abs(x) + a2*cos(2pi*x)
+        muladd(a2, cospi(2x), muladd(-a1, abs(x), a0))
     end
 end
 
@@ -468,7 +452,7 @@ $zerophase_docs
 function blackman(n::Integer; padding::Integer=0, zerophase::Bool=false)
     a0, a1, a2 = 0.42, 0.5, 0.08
     makewindow(n, padding, zerophase) do x
-        a0 + a2*cospi(4*x) + a1*cospi(2*x)
+        muladd(a1, cospi(2x), muladd(a2, cospi(4x), a0))
     end
 end
 
@@ -538,8 +522,8 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
     if zerophase
         n += 1
     end
-    0 < ntapers <= n || error("ntapers must be in interval (0, n]")
-    0 <= nw < n/2 || error("nw must be in interval [0, n/2)")
+    0 < ntapers <= n || throw(DomainError(ntapers, "ntapers must be in the interval (0, n]"))
+    0 <= nw < n/2 || throw(DomainError(nw, "nw must be in the interval [0, n/2)"))
 
     # Construct symmetric tridiagonal matrix
     v = cospi(2*nw/n)
@@ -554,17 +538,17 @@ function dpss(n::Integer, nw::Real, ntapers::Integer=ceil(Int, 2*nw)-1;
 
     # Get tapers
     eigvec = eigen!(mat, n-ntapers+1:n).vectors
-    rv = reverse(eigvec, dims=2)::Matrix{Float64}
+    rv = reverse!(eigvec; dims=2)::Matrix{Float64}
 
     # Slepian's convention; taper starts with a positive element
-    sgn = ones(size(rv, 2))
+    sgn = fill!(resize!(dv, ntapers), 1) # save one allocation by re-purposing dv
     for i = 2:2:size(rv, 2)
         s = zero(eltype(rv))
         for j = 1:n
             s = sign(rv[j, i])
-            s != 0 && break
+            !iszero(s) && break
         end
-        @assert s != 0
+        @assert !iszero(s)
         sgn[i] = s
     end
     rmul!(rv, Diagonal(sgn))
@@ -600,7 +584,7 @@ power within the main lobe to the total power (main and sidelobes).
 time-bandwidth product provided to [`dpss`](@ref) as input.
 """
 function dpsseig(A::Matrix{Float64}, nw::Real)
-    0 <= nw < size(A, 1)/2 || error("nw must be in interval [0, n/2)")
+    0 <= nw < size(A, 1)/2 || throw(DomainError(nw, "nw must be in the interval [0, n/2)"))
 
     w = nw/size(A, 1)
 
@@ -630,7 +614,7 @@ function dpsseig(A::Matrix{Float64}, nw::Real)
 
         eig = 0.0
         for j = 1:size(A, 1)
-            eig += seq[j]*tmp1[j]
+            eig = muladd(seq[j], tmp1[j], eig)
         end
         q[i] = 2w * eig / nfft
     end
@@ -644,8 +628,8 @@ end
 # input windows when making a 2D window
 argdup(arg::Tuple) = arg
 argdup(arg::Real) = (arg, arg)
-const IntegerOr2 = Union{Tuple{<:Integer, <:Integer}, Integer}
-const RealOr2 = Union{Tuple{<:Real, <:Real}, Real}
+const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
+const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
@@ -656,8 +640,8 @@ for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
             length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
             paddings = argdup(padding)
             zerophases = argdup(zerophase)
-            w1 = $func(dims[1], padding=paddings[1], zerophase=zerophases[1])
-            w2 = $func(dims[2], padding=paddings[2], zerophase=zerophases[2])
+            w1 = $func(dims[1]; padding=paddings[1], zerophase=zerophases[1])
+            w2 = $func(dims[2]; padding=paddings[2], zerophase=zerophases[2])
             w1 * w2'
         end
     end
