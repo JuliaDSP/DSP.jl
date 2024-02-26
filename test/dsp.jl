@@ -2,7 +2,7 @@
 # TODO: parameterize conv tests
 using Test, OffsetArrays
 using DSP: filt, filt!, deconv, conv, xcorr,
-           optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!, _conv_similar,
+           optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!
            nextfastfft
 
 
@@ -59,6 +59,10 @@ end
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
 
+        u = rand(190)
+        v = rand(200)
+        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈ conv(u, v; algorithm=:fft_overlapsave)
+
         # issue #410
         n = 314159265
         @test conv([n], [n]) == [n^2]
@@ -69,6 +73,32 @@ end
         offset_arr_f = OffsetVector{Float64}(undef, -1:2)
         offset_arr_f[:] = fa
         @test conv(offset_arr_f, 1:3) ≈ OffsetVector(fexp, 0:5)
+
+        for M in [10, 200], N in [10, 200], T in [Float64, ComplexF64]
+            u = rand(T, M)
+            v = rand(T, N)
+            u_off = OffsetVector(u, 23)
+            v_off = OffsetVector(v, -42)
+            @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈ conv(u, v; algorithm=:fft_overlapsave)
+            @test conv(u_off, v_off; algorithm=:direct) ≈ conv(u_off, v_off; algorithm=:fft_simple) ≈ conv(u_off, v_off; algorithm=:fft_overlapsave)
+            @test conv(u, v) ≈ conv(u_off, v_off)[23-42+2:23-42+N+M]
+
+            for algorithm in [:direct, :fft_simple, :fft_overlapsave]
+                # pre-allocated non-offset output larger than necessary
+                out = ones(T, M+N+10)
+                conv!(out, u, v; algorithm)
+                @test out[1:M+N-1] == conv(u, v; algorithm)
+                @test all(iszero, out[M+N:end])
+
+                # pre-allocated output with offset larger than necessary
+                out = OffsetVector(ones(T, M+N+10), 23-42-5)
+                conv!(out, u_off, v_off; algorithm)
+                @test out[23-42+2:23-42+N+M] ≈ conv(u, v; algorithm)
+                @test all(iszero, out[begin:23-42+1])
+                @test all(iszero, out[23-42+N+M+1:end])
+            end
+        end
+
         # Issue #352
         @test conv([1//2, 1//3, 1//4], [1, 2]) ≈ [1//2, 4//3, 11//12, 1//2]
         # Non-numerical arrays should not be convolved
@@ -112,6 +142,10 @@ end
         @test conv(fa, b) ≈ fexp
         @test conv(f32a, b) ≈ fexp
         @test conv(fb, a) ≈ fexp
+
+        u = rand(10, 20)
+        v = rand(10, 10)
+        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft)
 
         offset_arr = OffsetMatrix{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
@@ -197,11 +231,10 @@ end
             su, u = os_test_data(T, nu, N)
             sv, v = os_test_data(T, nv, N)
             sout = su .+ sv .- 1
-            out = _conv_similar(u, sout, axes(u), axes(v))
-            unsafe_conv_kern_os!(out, u, v, su, sv, sout, nffts)
+            out = similar(u, T, sout)
+            unsafe_conv_kern_os!(out, CartesianIndices(out), u, v, nffts)
             os_out = copy(out)
-            fft_nfft = nextfastfft(sout)
-            _conv_kern_fft!(out, u, v, su, sv, sout, fft_nfft)
+            _conv_kern_fft!(out, CartesianIndices(out), u, v)
             @test out ≈ os_out
         end
         Ns = [1, 2, 3]
