@@ -4,7 +4,7 @@ using FFTW
 using LinearAlgebra: mul!, rmul!
 using IterTools: subsets
 
-export conv, deconv, filt, filt!, xcorr
+export conv, conv!, deconv, filt, filt!, xcorr
 
 # This function has methods added in `periodograms` but is not exported,
 # so we define it here so one can do `DSP.allocate_output` instead of
