@@ -131,8 +131,8 @@ One can optionally specify as the second argument either
 
 The initial filter state defaults to zeros if called with one argument.
 
-If `f` is a `PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
-filtering is implemented directly. If `f` is a `ZeroPoleGain`
+If `coef` is a `PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
+filtering is implemented directly. If `coef` is a `ZeroPoleGain`
 object, it is first converted to a `SecondOrderSections` object.
 """
 struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
