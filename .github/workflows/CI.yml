@@ -26,16 +26,16 @@ jobs:
         arch:
           - x64
         include:
-          - macOS-14
+          - os: macOS-14
             arch: aarch64
             version: '1'
-          - ubuntu-latest
+          - os: ubuntu-latest
             arch: x86
             version: '1'
-          - ubuntu-latest
+          - os: ubuntu-latest
             arch: x64
             version: 'lts'
-          - ubuntu-latest
+          - os: ubuntu-latest
             arch: x64
             version: 'nightly'
 
