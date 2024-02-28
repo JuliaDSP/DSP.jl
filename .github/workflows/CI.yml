@@ -18,32 +18,27 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'  # Oldest version supported by this package
           - '1'    # Current stable version
         os:
           - ubuntu-latest
           - windows-latest
-          - macOS-13 # intel
-          - macOS-14 # arm
+          - macOS-latest
         arch:
           - x64
-          - x86
-          - aarch64
-        exclude:
-          - os: ubuntu-latest
+        include:
+          - macOS-14
             arch: aarch64
-          - os: windows-latest
-            arch: aarch64
-          - os: macOS-13
+            version: '1'
+          - ubuntu-latest
             arch: x86
-          - os: macOS-13
-            arch: aarch64
-          - os: macOS-14
-            arch: x86
-          - os: macOS-14
+            version: '1'
+          - ubuntu-latest
             arch: x64
-          - os: macOS-14
-            version: '1.6'
+            version: 'lts'
+          - ubuntu-latest
+            arch: x64
+            version: 'nightly'
+
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
