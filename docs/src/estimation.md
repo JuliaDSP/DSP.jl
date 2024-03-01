@@ -2,4 +2,6 @@
 
 ```@docs
 esprit
+jacobsen
+quinn
 ```
