@@ -471,7 +471,7 @@ function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real
 end
 
 """
-    N = remezord(Wp, Ws, Rp, Rs)
+    N = remezord(Wp::Real, Ws::Real, Rp::Real, Rs::Real)
 
 Order estimation for lowpass digital filter cases based
 on the equations and coefficients in [^Rabiner]. The original
