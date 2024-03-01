@@ -647,8 +647,14 @@ function _conv_td!(out, output_indices, u::AbstractArray{<:Number, N}, v::Abstra
     index_offset = first(CartesianIndices(u)) + first(CartesianIndices(v)) - first(output_indices)
     checkbounds(out, output_indices)
     fill!(out, zero(eltype(out)))
-    for m in CartesianIndices(u), n in CartesianIndices(v)
-        @inbounds out[n+m - index_offset] = muladd(u[m], v[n], out[n+m - index_offset])
+    if size(u, 1) ≤ size(v, 1) # choose more efficient iteration order
+        for m in CartesianIndices(u), n in CartesianIndices(v)
+            @inbounds out[n+m - index_offset] = muladd(u[m], v[n], out[n+m - index_offset])
+        end
+    else
+        for n in CartesianIndices(v), m in CartesianIndices(u)
+            @inbounds out[n+m - index_offset] = muladd(u[m], v[n], out[n+m - index_offset])
+        end
     end
     return out
 end
@@ -667,9 +673,11 @@ function conv!(
     calc_index_offset(ao, au::Base.OneTo, av::Base.OneTo) = # 2
         throw(ArgumentError("output must not have offset axes if none of the inputs has"))
     calc_index_offset(ao, au, av) = 0
-    output_indices = CartesianIndices(map(axes(out), axes(u), axes(v)) do ao, au, av
-      return (first(au)+first(av) : last(au)+last(av)) .- calc_index_offset(ao, au, av)
-    end)
+    output_indices = let calc_index_offset = calc_index_offset # prevent boxing
+        CartesianIndices(map(axes(out), axes(u), axes(v)) do ao, au, av
+            return (first(au)+first(av) : last(au)+last(av)) .- calc_index_offset(ao, au, av)
+        end)
+    end
 
     if algorithm===:auto
         algorithm = T <: FFTTypes ? :fast : :direct
