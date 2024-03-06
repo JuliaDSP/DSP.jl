@@ -5,7 +5,10 @@ const SMALL_FILT_CUTOFF = 58
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
 """
-    filt(b::Union{AbstractVector,Number}, a::Union{AbstractVector,Number}, x, [si])
+    filt(b::Union{AbstractVector,Number},
+         a::Union{AbstractVector,Number},
+         x::AbstractArray,
+         [si::AbstractArray])
 
 Apply filter described by vectors `a` and `b` to vector `x`, with an optional initial filter
 state vector `si` (defaults to zeros).
