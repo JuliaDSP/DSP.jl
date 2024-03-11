@@ -61,7 +61,10 @@ end
 
         u = rand(190)
         v = rand(200)
-        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈ conv(u, v; algorithm=:fft_overlapsave)
+        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈
+            conv(u, v; algorithm=:fft_overlapsave) ≈ conv(u, v; algorithm=:fft) ≈
+            conv(u, v; algorithm=:fast) ≈ conv(u, v; algorithm=:auto)
+        @test_throws ArgumentError conv(u, v; algorithm=:quantum) # no such algorithm
 
         # issue #410
         n = 314159265
@@ -73,6 +76,8 @@ end
         offset_arr_f = OffsetVector{Float64}(undef, -1:2)
         offset_arr_f[:] = fa
         @test conv(offset_arr_f, 1:3) ≈ OffsetVector(fexp, 0:5)
+        @test_throws ArgumentError conv!(zeros(6), offset_arr, 1:3) # output needs to be OA, too
+        @test_throws ArgumentError conv!(OffsetVector{Int}(undef, 1:6), 1:4, 1:3) # output mustn't be OA
 
         for M in [10, 200], N in [10, 200], T in [Float64, ComplexF64]
             u = rand(T, M)
@@ -145,11 +150,37 @@ end
 
         u = rand(10, 20)
         v = rand(10, 10)
-        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft)
+        @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈
+            conv(u, v; algorithm=:fft_overlapsave) ≈ conv(u, v; algorithm=:fft) ≈
+            conv(u, v; algorithm=:fast) ≈ conv(u, v; algorithm=:auto)
 
         offset_arr = OffsetMatrix{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
         @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
+
+        for (M1, M2) in [(10, 20), (190, 200)], (N1, N2) in [(20, 10), (210, 200)], T in [Float64, ComplexF64]
+            u = rand(T, M1, M2)
+            v = rand(T, N1, N2)
+            u_off = OffsetMatrix(u, 23, 1)
+            v_off = OffsetMatrix(v, -42, 2)
+            @test conv(u, v; algorithm=:direct) ≈ conv(u, v; algorithm=:fft_simple) ≈ conv(u, v; algorithm=:fft_overlapsave)
+            @test conv(u_off, v_off; algorithm=:direct) ≈ conv(u_off, v_off; algorithm=:fft_simple) ≈ conv(u_off, v_off; algorithm=:fft_overlapsave)
+            @test conv(u, v) ≈ conv(u_off, v_off)[23-42+2:23-42+N1+M1, 1+2+2:1+2+N2+M2]
+
+            for algorithm in [:direct, :fft_simple, :fft_overlapsave]
+                # pre-allocated non-offset output larger than necessary
+                out = ones(T, M1+N1+10, M2+N2+15)
+                conv!(out, u, v; algorithm)
+                @test out[1:M1+N1-1, 1:M2+N2-1] == conv(u, v; algorithm)
+                @test all(iszero, out[M1+N1:end, :])
+                @test all(iszero, out[:, M2+N2:end])
+
+                # pre-allocated output with offset larger than necessary
+                out = OffsetMatrix(ones(T, M1+N1+10, M2+N2+15), 23-42-5, 1+2-4)
+                conv!(out, u_off, v_off; algorithm)
+                @test out[23-42+2:23-42+N1+M1, 1+2+2:1+2+N2+M2] ≈ conv(u, v; algorithm)
+            end
+        end
     end
 
     @testset "separable conv" begin
@@ -214,9 +245,9 @@ end
         b = ones(Int64, 2, 2)
         expf1 = conv(a[:, :, 1], b)
         exp = cat([expf1 * n for n in 1:6]..., dims=3)
-        @test conv(a, b) == exp
+        @test conv(a, b) == conv(b, a) == exp
         fb = convert(Array{Float64}, b)
-        @test conv(a, fb) ≈ convert(Array{Float64}, exp)
+        @test conv(a, fb) ≈ conv(fb, a) ≈ convert(Array{Float64}, exp)
     end
 
     @testset "Overlap-Save" begin
