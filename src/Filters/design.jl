@@ -251,8 +251,8 @@ Low pass filter with cutoff frequency `Wn`.
 """
 struct Lowpass{T<:Real} <: FilterType
     w::T
-    Lowpass{T}(w::Real) where T <: Real = new{typeof(one(T) / 1)}(w)
-    Lowpass(w::T) where T = Lowpass{T}(w)
+    Lowpass{T}(w::Real) where {T<:Real} = new{T}(w)
+    Lowpass(w::Real) = Lowpass{typeof(w / 1)}(w)
 end
 
 """
@@ -262,8 +262,8 @@ High pass filter with cutoff frequency `Wn`.
 """
 struct Highpass{T<:Real} <: FilterType
     w::T
-    Highpass{T}(w::Real) where T <: Real = new{typeof(one(T) / 1)}(w)
-    Highpass(w::T) where T = Highpass{T}(w)
+    Highpass{T}(w::Real) where {T<:Real} = new{T}(w)
+    Highpass(w::Real) = Highpass{typeof(w / 1)}(w)
 end
 
 """
@@ -276,10 +276,10 @@ struct Bandpass{T<:Real} <: FilterType
     w2::T
     function Bandpass{T}(w1::Real, w2::Real) where {T<:Real}
         w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-        new{typeof(one(T) / 1)}(w1, w2)
+        new{T}(w1, w2)
     end
     Bandpass(w1::T, w2::V) where {T<:Real,V<:Real} =
-        Bandpass{promote_type(T, V)}(w1, w2)
+        Bandpass{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
 end
 
 """
@@ -292,10 +292,10 @@ struct ComplexBandpass{T<:Real} <: FilterType
     w2::T
     function ComplexBandpass{T}(w1::Real, w2::Real) where {T<:Real}
         w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-        new{typeof(one(T) / 1)}(w1, w2)
+        new{T}(w1, w2)
     end
     ComplexBandpass(w1::T, w2::V) where {T,V} =
-        ComplexBandpass{promote_type(T, V)}(w1, w2)
+        ComplexBandpass{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
 end
 
 """
@@ -308,10 +308,10 @@ struct Bandstop{T<:Real} <: FilterType
     w2::T
     function Bandstop{T}(w1::Real, w2::Real) where {T<:Real}
         w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-        new{typeof(one(T) / 1)}(w1, w2)
+        new{T}(w1, w2)
     end
     Bandstop(w1::T, w2::V) where {T,V} =
-        Bandstop{promote_type(T, V)}(w1, w2)
+        Bandstop{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
 end
 
 #
@@ -495,8 +495,10 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::Union{Lowpass, Highpass}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w, fs)))
-prewarp(ftype::Union{Bandpass, Bandstop}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
+prewarp(ftype::Lowpass, fs::Real) = Lowpass(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Highpass, fs::Real) = Highpass(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Bandpass, fs::Real) = Bandpass(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
+prewarp(ftype::Bandstop, fs::Real) = Bandstop(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
 # freq in half-samples per cycle
 prewarp(f::Real) = 4*tan(pi*f/2)
 
