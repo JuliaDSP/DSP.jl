@@ -234,13 +234,14 @@ Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 # returns frequency in half-cycles per sample ∈ (0, 1)
 function normalize_freq(w::Real, fs::Real)
     w <= 0 && throw(DomainError(w, "frequencies must be positive"))
-    f = 2*w/fs
+    f = 2 * w / fs
     f >= 1 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs/2)"))
     f
 end
-
-struct Lowpass{T} <: FilterType
-    w::T
+function normalize_complex_freq(w::Real, fs::Real)
+    f = 2 * w / fs
+    f >= 2 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs)"))
+    f
 end
 
 """
@@ -248,10 +249,10 @@ end
 
 Low pass filter with cutoff frequency `Wn`.
 """
-Lowpass(w::Real) = Lowpass{typeof(w/1)}(w)
-
-struct Highpass{T} <: FilterType
+struct Lowpass{T<:Real} <: FilterType
     w::T
+    Lowpass{T}(w::Real) where {T<:Real} = new{T}(w)
+    Lowpass(w::Real) = Lowpass{typeof(w / 1)}(w)
 end
 
 """
@@ -259,11 +260,10 @@ end
 
 High pass filter with cutoff frequency `Wn`.
 """
-Highpass(w::Real) = Highpass{typeof(w/1)}(w)
-
-struct Bandpass{T} <: FilterType
-    w1::T
-    w2::T
+struct Highpass{T<:Real} <: FilterType
+    w::T
+    Highpass{T}(w::Real) where {T<:Real} = new{T}(w)
+    Highpass(w::Real) = Highpass{typeof(w / 1)}(w)
 end
 
 """
@@ -271,14 +271,31 @@ end
 
 Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
-function Bandpass(w1::Real, w2::Real)
-    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-    Bandpass{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
-end
-
-struct Bandstop{T} <: FilterType
+struct Bandpass{T<:Real} <: FilterType
     w1::T
     w2::T
+    function Bandpass{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
+        new{T}(w1, w2)
+    end
+    Bandpass(w1::T, w2::V) where {T<:Real,V<:Real} =
+        Bandpass{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
+end
+
+"""
+    ComplexBandpass(Wn1, Wn2)
+
+Complex band pass filter with pass band frequencies (`Wn1`, `Wn2`).
+"""
+struct ComplexBandpass{T<:Real} <: FilterType
+    w1::T
+    w2::T
+    function ComplexBandpass{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
+        new{T}(w1, w2)
+    end
+    ComplexBandpass(w1::T, w2::V) where {T,V} =
+        ComplexBandpass{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
 end
 
 """
@@ -286,9 +303,15 @@ end
 
 Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
-function Bandstop(w1::Real, w2::Real)
-    w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
-    Bandstop{Base.promote_typeof(w1/1, w2/1)}(w1, w2)
+struct Bandstop{T<:Real} <: FilterType
+    w1::T
+    w2::T
+    function Bandstop{T}(w1::Real, w2::Real) where {T<:Real}
+        w1 < w2 || throw(ArgumentError("w1 must be less than w2"))
+        new{T}(w1, w2)
+    end
+    Bandstop(w1::T, w2::V) where {T,V} =
+        Bandstop{typeof(one(promote_type(T, V)) / 1)}(w1, w2)
 end
 
 #
@@ -472,8 +495,10 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
 end
 
 # Pre-warp filter frequencies for digital filtering
-prewarp(ftype::Union{Lowpass, Highpass}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w, fs)))
-prewarp(ftype::Union{Bandpass, Bandstop}, fs::Real) = (typeof(ftype))(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
+prewarp(ftype::Lowpass, fs::Real) = Lowpass(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Highpass, fs::Real) = Highpass(prewarp(normalize_freq(ftype.w, fs)))
+prewarp(ftype::Bandpass, fs::Real) = Bandpass(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
+prewarp(ftype::Bandstop, fs::Real) = Bandstop(prewarp(normalize_freq(ftype.w1, fs)), prewarp(normalize_freq(ftype.w2, fs)))
 # freq in half-samples per cycle
 prewarp(f::Real) = 4*tan(pi*f/2)
 
@@ -569,17 +594,29 @@ FIRWindow(; transitionwidth::Real=throw(ArgumentError("must specify transitionwi
     FIRWindow(kaiser(kaiserord(transitionwidth, attenuation)...), scale)
 
 # Compute coefficients for FIR prototype with specified order
-function firprototype(n::Integer, ftype::Lowpass, fs::Real)
+function _firprototype(n::Integer, ftype::Lowpass, fs::Real, ::Type{T}) where {T<:Number}
     w = normalize_freq(ftype.w, fs)
 
-    [w*sinc(w*(k-(n+1)/2)) for k = 1:n]
+    promote_type(typeof(w), T)[w*sinc(w*(k-(n+1)/2)) for k = 1:n]
 end
+
+firprototype(n::Integer, ftype::Lowpass, fs::Real) =
+    _firprototype(n, ftype, fs, typeof(fs))
 
 function firprototype(n::Integer, ftype::Bandpass, fs::Real)
     w1 = normalize_freq(ftype.w1, fs)
     w2 = normalize_freq(ftype.w2, fs)
 
     [w2*sinc(w2*(k-(n+1)/2)) - w1*sinc(w1*(k-(n+1)/2)) for k = 1:n]
+end
+
+function firprototype(n::Integer, ftype::ComplexBandpass, fs::T) where {T<:Real}
+    w1 = normalize_complex_freq(ftype.w1, fs)
+    w2 = normalize_complex_freq(ftype.w2, fs)
+    w_center = (w2 + w1) / 2
+    w_cutoff = (w2 - w1) / 2
+    lp = Lowpass(w_cutoff)
+    _firprototype(n, lp, fs, Complex{T}) .*= cispi.(w_center * (0:(n-1)))
 end
 
 function firprototype(n::Integer, ftype::Highpass, fs::Real)
@@ -602,14 +639,14 @@ function firprototype(n::Integer, ftype::Bandstop, fs::Real)
 end
 
 scalefactor(coefs::Vector, ::Union{Lowpass, Bandstop}, fs::Real) = sum(coefs)
-function scalefactor(coefs::Vector{T}, ::Highpass, fs::Real) where T
+function scalefactor(coefs::Vector{T}, ::Highpass, fs::Real) where {T<:Number}
     c = zero(T)
     for k = 1:length(coefs)
         c += ifelse(isodd(k), coefs[k], -coefs[k])
     end
     c
 end
-function scalefactor(coefs::Vector{T}, ftype::Bandpass, fs::Real) where T
+function scalefactor(coefs::Vector{T}, ftype::Bandpass, fs::Real) where {T<:Number}
     n = length(coefs)
     freq = normalize_freq(middle(ftype.w1, ftype.w2), fs)
     c = zero(T)
@@ -622,7 +659,7 @@ end
 function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
     coefs = firprototype(length(proto.window), ftype, fs)
     @assert length(proto.window) == length(coefs)
-    out = coefs .* proto.window
+    out = (coefs .*= proto.window)
     proto.scale ? rmul!(out, 1/scalefactor(out, ftype, fs)) : out
 end
 
