@@ -661,6 +661,32 @@ end
 
 const FFTTypes = Union{Float32, Float64, ComplexF32, ComplexF64}
 
+"""
+    conv!(out, u, v; algorithm=:auto)
+
+Convolution of two arrays `u` and `v` with the result stored in `out`. `out`
+must be large enough to store the entire result; if it is even larger, the
+excess entries will be zeroed.
+
+`out`, `u`, and `v` can be N-dimensional arrays, with arbitrary indexing
+offsets, but their axes must be a `UnitRange`. If none of them has offset axes,
+`size(out,d) ≥ size(u,d) + size(v,d) - 1` must hold. If both input and output
+have offset axes, `firstindex(out,d) ≤ firstindex(u,d) + firstindex(v,d)` and
+`lastindex(out,d) ≥ lastindex(u,d) + lastindex(v,d)` must hold (for d = 1,...,N).
+A mix of offset and non-offset axes between input and output is not permitted.
+
+The algorithm keyword allows choosing the algorithm to use:
+* `:direct`: Evaluates the convolution sum in time domain.
+* `:fft_simple`: Evaluates the convonlution as a product in frequency domain.
+* `:fft_overlapsave`: Evaluates the convonlution block-wise as a product in
+  frequency domain, overlapping the resulting blocks.
+* `:fft`: Chooses between the faster one (as estimated form the input size) of
+  `:fft_simple` and `:fft_overlapsave`.
+* `:fast`: Chooses between the faster one (as estimated form the input size) of
+  `:direct`, `:fft_simple` and `:fft_overlapsave`.
+* `:auto` (default): Equivalent to `:auto` if the data type is known to be
+  suitable for FFT-based computation, equivalent to `:direct` otherwise.
+"""
 function conv!(
     out::AbstractArray{T, N},
     u::AbstractArray{<:Number, N},
@@ -668,11 +694,11 @@ function conv!(
     algorithm=:auto
 ) where {T<:Number, N}
     calc_index_offset(ao::Base.OneTo, au::Base.OneTo, av::Base.OneTo) = 1
-    calc_index_offset(ao::Base.OneTo, au, av) = # first(au) + first(av) - 1
+    calc_index_offset(ao::Base.OneTo, au::AbstractUnitRange, av::AbstractUnitRange) = # first(au) + first(av) - 1
         throw(ArgumentError("output must have offset axes if the input has"))
-    calc_index_offset(ao, au::Base.OneTo, av::Base.OneTo) = # 2
+    calc_index_offset(ao::AbstractUnitRange, au::Base.OneTo, av::Base.OneTo) = # 2
         throw(ArgumentError("output must not have offset axes if none of the inputs has"))
-    calc_index_offset(ao, au, av) = 0
+    calc_index_offset(ao::AbstractUnitRange, au::AbstractUnitRange, av::AbstractUnitRange) = 0
     output_indices = let calc_index_offset = calc_index_offset # prevent boxing
         CartesianIndices(map(axes(out), axes(u), axes(v)) do ao, au, av
             return (first(au)+first(av) : last(au)+last(av)) .- calc_index_offset(ao, au, av)
@@ -719,11 +745,13 @@ function conv!(
 end
 
 """
-    conv(u,v)
+    conv(u, v; algorithm)
 
-Convolution of two arrays. Uses either FFT convolution or overlap-save,
-depending on the size of the input. `u` and `v` can be  N-dimensional arrays,
-with arbitrary indexing offsets, but their axes must be a `UnitRange`.
+Convolution of two arrays. Uses either direct convolution, FFT convolution, or
+overlap-save, depending on the size of the input unless explicitly specified
+with the `algorithm` keyword argument; see [`conv!`](@ref) for details. `u` and
+`v` can be N-dimensional arrays, with arbitrary indexing offsets, but their axes
+must be a `UnitRange`.
 """
 function conv(
     u::AbstractArray{Tu, N}, v::AbstractArray{Tv, N};  kwargs...
