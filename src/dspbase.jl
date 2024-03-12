@@ -669,21 +669,21 @@ must be large enough to store the entire result; if it is even larger, the
 excess entries will be zeroed.
 
 `out`, `u`, and `v` can be N-dimensional arrays, with arbitrary indexing
-offsets, but their axes must be a `UnitRange`. If none of them has offset axes,
+offsets. If none of them has offset axes,
 `size(out,d) ≥ size(u,d) + size(v,d) - 1` must hold. If both input and output
 have offset axes, `firstindex(out,d) ≤ firstindex(u,d) + firstindex(v,d)` and
 `lastindex(out,d) ≥ lastindex(u,d) + lastindex(v,d)` must hold (for d = 1,...,N).
 A mix of offset and non-offset axes between input and output is not permitted.
 
-The algorithm keyword allows choosing the algorithm to use:
+The `algorithm` keyword allows choosing the algorithm to use:
 * `:direct`: Evaluates the convolution sum in time domain.
 * `:fft_simple`: Evaluates the convolution as a product in the frequency domain.
 * `:fft_overlapsave`: Evaluates the convolution block-wise as a product in the
   frequency domain, overlapping the resulting blocks.
-* `:fft`: Chooses between the faster one (as estimated form the input size) of
-  `:fft_simple` and `:fft_overlapsave`.
-* `:fast`: Chooses between the faster one (as estimated form the input size) of
-  `:direct`, `:fft_simple` and `:fft_overlapsave`.
+* `:fft`: Selects the faster of `:fft_simple` and `:fft_overlapsave` (as
+   estimated form the input size).
+* `:fast`: Selects  the faster of `:direct`, `:fft_simple` and
+  `:fft_overlapsave` (as estimated form the input size) .
 * `:auto` (default): Equivalent to `:fast` if the data type is known to be
   suitable for FFT-based computation, equivalent to `:direct` otherwise.
 """
@@ -747,11 +747,10 @@ end
 """
     conv(u, v; algorithm)
 
-Convolution of two arrays. Uses either direct convolution, FFT convolution, or
-overlap-save, depending on the size of the input unless explicitly specified
-with the `algorithm` keyword argument; see [`conv!`](@ref) for details. `u` and
-`v` can be N-dimensional arrays, with arbitrary indexing offsets, but their axes
-must be a `UnitRange`.
+Convolution of two arrays. A convolution algorithm is automatically chosen among
+direct convolution, FFT, or FFT overlap-save, depending on the size of the
+input, unless explicitly specified with the `algorithm` keyword argument; see
+[`conv!`](@ref) for details.
 """
 function conv(
     u::AbstractArray{Tu, N}, v::AbstractArray{Tv, N};  kwargs...
