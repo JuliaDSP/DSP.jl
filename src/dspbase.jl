@@ -677,14 +677,14 @@ A mix of offset and non-offset axes between input and output is not permitted.
 
 The algorithm keyword allows choosing the algorithm to use:
 * `:direct`: Evaluates the convolution sum in time domain.
-* `:fft_simple`: Evaluates the convonlution as a product in frequency domain.
-* `:fft_overlapsave`: Evaluates the convonlution block-wise as a product in
+* `:fft_simple`: Evaluates the convolution as a product in the frequency domain.
+* `:fft_overlapsave`: Evaluates the convolution block-wise as a product in the
   frequency domain, overlapping the resulting blocks.
 * `:fft`: Chooses between the faster one (as estimated form the input size) of
   `:fft_simple` and `:fft_overlapsave`.
 * `:fast`: Chooses between the faster one (as estimated form the input size) of
   `:direct`, `:fft_simple` and `:fft_overlapsave`.
-* `:auto` (default): Equivalent to `:auto` if the data type is known to be
+* `:auto` (default): Equivalent to `:fast` if the data type is known to be
   suitable for FFT-based computation, equivalent to `:direct` otherwise.
 """
 function conv!(
