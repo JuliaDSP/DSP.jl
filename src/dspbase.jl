@@ -681,9 +681,9 @@ The `algorithm` keyword allows choosing the algorithm to use:
 * `:fft_overlapsave`: Evaluates the convolution block-wise as a product in the
   frequency domain, overlapping the resulting blocks.
 * `:fft`: Selects the faster of `:fft_simple` and `:fft_overlapsave` (as
-   estimated form the input size).
-* `:fast`: Selects  the faster of `:direct`, `:fft_simple` and
-  `:fft_overlapsave` (as estimated form the input size) .
+   estimated from the input size).
+* `:fast`: Selects the fastest of `:direct`, `:fft_simple` and
+  `:fft_overlapsave` (as estimated from the input size).
 * `:auto` (default): Equivalent to `:fast` if the data type is known to be
   suitable for FFT-based computation, equivalent to `:direct` otherwise.
 """
