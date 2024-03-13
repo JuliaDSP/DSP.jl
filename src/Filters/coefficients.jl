@@ -10,7 +10,7 @@ Base.convert(::Type{T}, f::FilterCoefficients) where {T<:FilterCoefficients} = T
 #
 
 """
-    ZeroPoleGain(z, p, k)
+    ZeroPoleGain(z::Vector, p::Vector, k::Number)
 
 Filter representation in terms of zeros `z`, poles `p`, and
 gain `k`:
@@ -92,11 +92,12 @@ struct PolynomialRatio{Domain,T<:Number} <: FilterCoefficients{Domain}
 end
 PolynomialRatio(f::FilterCoefficients{D}) where {D} = PolynomialRatio{D}(f)
 """
-    PolynomialRatio(b, a)
+    PolynomialRatio(b::Union{Number, Vector{<:Number}}, a::Union{Number, Vector{<:Number}})
 
 Filter representation in terms of the coefficients of the numerator
 `b` and denominator `a` in the z or s domain
-where `b` and `a` are vectors ordered from highest power to lowest.
+where `b` and `a` are vectors ordered from highest power to lowest.\n
+Inputs that are `Number`s are treated as one-element `Vector`s.\n
 Filter with:
 - Transfer function in z domain (zero & negative z powers):
 ```math
@@ -181,9 +182,9 @@ coef_s(p::LaurentPolynomial{T}) where T = (n = firstindex(p);  append!(reverse!(
 coef_z(p::LaurentPolynomial{T}) where T = (n = -lastindex(p); prepend!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
 
 """
-    coefb(f)
+    coefb(f::PolynomialRatio)
 
-Coefficients of the numerator of a PolynomialRatio object, highest power
+Coefficients of the numerator of a `PolynomialRatio` object, highest power
 first, i.e., the `b` passed to `filt()`
 """
 coefb(f::PolynomialRatio{:s}) = coef_s(f.b)
@@ -191,9 +192,9 @@ coefb(f::PolynomialRatio{:z}) = coef_z(f.b)
 coefb(f::FilterCoefficients) = coefb(PolynomialRatio(f))
 
 """
-    coefa(f)
+    coefa(f::PolynomialRatio)
 
-Coefficients of the denominator of a PolynomialRatio object, highest power
+Coefficients of the denominator of a `PolynomialRatio` object, highest power
 first, i.e., the `a` passed to `filt()`
 """
 coefa(f::PolynomialRatio{:s}) = coef_s(f.a)
@@ -205,7 +206,7 @@ coefa(f::FilterCoefficients) = coefa(PolynomialRatio(f))
 # A separate immutable to improve efficiency of filtering using SecondOrderSections
 #
 """
-    Biquad(b0, b1, b2, a1, a2)
+    Biquad(b0::T, b1::T, b2::T, a1::T, a2::T) where T <: Number
 
 Filter representation in terms of the transfer function of a single
 second-order section given by:
@@ -271,13 +272,13 @@ Base.inv(f::Biquad{D,T}) where {D,T} = Biquad{D}(one(T), f.a1, f.a2, f.b0, f.b1,
 # Second-order sections (array of biquads)
 #
 """
-    SecondOrderSections(biquads, gain)
+    SecondOrderSections(biquads::Vector{<:Biquad}, gain::Number)
 
 Filter representation in terms of a cascade of second-order
 sections and gain. `biquads` must be specified as a vector of
 `Biquads`.
 """
-struct SecondOrderSections{Domain,T,G} <: FilterCoefficients{Domain}
+struct SecondOrderSections{Domain,T<:Number,G<:Number} <: FilterCoefficients{Domain}
     biquads::Vector{Biquad{Domain,T}}
     g::G
 end

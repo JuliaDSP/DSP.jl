@@ -20,7 +20,7 @@ filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si=_zerosi(f, x)) =
     filt!(out, coefb(f), coefa(f), x, si)
 
 """
-    filt(f, x[, si])
+    filt(f::FilterCoefficients{:z}, x::AbstractArray[, si])
 
 Apply filter or filter coefficients `f` along the first dimension
 of array `x`. If `f` is a filter coefficient object, `si`
@@ -119,8 +119,8 @@ filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
 filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 """
-    DF2TFilter(coef[, si])
-    DF2TFilter(coef[, sitype::Type])
+    DF2TFilter(coef::FilterCoefficients{:z}[, si])
+    DF2TFilter(coef::FilterCoefficients{:z}[, sitype::Type])
 
 Construct a stateful direct form II transposed filter with
 coefficients `coef`.
@@ -191,7 +191,7 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
             out[i] = val
         end
     end
-    out
+    return out
 end
 
 ## SecondOrderSections
@@ -285,7 +285,7 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
 end
 
 """
-    filtfilt(coef, x)
+    filtfilt(coef::FilterCoefficients, x::AbstractArray)
 
 Filter `x` in the forward and reverse directions using filter
 coefficients `coef`. The initial state of the filter is computed so
@@ -298,11 +298,13 @@ Because `filtfilt` applies the given filter twice, the effective
 filter order is twice the order of `coef`. The resulting signal has
 zero phase distortion.
 """
+function filtfilt end
+
 function filtfilt(b::AbstractVector, x::AbstractArray)
     nb = length(b)
     # Only need as much padding as the order of the filter
-    t = Base.promote_eltype(b, x)
-    extrapolated = similar(x, t, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
+    T = Base.promote_eltype(b, x)
+    extrapolated = similar(x, T, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
 
     # Convolve b with its reverse
     newb = filt(b, reverse(b))
@@ -389,7 +391,7 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     B = @views @. muladd(a[2:end], -b[1], b[2:end])
     # Solve si = A*si + B
     # (I - A)*si = B
-    scale_factor \ (I - A) \ B
+    ((I - A) \ B) .*= scale_factor
  end
 
 function filt_stepstate(f::SecondOrderSections{:z,T}) where T
@@ -415,7 +417,7 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
 end
 
 """
-    tdfilt(h, x)
+    tdfilt(h::AbstractVector, x::AbstractArray)
 
 Apply filter or filter coefficients `h` along the first dimension
 of array `x` using a naïve time-domain algorithm
@@ -425,7 +427,7 @@ function tdfilt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T<:Real}
 end
 
 """
-    tdfilt!(out, h, x)
+    tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 
 Like `tdfilt`, but writes the result into array `out`. Output array `out` may
 not be an alias of `x`, i.e. filtering may not be done in place.
@@ -442,18 +444,18 @@ filt(h::AbstractVector{H}, x::AbstractArray{T}) where {H,T} =
 #
 
 """
-    fftfilt(h, x)
+    fftfilt(h::AbstractVector{<:Real}, x::AbstractArray{<:Real})
 
 Apply FIR filter taps `h` along the first dimension of array `x`
 using an FFT-based overlap-save algorithm.
 """
-function fftfilt(b::AbstractVector{T}, x::AbstractArray{T},
-                 nfft::Integer=optimalfftfiltlength(length(b), length(x))) where T<:Real
-    _fftfilt!(similar(x, T), b, x, nfft)
+function fftfilt(b::AbstractVector{H}, x::AbstractArray{T},
+                 nfft::Integer=optimalfftfiltlength(length(b), length(x))) where {H<:Real,T<:Real}
+    _fftfilt!(similar(x, promote_type(H, T)), b, x, nfft)
 end
 
 """
-    fftfilt!(out, h, x)
+    fftfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 
 Like `fftfilt` but writes result into out array.
 """

@@ -26,7 +26,7 @@ function Butterworth(::Type{T}, n::Integer) where {T<:Real}
 end
 
 """
-    Butterworth(n)
+    Butterworth(n::Integer)
 
 ``n`` pole Butterworth filter.
 """
@@ -75,7 +75,7 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 end
 
 """
-    Chebyshev1(n, ripple)
+    Chebyshev1(n::Integer, ripple::Real)
 
 `n` pole Chebyshev type I filter with `ripple` dB ripple in
 the passband.
@@ -105,7 +105,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
 end
 
 """
-    Chebyshev2(n, ripple)
+    Chebyshev2(n::Integer, ripple::Real)
 
 `n` pole Chebyshev type II filter with `ripple` dB ripple in
 the stopband.
@@ -220,7 +220,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
 end
 
 """
-    Elliptic(n, rp, rs)
+    Elliptic(n::Integer, rp::Real, rs::Real)
 
 `n` pole elliptic (Cauer) filter with `rp` dB ripple in the
 passband and `rs` dB attentuation in the stopband.
@@ -244,7 +244,7 @@ struct Lowpass{T} <: FilterType
 end
 
 """
-    Lowpass(Wn)
+    Lowpass(Wn::Real)
 
 Low pass filter with cutoff frequency `Wn`.
 """
@@ -255,7 +255,7 @@ struct Highpass{T} <: FilterType
 end
 
 """
-    Highpass(Wn)
+    Highpass(Wn::Real)
 
 High pass filter with cutoff frequency `Wn`.
 """
@@ -267,7 +267,7 @@ struct Bandpass{T} <: FilterType
 end
 
 """
-    Bandpass(Wn1, Wn2)
+    Bandpass(Wn1::Real, Wn2::Real)
 
 Band pass filter with pass band frequencies (`Wn1`, `Wn2`).
 """
@@ -282,7 +282,7 @@ struct Bandstop{T} <: FilterType
 end
 
 """
-    Bandstop(Wn1, Wn2)
+    Bandstop(Wn1::Real, Wn2::Real)
 
 Band stop filter with stop band frequencies (`Wn1`, `Wn2`).
 """
@@ -402,7 +402,7 @@ transform_prototype(ftype, proto::FilterCoefficients{:s}) =
     transform_prototype(ftype, convert(ZeroPoleGain, proto))
 
 """
-    analogfilter(responsetype, designmethod)
+    analogfilter(responsetype::FilterType, designmethod::FilterCoefficients)
 
 Construct an analog filter. See below for possible response and
 filter types.
@@ -479,7 +479,7 @@ prewarp(f::Real) = 4*tan(pi*f/2)
 
 # Digital filter design
 """
-    digitalfilter(responsetype, designmethod[; fs])
+    digitalfilter(responsetype::FilterType, designmethod::FilterCoefficients[; fs::Real])
 
 Construct a digital filter. See below for possible response and
 filter types.
@@ -492,7 +492,7 @@ digitalfilter(ftype::FilterType, proto::FilterCoefficients; fs::Real=2) =
 #
 
 """
-    iirnotch(Wn, bandwidth[; fs])
+    iirnotch(Wn::Real, bandwidth::Real[; fs=2])
 
 Second-order digital IIR notch filter [^Orfanidis] at frequency `Wn` with
 bandwidth `bandwidth`. If `fs` is not specified, `Wn` is
@@ -538,7 +538,7 @@ struct FIRWindow{T}
 end
 
 """
-    FIRWindow(window; scale=true)
+    FIRWindow(window::Vector; scale=true)
 
 FIR filter design using window `window`, a vector whose length
 matches the number of taps in the resulting filter.
@@ -557,7 +557,7 @@ FIRWindow(window::Vector; scale::Bool=true) = FIRWindow(window, scale)
 
 # FIRWindow(n::Integer, window::Function, args...) = FIRWindow(window(n, args...))
 """
-    FIRWindow(; transitionwidth, attenuation=60, scale=true)
+    FIRWindow(; transitionwidth::Real, attenuation::Real=60, scale::Bool=true)
 
 Kaiser window FIR filter design. The required number of taps is
 calculated based on `transitionwidth` (in half-cycles/sample)

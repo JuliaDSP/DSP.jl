@@ -145,7 +145,7 @@ end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
 """
-    FIRFilter(h[, ratio])
+    FIRFilter(h::Vector[, ratio::Union{Integer,Rational}])
 
 Construct a stateful FIRFilter object from the vector of filter taps `h`.
 `ratio` is an optional rational integer which specifies
@@ -178,7 +178,7 @@ end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
 """
-    FIRFilter(h, rate[, Nϕ])
+    FIRFilter(h::Vector, rate::AbstractFloat[, Nϕ::Integer=32])
 
 Returns a polyphase FIRFilter object from the vector of filter taps `h`.
 `rate` is a floating point number that specifies the input to output
@@ -668,7 +668,7 @@ function filt(h::Vector, x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32
 end
 
 """
-    resample(x, rate[, coef])
+    resample(x::AbstractVector, rate::Real[, coef::Vector])
 
 Resample `x` at rational or arbitrary `rate`.
 `coef` is an optional vector of FIR filter taps. If `coef`
