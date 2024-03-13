@@ -3,7 +3,7 @@
 #
 # filt and filt!
 #
-using ..DSP: _filt_iir!
+using ..DSP: _filt_fir!, _filt_iir!
 
 ## PolynomialRatio
 _zerosi(f::PolynomialRatio{:z,T}, ::AbstractArray{S}) where {T,S} =
@@ -171,24 +171,24 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
     si = f.state
     n = length(si) + 1
     b = coefb(f.coef)
-    if length(b) < n
-        append!(b, zeros(n-length(b)))
-    end
-    a = coefa(f.coef)
-    if length(a) < n
-        append!(a, zeros(n-length(a)))
-    end
     if n == 1
         mul!(out, x, b[1])
     else
-        @inbounds for i in eachindex(x, out)
-            xi = x[i]
-            val = muladd(b[1], xi, si[1])
-            for j=2:n-1
-                si[j-1] = muladd(a[j], -val, muladd(b[j], xi, si[j]))
+        a = coefa(f.coef)
+        as = length(a)
+        bs = length(b)
+        if as != 1
+            if as < n
+                append!(a, zero(eltype(a)) for _ in 1:(n-as))
+            elseif bs < n
+                append!(b, zero(eltype(b)) for _ in 1:(n-bs))
             end
-            si[n-1] = muladd(b[n], xi, -a[n] * val)
-            out[i] = val
+            _filt_iir!(out, b, a, x, si, 1)
+        elseif n <= SMALL_FILT_CUTOFF
+            vtup = ntuple(j -> VecElement(@inbounds(b[j])), Val(n))
+            si .= getfield.(_filt_fir!(out, vtup, x, si, 1), :value)
+        else
+            _filt_fir!(out, b, x, si, 1)
         end
     end
     return out
