@@ -2,6 +2,7 @@
 
 ```@docs
 conv
+conv!
 deconv
 xcorr
 ```
