@@ -120,42 +120,34 @@ end
 # are not essential. E.g. bounds checks have surprisingly unpredictable
 # consequences because of the effects system in Julia v1.9 and v1.10.
 
+const SMALL_FILT_VECT_CUTOFF = 18
+
 # Transposed direct form II
 @generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
     silen = N - 1
     si_end = Symbol(:si_, silen)
-    SMALL_FILT_VECT_CUTOFF = 18
-    @static if VERSION < v"1.8"
-        ex = :(Base.@nextract $silen si d -> @inbounds(siarr[d]))
-    elseif VERSION < v"1.9"
-        ex = :(Base.@nextract $silen si siarr)
-    else
-        if !(N > SMALL_FILT_VECT_CUTOFF)
-            ex = quote
-                checkbounds(siarr, 1:$silen)
-                Base.@nextract $silen si siarr
-            end
-        else
-            ex = :(Base.@nextract $silen si siarr)
-        end
-    end
-
-    if N > SMALL_FILT_VECT_CUTOFF
-        store_out = :(@inbounds out[i, col] = val)
-    else
-        store_out = :(out[i, col] = val)
-    end
 
     quote
-        $ex
+        if VERSION < v"1.8"
+            Base.@nextract $silen si d -> @inbounds(siarr[d])
+        elseif VERSION < v"1.9" || N > SMALL_FILT_VECT_CUTOFF
+            Base.@nextract $silen si siarr
+        else
+            checkbounds(siarr, 1:$silen)
+            Base.@nextract $silen si siarr
+        end
         checkbounds(x, :, col)
         size(x) == size(out) || throw(DimensionMismatch("size(x) != size(out)"))
         for i in axes(x, 1)
             xi = x[i, col]
             val = muladd(xi, b[1].value, si_1)
-            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1].value, si_{j+1}))
+            Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1].value, si_{j + 1}))
             $si_end = xi * b[N].value
-            $store_out
+            if N > SMALL_FILT_VECT_CUTOFF
+                @inbounds out[i, col] = val
+            else
+                out[i, col] = val
+            end
         end
         return Base.@ntuple $silen j -> VecElement(si_j)
     end
