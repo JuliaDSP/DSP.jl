@@ -35,7 +35,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     isempty(a) && throw(ArgumentError("filter vector a must be non-empty"))
     a[1] == 0  && throw(ArgumentError("filter vector a[1] must be nonzero"))
     if size(x) != size(out)
-        throw(ArgumentError("output size $(size(out)) must match input size $(size(x))"))
+        throw(ArgumentError(LazyString("output size ", size(out), " must match input size ", size(x))))
     end
 
     as = length(a)
@@ -823,7 +823,7 @@ end
 dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
 function dsp_reverse(v, vaxes)
     vsize = length(v)
-    reflected_start = - first(vaxes[1]) - vsize + 1
+    reflected_start = - first(only(vaxes)) - vsize + 1
     reflected_axes = (reflected_start : reflected_start + vsize - 1,)
     out = similar(v, reflected_axes)
     copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
