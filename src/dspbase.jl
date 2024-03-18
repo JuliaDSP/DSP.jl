@@ -794,13 +794,13 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
     if any(conv_axis_with_offset, (axes(u)..., axes(v)..., axes(A)...))
         throw(ArgumentError("offset axes not supported"))
     end
-    m = length(u)+size(A,1)-1
-    n = length(v)+size(A,2)-1
+    m = length(u) + size(A, 1) - 1
+    n = length(v) + size(A, 2) - 1
     B = zeros(T, m, n)
-    B[1:size(A,1),1:size(A,2)] = A
-    u = fft([u;zeros(T,m-length(u))])
-    v = fft([v transpose(zeros(T,n-length(v)))])
-    C = ifft(fft(B) .* (u * v))
+    B[CartesianIndices(A)] = A
+    u, v = fft.(_zeropad.((u, transpose(v)), (m, n)))
+    p = plan_fft(B)
+    C = inv(p) * ((p * B) .*= u .* transpose(v))
     if T <: Real
         return real(C)
     end
