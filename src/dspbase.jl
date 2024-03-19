@@ -901,12 +901,15 @@ function xcorr(
 end
 
 function _autocorr_fft(u::AbstractVector{T}, forward) where T<:FFTTypes
-    padded = copyto!(zeros(T, 2length(u)-1), u)
+    acorr_len = 2length(u) - 1
+    padLen = nextfastfft(acorr_len)
+    padded = copyto!(zeros(T, padLen), u)
     plan = forward(padded)
     F_padded = plan * padded
     pow_Fu = map!(abs2, F_padded, F_padded)
     unshifted = mul!(padded, inv(plan), pow_Fu)
-    shifted = fftshift(unshifted)
+    shifted = circshift(unshifted, length(u) - 1)
+    resize!(shifted, acorr_len)
     return shifted
 end
 
