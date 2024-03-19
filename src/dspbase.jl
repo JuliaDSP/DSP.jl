@@ -867,32 +867,53 @@ julia> xcorr([1,2,3],[1,2,3])
 function xcorr(
     u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
 )
-    su = size(u, 1); sv = size(v, 1)
+    su, sv = length(u), length(v)
 
-    if scaling == :biased && su != sv
-        throw(DimensionMismatch("scaling only valid for vectors of same length"))
+    if scaling === :biased
+        if su != sv
+            throw(DimensionMismatch("scaling only valid for vectors of same length"))
+        end
+    elseif scaling !== :none
+        throw(ArgumentError("scaling keyword argument must be either :none or :biased"))
     end
 
-    if padmode == :longest
+    if padmode === :longest
         if su < sv
             u = _zeropad_keep_offset(u, sv)
         elseif sv < su
             v = _zeropad_keep_offset(v, su)
         end
-    elseif padmode != :none
+    elseif padmode !== :none
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
 
-    res = conv(u, dsp_reverse(conj(v), axes(v)))
-    if scaling == :biased
+    if eltype(u) <: FFTTypes && u === v     # TODO: add heuristic here
+        res = autocorr_fft(u)
+    else
+        res = conv(u, dsp_reverse(conj(v), axes(v)))
+    end
+
+    if scaling === :biased
         res = _normalize!(res, su)
     end
 
     return res
 end
 
+function _autocorr_fft(u::AbstractVector{T}, forward) where T<:FFTTypes
+    padded = copyto!(zeros(T, 2length(u)-1), u)
+    plan = forward(padded)
+    F_padded = plan * padded
+    pow_Fu = map!(abs2, F_padded, F_padded)
+    unshifted = mul!(padded, inv(plan), pow_Fu)
+    shifted = fftshift(unshifted)
+    return shifted
+end
+
+autocorr_fft(u::AbstractVector{T}) where {T<:Complex} = _autocorr_fft(u, plan_fft!)
+autocorr_fft(u::AbstractVector{T}) where {T<:Real} = _autocorr_fft(u, plan_rfft)
+
 _normalize!(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)   # does not mutate x
 _normalize!(x::AbstractArray, sz::Int) = (x ./= sz)
 
-# TODO: write specialized (r/)fft-ed autocorrelation functions
 xcorr(u::AbstractVector; kwargs...) = xcorr(u, u; kwargs...)
