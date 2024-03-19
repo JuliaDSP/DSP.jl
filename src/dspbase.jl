@@ -887,10 +887,14 @@ function xcorr(
         throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
     end
 
-    if eltype(u) <: FFTTypes && u === v     # TODO: add heuristic here
-        res = autocorr_fft(u)
+    if eltype(u) <: FFTTypes && u === v
+        if length(u) < 768
+            res = conv(u, conj!(dsp_reverse(v, axes(v))); algorithm=:direct)
+        else
+            res = autocorr_fft(u)
+        end
     else
-        res = conv(u, dsp_reverse(conj(v), axes(v)))
+        res = conv(u, conj!(dsp_reverse(v, axes(v))))
     end
 
     if scaling === :biased
