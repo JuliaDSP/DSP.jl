@@ -1,7 +1,7 @@
 module LPC
 
 
-using ..DSP: xcorr
+using ..DSP: xcorr, _autocorr_fft, FFTTypes
 
 using LinearAlgebra: dot, BlasComplex, BLAS
 
@@ -91,8 +91,14 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
     return conj!(a), prediction_err, reflection_coeffs
 end
 
-function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)
-    R_xx = xcorr(x; scaling=:biased)[length(x):end]
+function lpc(x::AbstractVector{T}, p::Integer, ::LPCLevinson) where {T<:Number}
+    if T <: FFTTypes
+        unscaled = resize!(_autocorr_fft(x), length(x))
+        R_xx = broadcast!(/, unscaled, unscaled, length(x))
+    else
+        acorr_x = xcorr(x; scaling=:biased)
+        R_xx = keepat!(acorr_x, length(x):lastindex(acorr_x))
+    end
     a, prediction_err = levinson(R_xx, p)
     return a, prediction_err
 end

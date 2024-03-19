@@ -900,21 +900,22 @@ function xcorr(
     return res
 end
 
-function _autocorr_fft(u::AbstractVector{T}, forward) where T<:FFTTypes
-    acorr_len = 2length(u) - 1
-    padLen = nextfastfft(acorr_len)
+function _autocorr_fft(u::AbstractVector{T}) where T<:FFTTypes
+    forward = T <: Complex ? plan_fft! : plan_rfft
+    padLen = nextfastfft(2length(u) - 1)
     padded = copyto!(zeros(T, padLen), u)
     plan = forward(padded)
     F_padded = plan * padded
     pow_Fu = map!(abs2, F_padded, F_padded)
     unshifted = mul!(padded, inv(plan), pow_Fu)
-    shifted = circshift(unshifted, length(u) - 1)
-    resize!(shifted, acorr_len)
-    return shifted
+    return unshifted
 end
 
-autocorr_fft(u::AbstractVector{T}) where {T<:Complex} = _autocorr_fft(u, plan_fft!)
-autocorr_fft(u::AbstractVector{T}) where {T<:Real} = _autocorr_fft(u, plan_rfft)
+function autocorr_fft(u::AbstractVector)
+    unshifted = @inline _autocorr_fft(u)
+    shifted = circshift(unshifted, length(u) - 1)
+    return resize!(shifted, 2length(u) - 1)
+end
 
 _normalize!(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)   # does not mutate x
 _normalize!(x::AbstractArray, sz::Int) = (x ./= sz)
