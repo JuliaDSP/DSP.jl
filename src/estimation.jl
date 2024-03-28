@@ -12,26 +12,57 @@ export esprit, jacobsen, quinn
 ESPRIT [^Roy1986] algorithm for frequency estimation.
 Estimation of Signal Parameters via Rotational Invariance Techniques
 
-Given length N signal "x" that is the sum of p sinusoids of unknown frequencies,
-estimate and return an array of the p frequencies.
+Given length N signal `x` that is the sum of `p` complex exponentials (cisoids) of unknown frequencies,
+estimate and return an array of the `p` frequencies.
+
+```math
+x(t)=\\sum_{i=1}^p A_ie^{j2\\pi f_i t}
+```
+where ``A_i`` is the amplitude of the ``i``th cisoid, ``f_i`` is the ``i``th frequency.
 
 # Arguments
 - `x::AbstractArray`: complex length N signal array
 - `M::Integer`: size of correlation matrix, must be <= N.
       The signal subspace is computed from the SVD of an M x (N-M+1) signal matrix
       formed from N-M+1 length-M shifts of the signal x in its columns.
-      For best performance for 1 sinusoid, use M = (N+1)/3 (according to van der Veen and Leus).
+      For best performance for 1 cisoid, use M = (N+1)/3 (according to van der Veen and Leus).
       For faster execution (due to smaller SVD), use small M or small N-M
-- `p::Integer`: number of sinusoids to estimate.
+- `p::Integer`: number of complex exponentials/frequencies to estimate.
 - `Fs::Float64`: sampling frequency, in Hz.
 
 # Returns
-length p real array of frequencies in units of Hz.
+length `p` real array of frequencies in units of Hz.
 
 [^Roy1986]: R Roy, A Paulraj and T Kailath, ESPRIT -
     A subspace approach to estimation of parameters of cisoids in noise,
     IEEE Trans. Acoustics, Speech, Signal Process., 34, 1340-1342 (1986).
     <http://ieeexplore.ieee.org/abstract/document/1164935/>.
+
+# Examples
+Suppose a signal ``x(t)=2e^{j2\\pi(2500)t} + 5e^{j2\\pi(400)t}`` is corrupted by noise. The goal is
+to retrieve the frequencies in the signal. Let the sampling frequency be ``8kHz``.
+
+```@example
+julia> Fs = 8000;                 #sampling frequency (Hz)
+julia> true_freq = [2500 400];    #true frequencies (Hz)
+julia> t = collect(1:Fs)/Fs;      #time vector
+julia> x = 2exp.(1im*2π*true_freq[1]*t) + 5exp.(1im*2π*true_freq[2]*t); #original signal x
+```
+Add gaussian noise in complex form to the signal ``x`` to mimic noise corruption.
+```@example
+julia> noise = randn(Fs, 2)*[1; 1im];    #complex random noise 
+julia> x += noise;                       #add noise to signal x
+```
+Run the ESPRIT algorithm to retrieve approximate frequencies.
+```@example
+julia> M = 5;    #window length of 5
+julia> p = 2;    #2 frequencies to estimate
+julia> esprit(x, M, p, Fs)
+2-element Vector{Float64}:
+2502.2704154274957
+399.8420984461712
+```
+
 """
 function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
     count(!isone, size(x)) <= 1 || throw(ArgumentError("`x` must be a 1D signal"))
