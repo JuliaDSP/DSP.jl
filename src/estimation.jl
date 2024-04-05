@@ -18,7 +18,7 @@ estimate and return an array of the `p` frequencies.
 ```math
 x(t)=\\sum_{i=1}^p A_ie^{j2\\pi f_i t}
 ```
-where ``A_i`` is the amplitude of the ``i``th cisoid, ``f_i`` is the ``i``th frequency.
+where ``A_i`` and ``f_i`` are the amplitude and frequency of the ``i``th cisoid.
 
 # Arguments
 - `x::AbstractArray`: complex length N signal array
