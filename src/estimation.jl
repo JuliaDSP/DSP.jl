@@ -12,7 +12,7 @@ export esprit, jacobsen, quinn
 ESPRIT [^Roy1986] algorithm for frequency estimation.
 Estimation of Signal Parameters via Rotational Invariance Techniques
 
-Given length N signal `x` that is the sum of `p` complex exponentials (cisoids) of unknown frequencies,
+Given a signal `x` of length N that is the sum of `p` complex exponentials (cisoids) with unknown constant amplitudes and phases,
 estimate and return an array of the `p` frequencies.
 
 ```math
