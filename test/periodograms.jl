@@ -228,6 +228,10 @@ end
     @test power(welch_pgram!(out, data, length(data), 0; window=hamming, nfft=32)) == expected
     @test_throws ArgumentError welch_pgram!(convert(Vector{Float32}, out), data, config)
     @test_throws DimensionMismatch welch_pgram!(empty!(out), data, config)
+    
+    # test welch_pgram! with float64 data
+    out = similar(expected)
+    @test power(welch_pgram!(out, convert(UnitRange{Float64}, data), config)) == expected 
 
     # Test fftshift
     p = periodogram(data); p_shifted = fftshift(p)
