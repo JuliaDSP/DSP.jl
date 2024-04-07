@@ -55,8 +55,8 @@ julia> x += noise;                       # add noise to signal x
 ```
 Run the ESPRIT algorithm to retrieve approximate frequencies.
 ```@example
-julia> M = 5;    #window length of 5
-julia> p = 2;    #2 frequencies to estimate
+julia> M = 5;    # window length of 5
+julia> p = 2;    # 2 frequencies to estimate
 julia> esprit(x, M, p, Fs)
 2-element Vector{Float64}:
 2502.2704154274957
