@@ -50,8 +50,8 @@ julia> x = 2exp.(1im*2π*true_freq[1]*t) + 5exp.(1im*2π*true_freq[2]*t); # orig
 ```
 Add gaussian noise in complex form to the signal ``x`` to mimic noise corruption.
 ```@example
-julia> noise = randn(Fs, 2)*[1; 1im];    #complex random noise 
-julia> x += noise;                       #add noise to signal x
+julia> noise = randn(Fs, 2)*[1; 1im];    # complex random noise 
+julia> x += noise;                       # add noise to signal x
 ```
 Run the ESPRIT algorithm to retrieve approximate frequencies.
 ```@example
