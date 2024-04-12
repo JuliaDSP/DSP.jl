@@ -276,7 +276,7 @@ frequency bands using the Remez exchange algorithm.
 - `numtaps::Integer`: The desired number of taps in the filter.
     The number of taps is the number of terms in the filter, or the filter
     order plus one.
-- `bands_defs`: A sequence of band definitions.
+- `band_defs`: A sequence of band definitions.
     This sequence defines the bands. Each entry is a pair. The pair's
     first item is a tuple of band edges (low, high). The pair's second item
     defines the desired response and weight in that band. The weight is optional

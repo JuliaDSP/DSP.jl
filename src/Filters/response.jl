@@ -7,7 +7,7 @@
 using ..DSP: xcorr
 
 """
-    H, w = freqresp(filter)
+    H, w = freqresp(filter::FilterCoefficients)
 
 Frequency response `H` of a `filter` at (normalized) frequencies `w` in
 radians/sample for a digital filter or radians/second for an analog filter
@@ -53,7 +53,7 @@ _freq(filter::SecondOrderSections, x::T) where {T<:Number} =
 
 
 """
-    phi, w = phaseresp(filter)
+    phi, w = phaseresp(filter::FilterCoefficients)
 
 Phase response `phi` of a `filter` at (normalized) frequencies `w` in
 radians/sample for a digital filter or radians/second for an analog filter
@@ -65,7 +65,7 @@ function phaseresp(filter::FilterCoefficients)
 end
 
 """
-    phaseresp(filter, w)
+    phaseresp(filter::FilterCoefficients, w)
 
 Phase response of a `filter` at (normalized) frequency or frequencies `w` in
 radians/sample for a digital filter or radians/second for an analog filter.
@@ -76,7 +76,7 @@ function phaseresp(filter::FilterCoefficients, w)
 end
 
 """
-    tau, w = grpdelay(filter)
+    tau, w = grpdelay(filter::FilterCoefficients)
 
 Group delay `tau` of a `filter` at (normalized) frequencies `w` in
 radians/sample for a digital filter or radians/second for an analog filter
@@ -88,10 +88,10 @@ function grpdelay(filter::FilterCoefficients)
 end
 
 """
-    grpdelay(fliter, w)
+    grpdelay(filter::FilterCoefficients{:z}, w)
 
-Group delay of a digital 'filter' at normalized frequency
-or frequencies 'w' in radians/sample.
+Group delay of a digital `filter` at normalized frequency
+or frequencies `w` in radians/sample.
 """
 function grpdelay(filter::FilterCoefficients{:z}, w)
     filter = convert(PolynomialRatio, filter)
@@ -120,7 +120,7 @@ function grpdelay(filter::FilterCoefficients{:s}, w)
 end
 
 """
-    impresp(filter, n=100)
+    impresp(filter::FilterCoefficients{:z}, n=100)
 
 Impulse response of a digital `filter` with `n` points.
 """
@@ -130,7 +130,7 @@ function impresp(filter::FilterCoefficients{:z}, n=100)
 end
 
 """
-    stepresp(filter, n=100)
+    stepresp(filter::FilterCoefficients{:z}, n=100)
 
 Step response of a digital `filter` with `n` points.
 """
