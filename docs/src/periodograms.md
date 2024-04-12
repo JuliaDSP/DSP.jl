@@ -6,11 +6,15 @@ Common procedures like computing the [short-time Fourier transform](@ref stft),
 
 ```@docs
 arraysplit
+DSP.Periodograms.ArraySplit
 periodogram(s::AbstractVector{T}) where T <: Number
 periodogram(s::AbstractMatrix{T}) where T <: Real
+DSP.Periodograms.Periodogram
+DSP.Periodograms.Periodogram2
 welch_pgram
 welch_pgram!
 spectrogram
+DSP.Periodograms.Spectrogram
 stft
 freq
 power
