@@ -722,13 +722,16 @@ julia> y == power(pxx)
 true
 ```
 """
-function welch_pgram!(out::AbstractVector, s::AbstractVector, config::WelchConfig{T}) where T<:Number
+function welch_pgram!(out::AbstractVector, s::AbstractVector{T}, config::WelchConfig) where {T<:Number}
     if length(out) != length(config.freq)
         throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
             got `length(output)` = $(length(out)) and `length(config.freq)` = $(length(config.freq))"""))
     elseif eltype(out) != fftabs2type(T)
-        throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected "*
+        throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected " *
                             "type: $(fftabs2type(T))."))
+    elseif float(T) != eltype(config.inbuf)
+        throw(ArgumentError("float(eltype(s)) = $T doesn't match the expected `config` " *
+                            "type: $(eltype(config.inbuf))."))
     end
     welch_pgram_helper!(out, s, config)
 end
