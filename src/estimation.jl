@@ -89,7 +89,7 @@ If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
 1.0`.
 
 [^Jacobsen2007]: E Jacobsen and P Kootsookos, "Fast, Accurate Frequency Estimators", Chapter
-10 in "Streamlining Digital Signal Processing", edited by R. Lyons, 2007, IEEE Press.
+    10 in "Streamlining Digital Signal Processing", edited by R. Lyons, 2007, IEEE Press.
 """
 function jacobsen(x::AbstractVector, Fs::Real = 1.0)
     N = length(x)
@@ -146,11 +146,10 @@ If the signal `x` is real, then the algorithm used is [^Quinn1991]. If the signa
 complex, the algorithm is [^Quinn2009].
 
 [^Quinn1991]: B Quinn and J Fernandes, "A fast efficient technique for the
-estimation of frequency", Biometrika, Vol. 78 (1991).
+    estimation of frequency", Biometrika, Vol. 78 (1991).
 
 [^Quinn2009]: B Quinn, "Recent advances in rapid frequency estimation", Digital
-Signal Processing, Vol. 19 (2009), Elsevier.
-
+    Signal Processing, Vol. 19 (2009), Elsevier.
 """
 quinn(x ; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0 ; kwargs...)
 
