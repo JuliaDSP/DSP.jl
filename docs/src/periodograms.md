@@ -7,8 +7,7 @@ Common procedures like computing the [short-time Fourier transform](@ref stft),
 ```@docs
 arraysplit
 DSP.Periodograms.ArraySplit
-periodogram(s::AbstractVector{T}) where T <: Number
-periodogram(s::AbstractMatrix{T}) where T <: Real
+periodogram
 DSP.Periodograms.Periodogram
 DSP.Periodograms.Periodogram2
 welch_pgram

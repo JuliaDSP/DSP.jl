@@ -373,11 +373,11 @@ julia> t = (1:Fs)/Fs;                # 100 time samples
 
 julia> x = cos.(2π*25*t);            # Cosine signal with 25Hz frequency
 
-julia> pxx = periodogram(x; fs=Fs);                # Periodogram
+julia> pxx = periodogram(x; fs=Fs);                 # Periodogram
 
-julia> _, max_index = findmax(pxx.power);          # Find index of max power
+julia> _, max_index = findmax(pxx.power);           # Find index of max power
 
-julia> pxx.power[max_index], pxx.freq[max_index]  # (power, frequency)
+julia> pxx.power[max_index], pxx.freq[max_index]    # (power, frequency)
 (0.5, 25.0)
 ```
 2-sided periodogram of a rectangle function with Hamming window.
@@ -601,18 +601,18 @@ See [`periodogram`](@ref) for description of optional keyword arguments.
 ```jldoctest
 julia> x = rect(10; padding=20);
 
-julia> power(welch_pgram(x))                     #1-sided periodogram
+julia> power(welch_pgram(x))                    # 1-sided periodogram
 2-element Vector{Float64}:
  0.9523809523809523
  0.04761904761904761
 
-julia> power(welch_pgram(x; onesided=false))     #2-sided periodogram
+julia> power(welch_pgram(x; onesided=false))    # 2-sided periodogram
 3-element Vector{Float64}:
  0.9523809523809523
  0.023809523809523805
  0.023809523809523805
 
-julia> power(welch_pgram(x, 5; onesided=false))  #5 samples segment
+julia> power(welch_pgram(x, 5; onesided=false)) # 5 samples segment
 5-element Vector{Float64}:
  1.488888888888889
  0.04444444444444444
