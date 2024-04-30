@@ -17,9 +17,9 @@ using FFTW
 
 ## ARRAY SPLITTER
 """
-    ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}  
+    ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
 
-ArraySplit object with fields 
+ArraySplit object with fields
 - `s::T`
 - `buf::Vector{S}`
 - `n::Int`
@@ -27,7 +27,7 @@ ArraySplit object with fields
 - `window::W`
 - `k::Int`
 where `buf`: buffer, `k`: number of split arrays, and `s`, `n`, `noverlap`, `window` are
-as per arguments in [`arraysplit`](@ref). 
+as per arguments in [`arraysplit`](@ref).
 """
 struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
     s::T
@@ -76,21 +76,21 @@ Base.size(x::ArraySplit) = (x.k,)
     arraysplit(s, n, noverlap, nfft=n, window=nothing; buffer=zeros(eltype(s), nfft))
 
 Split an array `s` into arrays of length `n` with overlapping regions
-of length `noverlap`. 
+of length `noverlap`.
 
 # Arguments
 - `s`: Input array.
 - `n`: Specifies the required subarray length (`n ≤ length(s)`).
-- `noverlap`: Number of overlapping elements between subarrays. 
-- `nfft`: Specifies the length of the split arrays. If `length(s)` < `nfft`, then the 
-    input is padded with zeros. 
-- `window`: An optional scaling vector to be applied to the split arrays. 
-- `buffer`: An optional buffer of length `nfft`. Iterating or indexing the returned 
-    AbstractVector always yields the same Vector with different contents. The last result 
+- `noverlap`: Number of overlapping elements between subarrays.
+- `nfft`: Specifies the length of the split arrays. If `length(s)` < `nfft`, then the
+    input is padded with zeros.
+- `window`: An optional scaling vector to be applied to the split arrays.
+- `buffer`: An optional buffer of length `nfft`. Iterating or indexing the returned
+    AbstractVector always yields the same Vector with different contents. The last result
     after iteration or indexing calls is stored into buffer.
 
 # Returns
-An [`ArraySplit`](@ref) object with split subarrays. 
+An [`ArraySplit`](@ref) object with split subarrays.
 
 # Examples
 ```jldoctest
@@ -262,7 +262,7 @@ abstract type TFR{T} end
 """
     Periodogram{T, F<:Union{Frequencies,AbstractRange}, V<:AbstractVector{T}} <: TFR{T}
 
-A Periodogram object with fields: 
+A Periodogram object with fields:
 - `power::V`
 - `freq::F`.
 See [`power`](@ref) and [`freq`](@ref) for further details.
@@ -275,7 +275,7 @@ end
 """
     Periodogram2{T, F1<:Union{Frequencies,AbstractRange}, F2<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
 
-A Periodogram2 object with fields: 
+A Periodogram2 object with fields:
 - `power::M`
 - `freq1::F1`
 - `freq2::F2`
@@ -362,7 +362,7 @@ Computes periodogram of a 1-d signal `s` by FFT and returns a
     signal.
 
 # Returns
-A [`Periodogram`](@ref) object with the 2 computed fields: power, freq. 
+A [`Periodogram`](@ref) object with the 2 computed fields: power, freq.
 
 # Examples
 Frequency estimate of `cos(2π(25)t)` with a 1-sided periodogram.
@@ -382,7 +382,7 @@ julia> pxx.power[max_index], pxx.freq[max_index]  # (power, frequency)
 ```
 2-sided periodogram of a rectangle function with Hamming window.
 ```jldoctest
-julia> x = rect(50; padding=50);     # Rectangule pulse function 
+julia> x = rect(50; padding=50);     # Rectangular pulse function
 
 julia> pxx = periodogram(x; onesided=false, nfft=512, fs=1000, window=hamming);
 
@@ -429,7 +429,7 @@ Computes periodogram of a 2-d signal using the 2-d FFT and returns a
 - `nfft`: A 2-tuple specifying the number of points to use for the Fourier
     transform for each respective dimension. If `size(s)` < `nfft`, then the input is padded
     with zeros. By default, `nfft` is the closest size for which the
-    Fourier transform can be computed with maximal efficiency. 
+    Fourier transform can be computed with maximal efficiency.
 - `fs`: The sample rate of the original signal in both directions.
 - `radialsum`: For `radialsum=true`, the value of `power[k]` is proportional to
     ``\\frac{1}{N}\\sum_{k\\leq |k'|<k+1} |X[k']|^2``.
@@ -439,10 +439,10 @@ Computes periodogram of a 2-d signal using the 2-d FFT and returns a
     by scaling the coordinates of the wavevector accordingly.
 
 # Returns
-- A [`Periodogram2`](@ref) object by default with the 3 computed fields: power, freq1, freq2. 
-- A [`Periodogram`](@ref) object is returned for a radially summed or averaged periodogram  
-    (if `radialsum` or `radialavg` is true, respectively). Only one of `radialsum` 
-    or `radialavg` can be set to `true` in the function. 
+- A [`Periodogram2`](@ref) object by default with the 3 computed fields: power, freq1, freq2.
+- A [`Periodogram`](@ref) object is returned for a radially summed or averaged periodogram
+    (if `radialsum` or `radialavg` is true, respectively). Only one of `radialsum`
+    or `radialavg` can be set to `true` in the function.
 
 # Examples
 ```jldoctest
@@ -590,10 +590,10 @@ end
                 nfft=nextfastfft(n), fs=1, window=nothing)
 
 Computes the Welch periodogram of a signal `s` based on segments with `n` samples
-with overlap of `noverlap` samples, and returns a [`Periodogram`](@ref) object. 
+with overlap of `noverlap` samples, and returns a [`Periodogram`](@ref) object.
 
 `welch_pgram` by default divides `s` into 8 segments with 50% overlap between them.
-For a Bartlett periodogram, set `noverlap=0`. 
+For a Bartlett periodogram, set `noverlap=0`.
 
 See [`periodogram`](@ref) for description of optional keyword arguments.
 
@@ -624,13 +624,13 @@ welch_pgram with ``x = sin(2π(100)t) + 2sin(2π(150)t) + noise ``
 ```jldoctest
 julia> Fs = 1000;                         # Sampling frequency
 
-julia> t = (1:Fs)/Fs;                     # 1000 time samples 
+julia> t = (1:Fs)/Fs;                     # 1000 time samples
 
 julia> f = [100 150];                     # 100Hz & 150Hz frequencies
 
 julia> A = [1; 2];                        # Amplitudes
 
-julia> x = sin.(2π*f.*t)*A + randn(1000); # Noise corrupted x signal 
+julia> x = sin.(2π*f.*t)*A + randn(1000); # Noise corrupted x signal
 
 julia> pxx = welch_pgram(x, 100; fs=Fs, nfft=512, window=hamming);
 ```
@@ -644,12 +644,12 @@ end
                  noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n),
                  fs=1, window=nothing)
 
-Computes the Welch periodogram of a signal `s`, based on segments with `n` samples with 
-overlap of `noverlap` samples, and returns a [`Periodogram`](@ref) object. The Power Spectral Density 
-(PSD) of Welch periodogram is stored in `out`. 
+Computes the Welch periodogram of a signal `s`, based on segments with `n` samples with
+overlap of `noverlap` samples, and returns a [`Periodogram`](@ref) object. The Power Spectral Density
+(PSD) of Welch periodogram is stored in `out`.
 
 `welch_pgram!` by default divides `s` into 8 segments with 50% overlap between them.
-For a Bartlett periodogram, set `noverlap=0`. 
+For a Bartlett periodogram, set `noverlap=0`.
 
 See [`periodogram`](@ref) for description of optional keyword arguments.
 
@@ -698,9 +698,9 @@ end
 """
     welch_pgram!(out::AbstractVector, s::AbstractVector, config::WelchConfig)
 
-Computes the Welch periodogram of the given signal `s`, using a predefined 
-[`WelchConfig`](@ref) object. The Power Spectral Density (PSD) of Welch 
-periodogram is stored in `out`.  
+Computes the Welch periodogram of the given signal `s`, using a predefined
+[`WelchConfig`](@ref) object. The Power Spectral Density (PSD) of Welch
+periodogram is stored in `out`.
 
 # Examples
 ```jldoctest
@@ -730,8 +730,8 @@ function welch_pgram!(out::AbstractVector, s::AbstractVector{T}, config::WelchCo
         throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected " *
                             "type: $(fftabs2type(T))."))
     elseif float(T) != eltype(config.inbuf)
-        throw(ArgumentError("float(eltype(s)) = $T doesn't match the expected `config` " *
-                            "type: $(eltype(config.inbuf))."))
+        throw(ArgumentError("float(eltype(s)) = $T doesn't match the eltype " *
+                            "of the input buffer: $(eltype(config.inbuf))."))
     end
     welch_pgram_helper!(out, s, config)
 end
@@ -757,7 +757,7 @@ const Float64Range = typeof(range(0.0, step=1.0, length=2))
 """
     Spectrogram{T, F<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
 
-A Spectrogram object with fields: 
+A Spectrogram object with fields:
 - `power::M`
 - `freq::F`
 - `time::Float64Range`
@@ -780,7 +780,7 @@ Returns the time bin centers for a given [`Spectrogram`](@ref) object.
 # Examples
 ```jldoctest
 julia> time(spectrogram(0:1/20:1; fs=8000))
-0.000125:0.000125:0.0025 
+0.000125:0.000125:0.0025
 ```
 """
 Base.time(p::Spectrogram) = p.time
@@ -789,12 +789,12 @@ Base.time(p::Spectrogram) = p.time
     spectrogram(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
 Computes the spectrogram of a signal `s` based on segments with `n` samples
-with overlap of `noverlap` samples, and returns a [`Spectrogram`](@ref) object. 
+with overlap of `noverlap` samples, and returns a [`Spectrogram`](@ref) object.
 
 `spectrogram` by default divides `s` into 8 segments with 50% overlap between them.
 See [`periodogram`](@ref) for description of optional keyword arguments.
 
-The returned [`Spectrogram`](@ref) object stores the 3 computed fields: power, freq and time. See [`power`](@ref), 
+The returned [`Spectrogram`](@ref) object stores the 3 computed fields: power, freq and time. See [`power`](@ref),
 [`freq`](@ref) and [`time`](@ref) for further details.
 
 # Examples
@@ -803,7 +803,7 @@ julia> Fs = 1000;
 
 julia> t = 0:1/Fs:1-1/Fs;
 
-julia> x = sin.(2π*100*t.*t);   
+julia> x = sin.(2π*100*t.*t);
 
 julia> spec = spectrogram(x; fs=Fs);
 
@@ -836,7 +836,7 @@ stfttype(T::Type, ::Nothing) = fftouttype(T)
 """
     stft(s, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real, nfft=nextfastfft(n), fs=1, window=nothing)
 
-Computes the Short Time Fourier Transform (STFT) of a signal `s` based on segments with 
+Computes the Short Time Fourier Transform (STFT) of a signal `s` based on segments with
 `n` samples with overlap of `noverlap` samples, and returns a matrix containing the STFT
 coefficients.
 
@@ -844,8 +844,8 @@ coefficients.
 for description of optional keyword arguments.
 
 The STFT computes the DFT over `K` sliding windows (segments) of the signal `s`. This returns a `J` x `K` matrix where
-`J` is the number of DFT coefficients and `K` the number of windowed segments. The `k`th column of the returned matrix 
-contains the DFT coefficients for the `k`th segment. 
+`J` is the number of DFT coefficients and `K` the number of windowed segments. The `k`th column of the returned matrix
+contains the DFT coefficients for the `k`th segment.
 
 # Examples
 ```jldoctest
@@ -853,7 +853,7 @@ julia> Fs = 1000;
 
 julia> t = 0:1/Fs:5-1/Fs;
 
-julia> x = sin.(2π*t.*t);   
+julia> x = sin.(2π*t.*t);
 
 julia> size(stft(x; window=hamming))
 (313, 14)
