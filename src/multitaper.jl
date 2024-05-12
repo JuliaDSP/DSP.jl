@@ -402,7 +402,8 @@ end
 """
     CrossPowerSpectra{T,F,A<:AbstractArray{T, 3}}
 
-Access the power (an `n_channels` x `n_channels` x `length(freq)` array) via the function [`power`](@ref), and the frequencies by the function [`freq`](@ref).
+Access the cross power spectral density (an `n_channels` x `n_channels` x `length(freq)` array) via the function [`power`](@ref), 
+and the frequencies by the function [`freq`](@ref).
 
 See also [`mt_cross_power_spectra`](@ref) and [`mt_cross_power_spectra!`](@ref).
 """
