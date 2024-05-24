@@ -616,7 +616,7 @@ function firprototype(n::Integer, ftype::ComplexBandpass, fs::T) where {T<:Real}
     w_center = (w2 + w1) / 2
     w_cutoff = (w2 - w1) / 2
     lp = Lowpass(w_cutoff)
-    _firprototype(n, lp, fs, Complex{T}) .*= cispi.(w_center * (0:(n-1)))
+    _firprototype(n, lp, 2, Complex{T}) .*= cispi.(w_center * (0:(n-1)))
 end
 
 function firprototype(n::Integer, ftype::Highpass, fs::Real)
