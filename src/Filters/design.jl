@@ -655,6 +655,15 @@ function scalefactor(coefs::Vector{T}, ftype::Bandpass, fs::Real) where {T<:Numb
     end
     c
 end
+function scalefactor(coefs::Vector{T}, ftype::ComplexBandpass, fs::Real) where T<:Number
+    n = length(coefs)
+    freq = normalize_complex_freq(middle(ftype.w1, ftype.w2), fs)
+    c = zero(T)
+    for k = 1:n
+        c = muladd(coefs[k], cispi(-freq * (k - (n + 1) / 2)), c)
+    end
+    return abs(c)
+end
 
 function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
     coefs = firprototype(length(proto.window), ftype, fs)
