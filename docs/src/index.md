@@ -1,6 +1,8 @@
 # Welcome to DSP.jl's documentation!
 
-DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia. So far, the following submodules are implemented:
+DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia.  
+Many methods provided in this package are validated against popular tools such as [MATLAB's Signal Processing suite](https://www.mathworks.com/help/overview/signal-processing.html?s_tid=hc_product_group_bc) and [Python's MNE-Python package](https://mne.tools/stable/index.html). 
+So far, the following submodules are implemented:
 
 ## Table of contents
 ```@contents
