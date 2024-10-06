@@ -196,34 +196,34 @@ end
 #
 # Bandstop cost functions and passband minimization
 #
-for filt in (:butterworth, :elliptic, :chebyshev)
-    @eval begin
-        function $(Symbol(filt, :_bsfcost))(Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
-            # override one of the passband edges with the test frequency.
-            Wpc = uselowband ? (Wx, Wp[2]) : (Wp[1], Wx)
+function bsfcost(est_func, Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+    # override one of the passband edges with the test frequency.
+    Wpc = uselowband ? (Wx, Wp[2]) : (Wp[1], Wx)
 
-            # get the new warp frequency.
-            warp = min(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ muladd.(-Wpc[1], Wpc[2], Ws .^ 2))...)
+    # get the new warp frequency.
+    warp = min(abs.((Ws .* (Wpc[1] - Wpc[2])) ./ muladd.(-Wpc[1], Wpc[2], Ws .^ 2))...)
 
-            # use the new frequency to determine the filter order.
-            $(Symbol(filt, :_order_estimate))(Rp, Rs, warp)
-        end
-
-        function $(Symbol(filt, :_bsfmin))(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
-            # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
-            Δ = eps(typeof(Wp[1]))^(2 / 3)
-            C₁(w) = $(Symbol(filt, :_bsfcost))(w, true, Wp, Ws, Rp, Rs)
-            p1 = brent(C₁, Wp[1], Ws[1] - Δ)
-
-            C₂(w) = $(Symbol(filt, :_bsfcost))(w, false, (p1, Wp[2]), Ws, Rp, Rs)
-            p2 = brent(C₂, Ws[2] + Δ, Wp[2])
-            Wadj = (p1, p2)
-
-            Wa = (Ws .* (p1 - p2)) ./ muladd.(-p1, p2, Ws .^ 2)
-            min(abs.(Wa)...), Wadj
-        end
-    end
+    # use the new frequency to determine the filter order.
+    est_func(Rp, Rs, warp)
 end
+
+function bsfmin(est_func::T, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where T
+    # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
+    Δ = eps(typeof(Wp[1]))^(2 / 3)
+    C₁(w) = bsfcost(est_func, w, true, Wp, Ws, Rp, Rs)
+    p1 = brent(C₁, Wp[1], Ws[1] - Δ)
+
+    C₂(w) = bsfcost(est_func, w, false, (p1, Wp[2]), Ws, Rp, Rs)
+    p2 = brent(C₂, Ws[2] + Δ, Wp[2])
+    Wadj = (p1, p2)
+
+    Wa = (Ws .* (p1 - p2)) ./ muladd.(-p1, p2, Ws .^ 2)
+    min(abs.(Wa)...), Wadj
+end
+
+butterworth_bsfmin(args...) = bsfmin(butterworth_order_estimate, args...)
+elliptic_bsfmin(args...) = bsfmin(elliptic_order_estimate, args...)
+chebyshev_bsfmin(args...) = bsfmin(chebyshev_order_estimate, args...)
 
 """
     (N, ωn) = buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain=:z)
@@ -327,75 +327,71 @@ end
 #
 # Elliptic/Chebyshev1 Estimation
 #
-for (fcn, est, filt) in ((:ellipord, :elliptic, "Elliptic (Cauer)"),
-    (:cheb1ord, :chebyshev, "Chebyshev Type I"))
+function ordfreq_est(order_estimate, Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
+    ftype = (Wp < Ws) ? Lowpass : Highpass
+    if (domain == :z)
+        Ωp = tan(π / 2 * Wp)
+        Ωs = tan(π / 2 * Ws)
+    else
+        Ωp = Wp
+        Ωs = Ws
+    end
+    # Lowpass/Highpass prototype xform is same as Butterworth.
+    wa = toprototype(Ωp, Ωs, ftype)
+    N = ceil(Int, order_estimate(Rp, Rs, wa))
+    if (domain == :z)
+        ωn = (2 / π) * atan(Ωp)
+    else
+        ωn = Ωp
+    end
+    N, ωn
+end
+
+function ordfreq_est(order_estimate, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
+    Wps = sort_W(Wp)
+    Wss = sort_W(Ws)
+    (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
+    ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
+    # pre-warp to analog if z-domain.
+    (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
+    if (ftype == Bandpass)
+        Wa = muladd.(-Ωp[1], Ωp[2], Ωs .^ 2) ./ (Ωs .* (Ωp[1] - Ωp[2]))
+        Ωpadj = Ωp
+    else
+        (Wa, Ωpadj) = bsfmin(order_estimate, Ωp, Ωs, Rp, Rs) # check scipy.
+    end
+    N = ceil(Int, order_estimate(Rp, Rs, min(abs.(Wa)...)))
+    ωn = (domain == :z) ? Wps : Ωpadj
+    N, ωn
+end
+
+ellipord(args...; domain) = ordfreq_est(elliptic_order_estimate, args...; domain)
+cheb1ord(args...; domain) = ordfreq_est(chebyshev_order_estimate, args...; domain)
+
+for (fcn, filt) in ((:ellipord, "Elliptic (Cauer)"), (:cheb1ord, "Chebyshev Type I"))
     @eval begin
         """
             (N, ωn) = $($fcn)(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
+            (N, ωn) = $($fcn)(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
 
         Integer and natural frequency order estimation for $($filt) Filters. `Wp` and `Ws`
         indicate the passband and stopband frequency edges, and `Rp` and `Rs` indicate the
-        maximum loss in the passband and the minimum attenuation in the stopband, (in dB.)\n
+        maximum ripple loss in the passband and the minimum ripple attenuation in the stopband, (in dB.)\n
         Based on the ordering of passband and stopband edges, the Lowpass or Highpass filter type is inferred.
         `N` indicates the smallest integer filter order that achieves the desired specifications,
         and `ωn` contains the natural frequency of the filter, (in this case, simply the passband edge.)\n
         If a domain of `:s` is specified, the passband and stopband edges are interpreted
-        as radians/second, giving an order and natural frequency result for an analog filter.
+        as radians/second, giving the order and natural frequencies for an analog filter.
         The default domain is `:z`, interpreting the input frequencies as normalized from 0 to 1,
         where 1 corresponds to π radians/sample.
-        """
-        function $fcn(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
-            ftype = (Wp < Ws) ? Lowpass : Highpass
-            if (domain == :z)
-                Ωp = tan(π / 2 * Wp)
-                Ωs = tan(π / 2 * Ws)
-            else
-                Ωp = Wp
-                Ωs = Ws
-            end
-            # Lowpass/Highpass prototype xform is same as Butterworth.
-            wa = toprototype(Ωp, Ωs, ftype)
-            N = ceil(Int, $(Symbol(est, :_order_estimate))(Rp, Rs, wa))
-            if (domain == :z)
-                ωn = (2 / π) * atan(Ωp)
-            else
-                ωn = Ωp
-            end
-            N, ωn
-        end
 
+        `Wp` and `Ws` can also be 2-element frequency edges for Bandpass/Bandstop cases.\n
+        `N` is an integer indicating the lowest estimated filter order, with
+        `ωn` specifying the cutoff or "-3 dB" frequencies.
         """
-            (N, ωn) = $($fcn)(Wp::Tuple{Real, Real}, Ws::Tuple{Real, Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
-
-        Integer and natural frequency order estimation for $($filt) Filters. `Wp` and `Ws` are 2-element
-        frequency edges for Bandpass/Bandstop cases, with `Rp` and `Rs` representing the ripple maximum loss
-        in the passband and minimum ripple attenuation in the stopband in dB.\nBased on the ordering of passband
-        and bandstop edges, the Bandstop or Bandpass filter type is inferred. `N` is an integer indicating the
-        lowest estimated filter order, with `ωn` specifying the cutoff or "-3 dB" frequencies.\nIf a domain of
-        `:s` is specified, the passband and stopband frequencies are interpreted as radians/second, giving the
-        order and natural frequencies for an analog filter. The default domain is `:z`, interpreting the input
-        frequencies as normalized from 0 to 1, where 1 corresponds to π radians/sample.
-        """
-        function $fcn(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
-            Wps = sort_W(Wp)
-            Wss = sort_W(Ws)
-            (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
-            ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
-            # pre-warp to analog if z-domain.
-            (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
-            if (ftype == Bandpass)
-                Wa = muladd.(-Ωp[1], Ωp[2], Ωs .^ 2) ./ (Ωs .* (Ωp[1] - Ωp[2]))
-                Ωpadj = Ωp
-            else
-                (Wa, Ωpadj) = $(Symbol(est, :_bsfmin))(Ωp, Ωs, Rp, Rs) # check scipy.
-            end
-            N = ceil(Int, $(Symbol(est, :_order_estimate))(Rp, Rs, min(abs.(Wa)...)))
-            ωn = (domain == :z) ? Wps : Ωpadj
-            N, ωn
-        end
+        $fcn
     end
 end
-
 
 """
     (N, ωn) = cheb2ord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)

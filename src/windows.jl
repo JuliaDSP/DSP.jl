@@ -632,33 +632,32 @@ const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
 const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
+function matrix_window(func, dims::Tuple, arg::Union{RealOr2,Nothing}=nothing;
+        padding::IntegerOr2=0, zerophase::BoolOr2=false)
+    length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
+    paddings = argdup(padding)
+    zerophases = argdup(zerophase)
+    if isnothing(arg)
+        w1 = func(dims[1]; padding=paddings[1], zerophase=zerophases[1])
+        w2 = func(dims[2]; padding=paddings[2], zerophase=zerophases[2])
+    else
+        args = argdup(arg)
+        w1 = func(dims[1], args[1]; padding=paddings[1], zerophase=zerophases[1])
+        w2 = func(dims[2], args[2]; padding=paddings[2], zerophase=zerophases[2])
+    end
+    return w1 * w2'
+end
+
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
              :triang, :bartlett, :bartlett_hann, :blackman)
-    @eval begin
-        function $func(dims::Tuple; padding::IntegerOr2=0,
-                                    zerophase::BoolOr2=false)
-            length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
-            paddings = argdup(padding)
-            zerophases = argdup(zerophase)
-            w1 = $func(dims[1]; padding=paddings[1], zerophase=zerophases[1])
-            w2 = $func(dims[2]; padding=paddings[2], zerophase=zerophases[2])
-            w1 * w2'
-        end
+    @eval function $func(dims; padding::IntegerOr2=0, zerophase::BoolOr2=false)
+        return matrix_window($func, dims; padding, zerophase)
     end
 end
 
 for func in (:tukey, :gaussian, :kaiser)
-    @eval begin
-        function $func(dims::Tuple, arg::RealOr2;
-                       padding::IntegerOr2=0, zerophase::BoolOr2=false)
-            length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
-            args = argdup(arg)
-            paddings = argdup(padding)
-            zerophases = argdup(zerophase)
-            w1 = $func(dims[1], args[1]; padding=paddings[1], zerophase=zerophases[1])
-            w2 = $func(dims[2], args[2]; padding=paddings[2], zerophase=zerophases[2])
-            w1 * w2'
-        end
+    @eval function $func(dims, arg::RealOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
+        return matrix_window($func, dims, arg; padding, zerophase)
     end
 end
 
