@@ -327,7 +327,7 @@ end
 #
 # Elliptic/Chebyshev1 Estimation
 #
-function ordfreq_est(order_estimate, Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
+function ordfreq_est(order_estimate, domain::Symbol, Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     ftype = (Wp < Ws) ? Lowpass : Highpass
     if (domain == :z)
         Ωp = tan(π / 2 * Wp)
@@ -347,7 +347,8 @@ function ordfreq_est(order_estimate, Wp::Real, Ws::Real, Rp::Real, Rs::Real; dom
     N, ωn
 end
 
-function ordfreq_est(order_estimate, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real; domain::Symbol=:z)
+function ordfreq_est(order_estimate, domain::Symbol,
+        Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
     Wps = sort_W(Wp)
     Wss = sort_W(Ws)
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
@@ -365,8 +366,8 @@ function ordfreq_est(order_estimate, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real},
     N, ωn
 end
 
-ellipord(args...; domain) = ordfreq_est(elliptic_order_estimate, args...; domain)
-cheb1ord(args...; domain) = ordfreq_est(chebyshev_order_estimate, args...; domain)
+ellipord(args...; domain::Symbol=:z) = ordfreq_est(elliptic_order_estimate, domain, args...)
+cheb1ord(args...; domain::Symbol=:z) = ordfreq_est(chebyshev_order_estimate, domain, args...)
 
 for (fcn, filt) in ((:ellipord, "Elliptic (Cauer)"), (:cheb1ord, "Chebyshev Type I"))
     @eval begin
