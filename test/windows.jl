@@ -90,7 +90,7 @@ end
     tukey_jl = tukey(128, 0.4)
     tukey_ml = readdlm(joinpath(dirname(@__FILE__), "data", "tukey128,0.4.txt"), '\t')
     @test tukey_jl ≈ tukey_ml
-    
+
     @test tukey(128, 0) == rect(128)
 
     lanczos_jl = lanczos(128)
@@ -150,53 +150,38 @@ end
 @testset "tensor product windows" begin
     # test all combinations of arguments. Each arg and kwarg can be not present,
     # a single value, or a 2-tuple
-    for winf in [zeroarg_wins; onearg_wins]
-        for arg in (nothing, 0.4, (0.4, 0.5))
-            # skip invalid combinations
-            winf in zeroarg_wins && arg !== nothing && continue
-            winf in onearg_wins && arg === nothing && continue
-            for padding in (nothing, 4, (4,5))
-                for zerophase in (nothing, true, (true,false))
-                    w1_expr = :($winf(15))
-                    w2_expr = :($winf(20))
-                    w3_expr = :($winf((15,20)))
+    function push_args!((w1e, w2e, w3e), arg, ::Type{T}, f) where {T}
+        if arg isa T
+            push!(w1e.args, f(arg))
+            push!(w2e.args, f(arg))
+            push!(w3e.args, f(arg))
+        elseif arg isa Tuple
+            push!(w1e.args, f(arg[1]))
+            push!(w2e.args, f(arg[2]))
+            push!(w3e.args, f(arg))
+        end
+    end
 
-                    if arg isa Real
-                        push!(w1_expr.args, arg)
-                        push!(w2_expr.args, arg)
-                        push!(w3_expr.args, arg)
-                    elseif arg isa Tuple
-                        push!(w1_expr.args, arg[1])
-                        push!(w2_expr.args, arg[2])
-                        push!(w3_expr.args, arg)
-                    end
+    for winf in [zeroarg_wins; onearg_wins],
+         arg in (nothing, 0.4, (0.4, 0.5))
+        # skip invalid combinations
+        winf in zeroarg_wins && arg !== nothing && continue
+        winf in onearg_wins && arg === nothing && continue
+        for padding in (nothing, 4, (4,5)),
+          zerophase in (nothing, true, (true,false))
+            w1_expr = :($winf(15))
+            w2_expr = :($winf(20))
+            w3_expr = :($winf((15,20)))
+            w_all = (w1_expr, w2_expr, w3_expr)
 
-                    if padding isa Integer
-                        push!(w1_expr.args, Expr(:kw, :padding, padding))
-                        push!(w2_expr.args, Expr(:kw, :padding, padding))
-                        push!(w3_expr.args, Expr(:kw, :padding, padding))
-                    elseif padding isa Tuple
-                        push!(w1_expr.args, Expr(:kw, :padding, padding[1]))
-                        push!(w2_expr.args, Expr(:kw, :padding, padding[2]))
-                        push!(w3_expr.args, Expr(:kw, :padding, padding))
-                    end
+            push_args!(w_all, arg, Real, identity)
+            push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
+            push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
 
-                    if zerophase isa Bool
-                        push!(w1_expr.args, Expr(:kw, :zerophase, zerophase))
-                        push!(w2_expr.args, Expr(:kw, :zerophase, zerophase))
-                        push!(w3_expr.args, Expr(:kw, :zerophase, zerophase))
-                    elseif zerophase isa Tuple
-                        push!(w1_expr.args, Expr(:kw, :zerophase, zerophase[1]))
-                        push!(w2_expr.args, Expr(:kw, :zerophase, zerophase[2]))
-                        push!(w3_expr.args, Expr(:kw, :zerophase, zerophase))
-                    end
-
-                    w1 = eval(w1_expr)
-                    w2 = eval(w2_expr)
-                    w3 = eval(w3_expr)
-                    @test w3 ≈ w1 * w2'
-                end
-            end
+            w1 = eval(w1_expr)
+            w2 = eval(w2_expr)
+            w3 = eval(w3_expr)
+            @test w3 ≈ w1 * w2'
         end
     end
 end
