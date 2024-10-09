@@ -13,7 +13,7 @@ function naivefilt(h::Vector, x::Vector{T}, resamplerate::Union{Integer, Rationa
     end
 
     y = filt(h, one(T), xZeroStuffed)
-    y = [y[n] for n = 1:downfactor:length(y)]
+    return y[1:downfactor:length(y)]
 end
 
 
@@ -87,7 +87,7 @@ function test_singlerate(h::AbstractVector{T}, x::AbstractVector) where T
     @timeifinteractive naiveResult = filt(h, one(T), x)
 
     @printfifinteractive( "\n\tfilt( h, x, 1//1 )\n\t\t" )
-    @timeifinteractive statelessResult = filt( h, x )
+    @timeifinteractive statelessResult = filt(h, x)
     @test naiveResult ≈ statelessResult
 
     @printfifinteractive( "\n\tfilt. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
@@ -102,8 +102,9 @@ function test_singlerate(h::AbstractVector{T}, x::AbstractVector) where T
     @printfifinteractive( "\n\tfilt filt. Piecewise for first %d inputs\n\t\t", length(x1) )
     reset!(myfilt)
     @timeifinteractive begin
-        for i in 1:length(x1)
-            y1[i] = filt(myfilt, x1[i:i])[1]
+        one_buffer = similar(x1, 1)
+        for (i, p) in enumerate(x1)
+            y1[i] = filt(myfilt, setindex!(one_buffer, p, 1))[1]
         end
         y2 = filt(myfilt, x2)
     end
@@ -150,10 +151,11 @@ function test_decimation(h, x, decimation)
 
     @printfifinteractive( "\n\tfilt decimation. Piecewise for first %d inputs.\n\t\t", length(x1) )
     reset!(myfilt)
-    y1 = similar( x, 0 )
+    y1 = similar(x, 0)
     @timeifinteractive begin
-        for i in 1:length(x1)
-            append!(y1, filt(myfilt, x1[i:i]))
+        one_buffer = similar(x1, 1)
+        for p in x1
+            append!(y1, filt(myfilt, setindex!(one_buffer, p, 1)))
         end
         y2 = filt(myfilt, x2)
     end
@@ -192,11 +194,11 @@ function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpol
     end
 
     @printfifinteractive( "\n\tfilt( h, x, %d//1 )\n\t\t", interpolation )
-    @timeifinteractive statelessResult = filt( h, x, interpolation//1 )
+    @timeifinteractive statelessResult = filt(h, x, interpolation//1)
     @test naiveResult ≈ statelessResult
 
     @printfifinteractive( "\n\tfilt interpolation. length(x1) = %d, length(x2) = %d\n\t\t", length(x1), length(x2) )
-    myfilt = FIRFilter( h, interpolation//1 )
+    myfilt = FIRFilter(h, interpolation//1)
     @timeifinteractive begin
         y1 = filt(myfilt, x1)
         y2 = filt(myfilt, x2)
@@ -211,8 +213,9 @@ function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpol
     reset!(myfilt)
     y1 = similar(x, 0)
     @timeifinteractive begin
-        for i in 1:length(x1)
-            append!(y1, filt(myfilt, x1[i:i]))
+        one_buffer = similar(x1, 1)
+        for p in x1
+            append!(y1, filt(myfilt, setindex!(one_buffer, p, 1)))
         end
         y2 = filt(myfilt, x2)
     end
@@ -265,8 +268,9 @@ function test_rational(h, x, ratio)
     reset!(myfilt)
     y1 = similar(x, 0)
     @timeifinteractive begin
-        for i in 1:length(x)
-            append!(y1, filt(myfilt, x[i:i]))
+        one_buffer = similar(x1, 1)
+        for p in x
+            append!(y1, filt(myfilt, setindex!(one_buffer, p, 1)))
         end
     end
     piecewiseResult = y1
@@ -312,8 +316,9 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
     reset!(myfilt)
     piecewiseResult = similar(x, 0)
     sizehint!(piecewiseResult, ceil(Int, length(x)*resampleRate))
-    @timeifinteractive for i in 1:length(x)
-        thisY = filt(myfilt, x[i:i])
+    one_buffer = similar(x, 1)
+    @timeifinteractive for p in x
+        thisY = filt(myfilt, setindex!(one_buffer, p, 1))
         append!(piecewiseResult, thisY)
     end
 
