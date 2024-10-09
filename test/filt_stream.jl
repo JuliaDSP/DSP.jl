@@ -120,7 +120,7 @@ end
 # Decimation
 #
 
-function test_decimation(h, x, decimation)
+function test_decimation(h, x, decimation::Integer)
     xLen       = length(x)
     hLen       = length(h)
     pivotPoint = min(rand(50:150), xLen ÷ 4)
@@ -171,7 +171,7 @@ end
 # Interpolation
 #
 
-function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpolation) where {T,V}
+function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpolation::Integer) where {T,V}
     xLen = length(x)
     hLen       = length(h)
     pivotPoint = min(rand(50:150), xLen ÷ 4)
@@ -285,7 +285,7 @@ end
 # Arbitrary resampling
 #
 
-function test_arbitrary(Th, x, resampleRate, numFilters)
+function test_arbitrary(Th, x, resampleRate, numFilters::Integer)
     cutoffFreq      = 0.45
     transitionWidth = 0.05
     h               = digitalfilter(Lowpass(cutoffFreq), FIRWindow(transitionwidth=transitionWidth/numFilters); fs=numFilters) .* numFilters
@@ -322,11 +322,9 @@ function test_arbitrary(Th, x, resampleRate, numFilters)
         append!(piecewiseResult, thisY)
     end
 
-    commonLen = minimum(length.((naiveResult, statelessResult, statefulResult, piecewiseResult)))
-    resize!(naiveResult, commonLen)
-    resize!(statelessResult, commonLen)
-    resize!(statefulResult, commonLen)
-    resize!(piecewiseResult, commonLen)
+    results = (naiveResult, statelessResult, statefulResult, piecewiseResult)
+    commonLen = minimum(length, results)
+    resize!.(results, commonLen)
 
     @test naiveResult ≈ statelessResult
     @test naiveResult ≈ statefulResult
@@ -347,23 +345,21 @@ end
     xLen  = xLen-mod(xLen, decimation)
     x     = rand(Tx, xLen)
     ratio = interpolation//decimation
-    if ratio == 1
+    if isone(ratio)
         test_singlerate(h, x)
+    elseif numerator(ratio) == interpolation
+        test_rational(h, x, ratio)
+        if Tx in (Float32, ComplexF32)
+            test_arbitrary(Th, x, convert(Float64, ratio) + rand(), 32)
+        end
     end
     if decimation != 1
         test_decimation(h, x, decimation)
+    else
+        test_rational(h, x, interpolation)
     end
     if interpolation != 1
         test_interpolation(h, x, interpolation)
-    end
-    if numerator(ratio) == interpolation && denominator(ratio) == decimation && numerator(ratio) != 1 && denominator(ratio) != 1
-        test_rational(h, x, ratio)
-        if Tx in [Float32, ComplexF32]
-            test_arbitrary(Th, x, convert(Float64, ratio)+rand(), 32)
-        end
-    end
-    if decimation == 1
-        test_rational(h, x, interpolation)
     end
 end
 
