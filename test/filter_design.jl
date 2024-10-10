@@ -1012,6 +1012,36 @@ end
     winfirtaps_scipy = readdlm(joinpath(dirname(@__FILE__), "data", "digitalfilter_hamming_129_bandpass_fc0.1_0.2_fs1.0.txt"),'\t')
     @test winfirtaps_jl ≈ winfirtaps_scipy
 
+    @test_throws ArgumentError ComplexBandpass(2, 1)
+
+    winfirtaps_jl = digitalfilter(ComplexBandpass(0.1, 0.2), FIRWindow(hamming(128)))
+    winfirfreq_db = 20log10.(abs.(fft([winfirtaps_jl; zeros(400)])))
+    f = range(0; step=2/length(winfirfreq_db), length=length(winfirfreq_db))
+    # above -6dB in the whole passband
+    @test minimum(winfirfreq_db[0.1 .< f .< 0.2]) > -6.02
+    # close to 0dB in the passband a bit away from the edges
+    @test all(-0.05 .< winfirfreq_db[0.125 .< f .< 0.175] .< 0.05)
+    # exactly unity in the middle of the passband
+    @test abs(sum(winfirtaps_jl .* cispi.(-0.15 * axes(winfirtaps_jl,1)))) ≈ 1
+    # below -6dB outside passband
+    @test maximum(winfirfreq_db[.!(0.1 .< f .< 0.2)]) < -6.02
+    # reasonable attenuation outside passband a bit away from the edges
+    @test maximum(winfirfreq_db[.!(0.07 .< f .< 0.23)]) < -50
+
+    winfirtaps_jl = digitalfilter(ComplexBandpass(30, 40), FIRWindow(hamming(511)); fs=100)
+    winfirfreq_db = 20log10.(abs.(fft([winfirtaps_jl; zeros(400)])))
+    f = range(0; step=100/length(winfirfreq_db), length=length(winfirfreq_db))
+    # above -6dB in the whole passband
+    @test minimum(winfirfreq_db[30 .< f .< 40]) > -6.02
+    # close to 0dB in the passband a bit away from the edges
+    @test all(-0.01 .< winfirfreq_db[31 .< f .< 39] .< 0.01)
+    # exactly unity in the middle of the passband
+    @test abs(sum(winfirtaps_jl .* cispi.(-2*35/100 * axes(winfirtaps_jl,1)))) ≈ 1
+    # below -6dB outside passband
+    @test maximum(winfirfreq_db[.!(30 .< f .< 40)]) < -6.02
+    # reasonable attenuation outside passband a bit away from the edges
+    @test maximum(winfirfreq_db[.!(28 .< f .< 42)]) < -60
+
     @test_throws ArgumentError digitalfilter(Bandstop(0.1, 0.2),FIRWindow(hamming(128), scale=false); fs=1)
 
     winfirtaps_jl    = digitalfilter(Bandstop(0.1, 0.2),FIRWindow(hamming(129), scale=false); fs=1)
