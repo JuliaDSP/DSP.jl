@@ -240,7 +240,7 @@ function normalize_freq(w::Real, fs::Real)
 end
 function normalize_complex_freq(w::Real, fs::Real)
     f = 2 * w / fs
-    f >= 2 && throw(DomainError(f, "frequencies must be less than the Nyquist frequency $(fs)"))
+    f >= 2 && throw(DomainError(f, "frequencies must be less than the sampling frequency $(fs)"))
     f
 end
 
