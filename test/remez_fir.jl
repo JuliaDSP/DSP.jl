@@ -167,13 +167,13 @@ end
     Fs = 4800*L
     f = range(0, stop=0.5, length=10000)
 
-    P = (π*f*Fs/4800) ./ sin.(π*f*Fs/4800)
-    Pdb = 20*log10.(abs.(P))
+    P = (π * f * Fs / 4800) ./ sinpi.(f * Fs / 4800)
+    Pdb = 20 * log10.(abs.(P))
     Pdb[1] = 0.0
 
     g_vec = remez(201, [
-                (    0.0, 2880.0) => (f -> (f==0) ? 1.0 : abs.((π*f/4800) ./ sin.(π*f/4800)), 1.0),
-                (10000.0,  Fs/2) => (0.0, 100.0)
+            (    0.0, 2880.0) => (f -> (f==0) ? 1.0 : abs.((π*f/4800) ./ sinpi.(f/4800)), 1.0),
+            (10000.0,  Fs/2) => (0.0, 100.0)
         ]; Hz=Fs)
     g = PolynomialRatio(g_vec, [1.0])
     Gdb = 20*log10.(abs.(freqresp(g, 2π*f)))

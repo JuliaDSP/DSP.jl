@@ -22,77 +22,58 @@ end
 
 @testset "jacobsen" begin
     fs = 100
-    t = range(0, 5, step = 1/fs)
+    t = range(0, 5; step=1/fs)
+    function test_complex_jacobsen(fs, fc, f=0, t=t)
+        sc = cispi.(2 * fc * t .+ f)
+        f_est_complex = jacobsen(sc, fs)
+        isapprox(f_est_complex, fc; atol=1e-5)
+    end
     # test at two arbitrary frequencies
-    fc = -40.3
-    sc = cis.(2π*fc*t .+ π/1.4)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
-    fc = 14.3
-    sc = cis.(2π*fc*t .+ π/3)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    @test test_complex_jacobsen(fs, -40.3, 1 / 1.4)
+    @test test_complex_jacobsen(fs, 14.3, 1 / 3)
     # test near fs/2
-    fc = 49.90019
-    sc = cis.(2π*fc*t)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    @test test_complex_jacobsen(fs, 49.90019)
     # test near -fs/2
-    fc = -49.90019
-    sc = cis.(2π*fc*t)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    @test test_complex_jacobsen(fs, -49.90019)
     # test near +zero
-    fc = 0.04
-    sc = cis.(2π*fc*t)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    @test test_complex_jacobsen(fs, 0.04)
     # test near -zero
-    fc = -0.1
-    sc = cis.(2π*fc*t)
-    f_est_complex = jacobsen(sc, fs)
-    @test isapprox(f_est_complex, fc, atol = 1e-5)
+    @test test_complex_jacobsen(fs, -0.1)
     # tests for real signals: test only around fs/4, where the
     # expected error is small.
     fr = 28.3
-    sr = cos.(2π*fr*t .+ π/4.2)
+    sr = cospi.(2 * fr * t .+ 1 / 4.2)
     f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
+    @test isapprox(f_est_real, fr; atol=1e-5)
     fr = 23.45
-    sr = sin.(2π*fr*t .+ 3π/2.2)
+    sr = sinpi.(2 * fr * t .+ 3 / 2.2)
     f_est_real = jacobsen(sr, fs)
-    @test isapprox(f_est_real, fr, atol = 1e-5)
+    @test isapprox(f_est_real, fr; atol=1e-5)
 end
 
 @testset "quinn" begin
     ### real input
     fs = 100
-    t = range(0, 5, step = 1/fs)
+    t = range(0, 5; step=1/fs)
     fr = 28.3
-    sr = cos.(2π*fr*t .+ π/4.2)
-    (f_est_real, maxiter) = quinn(sr, 50, fs)
-    @test maxiter == false
-    @test isapprox(f_est_real, fr, atol = 1e-3)
+    sr = cospi.(2 * fr * t .+ 1 / 4.2)
+    function test_quinn(f, s, args...)
+        (f_est_real, maxiter) = quinn(s, args...)
+        @test maxiter == false
+        @test isapprox(f_est_real, f; atol=1e-3)
+        return nothing
+    end
+    test_quinn(fr, sr, 50, fs)
     # use default initial guess
-    (f_est_real, maxiter) = quinn(sr, fs) # initial guess given by Jacobsen
-    @test maxiter == false
-    @test isapprox(f_est_real, fr, atol = 1e-3)
+    test_quinn(fr, sr, fs) # initial guess given by Jacobsen
     # use default fs
-    (f_est_real, maxiter) = quinn(sr) # fs = 1.0, initial guess given by Jacobsen
-    @test maxiter == false
-    @test isapprox(f_est_real, fr/fs, atol = 1e-3)
+    test_quinn(fr / fs, sr) # fs = 1.0, initial guess given by Jacobsen
     ### complex input
     fc = -40.3
-    sc = cis.(2π*fc*t .+ π/1.4)
-    (f_est_real, maxiter) = quinn(sc, -20, fs)
-    @test maxiter == false
-    @test isapprox(f_est_real, fc, atol = 1e-3)
+    sc = cispi.(2 * fc * t .+ 1 / 1.4)
+    test_quinn(fc, sc, -20, fs)
     # use default initial guess
-    (f_est_real, maxiter) = quinn(sc, fs) # initial guess given by Jacobsen
-    @test maxiter == false
-    @test isapprox(f_est_real, fc, atol = 1e-3)
+    test_quinn(fc, sc, fs) # initial guess given by Jacobsen
     # use default fs
-    (f_est_real, maxiter) = quinn(sc) # fs = 1.0, initial guess by Jacobsen
-    @test maxiter == false
-    @test isapprox(f_est_real, fc/fs, atol = 1e-3)
+    test_quinn(fc / fs, sc) # fs = 1.0, initial guess by Jacobsen
 end

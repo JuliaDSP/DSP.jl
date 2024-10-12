@@ -50,7 +50,7 @@ using Statistics: mean
 end
 
 @testset "fft helpers" begin
-    @test meanfreq(sin.(2*π*10*(0:1e-3:10*π)),1e3) ≈ 10.0 rtol=1e-3
+    @test meanfreq(sinpi.(2 * 10 * (0:1e-3:10*π)), 1e3) ≈ 10.0 rtol = 1e-3
 
     # nextfastfft
     @test nextfastfft(64) == 64
