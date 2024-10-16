@@ -686,6 +686,13 @@ The `algorithm` keyword allows choosing the algorithm to use:
   `:fft_overlapsave` (as estimated from the input size).
 * `:auto` (default): Equivalent to `:fast` if the data type is known to be
   suitable for FFT-based computation, equivalent to `:direct` otherwise.
+
+!!! warning
+    The choices made by `:fft`, `:fast`, and `:auto` are based on performance
+    heuristics which may not result in the fastest algorithm in all cases. If
+    best performance for a certain size/type combination is required, it is
+    best to do indivdual benchmarking and explicitly specify the desired
+    algorithm.
 """
 function conv!(
     out::AbstractArray{T, N},
