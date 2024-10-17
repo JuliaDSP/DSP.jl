@@ -691,7 +691,7 @@ The `algorithm` keyword allows choosing the algorithm to use:
     The choices made by `:fft`, `:fast`, and `:auto` are based on performance
     heuristics which may not result in the fastest algorithm in all cases. If
     best performance for a certain size/type combination is required, it is
-    best to do indivdual benchmarking and explicitly specify the desired
+    advised to do individual benchmarking and explicitly specify the desired
     algorithm.
 """
 function conv!(
