@@ -286,10 +286,10 @@ end
     f = convert(PolynomialRatio, Biquad(2.0, 0.0, 0.0, 0.0, 0.0))
     @test coefb(f) == [2.0]
     @test coefa(f) == [1.0]
-    @test convert(Biquad, PolynomialRatio([4.0], [2.0])) == Biquad(2.0, 0.0, 0.0, 0.0, 0.0)
+    @test convert(Biquad, PolynomialRatio(4.0, 2.0)) == Biquad(2.0, 0.0, 0.0, 0.0, 0.0)
     @test Biquad(2.0, 0.0, 0.0, 0.0, 0.0)*2 == Biquad(4.0, 0.0, 0.0, 0.0, 0.0)
     @test convert(Biquad{:z,Float64}, f1) == convert(Biquad, f1)
-    f = PolynomialRatio(Float64[1.0], Float64[1.0])
+    f = PolynomialRatio(1.0, 1.0)       # doubles as test for Number arguments (PR #571)
 
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 + 0.5im], [0.5 + 0.5im, 0.5 - 0.5im], 1))
     @test_throws ArgumentError convert(SecondOrderSections, ZeroPoleGain([0.5 + 0.5im, 0.5 - 0.5im], [0.5 + 0.5im, 0.5 + 0.5im], 1))
