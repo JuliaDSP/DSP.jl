@@ -144,10 +144,27 @@ trying to collect a 0-d array into a `Vector`.
 _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}=T) where {T<:Number,V} =
     LaurentPolynomial{V}(x isa Vector ? reverse(x) : [x], D === :z ? -length(x) + 1 : 0, D)
 
-PolynomialRatio{D,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D,T} =
-    PolynomialRatio{D,T}(_polyprep(D, b, T), _polyprep(D, a, T))
-PolynomialRatio{D}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D} =
-    PolynomialRatio{D}(_polyprep(D, b), _polyprep(D, a))
+function PolynomialRatio{:z,T}(b::Union{T1,Vector{<:T1}}, a::Union{T2,Vector{<:T2}}) where {T<:Number,T1<:Number,T2<:Number}
+    if isempty(a) || iszero(a[1])
+        throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
+    end
+    Tn = typeof(one(T1) / one(T2))
+    if !isone(a[1])
+        bn = b / a[1]
+        an = a / convert(Tn, a[1])
+    else    # for type stability
+        bn = T1 === Tn ? b : convert.(Tn, b)
+        an = T2 === Tn ? a : convert.(Tn, a)
+    end
+    return PolynomialRatio{:z,T}(_polyprep(:z, bn, T), _polyprep(:z, an, T))
+end
+PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number} =
+    PolynomialRatio{:s,T}(_polyprep(:s, b, T), _polyprep(:s, a, T))
+
+PolynomialRatio{:z}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:z,typeof(one(T1) / one(T2))}(b, a)
+PolynomialRatio{:s}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 
 PolynomialRatio{D,T}(f::PolynomialRatio{D}) where {D,T} = PolynomialRatio{D,T}(f.b, f.a)
 PolynomialRatio{D}(f::PolynomialRatio{D,T}) where {D,T} = PolynomialRatio{D,T}(f)
