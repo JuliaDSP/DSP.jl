@@ -129,9 +129,21 @@ function PolynomialRatio{:s}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2})
     return PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 end
 
-# The DSP convention for Laplace domain is highest power first. The Polynomials.jl
-# convention is lowest power first.
-_polyprep(D::Symbol, x, T...) = LaurentPolynomial{T...}(reverse(x), D === :z ? -length(x)+1 : 0, D)
+"""
+    _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type=T) where {T<:Number}
+
+Converts `x` to polynomial form. If x is a `Number`, it has to be converted into
+a `Vector`, otherwise `LaurentPolynomial` dispatch goes into stack overflow
+trying to collect a 0-d array into a `Vector`.
+
+!!! warning
+
+    The DSP convention for Laplace domain is highest power first.\n
+    The Polynomials.jl convention is lowest power first.
+"""
+_polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}=T) where {T<:Number,V} =
+    LaurentPolynomial{V}(x isa Vector ? reverse(x) : [x], D === :z ? -length(x) + 1 : 0, D)
+
 PolynomialRatio{D,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D,T} =
     PolynomialRatio{D,T}(_polyprep(D, b, T), _polyprep(D, a, T))
 PolynomialRatio{D}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D} =

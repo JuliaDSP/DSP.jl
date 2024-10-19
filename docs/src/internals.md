@@ -11,6 +11,7 @@ DSP.Windows.padplot
 DSP._zeropad
 DSP._zeropad!
 DSP._zeropad_keep_offset
+DSP.Filters._polyprep
 DSP.Filters.freq_eval
 DSP.Filters.build_grid
 DSP.Filters.lagrange_interp
