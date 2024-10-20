@@ -56,9 +56,9 @@ end
 # Transfer function form
 #
 
-function shiftpoly(p::LaurentPolynomial{T}, i::Integer) where {T<:Number}
+function shiftpoly(p::LaurentPolynomial{T,D}, i::Integer) where {T<:Number,D}
     if !iszero(i)
-        return Compat.@inline p * LaurentPolynomial([one(T)], i, indeterminate(p))
+        return p * LaurentPolynomial{T,D}([one(T)], i)
     end
     return p
 end
@@ -129,7 +129,7 @@ PolynomialRatio{:s}(b::PolynomialRatioArgTs{T1}, a::PolynomialRatioArgTs{T2}) wh
     PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 
 """
-    _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type=T) where {T<:Number}
+    _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type) where {T<:Number}
 
 Converts `x` to polynomial form. If x is a `Number`, it has to be converted into
 a `Vector`, otherwise `LaurentPolynomial` dispatch goes into stack overflow
@@ -140,7 +140,7 @@ trying to collect a 0-d array into a `Vector`.
     The DSP convention for Laplace domain is highest power first.\n
     The Polynomials.jl convention is lowest power first.
 """
-@inline _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}=T) where {T<:Number,V} =
+@inline _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}) where {T<:Number,V} =
     LaurentPolynomial{V,D}(x isa Vector ? reverse(x) : [x], D === :z ? -length(x) + 1 : 0)
 
 function PolynomialRatio{:z,T}(b::Union{T1,Vector{<:T1}}, a::Union{T2,Vector{<:T2}}) where {T<:Number,T1<:Number,T2<:Number}
