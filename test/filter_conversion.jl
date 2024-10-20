@@ -249,11 +249,15 @@ end
     @test_throws InexactError PolynomialRatio{:z,Int}([1, 2], [3, 4])
     # throws because normalization is impossible for a0 = 0
     @test_throws ArgumentError PolynomialRatio{:z,Float64}([1.0, 2.0], [0.0, 4.0])
+    # throws because a0 = 0, in inner constructor
+    @test_throws ArgumentError inv(PolynomialRatio{:z,Float64}(0, 1))
     # does not normalize, uses type from input
     @test @inferred(PolynomialRatio{:s}([1, 2], [3, 4])) isa PolynomialRatio{:s,Int}
     # throws because denominator must not be zero
     @test_throws ArgumentError PolynomialRatio{:s}([1.0, 2.0], [0.0])
     @test_throws ArgumentError PolynomialRatio{:s}([1.0, 2.0], Float64[])
+    # test PolynomialRatio{:s} constructor for LaurentPolynomial input
+    @test inv(PolynomialRatio{:s}(1.0, 2.3)).a == PolynomialRatio{:s}(1.0, 2.3).b
 end
 
 @testset "misc" begin
