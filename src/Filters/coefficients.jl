@@ -122,12 +122,11 @@ PolynomialRatio{:s, Int64}(LaurentPolynomial(3 + 2*s + s²), LaurentPolynomial(4
 
 """
 PolynomialRatio(b, a) = PolynomialRatio{:z}(b, a)
-function PolynomialRatio{:z}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
-    return PolynomialRatio{:z,typeof(one(T1)/one(T2))}(b, a)
-end
-function PolynomialRatio{:s}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
-    return PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
-end
+const PolynomialRatioArgTs{T} = Union{T,Vector{T},LaurentPolynomial{T}} where {T<:Number}
+PolynomialRatio{:z}(b::PolynomialRatioArgTs{T1}, a::PolynomialRatioArgTs{T2}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:z,typeof(one(T1) / one(T2))}(b, a)
+PolynomialRatio{:s}(b::PolynomialRatioArgTs{T1}, a::PolynomialRatioArgTs{T2}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 
 """
     _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type=T) where {T<:Number}
@@ -160,11 +159,6 @@ function PolynomialRatio{:z,T}(b::Union{T1,Vector{<:T1}}, a::Union{T2,Vector{<:T
 end
 PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number} =
     PolynomialRatio{:s,T}(_polyprep(:s, b, T), _polyprep(:s, a, T))
-
-PolynomialRatio{:z}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}}) where {T1<:Number,T2<:Number} =
-    PolynomialRatio{:z,typeof(one(T1) / one(T2))}(b, a)
-PolynomialRatio{:s}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}}) where {T1<:Number,T2<:Number} =
-    PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 
 PolynomialRatio{D,T}(f::PolynomialRatio{D}) where {D,T} = PolynomialRatio{D,T}(f.b, f.a)
 PolynomialRatio{D}(f::PolynomialRatio{D,T}) where {D,T} = PolynomialRatio{D,T}(f)
