@@ -37,58 +37,49 @@ using FFTW: fftfreq
     @test time(mt_spec) == t
     @test power(mt_spec)[:,1] ≈ power(mt_pgram(x0[1:256]; fs=10))
 
+    function test_mtspec(m, mt_spec)
+        @test power(m) ≈ power(mt_spec)
+        @test freq(m) == freq(mt_spec)
+        @test time(m) == time(mt_spec)
+        nothing
+    end
+
     # in-place full precision version:
     spec_config = MTSpectrogramConfig{Float64}(length(x0), 256, 128; fs=10)
     out = allocate_output(spec_config)
     mt_spec2 = mt_spectrogram!(out, x0, spec_config)
-    @test power(mt_spec2) ≈ power(mt_spec)
-    @test freq(mt_spec2) == freq(mt_spec)
-    @test time(mt_spec2) == time(mt_spec)
+    test_mtspec(mt_spec2, mt_spec)
 
     # out-of-place with config:
     r = mt_spectrogram(x0, spec_config)
-    @test power(r) ≈ power(mt_spec)
-    @test freq(r) == freq(mt_spec)
-    @test time(r) == time(mt_spec)
+    test_mtspec(r, mt_spec)
 
     # in-place without config:
     r = mt_spectrogram!(out, x0, 256, 128; fs=10)
-    @test power(r) ≈ power(mt_spec)
-    @test freq(r) == freq(mt_spec)
-    @test time(r) == time(mt_spec)
+    test_mtspec(r, mt_spec)
 
     # in-place half precision version:
     spec_config = MTSpectrogramConfig{Float32}(length(x0), 256, 128; fs=10)
     out = allocate_output(spec_config)
     mt_spec3 = mt_spectrogram!(out, x0, spec_config)
-    @test power(mt_spec3) ≈ power(mt_spec)
-    @test freq(mt_spec3) == freq(mt_spec)
-    @test time(mt_spec3) == time(mt_spec)
+    test_mtspec(mt_spec3, mt_spec)
 
     mt_spec4 = mt_spectrogram!(out, Float32.(x0), spec_config)
-    @test power(mt_spec4) ≈ power(mt_spec)
-    @test freq(mt_spec4) == freq(mt_spec)
-    @test time(mt_spec4) == time(mt_spec)
+    test_mtspec(mt_spec4, mt_spec)
 
     # We can also only pass the window config. Full precision:
     config = MTConfig{Float64}(256; fs=10)
     mt_spec5 = mt_spectrogram(x0, config, 128)
-    @test power(mt_spec5) ≈ power(mt_spec)
-    @test freq(mt_spec5) == freq(mt_spec)
-    @test time(mt_spec5) == time(mt_spec)
+    test_mtspec(mt_spec5, mt_spec)
 
     # We can also only pass the window config. Half precision:
     config = MTConfig{Float32}(256; fs=10)
     mt_spec6 = mt_spectrogram(x0, config, 128)
-    @test power(mt_spec6) ≈ power(mt_spec)
-    @test freq(mt_spec6) == freq(mt_spec)
-    @test time(mt_spec6) == time(mt_spec)
+    test_mtspec(mt_spec6, mt_spec)
 
     # with Float32 input:
     mt_spec7 = mt_spectrogram(Float32.(x0), config, 128)
-    @test power(mt_spec7) ≈ power(mt_spec)
-    @test freq(mt_spec7) == freq(mt_spec)
-    @test time(mt_spec7) == time(mt_spec)
+    test_mtspec(mt_spec7, mt_spec)
 
     @test_throws DimensionMismatch mt_spectrogram!(similar(out, size(out, 1), size(out, 2)+1), x0, spec_config)
     @test_throws DimensionMismatch mt_spectrogram!(out, vcat(x0, x0), spec_config)
