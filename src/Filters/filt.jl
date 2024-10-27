@@ -248,13 +248,13 @@ DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
 # in place in output. The istart and n parameters determine the portion
 # of the input signal x to extrapolate.
 function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
-    length(out) >= n+2*pad_length || throw(ArgumentError("output is incorrectly sized"))
-    x = 2*sig[istart]
-    for i = 1:pad_length
-        out[ostart+i-1] = x - sig[istart+pad_length+1-i]
+    length(out) >= n + 2 * pad_length || throw(ArgumentError("output is incorrectly sized"))
+    x = 2 * sig[istart]
+    for i = 0:pad_length-1
+        out[ostart+i] = x - sig[istart+pad_length-i]
     end
     copyto!(out, ostart+pad_length, sig, istart, n)
-    x = 2*sig[istart+n-1]
+    x = 2 * sig[istart+n-1]
     for i = 1:pad_length
         out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
     end
@@ -264,21 +264,20 @@ end
 # Zero phase digital filtering by processing data in forward and reverse direction
 function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     zi = filt_stepstate(b, a)
-    pad_length = 3 * (max(length(a), length(b)) - 1)
+    pad_length = min(3 * (max(length(a), length(b)) - 1), size(x, 1) - 1)
     t = Base.promote_eltype(b, a, x)
     zitmp = similar(zi, t)
-    extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(undef, size(x, 1) + 2 * pad_length)
     out = similar(x, t)
 
-    istart = 1
     for i = 1:Base.trailingsize(x, 2)
+        istart = 1 + (i - 1) * size(x, 1)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
         reverse!(filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1])))
         filt!(extrapolated, b, a, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
-            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
+            out[j, i] = extrapolated[end-pad_length+1-j]
         end
-        istart += size(x, 1)
     end
 
     out
