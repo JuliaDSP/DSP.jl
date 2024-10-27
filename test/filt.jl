@@ -293,13 +293,13 @@ end
 @testset "filtfilt SOS" begin
     x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
 
-    f = DSP.digitalfilter(DSP.Lowpass(0.2), DSP.Butterworth(4))
+    f = digitalfilter(Lowpass(0.2), Butterworth(4))
     @test filtfilt(convert(SecondOrderSections, f), x) ≈ filtfilt(convert(PolynomialRatio, f), x)
 
-    f = DSP.digitalfilter(DSP.Highpass(0.1), DSP.Butterworth(6))
+    f = digitalfilter(Highpass(0.1), Butterworth(6))
     @test filtfilt(convert(SecondOrderSections, f), x) ≈ filtfilt(convert(PolynomialRatio, f), x)
 
-    f = DSP.digitalfilter(DSP.Bandpass(0.1, 0.3), DSP.Butterworth(2))
+    f = digitalfilter(Bandpass(0.1, 0.3), Butterworth(2))
     @test filtfilt(convert(SecondOrderSections, f), x) ≈ filtfilt(convert(PolynomialRatio, f), x)
 end
 
