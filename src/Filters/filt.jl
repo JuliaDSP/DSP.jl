@@ -392,7 +392,10 @@ function filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{
     # Solve si = A*si + B
     # (I - A)*si = B
     ((I - A) \ B) .*= scale_factor
- end
+end
+
+filt_stepstate(b::Union{AbstractVector{T}, T}, a::Union{AbstractVector{V}, V}) where {T<:Number,V<:Number} =
+    filt_stepstate(promote(b, a)...)
 
 function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     biquads = f.biquads
