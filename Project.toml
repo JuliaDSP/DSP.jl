@@ -28,7 +28,7 @@ Reexport = "1.0"
 SpecialFunctions = "2.0"
 Statistics = "1.6"
 Test = "1.6"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
