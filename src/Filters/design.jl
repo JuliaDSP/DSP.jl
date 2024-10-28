@@ -14,7 +14,7 @@ function Butterworth(::Type{T}, n::Integer) where {T<:Real}
     poles = Vector{Complex{T}}(undef, n)
     for i = 1:n÷2
         w = convert(T, 2i - 1) / 2n
-        sinpi_w, cospi_w = Compat.@inline sincospi(w)
+        sinpi_w, cospi_w = @inline sincospi(w)
         pole = complex(-sinpi_w, cospi_w)
         poles[2i-1] = pole
         poles[2i] = conj(pole)
@@ -43,7 +43,7 @@ function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
     c = cosh(μ)
     for i = 1:n÷2
         w = convert(T, 2i - 1) / 2n
-        sinpi_w, cospi_w = Compat.@inline sincospi(w)
+        sinpi_w, cospi_w = @inline sincospi(w)
         pole = complex(b * sinpi_w, c * cospi_w)
         p[2i-1] = pole
         p[2i] = conj(pole)
@@ -94,7 +94,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     k = one(T)
     for i = 1:n÷2
         w = convert(T, 2i - 1) / 2n
-        ze = Compat.@inline complex(zero(T), -inv(cospi(w)))
+        ze = @inline complex(zero(T), -inv(cospi(w)))
         z[2i-1] = ze
         z[2i] = conj(ze)
         k *= abs2(p[2i]) / abs2(ze)
@@ -140,8 +140,8 @@ function _ellip(init::Number, landen::Vector{<:Real})
     end
     w = inv(winv)
 end
-@inline cde(u::Number, landen::Vector{<:Real}) = Compat.@inline _ellip(cospi(u / 2), landen)
-@inline sne(u::Number, landen::Vector{<:Real}) = Compat.@inline _ellip(sinpi(u / 2), landen)
+@inline cde(u::Number, landen::Vector{<:Real}) = @inline _ellip(cospi(u / 2), landen)
+@inline sne(u::Number, landen::Vector{<:Real}) = @inline _ellip(sinpi(u / 2), landen)
 
 # sne inverse
 function asne(w::Number, k::Real)

@@ -51,13 +51,13 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     end
 
     iszero(size(x, 1)) && return out
-    isone(sz) && return (k = b[1] / a[1]; Compat.@noinline mul!(out, x, k)) # Simple scaling without memory
+    isone(sz) && return (k = b[1] / a[1]; @noinline mul!(out, x, k)) # Simple scaling without memory
 
     # Filter coefficient normalization
     if !isone(a[1])
         norml = a[1]
-        a = Compat.@noinline broadcast(/, a, norml)
-        b = Compat.@noinline broadcast(/, b, norml)
+        a = @noinline broadcast(/, a, norml)
+        b = @noinline broadcast(/, b, norml)
     end
     # Pad the coefficients with zeros if needed
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
