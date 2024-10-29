@@ -82,7 +82,7 @@ end
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-    @test ≈(zi_python, DSP.Filters.filt_stepstate(b, a), atol=1e-7)
+    @test ≈(zi_python, DSP.Filters.filt_stepstate(b, a)[1], atol=1e-7)
 
     ##############
     #
@@ -99,7 +99,7 @@ end
     b = [0.222, 0.43, 0.712]
     a = [1, 0.33, 0.22]
 
-    @test zi_matlab ≈ DSP.Filters.filt_stepstate(b, a)
+    @test zi_matlab ≈ DSP.Filters.filt_stepstate(b, a)[1]
 
 
     ##############
@@ -118,7 +118,7 @@ end
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-    @test ≈(zi_python, DSP.Filters.filt_stepstate(b, a), atol=1e-7)
+    @test ≈(zi_python, DSP.Filters.filt_stepstate(b, a)[1], atol=1e-7)
 end
 
 
@@ -270,9 +270,8 @@ end
 
 # fir_filtfilt
 @testset "fir_filtfilt" begin
-    b = randn(10)
-    for x in (randn(100), randn(100, 2))
-        @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1.0], x)
-        @test filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2.0], x)
+    for b in (randn(10), [1:10;]), x in (randn(100), randn(100, 2), randn(10))   # also tests issue #537
+        @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1], x)
+        @test filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2], x)
     end
 end
