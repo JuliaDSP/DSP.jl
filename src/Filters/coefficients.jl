@@ -147,14 +147,8 @@ function PolynomialRatio{:z,T}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}})
     if isempty(a) || iszero(a[1])
         throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
     end
-    Tn = typeof(one(T1) / one(T2))
-    if !isone(a[1])
-        bn = b / a[1]
-        an = a / convert(Tn, a[1])
-    else    # for type stability
-        bn = T1 === Tn ? b : convert.(Tn, b)
-        an = T2 === Tn ? a : convert.(Tn, a)
-    end
+    bn = b / a[1]
+    an = a / a[1]
     return PolynomialRatio{:z,T}(_polyprep(:z, bn, T), _polyprep(:z, an, T))
 end
 PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number} =
