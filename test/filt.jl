@@ -271,8 +271,8 @@ end
 # fir_filtfilt
 @testset "fir_filtfilt" begin
     b = randn(10)
-    for x in (randn(100), randn(100, 2), randn(10))   # also tests issue #537
-        @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1.0], x)
+    for x in (randn(100), randn(100, 2), randn(10), [1:10;])   # also tests issue #537
+        @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1], x)
         @test filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2], x)
     end
 end
