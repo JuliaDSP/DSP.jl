@@ -143,13 +143,11 @@ trying to collect a 0-d array into a `Vector`.
 @inline _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}) where {T<:Number,V} =
     LaurentPolynomial{V,D}(x isa Vector ? reverse(x) : [x], D === :z ? -length(x) + 1 : 0)
 
-function PolynomialRatio{:z,T}(b::Union{T1,Vector{T1}}, a::Union{T2,Vector{T2}}) where {T<:Number,T1<:Number,T2<:Number}
+function PolynomialRatio{:z,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number}
     if isempty(a) || iszero(a[1])
         throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
     end
-    bn = b / a[1]
-    an = a / a[1]
-    return PolynomialRatio{:z,T}(_polyprep(:z, bn, T), _polyprep(:z, an, T))
+    return PolynomialRatio{:z,T}(_polyprep(:z, b / a[1], T), _polyprep(:z, a / a[1], T))
 end
 PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number} =
     PolynomialRatio{:s,T}(_polyprep(:s, b, T), _polyprep(:s, a, T))
