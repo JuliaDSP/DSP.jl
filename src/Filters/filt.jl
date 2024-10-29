@@ -286,9 +286,12 @@ end
 
 """
     filtfilt(coef::FilterCoefficients, x::AbstractArray)
+    filtfilt(b::AbstractVector, x::AbstractArray)
+    filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
 
-Filter `x` in the forward and reverse directions using filter
-coefficients `coef`. The initial state of the filter is computed so
+Filter `x` in the forward and reverse directions using either a
+`FilterCoefficients` object `coef`, or the filters `b` and / or `a`
+as in [`filt`](@ref). The initial state of the filter is computed so
 that its response to a step function is steady state. Before
 filtering, the data is extrapolated at both ends with an
 odd-symmetric extension of length
