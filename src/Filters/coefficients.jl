@@ -34,13 +34,13 @@ ZeroPoleGain{D}(z::Vector{Z}, p::Vector{P}, k::K) where {D,Z<:Number,P<:Number,K
 Base.promote_rule(::Type{ZeroPoleGain{D,Z1,P1,K1}}, ::Type{ZeroPoleGain{D,Z2,P2,K2}}) where {D,Z1,P1,K1,Z2,P2,K2} =
     ZeroPoleGain{D,promote_type(Z1,Z2),promote_type(P1,P2),promote_type(K1,K2)}
 
-*(f::ZeroPoleGain{D}, g::Number) where {D} = ZeroPoleGain{D}(f.z, f.p, f.k*g)
-*(g::Number, f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.z, f.p, f.k*g)
+*(f::ZeroPoleGain{D}, g::Number) where {D} = ZeroPoleGain{D}(f.z, f.p, f.k * g)
+*(g::Number, f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.z, f.p, f.k * g)
 *(f1::ZeroPoleGain{D}, f2::ZeroPoleGain{D}) where {D} =
-    ZeroPoleGain{D}([f1.z; f2.z], [f1.p; f2.p], f1.k*f2.k)
+    ZeroPoleGain{D}([f1.z; f2.z], [f1.p; f2.p], f1.k * f2.k)
 *(f1::ZeroPoleGain{D}, fs::ZeroPoleGain{D}...) where {D} =
     ZeroPoleGain{D}(vcat(f1.z, map(f -> f.z, fs)...), vcat(f1.p, map(f -> f.p, fs)...),
-        f1.k*prod(f.k for f in fs))
+        f1.k * prod(f.k for f in fs))
 
 Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
 
@@ -56,9 +56,9 @@ end
 # Transfer function form
 #
 
-function shiftpoly(p::LaurentPolynomial{T}, i::Integer) where {T<:Number}
+function shiftpoly(p::LaurentPolynomial{T,D}, i::Integer) where {T<:Number,D}
     if !iszero(i)
-        return p * LaurentPolynomial([one(T)], i, indeterminate(p))
+        return p * LaurentPolynomial{T,D}([one(T)], i)
     end
     return p
 end
@@ -122,20 +122,35 @@ PolynomialRatio{:s, Int64}(LaurentPolynomial(3 + 2*s + s²), LaurentPolynomial(4
 
 """
 PolynomialRatio(b, a) = PolynomialRatio{:z}(b, a)
-function PolynomialRatio{:z}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
-    return PolynomialRatio{:z,typeof(one(T1)/one(T2))}(b, a)
-end
-function PolynomialRatio{:s}(b::LaurentPolynomial{T1}, a::LaurentPolynomial{T2}) where {T1,T2}
-    return PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
-end
+const PolynomialRatioArgTs{T} = Union{T,Vector{T},LaurentPolynomial{T}} where {T<:Number}
+PolynomialRatio{:z}(b::PolynomialRatioArgTs{T1}, a::PolynomialRatioArgTs{T2}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:z,typeof(one(T1) / one(T2))}(b, a)
+PolynomialRatio{:s}(b::PolynomialRatioArgTs{T1}, a::PolynomialRatioArgTs{T2}) where {T1<:Number,T2<:Number} =
+    PolynomialRatio{:s,promote_type(T1, T2)}(b, a)
 
-# The DSP convention for Laplace domain is highest power first. The Polynomials.jl
-# convention is lowest power first.
-_polyprep(D::Symbol, x, T...) = LaurentPolynomial{T...}(reverse(x), D === :z ? -length(x)+1 : 0, D)
-PolynomialRatio{D,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D,T} =
-    PolynomialRatio{D,T}(_polyprep(D, b, T), _polyprep(D, a, T))
-PolynomialRatio{D}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {D} =
-    PolynomialRatio{D}(_polyprep(D, b), _polyprep(D, a))
+"""
+    _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type) where {T<:Number}
+
+Converts `x` to polynomial form. If x is a `Number`, it has to be converted into
+a `Vector`, otherwise `LaurentPolynomial` dispatch goes into stack overflow
+trying to collect a 0-d array into a `Vector`.
+
+!!! warning
+
+    The DSP convention for Laplace domain is highest power first.\n
+    The Polynomials.jl convention is lowest power first.
+"""
+@inline _polyprep(D::Symbol, x::Union{T,Vector{T}}, ::Type{V}) where {T<:Number,V} =
+    LaurentPolynomial{V,D}(x isa Vector ? reverse(x) : [x], D === :z ? -length(x) + 1 : 0)
+
+function PolynomialRatio{:z,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number}
+    if isempty(a) || iszero(a[1])
+        throw(ArgumentError("filter must have non-zero leading denominator coefficient"))
+    end
+    return PolynomialRatio{:z,T}(_polyprep(:z, b / a[1], T), _polyprep(:z, a / a[1], T))
+end
+PolynomialRatio{:s,T}(b::Union{Number,Vector{<:Number}}, a::Union{Number,Vector{<:Number}}) where {T<:Number} =
+    PolynomialRatio{:s,T}(_polyprep(:s, b, T), _polyprep(:s, a, T))
 
 PolynomialRatio{D,T}(f::PolynomialRatio{D}) where {D,T} = PolynomialRatio{D,T}(f.b, f.a)
 PolynomialRatio{D}(f::PolynomialRatio{D,T}) where {D,T} = PolynomialRatio{D,T}(f)
@@ -159,16 +174,14 @@ function ZeroPoleGain{D}(f::PolynomialRatio{D,T}) where {D,T}
     return ZeroPoleGain{D}(z, p, f.b[end]/f.a[end])
 end
 
-*(f::PolynomialRatio{D}, g::Number) where {D} = PolynomialRatio{D}(g*f.b, f.a)
-*(g::Number, f::PolynomialRatio{D}) where {D} = PolynomialRatio{D}(g*f.b, f.a)
+*(f::PolynomialRatio{D}, g::Number) where {D} = PolynomialRatio{D}(g * f.b, f.a)
+*(g::Number, f::PolynomialRatio{D}) where {D} = PolynomialRatio{D}(g * f.b, f.a)
 *(f1::PolynomialRatio{D}, f2::PolynomialRatio{D}) where {D} =
-    PolynomialRatio{D}(f1.b*f2.b, f1.a*f2.a)
+    PolynomialRatio{D}(f1.b * f2.b, f1.a * f2.a)
 *(f1::PolynomialRatio{D}, fs::PolynomialRatio{D}...) where {D} =
-    PolynomialRatio{D}(f1.b*prod(f.b for f in fs), f1.a*prod(f.a for f in fs))
+    PolynomialRatio{D}(f1.b * prod(f.b for f in fs), f1.a * prod(f.a for f in fs))
 
-Base.inv(f::PolynomialRatio{D}) where {D} = begin
-    PolynomialRatio{D}(f.a, f.b)
-end
+Base.inv(f::PolynomialRatio{D}) where {D} = PolynomialRatio{D}(f.a, f.b)
 
 function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     if e < 0
@@ -312,7 +325,7 @@ function Biquad{D,T}(f::SecondOrderSections{D}) where {D,T}
     if length(f.biquads) != 1
         throw(ArgumentError("only a single second order section may be converted to a biquad"))
     end
-    Biquad{D,T}(f.biquads[1]*f.g)
+    Biquad{D,T}(f.biquads[1] * f.g)
 end
 Biquad{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} = Biquad{D,promote_type(T,G)}(f)
 
@@ -418,7 +431,7 @@ function SecondOrderSections{D,T,G}(f::ZeroPoleGain{D,Z,P}) where {D,T,G,Z,P}
     npairs = length(groupedp) >> 1
     odd = isodd(n)
     for i = 1:npairs
-        pairidx = 2*(npairs-i)
+        pairidx = 2 * (npairs - i)
         biquads[odd+i] = convert(Biquad, ZeroPoleGain{D}(groupedz[pairidx+1:min(pairidx+2, length(groupedz))],
                                                          groupedp[pairidx+1:pairidx+2], one(T)))
     end
@@ -439,12 +452,12 @@ SecondOrderSections{D,T,G}(f::Biquad{D}) where {D,T,G} = SecondOrderSections{D,T
 SecondOrderSections{D}(f::Biquad{D,T}) where {D,T} = SecondOrderSections{D,T,Int}(f)
 SecondOrderSections{D}(f::FilterCoefficients{D}) where {D} = SecondOrderSections{D}(ZeroPoleGain(f))
 
-*(f::SecondOrderSections{D}, g::Number) where {D} = SecondOrderSections{D}(f.biquads, f.g*g)
-*(g::Number, f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(f.biquads, f.g*g)
+*(f::SecondOrderSections{D}, g::Number) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
+*(g::Number, f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
 *(f1::SecondOrderSections{D}, f2::SecondOrderSections{D}) where {D} =
-    SecondOrderSections{D}([f1.biquads; f2.biquads], f1.g*f2.g)
+    SecondOrderSections{D}([f1.biquads; f2.biquads], f1.g * f2.g)
 *(f1::SecondOrderSections{D}, fs::SecondOrderSections{D}...) where {D} =
-    SecondOrderSections{D}(vcat(f1.biquads, map(f -> f.biquads, fs)...), f1.g*prod(f.g for f in fs))
+    SecondOrderSections{D}(vcat(f1.biquads, map(f -> f.biquads, fs)...), f1.g * prod(f.g for f in fs))
 
 *(f1::Biquad{D}, f2::Biquad{D}) where {D} = SecondOrderSections{D}([f1, f2], 1)
 *(f1::Biquad{D}, fs::Biquad{D}...) where {D} = SecondOrderSections{D}([f1, fs...], 1)

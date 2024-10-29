@@ -138,7 +138,7 @@ end
     b = [0.4, 1]
     z = [0.4750]
     x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-    DSP.Filters.filt!(vec(x), b, a, vec(x), z)
+    filt!(vec(x), b, a, vec(x), z)
 
     @test matlab_filt ≈ x
 end
@@ -272,7 +272,7 @@ end
 @testset "fir_filtfilt" begin
     b = randn(10)
     for x in (randn(100), randn(100, 2))
-        @test DSP.Filters.filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1.0], x)
-        @test DSP.Filters.filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2.0], x)
+        @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1.0], x)
+        @test filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2.0], x)
     end
 end
