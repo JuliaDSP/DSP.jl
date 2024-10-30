@@ -123,7 +123,7 @@ function unwrap_nd!(dest::AbstractArray{T, N},
     edges = Edge{N}[]
     num_edges = _predict_num_edges(size(src), circular_dims)
     sizehint!(edges, num_edges)
-    for idx_dim=1:N
+    for idx_dim = 1:N
         populate_edges!(edges, pixel_image, idx_dim, circular_dims[idx_dim], range_T)
     end
 
@@ -155,7 +155,10 @@ function gather_pixels!(pixel_image, edges)
     for edge in edges
         @inbounds p1 = pixel_image[edge.pixel_1]
         @inbounds p2 = pixel_image[edge.pixel_2]
-        merge_groups!(edge, p1, p2)
+        if is_differentgroup(p1, p2)
+            periods = edge.periods
+            merge_groups!(periods, p1, p2)
+        end
     end
 end
 
@@ -168,45 +171,40 @@ end
 
 function wrap_val(val, range)
     wrapped_val  = val
-    wrapped_val -= ifelse(val >  range/2, range, zero(val))
-    wrapped_val += ifelse(val < -range/2, range, zero(val))
+    wrapped_val -= ifelse(val >  range / 2, range, zero(val))
+    wrapped_val += ifelse(val < -range / 2, range, zero(val))
     return wrapped_val
 end
 
 function find_period(val_left, val_right, range)
     difference = val_left - val_right
     period  = 0
-    period -= (difference >  range/2)
-    period += (difference < -range/2)
+    period -= (difference >  range / 2)
+    period += (difference < -range / 2)
     return period
 end
 
-function merge_groups!(edge, pixel_1, pixel_2)
-    if is_differentgroup(pixel_1, pixel_2)
-        # pixel 2 is alone in group
-        if is_pixelalone(pixel_2)
-            merge_pixels!(pixel_1, pixel_2, -edge.periods)
-        elseif is_pixelalone(pixel_1)
-            merge_pixels!(pixel_2, pixel_1, edge.periods)
+function merge_groups!(periods, base, target)
+    # target is alone in group
+    if is_pixelalone(target)
+        periods = -periods
+    elseif is_pixelalone(base)
+        base, target = target, base
+    else
+        if is_bigger(base, target)
+            periods = -periods
         else
-            if is_bigger(pixel_1, pixel_2)
-                merge_into_group!(pixel_1, pixel_2, -edge.periods)
-            else
-                merge_into_group!(pixel_2, pixel_1, edge.periods)
-            end
+            base, target = target, base
         end
+        merge_into_group!(base, target, periods)
+        return
     end
+    merge_pixels!(base, target, periods)
 end
 
-@inline function is_differentgroup(p1::Pixel, p2::Pixel)
-    return p1.head !== p2.head
-end
-@inline function is_pixelalone(pixel::Pixel)
-    return pixel.head === pixel.last
-end
-@inline function is_bigger(p1::Pixel, p2::Pixel)
-    return length(p1) ≥ length(p2)
-end
+@inline is_differentgroup(p1::Pixel, p2::Pixel) = p1.head !== p2.head
+@inline is_pixelalone(pixel::Pixel) = pixel.head === pixel.last
+@inline is_bigger(p1::Pixel, p2::Pixel) = length(p1) ≥ length(p2)
 
 function merge_pixels!(pixel_base::Pixel, pixel_target::Pixel, periods)
     pixel_base.head.groupsize += pixel_target.head.groupsize
@@ -214,12 +212,13 @@ function merge_pixels!(pixel_base::Pixel, pixel_target::Pixel, periods)
     pixel_base.head.last = pixel_target.head.last
     pixel_target.head = pixel_base.head
     pixel_target.periods = pixel_base.periods + periods
+    return nothing
 end
 
 function merge_into_group!(pixel_base::Pixel, pixel_target::Pixel, periods)
     add_periods = pixel_base.periods + periods - pixel_target.periods
     pixel = pixel_target.head
-    while pixel ≠ nothing
+    while !isnothing(pixel)
         # merge all pixels in pixel_target's group to pixel_base's group
         if pixel !== pixel_target
             pixel.periods += add_periods
