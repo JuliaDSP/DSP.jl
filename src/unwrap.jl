@@ -80,7 +80,7 @@ unwrap(m::AbstractArray; kwargs...) = unwrap!(similar(m), m; kwargs...)
 
 mutable struct Pixel{T}
     periods::Int
-    val::T
+    const val::T
     reliability::Float64
     groupsize::Int
     head::Pixel{T}
@@ -127,7 +127,8 @@ function unwrap_nd!(dest::AbstractArray{T, N},
         populate_edges!(edges, pixel_image, idx_dim, circular_dims[idx_dim], range_T)
     end
 
-    sort!(edges, alg=MergeSort)
+    perm = sortperm(map(x -> x.reliability, edges); alg=MergeSort)
+    edges = edges[perm]
     gather_pixels!(pixel_image, edges)
     unwrap_image!(dest, pixel_image, range_T)
 
