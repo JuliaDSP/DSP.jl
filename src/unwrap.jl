@@ -168,16 +168,16 @@ end
 
 function wrap_val(val, range)
     wrapped_val  = val
-    wrapped_val += ifelse(val >  range/2, -range, zero(val))
-    wrapped_val += ifelse(val < -range/2,  range, zero(val))
+    wrapped_val -= ifelse(val >  range/2, range, zero(val))
+    wrapped_val += ifelse(val < -range/2, range, zero(val))
     return wrapped_val
 end
 
 function find_period(val_left, val_right, range)
     difference = val_left - val_right
     period  = 0
-    period += ifelse(difference >  range/2, -1, 0)
-    period += ifelse(difference < -range/2,  1, 0)
+    period -= (difference >  range/2)
+    period += (difference < -range/2)
     return period
 end
 
