@@ -1,5 +1,5 @@
 module Unwrap
-using Random: GLOBAL_RNG, AbstractRNG
+using Random: AbstractRNG, default_rng
 export unwrap, unwrap!
 
 """
@@ -62,7 +62,7 @@ of an image, as each pixel is wrapped to stay within (-pi, pi].
 - `circular_dims=(false, ...)`:  When an element of this tuple is `true`, the
     unwrapping process will consider the edges along the corresponding axis
     of the array to be connected.
-- `rng=GLOBAL_RNG`: Unwrapping of arrays with dimension > 1 uses a random
+- `rng=default_rng()`: Unwrapping of arrays with dimension > 1 uses a random
     initialization. A user can pass their own RNG through this argument.
 """
 unwrap(m::AbstractArray; kwargs...) = unwrap!(similar(m), m; kwargs...)
@@ -114,7 +114,7 @@ function unwrap_nd!(dest::AbstractArray{T, N},
                     src::AbstractArray{T, N};
                     range::Number=2*convert(T, pi),
                     circular_dims::NTuple{N, Bool}=ntuple(_->false, Val(N)),
-                    rng::AbstractRNG=GLOBAL_RNG) where {T, N}
+                    rng::AbstractRNG=default_rng()) where {T, N}
 
     range_T = convert(T, range)
 
