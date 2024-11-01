@@ -97,16 +97,16 @@ end
 Pixel(v, rng) = Pixel{typeof(v)}(0, v, rand(rng), 1)
 @inline Base.length(p::Pixel) = p.head.groupsize
 
-struct Edge{N}
+struct Edge{T}
     reliability::Float64
     periods::Int
-    pixel_1::CartesianIndex{N}
-    pixel_2::CartesianIndex{N}
+    pixel_1::Pixel{T}
+    pixel_2::Pixel{T}
 end
-function Edge{N}(pixel_image::AbstractArray, ind1::CartesianIndex{N}, ind2::CartesianIndex{N}, range) where N
-    rel = pixel_image[ind1].reliability + pixel_image[ind2].reliability
-    periods = find_period(pixel_image[ind1].val, pixel_image[ind2].val, range)
-    return Edge{N}(rel, periods, ind1, ind2)
+function Edge{T}(p1::Pixel{T}, p2::Pixel{T}, range) where {T}
+    rel = p1.reliability + p2.reliability
+    periods = find_period(p1.val, p2.val, range)
+    return Edge{T}(rel, periods, p1, p2)
 end
 @inline Base.isless(e1::Edge, e2::Edge) = isless(e1.reliability, e2.reliability)
 
@@ -120,7 +120,7 @@ function unwrap_nd!(dest::AbstractArray{T, N},
 
     pixel_image = init_pixels(src, rng)
     calculate_reliability(pixel_image, circular_dims, range_T)
-    edges = Edge{N}[]
+    edges = Edge{T}[]
     num_edges = _predict_num_edges(size(src), circular_dims)
     sizehint!(edges, num_edges)
     for idx_dim = 1:N
@@ -129,7 +129,7 @@ function unwrap_nd!(dest::AbstractArray{T, N},
 
     perm = sortperm(map(x -> x.reliability, edges); alg=MergeSort)
     edges = edges[perm]
-    gather_pixels!(pixel_image, edges)
+    gather_pixels!(edges)
     unwrap_image!(dest, pixel_image, range_T)
 
     return dest
@@ -152,10 +152,10 @@ function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
     return pixel_image
 end
 
-function gather_pixels!(pixel_image, edges)
+function gather_pixels!(edges)
     for edge in edges
-        @inbounds p1 = pixel_image[edge.pixel_1]
-        @inbounds p2 = pixel_image[edge.pixel_2]
+        p1 = edge.pixel_1
+        p2 = edge.pixel_2
         if is_differentgroup(p1, p2)
             periods = edge.periods
             merge_groups!(periods, p1, p2)
@@ -231,18 +231,18 @@ function merge_into_group!(pixel_base::Pixel, pixel_target::Pixel, periods)
     merge_pixels!(pixel_base, pixel_target, periods)
 end
 
-function populate_edges!(edges, pixel_image::AbstractArray{T, N}, dim, connected, range) where {T, N}
-    idx_step       = ntuple(i -> Int(i == dim), Val(N))
-    idx_step_cart  = CartesianIndex{N}(idx_step)
-    image_inds     = CartesianIndices(pixel_image)
-    fi, li         = first(image_inds), last(image_inds)
+function populate_edges!(edges::Vector{Edge{T}}, pixel_image::AbstractArray{Pixel{T},N}, dim, connected, range) where {T,N}
+    idx_step      = ntuple(i -> Int(i == dim), Val(N))
+    idx_step_cart = CartesianIndex{N}(idx_step)
+    image_inds    = CartesianIndices(pixel_image)
+    fi, li        = first(image_inds), last(image_inds)
     for i in fi:li-idx_step_cart
-        push!(edges, Edge{N}(pixel_image, i, i + idx_step_cart, range))
+        push!(edges, Edge{T}(pixel_image[i], pixel_image[i + idx_step_cart], range))
     end
     if connected
         idx_step_cart *= size(pixel_image, dim) - 1
         for i in fi+idx_step_cart:li
-            push!(edges, Edge{N}(pixel_image, i, i - idx_step_cart, range))
+            push!(edges, Edge{T}(pixel_image[i], pixel_image[i - idx_step_cart], range))
         end
     end
 end
