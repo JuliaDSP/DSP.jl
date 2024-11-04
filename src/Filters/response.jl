@@ -160,7 +160,7 @@ function _freqrange(filter::FilterCoefficients{:s})
     filter = convert(ZeroPoleGain, filter)
     w_interesting = sort!(Float64.(abs.([filter.p; filter.z])))
     include_zero = !isempty(w_interesting) && iszero(w_interesting[1])
-    w_interesting = collect(Compat.Iterators.dropwhile(iszero, w_interesting))
+    w_interesting = collect(Iterators.dropwhile(iszero, w_interesting))
     if isempty(w_interesting) # no non-zero poles or zeros
         if !include_zero || !isfinite(1/filter.k)
             return [0; 10 .^ (0:6)] # fallback
