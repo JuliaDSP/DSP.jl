@@ -34,7 +34,7 @@ jobs:
             version: '1'
           - os: ubuntu-latest
             arch: x64
-            version: '1.10'
+            version: 'min'
           - os: ubuntu-latest
             arch: x64
             version: 'pre'
