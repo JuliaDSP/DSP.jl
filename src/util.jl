@@ -115,9 +115,6 @@ computes Fourier transforms of input that is a product of these
 sizes faster than for input of other sizes.
 """
 nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
-nextfastfft(ns::Tuple) = nextfastfft.(ns)
-nextfastfft(ns...) = nextfastfft(ns)
-
 
 ## COMMON DSP TOOLS
 

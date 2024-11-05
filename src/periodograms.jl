@@ -420,7 +420,7 @@ end
 # DTFT of the signal S if radialsum and radialavg are both false (default),
 # a radial sum if radialsum=true, or a radial averave if radialavg=true
 """
-    periodogram(s::AbstractMatrix; nfft::NTuple{2,Int}=nextfastfft(size(s)), fs=1, radialsum=false, radialavg=false)
+    periodogram(s::AbstractMatrix; nfft::NTuple{2,Int}=nextfastfft.(size(s)), fs=1, radialsum=false, radialavg=false)
 
 Computes periodogram of a 2-d signal using the 2-d FFT and returns a
 [`Periodogram2`](@ref) or [`Periodogram`](@ref) object.
@@ -471,7 +471,7 @@ DSP.Periodograms.Periodogram{Float64, AbstractFFTs.Frequencies{Float64}, Vector{
 ```
 """
 function periodogram(s::AbstractMatrix{T};
-                     nfft::NTuple{2,Int}=nextfastfft(size(s)),
+                     nfft::NTuple{2,Int}=nextfastfft.(size(s)),
                      fs::Real=1,
                      radialsum::Bool=false, radialavg::Bool=false) where T<:Real
     size(s,1)<=nfft[1] && size(s,2)<=nfft[2] || throw(ArgumentError("nfft must be >= size(s)"))

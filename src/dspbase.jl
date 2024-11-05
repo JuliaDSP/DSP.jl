@@ -613,7 +613,7 @@ function _conv_kern_fft!(out::AbstractArray{T, N},
                          u::AbstractArray{<:Real, N},
                          v::AbstractArray{<:Real, N}) where {T<:Real, N}
     outsize = size(output_indices)
-    nffts = nextfastfft(outsize)
+    nffts = nextfastfft.(outsize)
     padded = _zeropad!(similar(u, T, nffts), u)
     p = plan_rfft(padded)
     uf = p * padded
@@ -628,7 +628,7 @@ function _conv_kern_fft!(out::AbstractArray{T, N},
 end
 function _conv_kern_fft!(out::AbstractArray{T}, output_indices, u, v) where {T}
     outsize = size(output_indices)
-    nffts = nextfastfft(outsize)
+    nffts = nextfastfft.(outsize)
     upad = _zeropad!(similar(u, T, nffts), u)
     vpad = _zeropad!(similar(v, T, nffts), v)
     p! = plan_fft!(upad)
