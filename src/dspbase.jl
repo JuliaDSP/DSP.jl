@@ -792,7 +792,9 @@ Uses 2-D FFT algorithm.
 """
 function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::AbstractMatrix{T}) where T
     # Arbitrary indexing offsets not implemented
-    @assert !Base.has_offset_axes(u, v, A)
+    if any(conv_with_offset, (axes(u)..., axes(v)..., axes(A)...))
+        throw(ArgumentError("offset axes not supported"))
+    end
     m = length(u)+size(A,1)-1
     n = length(v)+size(A,2)-1
     B = zeros(T, m, n)
