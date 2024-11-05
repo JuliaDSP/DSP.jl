@@ -261,7 +261,8 @@ end
 # fftfilt/filt
 #
 
-@testset "fftfilt $xlen/$blen" for xlen in 2 .^ (7:18) .- 1, blen in 2 .^ (1:6) .- 1
+# make sure to include blen > SMALL_FILT_CUTOFF
+@testset "fftfilt $xlen/$blen" for xlen in 2 .^ (7:18) .- 1, blen in 2 .^ (1:7) .- 1
     b = randn(blen)
     for x in (rand(xlen), rand(xlen, 2))
         out = similar(x)
