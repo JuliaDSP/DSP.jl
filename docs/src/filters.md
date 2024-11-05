@@ -119,6 +119,7 @@ bilinear
 Lowpass
 Highpass
 Bandpass
+ComplexBandpass
 Bandstop
 ```
 
