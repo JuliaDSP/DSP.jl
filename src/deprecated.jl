@@ -2,7 +2,9 @@
 import .Util.nextfastfft
 @deprecate nextfastfft(ns...) nextfastfft.(ns) false
 
-# deprecations after 0.6
+@deprecate (conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T) conv(u, transpose(v), A)
+
+# deprecations in 0.7
 @deprecate freqz(filter::FilterCoefficients{:z}) freqresp(filter, range(0, stop=π, length=250))
 @deprecate freqz(filter::FilterCoefficients{:z}, w) freqresp(filter, w)
 @deprecate freqs(filter::FilterCoefficients{:s}, w) freqresp(filter, w)
