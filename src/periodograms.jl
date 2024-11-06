@@ -44,7 +44,7 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         (0 ≤ noverlap < n) || throw(DomainError((; noverlap, n), "noverlap must be between zero and n"))
         nfft >= n || throw(DomainError((; nfft, n), "nfft must be >= n"))
         length(buffer) == nfft ||
-            throw(ArgumentError("buffer length ($(length(buffer))) must equal `nfft` ($nfft)"))
+            throw(ArgumentError(lazy"buffer length ($(length(buffer))) must equal `nfft` ($nfft)"))
 
         new{Ti,Si,Wi}(s, buffer, n, noverlap, window, length(s) >= n ? div((length(s) - n),
             n - noverlap) + 1 : 0)
@@ -732,14 +732,12 @@ true
 """
 function welch_pgram!(out::AbstractVector, s::AbstractVector{T}, config::WelchConfig) where {T<:Number}
     if length(out) != length(config.freq)
-        throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
+        throw(DimensionMismatch(lazy"""Expected `output` to be of length `length(config.freq)`;
             got `length(output)` = $(length(out)) and `length(config.freq)` = $(length(config.freq))"""))
     elseif eltype(out) != fftabs2type(T)
-        throw(ArgumentError("Eltype of output ($(eltype(out))) doesn't match the expected " *
-                            "type: $(fftabs2type(T))."))
+        throw(ArgumentError(lazy"Eltype of output ($(eltype(out))) doesn't match the expected type: $(fftabs2type(T))."))
     elseif float(T) != eltype(config.inbuf)
-        throw(ArgumentError("float(eltype(s)) = $T doesn't match the eltype " *
-                            "of the input buffer: $(eltype(config.inbuf))."))
+        throw(ArgumentError(lazy"float(eltype(s)) = $T doesn't match the eltype of the input buffer: $(eltype(config.inbuf))."))
     end
     welch_pgram_helper!(out, s, config)
 end

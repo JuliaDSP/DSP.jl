@@ -23,19 +23,19 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
         ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
         fs > 0 || throw(ArgumentError("`fs` must be positive"))
         if size(plan) != size(fft_input_tmp)
-            throw(DimensionMismatch("""Must have `size(plan) == size(fft_input_tmp)`;
+            throw(DimensionMismatch(lazy"""Must have `size(plan) == size(fft_input_tmp)`;
                 got `size(plan)` = $(size(plan)) and `size(fft_input_tmp)` = $(size(fft_input_tmp))"""))
         elseif size(fft_input_tmp) != (nfft,)
-            throw(DimensionMismatch("""Must have `size(fft_input_tmp) == (nfft,)`;
+            throw(DimensionMismatch(lazy"""Must have `size(fft_input_tmp) == (nfft,)`;
                 got `size(fft_input_tmp)` = $(size(fft_input_tmp)) and `nfft` = $(nfft)"""))
         elseif size(fft_output_tmp) != (length(freq),)
-            throw(DimensionMismatch("""Must have `size(fft_output_tmp) == (length(freq),)`;
+            throw(DimensionMismatch(lazy"""Must have `size(fft_output_tmp) == (length(freq),)`;
                 got `size(fft_output_tmp)` = $(size(fft_output_tmp)) and `length(freq)` = $(length(freq))"""))
         elseif size(window) != (n_samples, ntapers)
-            throw(DimensionMismatch("""Must have `size(window) == (n_samples, ntapers)`;
+            throw(DimensionMismatch(lazy"""Must have `size(window) == (n_samples, ntapers)`;
                 got `size(window)` = $(size(window)) and `(ntapers, n_samples)` = $((n_samples, ntapers))"""))
         elseif size(r) != (ntapers,)
-            throw(DimensionMismatch("""Must have `size(r) == (ntapers,)`;
+            throw(DimensionMismatch(lazy"""Must have `size(r) == (ntapers,)`;
             got `size(r)` = $(size(r)) and `(ntapers,)` = $((ntapers,))"""))
         elseif onesided && T <: Complex
             throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
@@ -225,11 +225,11 @@ mt_pgram!
 
 function mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTConfig)
     if length(output) != length(config.freq)
-        throw(DimensionMismatch("""Expected `output` to be of length `length(config.freq)`;
+        throw(DimensionMismatch(lazy"""Expected `output` to be of length `length(config.freq)`;
                 got `length(output) = $(length(output)) and `length(config.freq)` = $(length(config.freq))"""))
     end
     if length(signal) != config.n_samples
-        throw(DimensionMismatch("""Expected `signal` to be of length `config.n_samples`;
+        throw(DimensionMismatch(lazy"""Expected `signal` to be of length `config.n_samples`;
                 got `length(signal) == $(length(signal)) and `config.n_samples` = $(config.n_samples)"""))
     end
     fft_output = config.fft_output_tmp
@@ -263,7 +263,7 @@ Any keyword arguments accepted by [`MTConfig`](@ref) may be passed here, or an `
 function MTSpectrogramConfig(n_samples::Int, mt_config::MTConfig{T}, n_overlap_samples::Int) where {T}
     samples_per_window = mt_config.n_samples
     if samples_per_window <= n_overlap_samples
-        throw(ArgumentError("Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
+        throw(ArgumentError(lazy"Need `samples_per_window > n_overlap_samples`; got `samples_per_window` = $(samples_per_window) and `n_overlap_samples` = $(n_overlap_samples)."))
     end
 
     f = samples_per_window / 2
@@ -313,12 +313,12 @@ end
 @views function mt_spectrogram!(destination::AbstractMatrix, signal::AbstractVector,
                                 config::MTSpectrogramConfig)
     if size(destination) != (length(config.mt_config.freq), length(config.time))
-        throw(DimensionMismatch("""Expected `destination` to be of size `(length(config.mt_config.freq), length(config.time))`;
+        throw(DimensionMismatch(lazy"""Expected `destination` to be of size `(length(config.mt_config.freq), length(config.time))`;
                 got `size(destination) == $(size(destination)) and
                 `(length(config.mt_config.freq), length(config.time))` = $((length(config.mt_config.freq), length(config.time)))"""))
     end
     if length(signal) != config.n_samples
-        throw(DimensionMismatch("""Expected `signal` to be of length `config.n_samples`;
+        throw(DimensionMismatch(lazy"""Expected `signal` to be of length `config.n_samples`;
                 got `length(signal) = $(length(signal)) and `config.n_samples` = $(config.n_samples)"""))
     end
     samples_per_window = config.mt_config.n_samples
@@ -402,7 +402,7 @@ end
 """
     CrossPowerSpectra{T,F,A<:AbstractArray{T, 3}}
 
-Access the cross power spectral density (an `n_channels` x `n_channels` x `length(freq)` array) via the function [`power`](@ref), 
+Access the cross power spectral density (an `n_channels` x `n_channels` x `length(freq)` array) via the function [`power`](@ref),
 and the frequencies by the function [`freq`](@ref).
 
 See also [`mt_cross_power_spectra`](@ref) and [`mt_cross_power_spectra!`](@ref).
@@ -556,11 +556,11 @@ end
     n_freqi = length(config.freq_inds)
 
     if size(signal) != (n_chan, n_samples)
-        throw(DimensionMismatch("Size of `signal` does not match `(config.n_channels, config.mt_config.n_samples)`;
+        throw(DimensionMismatch(lazy"Size of `signal` does not match `(config.n_channels, config.mt_config.n_samples)`;
         got `size(signal)`=$(size(signal)) but `(config.n_channels, config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
     if size(output) != (n_chan, n_chan, n_freqi)
-        throw(DimensionMismatch("Size of `output` does not match `(config.n_channels, config.n_channels, length(config.freq_inds))`;
+        throw(DimensionMismatch(lazy"Size of `output` does not match `(config.n_channels, config.n_channels, length(config.freq_inds))`;
         got `size(output)`=$(size(output)) but `(config.n_channels, config.n_channels, length(config.freq_inds))`=$((n_chan, n_chan, n_freqi))"))
     end
 
@@ -770,11 +770,11 @@ function mt_coherence!(output, signal::AbstractMatrix,
     n_freqs = length(config.cs_config.freq)
 
     if size(signal) != (n_chan, n_samples)
-        throw(DimensionMismatch("Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
+        throw(DimensionMismatch(lazy"Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
             got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
     if size(output) != (n_chan, n_chan, n_freqs)
-        throw(DimensionMismatch("Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`;
+        throw(DimensionMismatch(lazy"Size of `output` does not match `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`;
         got `size(output)`=$(size(output)) but `(config.cs_config.n_channels, config.cs_config.n_channels, length(config.cs_config.freq))`=$((n_chan, n_chan, n_freqs))"))
     end
     cs = mt_cross_power_spectra!(config.cs_matrix, signal, config.cs_config)

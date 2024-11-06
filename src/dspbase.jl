@@ -652,7 +652,7 @@ end
 
 # whether the given axis are to be considered to carry an offset for `conv!` and `conv`
 conv_axis_with_offset(::Base.OneTo) = false
-conv_axis_with_offset(a::Any) = throw(ArgumentError("unsupported axis type $(typeof(a))"))
+conv_axis_with_offset(a::Any) = throw(ArgumentError(lazy"unsupported axis type $(typeof(a))"))
 
 function conv_axes_with_offset(as::Tuple...)
     with_offset = ((map(a -> map(conv_axis_with_offset, a), as)...)...,)
