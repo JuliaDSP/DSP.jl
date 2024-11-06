@@ -35,7 +35,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     isempty(a) && throw(ArgumentError("filter vector a must be non-empty"))
     a[1] == 0  && throw(ArgumentError("filter vector a[1] must be nonzero"))
     if size(x) != size(out)
-        throw(ArgumentError(LazyString("output size ", size(out), " must match input size ", size(x))))
+        throw(ArgumentError(lazy"output size $(size(out)) must match input size $(size(x))"))
     end
 
     as = length(a)
