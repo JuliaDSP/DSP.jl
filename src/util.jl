@@ -107,16 +107,28 @@ fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 const FAST_FFT_SIZES = (2, 3, 5, 7)
 
 """
-    nextfastfft(n)
+    nextfastfft(n::Integer)
+    nextfastfft(ns::Tuple)
 
-Return the closest product of 2, 3, 5, and 7 greater than or equal
-to `n`. FFTW contains optimized kernels for these sizes and
-computes Fourier transforms of input that is a product of these
-sizes faster than for input of other sizes.
+Return an estimate for the padded size of an array that
+is optimal for the performance of an n-dimensional FFT.\n
+For `Tuple` inputs, this returns a `Tuple` that is the size
+of the padded array.\nFor integer inputs, this returns the
+closest product of 2, 3, 5, and 7 greater than or equal to `n`.
+FFTW contains optimized kernels for these sizes and computes
+Fourier transforms of inputs that are a product of these
+sizes faster than for inputs of other sizes.
+
+!!! warning
+
+    Currently, `nextfastfft(ns::Tuple)` is implemented as
+    nextfastfft.(ns). This may change in future releases if
+    a better estimation model is found.\n
+    It is recommended to use `nextfastfft.(ns)` to obtain
+    a tuple of padded lengths for 1D FFTs.
 """
-nextfastfft(n) = nextprod(FAST_FFT_SIZES, n)
-nextfastfft(ns::Tuple) = nextfastfft.(ns)
-nextfastfft(ns...) = nextfastfft(ns)
+nextfastfft(n::Integer) = nextprod(FAST_FFT_SIZES, n)
+nextfastfft(ns::Tuple{Vararg{Integer}}) = nextfastfft.(ns)
 
 
 ## COMMON DSP TOOLS
