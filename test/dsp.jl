@@ -204,6 +204,7 @@ end
         fv = convert(Array{Float64}, v)
         fA = convert(Array{Float64}, A)
         fexp = convert(Array{Float64}, exp)
+        @test @test_deprecated(conv(fu, fv, fA)) ≈ fexp
         @test conv(fu, transpose(fv), fA) ≈ fexp
 
     end
