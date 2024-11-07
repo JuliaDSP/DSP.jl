@@ -530,11 +530,11 @@ end
 """
     WelchConfig(s::AbstractArray; n=size(s, ndims(s))>>3, noverlap=n>>1,
              onesided=eltype(s)<:Real, nfft=nextfastfft(n),
-             fs=1, window=nothing)
+             fs=1, window)
 
     WelchConfig(nsamples, eltype; n=nsamples>>3, noverlap=n>>1,
              onesided=eltype<:Real, nfft=nextfastfft(n),
-             fs=1, window=nothing)
+             fs=1, window)
 
 Captures all configuration options for [`welch_pgram`](@ref) in a single struct (akin to
 [`MTConfig`](@ref)). When passed on the second argument of [`welch_pgram`](@ref), computes the
@@ -559,7 +559,7 @@ julia> wconfig2 = WelchConfig(8, Float64; n=length(x), noverlap=0, window=hannin
 """
 function WelchConfig(nsamples, ::Type{T}; n::Int=nsamples >> 3, noverlap::Int=n >> 1,
     onesided::Bool=T <: Real, nfft::Int=nextfastfft(n),
-    fs::Real=1, window::Union{Function,AbstractVector,Nothing}=nothing) where T
+    fs::Real=1, window::Union{Function,AbstractVector,Nothing}=welch_config_default_window()) where T
 
     onesided && T <: Complex && throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
     nfft >= n || throw(DomainError((; nfft, n), "nfft must be >= n"))
@@ -579,6 +579,12 @@ function WelchConfig(data::AbstractArray; kwargs...)
     return WelchConfig(size(data, ndims(data)), eltype(data); kwargs...)
 end
 
+function welch_config_default_window()
+    # deprecation added in 0.8, TODO for 0.9: replace with just `hanning`
+    Base.depwarn("Omitting `window` is deprecated; specify `window=nothing` for the old behaviour or `window=hanning` for the future default.", :WelchConfig)
+    return nothing
+end
+
 # Compute an estimate of the power spectral density of a signal s via Welch's
 # method.  The resulting periodogram has length N and is computed with an overlap
 # region of length M.  The method is detailed in "The Use of Fast Fourier Transform
@@ -587,7 +593,7 @@ end
 # vol AU-15, pp 70-73, 1967.
 """
     welch_pgram(s::AbstractVector, n=div(length(s), 8), noverlap=div(n, 2); onesided=eltype(s)<:Real,
-                nfft=nextfastfft(n), fs=1, window=nothing)
+                nfft=nextfastfft(n), fs=1, window)
 
 Computes the Welch periodogram of a signal `s` based on segments with `n` samples
 with overlap of `noverlap` samples, and returns a [`Periodogram`](@ref) object.
@@ -601,24 +607,26 @@ See [`periodogram`](@ref) for description of optional keyword arguments.
 ```jldoctest
 julia> x = rect(10; padding=20);
 
-julia> power(welch_pgram(x))                    # 1-sided periodogram
+julia> power(welch_pgram(x; window=nothing))                    # 1-sided periodogram
 2-element Vector{Float64}:
  0.9523809523809523
  0.04761904761904761
 
-julia> power(welch_pgram(x; onesided=false))    # 2-sided periodogram
+julia> power(welch_pgram(x; onesided=false, window=nothing))    # 2-sided periodogram
 3-element Vector{Float64}:
  0.9523809523809523
  0.023809523809523805
  0.023809523809523805
 
-julia> power(welch_pgram(x, 5; onesided=false)) # 5 samples segment
+
+julia> power(welch_pgram(x, 5; onesided=false, window=hanning)) # 5 samples segment
 5-element Vector{Float64}:
- 1.488888888888889
- 0.04444444444444444
- 0.044444444444444446
- 0.044444444444444446
- 0.04444444444444444
+ 0.8888888888888888
+ 0.3807834425694269
+ 0.008105446319461968
+ 0.008105446319461968
+ 0.3807834425694269
+
 ```
 welch_pgram with ``x = sin(2π(100)t) + 2sin(2π(150)t) + noise ``
 ```jldoctest
