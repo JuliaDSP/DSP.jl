@@ -111,10 +111,13 @@ const FAST_FFT_SIZES = (2, 3, 5, 7)
     nextfastfft(ns::Tuple)
 
 Return an estimate for the padded size of an array that
-is optimal for the performance of an n-dimensional FFT.\n
+is optimal for the performance of an n-dimensional FFT.
+
 For `Tuple` inputs, this returns a `Tuple` that is the size
-of the padded array.\nFor integer inputs, this returns the
-closest product of 2, 3, 5, and 7 greater than or equal to `n`.
+of the padded array.
+
+For `Integer` inputs, this returns the closest product of 2, 3, 5, and 7
+greater than or equal to `n`.
 FFTW contains optimized kernels for these sizes and computes
 Fourier transforms of inputs that are a product of these
 sizes faster than for inputs of other sizes.
@@ -122,8 +125,9 @@ sizes faster than for inputs of other sizes.
 !!! warning
 
     Currently, `nextfastfft(ns::Tuple)` is implemented as
-    nextfastfft.(ns). This may change in future releases if
-    a better estimation model is found.\n
+    `nextfastfft.(ns)`. This may change in future releases if
+    a better estimation model is found.
+
     It is recommended to use `nextfastfft.(ns)` to obtain
     a tuple of padded lengths for 1D FFTs.
 """
