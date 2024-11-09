@@ -821,8 +821,8 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
 end
 
 
-dsp_reverse(v::AbstractVector, ::Tuple{Base.OneTo{Int}}) = reverse(v)
-function dsp_reverse(v::AbstractVector, vaxes)
+dsp_reverse(v::AbstractVector, ::Tuple{Base.OneTo{<:Integer}}) = reverse(v)
+function dsp_reverse(v::AbstractVector, vaxes::Tuple{AbstractUnitRange})
     vsize = length(v)
     reflected_start = - first(only(vaxes)) - vsize + 1
     reflected_axes = (reflected_start : reflected_start + vsize - 1,)
