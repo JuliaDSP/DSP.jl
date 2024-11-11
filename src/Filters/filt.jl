@@ -185,8 +185,8 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
             end
             _filt_iir!(out, b, a, x, si, 1)
         elseif n <= SMALL_FILT_CUTOFF
-            vtup = ntuple(j -> VecElement(@inbounds(b[j])), Val(n))
-            si .= getfield.(_filt_fir!(out, vtup, x, si, 1), :value)
+            vtup = ntuple(j -> @inbounds(b[j]), Val(n))
+            si .= getfield.(_filt_fir!(out, vtup, x, si, Val(:DF2)), :value)
         else
             _filt_fir!(out, b, x, si, 1)
         end

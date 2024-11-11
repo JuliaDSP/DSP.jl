@@ -116,29 +116,31 @@ end
 # Fragile because of the impact of @inbounds and checkbounds
 # on the effects system
 
-const SMALL_FILT_VECT_CUTOFF = 18
+const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, colv) where {N,T}
     silen = N - 1
     si_end = Symbol(:si_, silen)
 
     quote
+        col = colv isa Val{:DF2} ? 1 : colv
+        N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
-        checkbounds(x, :, col)
-        size(x) == size(out) || throw(DimensionMismatch("size(x) != size(out)"))
         for i in axes(x, 1)
             xi = x[i, col]
-            val = muladd(xi, b[1].value, si_1)
-            Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1].value, si_{j + 1}))
-            $si_end = xi * b[N].value
+            val = muladd(xi, b[1], si_1)
+            Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
+            $si_end = xi * b[N]
             if N > SMALL_FILT_VECT_CUTOFF
                 @inbounds out[i, col] = val
             else
                 out[i, col] = val
             end
         end
-        return Base.@ntuple $silen j -> VecElement(si_j)
+        if colv isa Val{:DF2}
+            return Base.@ntuple $silen j -> VecElement(si_j)
+        end
     end
 end
 
@@ -149,7 +151,7 @@ function _small_filt_fir!(
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
-    b = ntuple(j -> VecElement(h[j]), Val(bs))
+    b = ntuple(j -> h[j], Val(bs))
     for col in axes(x, 2)
         v_si = N > 1 ? view(si, :, col) : si
         _filt_fir!(out, b, x, v_si, col)
