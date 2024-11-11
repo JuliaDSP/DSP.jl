@@ -1,3 +1,7 @@
+# deprecations in 0.8
+import .Util.nextfastfft
+@deprecate nextfastfft(ns...) nextfastfft.(ns) false
+
 # deprecations after 0.6
 @deprecate freqz(filter::FilterCoefficients{:z}) freqresp(filter, range(0, stop=π, length=250))
 @deprecate freqz(filter::FilterCoefficients{:z}, w) freqresp(filter, w)
