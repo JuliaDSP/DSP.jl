@@ -198,13 +198,14 @@ end
                624 1388 1778 2082 2190 2298 2406 1638 688 280;
                354 785 1001 1167 1221 1275 1329 903 379 154;
                132 292 371 431 449 467 485 329 138 56]
-        @test_broken conv(u, v, A) == exp
+        @test_broken conv(u, transpose(v), A) == exp
 
         fu = convert(Array{Float64}, u)
         fv = convert(Array{Float64}, v)
         fA = convert(Array{Float64}, A)
         fexp = convert(Array{Float64}, exp)
-        @test conv(fu, fv, fA) ≈ fexp
+        @test @test_deprecated(conv(fu, fv, fA)) ≈ fexp
+        @test conv(fu, transpose(fv), fA) ≈ fexp
 
     end
 
