@@ -151,16 +151,16 @@ complex, the algorithm is [^Quinn2009].
 [^Quinn2009]: B Quinn, "Recent advances in rapid frequency estimation", Digital
     Signal Processing, Vol. 19 (2009), Elsevier.
 """
-quinn(x ; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0 ; kwargs...)
+quinn(x; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0; kwargs...)
 
-quinn(x, Fs ; kwargs...) = quinn(x, jacobsen(x, Fs), Fs ; kwargs...)
+quinn(x, Fs; kwargs...) = quinn(x, jacobsen(x, Fs), Fs; kwargs...)
 
-function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
-    fₙ = Fs/2
+function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
+    fₙ = Fs / 2
     N = length(x)
 
     # Run a quick estimate of largest sinusoid in x
-    ω̂ = π*f0/fₙ
+    ω̂ = π * f0 / fₙ
 
     # remove DC
     x .= x .- mean(x)
@@ -171,61 +171,59 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
     # iteration
     ξ = zeros(eltype(x), N)
     β = zero(eltype(x))
+    ξ[1] = x[1]
+    ξ[2] = muladd(α, ξ[1], x[2])
     iter = 0
-    @inbounds while iter < maxiters
-        iter += 1
-        ξ[1] = x[1]
-        ξ[2] = x[2] + α*ξ[1]
+    for outer iter = 1:maxiters
         for t in 3:N
-            ξ[t] = x[t] + α*ξ[t-1] - ξ[t-2]
+            ξ[t] = x[t] + muladd(α, ξ[t-1], -ξ[t-2])
         end
-        β = ξ[2]/ξ[1]
+        β = ξ[2] / ξ[1]
         for t = 3:N
-            β += (ξ[t]+ξ[t-2])*ξ[t-1]
+            β = muladd(ξ[t] + ξ[t-2], ξ[t-1], β)
         end
-        β = β/(ξ[1:end-1]'*ξ[1:end-1])
+        β /= sum(abs2, @view ξ[1:end-1])
         abs(α - β) < tol && break
-        α = 2β-α
+        α = 2β - α
     end
 
-    fₙ*acos(0.5*β)/π, iter == maxiters
+    fₙ * acos(0.5 * β) / π, iter == maxiters
 end
 
-function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
-    fₙ = Fs/2
+function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
+    fₙ = Fs / 2
     N = length(x)
 
-    ω̂ = π*f0/fₙ
+    ω̂ = π * f0 / fₙ
 
     # Remove any DC term in x
     x .= x .- mean(x)
 
     # iteration
     ξ = zeros(eltype(x), N)
+    # step 2
+    ξ[1] = x[1]
     iter = 0
-    @inbounds while iter < maxiters
-        iter += 1
-        # step 2
-        ξ[1] = x[1]
+    for outer iter = 1:maxiters
         for t in 2:N
-            ξ[t] = x[t] + exp(complex(0,ω̂))*ξ[t-1]
+            ξ[t] = x[t] + cis(ω̂) * ξ[t-1]
         end
         # step 3
-        S = let s = 0.0
-                for t=2:N
-                    s += x[t]*conj(ξ[t-1])
-                end
-                s
+        S = let s = zero(eltype(x))
+            for t = 2:N
+                s += x[t] * conj(ξ[t-1])
             end
-        num = imag(S*cis(-ω̂))
-        den = sum(abs2.(ξ[1:end-1]))
-        ω̂ += 2*num/den
+            s
+        end
+        num = imag(S * cis(-ω̂))
+        den = sum(abs2, @view ξ[1:end-1])
+        ω̂ += 2 * num / den
 
         # stop condition
-        (abs(2*num/den) < tol) && break
+        (abs(2 * num / den) < tol) && break
     end
 
-    fₙ*ω̂/π, iter == maxiters
+    fₙ * ω̂ / π, iter == maxiters
 end
 
 end # end module definition
