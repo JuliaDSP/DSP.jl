@@ -50,7 +50,7 @@ julia> x = 2exp.(1im*2π*true_freq[1]*t) + 5exp.(1im*2π*true_freq[2]*t); # orig
 ```
 Add gaussian noise in complex form to the signal ``x`` to mimic noise corruption.
 ```@example
-julia> noise = randn(Fs, 2)*[1; 1im];    # complex random noise 
+julia> noise = randn(Fs, 2)*[1; 1im];    # complex random noise
 julia> x += noise;                       # add noise to signal x
 ```
 Run the ESPRIT algorithm to retrieve approximate frequencies.
@@ -67,11 +67,11 @@ julia> esprit(x, M, p, Fs)
 function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
     count(!isone, size(x)) <= 1 || throw(ArgumentError("`x` must be a 1D signal"))
     N = length(x)
-    X = x[ (1:M) .+ (0:N-M)' ]
+    X = getindex.((x,), (1:M) .+ (0:N-M)')
     U, _ = svd(X)
     D, _ = eigen( U[1:end-1, 1:p] \ U[2:end, 1:p] )
 
-    angle.(D)*Fs/2π
+    return (angle.(D) .* Fs ./ 2π)
 end
 
 """
