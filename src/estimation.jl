@@ -175,11 +175,9 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Intege
     iter = 0
     for outer iter = 1:maxiters
         ξ[2] = muladd(α, ξ[1], x[2])
+        β = ξ[2] / ξ[1]
         for t in 3:N
             ξ[t] = x[t] + muladd(α, ξ[t-1], -ξ[t-2])
-        end
-        β = ξ[2] / ξ[1]
-        for t = 3:N
             β = muladd(ξ[t] + ξ[t-2], ξ[t-1], β)
         end
         β /= sum(abs2, @view ξ[1:end-1])
@@ -205,15 +203,11 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Int
     ξ[1] = x[1]
     iter = 0
     for outer iter = 1:maxiters
+        S = zero(eltype(x))
         for t in 2:N
             ξ[t] = x[t] + cis(ω̂) * ξ[t-1]
-        end
-        # step 3
-        S = let s = zero(eltype(x))
-            for t = 2:N
-                s += x[t] * conj(ξ[t-1])
-            end
-            s
+            # step 3
+            S += x[t] * conj(ξ[t-1])
         end
         num = imag(S * cis(-ω̂))
         den = sum(abs2, @view ξ[1:end-1])
