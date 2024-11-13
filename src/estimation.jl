@@ -172,9 +172,9 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Intege
     ξ = zeros(eltype(x), N)
     β = zero(eltype(x))
     ξ[1] = x[1]
-    ξ[2] = muladd(α, ξ[1], x[2])
     iter = 0
     for outer iter = 1:maxiters
+        ξ[2] = muladd(α, ξ[1], x[2])
         for t in 3:N
             ξ[t] = x[t] + muladd(α, ξ[t-1], -ξ[t-2])
         end
