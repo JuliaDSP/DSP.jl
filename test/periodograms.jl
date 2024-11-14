@@ -106,31 +106,37 @@ end
                     4.0,
                     13.656854249492380]
     @test power(periodogram(data, onesided=false)) ≈ data0
-    @test power(welch_pgram(data, length(data), 0, onesided=false)) ≈ data0
+    @test power(@test_deprecated welch_pgram(data, length(data), 0, onesided=false)) ≈ data0
+    @test power(welch_pgram(data, length(data), 0, onesided=false, window=nothing)) ≈ data0
     @test power(spectrogram(data, length(data), 0, onesided=false)) ≈ data0
     @test power(periodogram(complex.([data;], [data;]), onesided=false)) ≈ data0*2
-    @test power(welch_pgram(complex.([data;], [data;]), length(data), 0, onesided=false)) ≈ data0*2
+    @test power(@test_deprecated welch_pgram(complex.([data;], [data;]), length(data), 0, onesided=false)) ≈ data0*2
+    @test power(welch_pgram(complex.([data;], [data;]), length(data), 0, onesided=false, window=nothing)) ≈ data0*2
     @test power(spectrogram(complex.([data;], [data;]), length(data), 0, onesided=false)) ≈ data0*2
 
     # # ~~~~~~~~ Tests with no window ~~~~~~~~~~~~~~~~~~~
     # Matlab: p = pwelch(0:7, [1, 1], 0, 2, 1, 'twosided')
     expected = Float64[34.5, 0.5]
-    @test power(welch_pgram(data, 2, 0; onesided=false)) ≈ expected
+    @test power(@test_deprecated welch_pgram(data, 2, 0; onesided=false)) ≈ expected
+    @test power(welch_pgram(data, 2, 0; onesided=false, window=nothing)) ≈ expected
     @test mean(power(spectrogram(data, 2, 0; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1], 0, 3, 1, 'twosided')
     expected = Float64[25.5, 1.0, 1.0]
-    @test power(welch_pgram(data, 3, 0; onesided=false)) ≈ expected
+    @test power(@test_deprecated welch_pgram(data, 3, 0; onesided=false)) ≈ expected
+    @test power(welch_pgram(data, 3, 0; onesided=false, window=nothing)) ≈ expected
     @test mean(power(spectrogram(data, 3, 0; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1], 1, 3, 1, 'twosided')
     expected = Float64[35.0, 1.0, 1.0]
-    @test power(welch_pgram(data, 3, 1; onesided=false)) ≈ expected
+    @test power(@test_deprecated welch_pgram(data, 3, 1; onesided=false)) ≈ expected
+    @test power(welch_pgram(data, 3, 1; onesided=false, window=nothing)) ≈ expected
     @test mean(power(spectrogram(data, 3, 1; onesided=false)), dims=2) ≈ expected
 
     # Matlab: p = pwelch(0:7, [1, 1, 1, 1], 1, 4, 1, 'twosided')
     expected = Float64[45, 2, 1, 2]
-    @test power(welch_pgram(data, 4, 1; onesided=false)) ≈ expected
+    @test power(@test_deprecated welch_pgram(data, 4, 1; onesided=false)) ≈ expected
+    @test power(welch_pgram(data, 4, 1; onesided=false, window=nothing)) ≈ expected
     @test mean(power(spectrogram(data, 4, 1; onesided=false)), dims=2) ≈ expected
 
     # ~~~~~~~~~~~ This one tests periodogram ~~~~~~~~~~~~
@@ -189,7 +195,8 @@ end
                        2
     ]
     @test power(periodogram(data; nfft=32)) ≈ expected
-    @test power(welch_pgram(data, length(data), 0; nfft=32)) ≈ expected
+    @test power(@test_deprecated welch_pgram(data, length(data), 0; nfft=32)) ≈ expected
+    @test power(welch_pgram(data, length(data), 0; nfft=32, window=nothing)) ≈ expected
     @test power(spectrogram(data, length(data), 0; nfft=32)) ≈ expected
 
     # Padded periodogram with window
