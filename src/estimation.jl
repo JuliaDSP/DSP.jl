@@ -199,17 +199,16 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Int
 
     # iteration
     ξ = zeros(eltype(x), N)
-    # step 2
     ξ[1] = x[1]
     iter = 0
     for outer iter = 1:maxiters
         S = zero(eltype(x))
+        cisω̂ = cis(ω̂)
         for t in 2:N
-            ξ[t] = x[t] + cis(ω̂) * ξ[t-1]
-            # step 3
-            S += x[t] * conj(ξ[t-1])
+            ξ[t] = x[t] + cisω̂ * ξ[t-1] # step 2
+            S += x[t] * conj(ξ[t-1])    # step 3
         end
-        num = imag(S * cis(-ω̂))
+        num = imag(S * conj(cisω̂))
         den = sum(abs2, @view ξ[1:end-1])
         ω̂ += 2 * num / den
 
