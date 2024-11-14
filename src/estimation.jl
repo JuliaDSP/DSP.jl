@@ -78,15 +78,14 @@ end
     jacobsen(x::AbstractVector, Fs::Real = 1.0)
 
 Estimate the largest frequency in the complex signal `x` using Jacobsen's
-algorithm [^Jacobsen2007]. Argument `Fs` is the sampling frequency.  All
-frequencies are expressed in Hz.
+algorithm [^Jacobsen2007]. Argument `Fs` is the sampling frequency.
+All frequencies are expressed in Hz.
 
 If the signal `x` is real, the estimated frequency is guaranteed to be
 positive, but it may be highly inaccurate (especially for frequencies close to
 zero or to `Fs/2`).
 
-If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
-1.0`.
+If the sampling frequency `Fs` is not provided, then it is assumed that `Fs = 1.0`.
 
 [^Jacobsen2007]: E Jacobsen and P Kootsookos, "Fast, Accurate Frequency Estimators", Chapter
     10 in "Streamlining Digital Signal Processing", edited by R. Lyons, 2007, IEEE Press.
@@ -133,7 +132,7 @@ is assumed that `Fs = 1.0`.
 
 The following keyword arguments control the algorithm's behavior:
 
-- `tol`: the algorithm stops when the absolut value of the difference between
+- `tol`: the algorithm stops when the absolute value of the difference between
    two consecutive estimates is less than `tol`. Defaults to `1e-6`.
 - `maxiters`: the maximum number of iterations to run. Defaults to `20`.
 
@@ -157,13 +156,13 @@ quinn(x, Fs; kwargs...) = quinn(x, jacobsen(x, Fs), Fs; kwargs...)
 
 function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
     fₙ = Fs / 2
-    N = length(x)
 
     # Run a quick estimate of largest sinusoid in x
     ω̂ = π * f0 / fₙ
 
     # remove DC
-    x .= x .- mean(x)
+    x = x .- mean(x)
+    N = length(x)
 
     # Initialize algorithm
     α = 2cos(ω̂)
@@ -190,12 +189,12 @@ end
 
 function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
     fₙ = Fs / 2
-    N = length(x)
 
     ω̂ = π * f0 / fₙ
 
-    # Remove any DC term in x
-    x .= x .- mean(x)
+    # Remove any DC term in s
+    x = x .- mean(x)
+    N = length(x)
 
     # iteration
     ξ = zeros(eltype(x), N)
