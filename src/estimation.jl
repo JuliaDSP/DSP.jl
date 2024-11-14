@@ -71,7 +71,7 @@ function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
     U, _ = svd(X)
     D, _ = eigen( U[1:end-1, 1:p] \ U[2:end, 1:p] )
 
-    return (angle.(D) .* Fs ./ 2π)
+    return angle.(D) .* (Fs / 2π)
 end
 
 """
