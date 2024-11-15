@@ -50,7 +50,7 @@ julia> x = 2exp.(1im*2π*true_freq[1]*t) + 5exp.(1im*2π*true_freq[2]*t); # orig
 ```
 Add gaussian noise in complex form to the signal ``x`` to mimic noise corruption.
 ```@example
-julia> noise = randn(Fs, 2)*[1; 1im];    # complex random noise 
+julia> noise = randn(Fs, 2)*[1; 1im];    # complex random noise
 julia> x += noise;                       # add noise to signal x
 ```
 Run the ESPRIT algorithm to retrieve approximate frequencies.
@@ -67,26 +67,25 @@ julia> esprit(x, M, p, Fs)
 function esprit(x::AbstractArray, M::Integer, p::Integer, Fs::Real=1.0)
     count(!isone, size(x)) <= 1 || throw(ArgumentError("`x` must be a 1D signal"))
     N = length(x)
-    X = x[ (1:M) .+ (0:N-M)' ]
+    X = getindex.((x,), (1:M) .+ (0:N-M)')
     U, _ = svd(X)
     D, _ = eigen( U[1:end-1, 1:p] \ U[2:end, 1:p] )
 
-    angle.(D)*Fs/2π
+    return angle.(D) .* (Fs / 2π)
 end
 
 """
     jacobsen(x::AbstractVector, Fs::Real = 1.0)
 
 Estimate the largest frequency in the complex signal `x` using Jacobsen's
-algorithm [^Jacobsen2007]. Argument `Fs` is the sampling frequency.  All
-frequencies are expressed in Hz.
+algorithm [^Jacobsen2007]. Argument `Fs` is the sampling frequency.
+All frequencies are expressed in Hz.
 
 If the signal `x` is real, the estimated frequency is guaranteed to be
 positive, but it may be highly inaccurate (especially for frequencies close to
 zero or to `Fs/2`).
 
-If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
-1.0`.
+If the sampling frequency `Fs` is not provided, then it is assumed that `Fs = 1.0`.
 
 [^Jacobsen2007]: E Jacobsen and P Kootsookos, "Fast, Accurate Frequency Estimators", Chapter
     10 in "Streamlining Digital Signal Processing", edited by R. Lyons, 2007, IEEE Press.
@@ -94,7 +93,7 @@ If the sampling frequency `Fs` is not provided, then it is assumed that `Fs =
 function jacobsen(x::AbstractVector, Fs::Real = 1.0)
     N = length(x)
     X = fft(x)
-    k = argmax(abs.(X)) # index of DFT peak
+    k = findmax(abs, X)[2]  # index of DFT peak
     fpeak = fftfreq(N, Fs)[k]  # peak frequency
     if (k == N)     # k+1 is OOB -- X[k+1] = X[1]
         Xkm1 = X[N-1]
@@ -133,7 +132,7 @@ is assumed that `Fs = 1.0`.
 
 The following keyword arguments control the algorithm's behavior:
 
-- `tol`: the algorithm stops when the absolut value of the difference between
+- `tol`: the algorithm stops when the absolute value of the difference between
    two consecutive estimates is less than `tol`. Defaults to `1e-6`.
 - `maxiters`: the maximum number of iterations to run. Defaults to `20`.
 
@@ -151,19 +150,19 @@ complex, the algorithm is [^Quinn2009].
 [^Quinn2009]: B Quinn, "Recent advances in rapid frequency estimation", Digital
     Signal Processing, Vol. 19 (2009), Elsevier.
 """
-quinn(x ; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0 ; kwargs...)
+quinn(x; kwargs...) = quinn(x, jacobsen(x, 1.0), 1.0; kwargs...)
 
-quinn(x, Fs ; kwargs...) = quinn(x, jacobsen(x, Fs), Fs ; kwargs...)
+quinn(x, Fs; kwargs...) = quinn(x, jacobsen(x, Fs), Fs; kwargs...)
 
-function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
-    fₙ = Fs/2
-    N = length(x)
+function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
+    fₙ = Fs / 2
 
     # Run a quick estimate of largest sinusoid in x
-    ω̂ = π*f0/fₙ
+    ω̂ = π * f0 / fₙ
 
     # remove DC
-    x .= x .- mean(x)
+    x = x .- mean(x)
+    N = length(x)
 
     # Initialize algorithm
     α = 2cos(ω̂)
@@ -171,61 +170,52 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20
     # iteration
     ξ = zeros(eltype(x), N)
     β = zero(eltype(x))
+    ξ[1] = x[1]
     iter = 0
-    @inbounds while iter < maxiters
-        iter += 1
-        ξ[1] = x[1]
-        ξ[2] = x[2] + α*ξ[1]
+    for outer iter = 1:maxiters
+        ξ[2] = muladd(α, ξ[1], x[2])
+        β = ξ[2] / ξ[1]
         for t in 3:N
-            ξ[t] = x[t] + α*ξ[t-1] - ξ[t-2]
+            ξ[t] = x[t] + muladd(α, ξ[t-1], -ξ[t-2])
+            β = muladd(ξ[t] + ξ[t-2], ξ[t-1], β)
         end
-        β = ξ[2]/ξ[1]
-        for t = 3:N
-            β += (ξ[t]+ξ[t-2])*ξ[t-1]
-        end
-        β = β/(ξ[1:end-1]'*ξ[1:end-1])
+        β /= sum(abs2, @view ξ[1:end-1])
         abs(α - β) < tol && break
-        α = 2β-α
+        α = 2β - α
     end
 
-    fₙ*acos(0.5*β)/π, iter == maxiters
+    fₙ * acos(0.5 * β) / π, iter == maxiters
 end
 
-function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real ; tol = 1e-6, maxiters = 20)
-    fₙ = Fs/2
+function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Integer=20)
+    fₙ = Fs / 2
+
+    ω̂ = π * f0 / fₙ
+
+    # Remove any DC term in s
+    x = x .- mean(x)
     N = length(x)
-
-    ω̂ = π*f0/fₙ
-
-    # Remove any DC term in x
-    x .= x .- mean(x)
 
     # iteration
     ξ = zeros(eltype(x), N)
+    ξ[1] = x[1]
     iter = 0
-    @inbounds while iter < maxiters
-        iter += 1
-        # step 2
-        ξ[1] = x[1]
+    for outer iter = 1:maxiters
+        S = zero(eltype(x))
+        cisω̂ = cis(ω̂)
         for t in 2:N
-            ξ[t] = x[t] + exp(complex(0,ω̂))*ξ[t-1]
+            ξ[t] = x[t] + cisω̂ * ξ[t-1] # step 2
+            S += x[t] * conj(ξ[t-1])    # step 3
         end
-        # step 3
-        S = let s = 0.0
-                for t=2:N
-                    s += x[t]*conj(ξ[t-1])
-                end
-                s
-            end
-        num = imag(S*cis(-ω̂))
-        den = sum(abs2.(ξ[1:end-1]))
-        ω̂ += 2*num/den
+        num = imag(S * conj(cisω̂))
+        den = sum(abs2, @view ξ[1:end-1])
+        ω̂ += 2 * num / den
 
         # stop condition
-        (abs(2*num/den) < tol) && break
+        (abs(2 * num / den) < tol) && break
     end
 
-    fₙ*ω̂/π, iter == maxiters
+    fₙ * ω̂ / π, iter == maxiters
 end
 
 end # end module definition
