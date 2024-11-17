@@ -6,6 +6,8 @@ on:
 jobs:
   delete-preview:
     name: Delete preview deployment
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
