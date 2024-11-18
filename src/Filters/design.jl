@@ -38,7 +38,7 @@ Butterworth(n::Integer) = Butterworth(Float64, n)
 
 function chebyshev_poles(::Type{T}, n::Integer, ε::Real) where {T<:Real}
     p = Vector{Complex{T}}(undef, n)
-    μ = asinh(convert(T, 1)/ε)/n
+    μ = asinh(one(T) / ε) / n
     b = -sinh(μ)
     c = cosh(μ)
     for i = 1:n÷2
@@ -60,7 +60,7 @@ function Chebyshev1(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || throw(DomainError(n, "n must be positive"))
     ripple >= 0 || throw(DomainError(ripple, "ripple must be non-negative"))
 
-    ε = sqrt(10^(convert(T, ripple)/10)-1)
+    ε = sqrt(exp10(convert(T, ripple) / 10) - 1)
     p = chebyshev_poles(T, n, ε)
     k = one(T)
     for i = 1:n÷2
@@ -86,7 +86,7 @@ function Chebyshev2(::Type{T}, n::Integer, ripple::Real) where {T<:Real}
     n > 0 || throw(DomainError(n, "n must be positive"))
     ripple >= 0 || throw(DomainError(ripple, "ripple must be non-negative"))
 
-    ε = 1/sqrt(10^(convert(T, ripple)/10)-1)
+    ε = 1 / sqrt(exp10(convert(T, ripple) / 10) - 1)
     p = chebyshev_poles(T, n, ε)
     map!(inv, p, p)
 
@@ -163,8 +163,8 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     rp < rs || throw(DomainError(rp, "rp must be less than rs"))
 
     # Eq. (2)
-    εp = sqrt(10^(convert(T, rp)/10)-1)
-    εs = sqrt(10^(convert(T, rs)/10)-1)
+    εp = sqrt(exp10(convert(T, rp) / 10) - 1)
+    εs = sqrt(exp10(convert(T, rs) / 10) - 1)
 
     # Eq. (3)
     k1 = εp/εs
@@ -178,22 +178,22 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
     # Eq. (47)
     k′ = one(T)
     for i = 1:n÷2
-        k′ *= sne(convert(T, 2i-1)/n, k1′_landen)
+        k′ *= sne(convert(T, 2i - 1) / n, k1′_landen)
     end
-    k′ = k1′²^(convert(T, n)/2)*k′^4
+    k′ = k1′²^(convert(T, n) / 2) * k′^4
 
     k = sqrt(1 - abs2(k′))
     k_landen = landen(k)
 
     # Eq. (65)
-    v0 = -im/convert(T, n)*asne(im/εp, k1)
+    v0 = -im / convert(T, n) * asne(im / εp, k1)
 
     z = Vector{Complex{T}}(undef, 2*(n÷2))
     p = Vector{Complex{T}}(undef, n)
     gain = one(T)
     for i = 1:n÷2
         # Eq. (43)
-        w = convert(T, 2i-1)/n
+        w = convert(T, 2i - 1) / n
 
         # Eq. (62)
         ze = complex(zero(T), -inv(k*cde(w, k_landen)))
@@ -213,7 +213,7 @@ function Elliptic(::Type{T}, n::Integer, rp::Real, rs::Real) where {T<:Real}
         p[end] = pole
         gain *= abs(pole)
     else
-        gain *= 10^(-convert(T, rp)/20)
+        gain *= exp10(-convert(T, rp) / 20)
     end
 
     ZeroPoleGain{:s}(z, p, gain)
@@ -407,7 +407,7 @@ function transform_prototype(ftype::Bandstop, proto::ZeroPoleGain{:s})
         newp[2i] = b + pm
     end
 
-    # Any emaining poles/zeros are real and not cancelled
+    # Any remaining poles/zeros are real and not cancelled
     npm = sqrt(-complex(ftype.w2 * ftype.w1))
     for (n, newc) in ((np, newp), (nz, newz))
         for i = n+1:npairs
@@ -476,8 +476,8 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
     ztype = typeof(0 + zero(Z)/fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
 
-    ptype = typeof(0 + zero(P)/fs)
-    p = Vector{typeof(zero(P)/fs)}(undef, length(f.p))
+    ptype = typeof(0 + zero(P) / fs)
+    p = Vector{ptype}(undef, length(f.p))
 
     num = one(one(fs) - one(Z))
     for i = 1:length(f.z)
@@ -534,7 +534,8 @@ function iirnotch(w::Real, bandwidth::Real; fs=2)
     b = 1 / (1 + tanpi(bandwidth / 2))
     # Eq. 8.2.22
     cosw0 = cospi(w)
-    Biquad(b, -2b*cosw0, b, -2b*cosw0, 2b-1)
+    b1 = -2b * cosw0
+    Biquad(b, b1, b, b1, 2b-1)
 end
 
 #
