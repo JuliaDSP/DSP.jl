@@ -57,7 +57,7 @@ end
     @test nextfastfft(65) == 70
     @test nextfastfft(127) == 128
     @test nextfastfft((64,65,127)) == (64,70,128)
-    @test nextfastfft(64,65,127) == nextfastfft((64,65,127))
+    @test @test_deprecated(nextfastfft(64,65,127)) == nextfastfft.((64,65,127))
 end
 
 ## COMMON DSP TOOLS
