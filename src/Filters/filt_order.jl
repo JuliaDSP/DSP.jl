@@ -250,8 +250,8 @@ function buttord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real;
 
     # pre-warp both components, (if Z-domain specified)
     if (domain == :z)
-        Ωp = tan.(π / 2 .* Wps)
-        Ωs = tan.(π / 2 .* Wss)
+        Ωp = tanpi.(Wps ./ 2)
+        Ωs = tanpi.(Wss ./ 2)
     else
         Ωp = Wps
         Ωs = Wss
@@ -298,8 +298,8 @@ function buttord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
 
     if (domain == :z)
         # need to pre-warp since we want to use formulae for analog case.
-        Ωp = tan(π / 2 * Wp)
-        Ωs = tan(π / 2 * Ws)
+        Ωp = tanpi(Wp / 2)
+        Ωs = tanpi(Ws / 2)
     else
         # already analog
         Ωp = Wp
@@ -330,8 +330,8 @@ end
 function ordfreq_est(order_estimate, domain::Symbol, Wp::Real, Ws::Real, Rp::Real, Rs::Real)
     ftype = (Wp < Ws) ? Lowpass : Highpass
     if (domain == :z)
-        Ωp = tan(π / 2 * Wp)
-        Ωs = tan(π / 2 * Ws)
+        Ωp = tanpi(Wp / 2)
+        Ωs = tanpi(Ws / 2)
     else
         Ωp = Wp
         Ωs = Ws
@@ -354,7 +354,7 @@ function ordfreq_est(order_estimate, domain::Symbol,
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
     # pre-warp to analog if z-domain.
-    (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
+    (Ωp, Ωs) = (domain == :z) ? (tanpi.(Wps ./ 2), tanpi.(Wss ./ 2)) : (Wps, Wss)
     if (ftype == Bandpass)
         Wa = muladd.(-Ωp[1], Ωp[2], Ωs .^ 2) ./ (Ωs .* (Ωp[1] - Ωp[2]))
         Ωpadj = Ωp
@@ -410,7 +410,7 @@ the input frequencies as normalized from 0 to 1, where 1 corresponds to π radia
 """
 function cheb2ord(Wp::Real, Ws::Real, Rp::Real, Rs::Real; domain::Symbol=:z)
     ftype = (Wp < Ws) ? Lowpass : Highpass
-    (Ωp, Ωs) = (domain == :z) ? (tan(π / 2 * Wp), tan(π / 2 * Ws)) : (Wp, Ws)
+    (Ωp, Ωs) = (domain == :z) ? (tanpi(Wp / 2), tanpi(Ws / 2)) : (Wp, Ws)
     wa = toprototype(Ωp, Ωs, ftype)
     N = ceil(Int, chebyshev_order_estimate(Rp, Rs, wa))
 
@@ -441,7 +441,7 @@ function cheb2ord(Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real
     Wss = sort_W(Ws)
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
     ftype = (Wps[1] < Wss[1]) ? Bandstop : Bandpass
-    (Ωp, Ωs) = (domain == :z) ? (tan.(π / 2 .* Wps), tan.(π / 2 .* Wss)) : (Wps, Wss)
+    (Ωp, Ωs) = (domain == :z) ? (tanpi.(Wps ./ 2), tanpi.(Wss ./ 2)) : (Wps, Wss)
     if (ftype == Bandpass)
         prod = Ωp[1] * Ωp[2]
         diff = Ωp[1] - Ωp[2]
