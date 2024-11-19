@@ -229,7 +229,7 @@ function setphase!(kernel::FIRArbitrary, ϕ::Real)
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
     kernel.ϕAccumulator = ϕ*(kernel.Nϕ) + 1.0
-    kernel.ϕIdx         = round(kernel.ϕAccumulator)
+    kernel.ϕIdx         = floor(kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
