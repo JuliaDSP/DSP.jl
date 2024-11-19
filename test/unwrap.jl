@@ -1,4 +1,5 @@
 using DSP, Test
+using Random: MersenneTwister
 
 @testset "Unwrap 1D" begin
     @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
