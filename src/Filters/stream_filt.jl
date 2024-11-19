@@ -218,9 +218,9 @@ end
 
 function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
-    (ϕ, xThrowaway) = modf(ϕ)
-    kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕIdx = round(ϕ*(kernel.Nϕ) + 1.0)
+    xThrowaway, ϕIdx = divrem(round(Int, ϕ * kernel.Nϕ), kernel.Nϕ)
+    kernel.inputDeficit += xThrowaway
+    kernel.ϕIdx = ϕIdx + 1
     nothing
 end
 

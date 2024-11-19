@@ -361,3 +361,7 @@ end
         test_rational(h, x, interpolation)
     end
 end
+
+# check that these don't throw; the output should actually probably be longer
+@test resample(1:2, 3, [zeros(2); 1; zeros(3)]) == [1, 0, 0, 2] # [1, 0, 0, 2, 0, 0]
+@test resample(1:2, 3//2, [zeros(2); 1; zeros(3)]) == [1, 0] # [1, 0, 0]
