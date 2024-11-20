@@ -72,12 +72,18 @@ end
 
         offset_arr = OffsetVector{Int}(undef, -1:2)
         offset_arr[:] = a
-        @test conv(offset_arr, 1:3) == OffsetVector(expectation, 0:5)
+        @test_throws ArgumentError conv(offset_arr, 1:3)
+        @test conv(offset_arr, OffsetArray(1:3)) == OffsetVector(expectation, 0:5)
         offset_arr_f = OffsetVector{Float64}(undef, -1:2)
         offset_arr_f[:] = fa
-        @test conv(offset_arr_f, 1:3) ≈ OffsetVector(fexp, 0:5)
+        @test_throws ArgumentError conv(offset_arr_f, 1:3)
+        @test conv(offset_arr_f, OffsetArray(1:3)) ≈ OffsetVector(fexp, 0:5)
         @test_throws ArgumentError conv!(zeros(6), offset_arr, 1:3) # output needs to be OA, too
         @test_throws ArgumentError conv!(OffsetVector{Int}(undef, 1:6), 1:4, 1:3) # output mustn't be OA
+
+        @test conv(fa, fill(true)) == conv(fill(true), fa) == fa
+        @test_broken conv(offset_arr_f, fill(true)) == conv(fill(true), offset_arr_f) == offset_arr_f
+        @test conv(fill(true), fill(true)) == fill(true)
 
         for M in [10, 200], N in [10, 200], T in [Float64, ComplexF64]
             u = rand(T, M)
@@ -156,7 +162,8 @@ end
 
         offset_arr = OffsetMatrix{Int}(undef, -1:1, -1:1)
         offset_arr[:] = a
-        @test conv(offset_arr, b) == OffsetArray(expectation, 0:3, 0:3)
+        @test_throws ArgumentError conv(offset_arr, b)
+        @test conv(offset_arr, OffsetArray(b)) == OffsetArray(expectation, 0:3, 0:3)
 
         for (M1, M2) in [(10, 20), (190, 200)], (N1, N2) in [(20, 10), (210, 200)], T in [Float64, ComplexF64]
             u = rand(T, M1, M2)
