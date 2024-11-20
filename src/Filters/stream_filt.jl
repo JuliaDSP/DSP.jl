@@ -702,11 +702,14 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
 
     # Calculate the number of 0's required
     outLen      = ceil(Int, length(x)*rate)
-    reqInlen    = inputlength(self, outLen)
+    reqInlen    = inputlength(self, outLen, RoundUp)
     reqZerosLen = reqInlen - length(x)
     xPadded     = [x; zeros(eltype(x), reqZerosLen)]
 
-    filt(self, xPadded)
+    y = filt(self, xPadded)
+    @assert length(y) >= outLen
+    length(y) > outLen && resize!(y, outLen)
+    return y
 end
 
 function resample(x::AbstractVector, rate::Real)

@@ -100,10 +100,10 @@ end
 @testset "arbitrary ratio" begin
     # https://github.com/JuliaDSP/DSP.jl/issues/317
     @testset "Buffer length calculation" begin
-        @test length(resample(sin.(1:1:35546),  1/55.55)) == 641
-        @test length(resample(randn(1822), 0.9802414928649835)) == 1787
-        @test length(resample(1:16_367_000*2, 10_000_000/16_367_000)) == 20_000_001
-        @test resample(zeros(1000), 0.012) == zeros(13)
+        @test length(resample(sin.(1:1:35546),  1/55.55)) == 640
+        @test length(resample(randn(1822), 0.9802414928649835)) == 1786
+        @test length(resample(1:16_367_000*2, 10_000_000/16_367_000)) == 20_000_000
+        @test resample(zeros(1000), 0.012) == zeros(12)
     end
 end
 
