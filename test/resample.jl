@@ -151,3 +151,35 @@ end
         @test isapprox(rc, Nϕ/2, rtol=0.001)
     end
 end
+
+@testset "inputlength" begin
+    # FIRDecimator, FIRInterpolator, FIRRational
+    for _ in 1:1000
+        M=rand(1:10)//rand(1:10)
+        H=FIRFilter(zeros(rand(1:100)), M)
+        if M != 1
+            setphase!(H, 10*rand())
+        end
+        yL = rand(1:100)
+        @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
+        @test outputlength(H, inputlength(H, yL, RoundUp)-1) < yL <= outputlength(H, inputlength(H, yL, RoundUp))
+    end
+
+    # FIRArbitrary
+    for _ in 1:1000
+        M = 10*rand()
+        H = FIRFilter(zeros(rand(1:100)), M)
+        setphase!(H, 10*rand())
+        yL = rand(1:100)
+        @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
+        @test outputlength(H, inputlength(H, yL, RoundUp)-1) < yL <= outputlength(H, inputlength(H, yL, RoundUp))
+    end
+    let
+        M = 2.0
+        H = FIRFilter(resample_filter(M), M)
+        setphase!(H, timedelay(H))
+        yL = 200
+        @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
+        @test outputlength(H, inputlength(H, yL, RoundUp)-1) < yL <= outputlength(H, inputlength(H, yL, RoundUp))
+    end
+end

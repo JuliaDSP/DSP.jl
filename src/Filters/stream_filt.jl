@@ -347,43 +347,47 @@ end
 #
 # Calculates the input length of a multirate filtering operation,
 # given the output length
+# With RoundDown, inputlength returns the largest input length such that the
+# actual output length will be at most the given one.
+# With RoundUp, inputlength returns the shortest input length such that the
+# actual output length will be at least the given one.
 #
 
-function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer)
+function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer, r::RoundingMode=RoundDown)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
-    inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
-    floor(Int, inLen)
+    d             = r == RoundUp || r == RoundFromZero ? decimation : 1
+    inLen         = (outputlength * decimation + initialϕ - d) / interpolation
+    round(Int, inLen, r)
 end
 
-function inputlength(::FIRStandard, outputlength::Integer)
+function inputlength(::FIRStandard, outputlength::Integer, ::RoundingMode=RoundDown)
     outputlength
 end
 
-function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx)
+function inputlength(kernel::FIRInterpolator, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRDecimator, outputlength::Integer)
-    inLen  = inputlength(outputlength, 1//kernel.decimation, 1)
+function inputlength(kernel::FIRDecimator, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen  = inputlength(outputlength, 1//kernel.decimation, 1, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRRational, outputlength::Integer)
-    inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
-    inLen += kernel.inputDeficit - 1
-
-end
-
-# TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
-function inputlength(kernel::FIRArbitrary, outputlength::Integer)
-    inLen  = floor(Int, (outputlength + (1 - kernel.ϕAccumulator) / kernel.Δ)/kernel.rate)
+function inputlength(kernel::FIRRational, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(self::FIRFilter, outputlength::Integer)
-    inputlength(self.kernel, outputlength)
+function inputlength(kernel::FIRArbitrary, outputlength::Integer, r::RoundingMode=RoundDown)
+    d      = r == RoundUp || r == RoundFromZero ? 1 : 0
+    inLen  = floor(Int, (outputlength - d + (kernel.ϕAccumulator - 1) / kernel.Δ)/kernel.rate) + d
+    inLen += kernel.inputDeficit - 1
+end
+
+function inputlength(self::FIRFilter, outputlength::Integer, r::RoundingMode=RoundDown)
+    inputlength(self.kernel, outputlength, r)
 end
 
 
