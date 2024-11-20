@@ -332,7 +332,7 @@ function outputlength(kernel::FIRDecimator, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRRational, inputlength::Integer)
-    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, 1)
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
 end
 
 function outputlength(kernel::FIRArbitrary, inputlength::Integer)
@@ -645,7 +645,11 @@ function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKe
     buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    if Tk <: FIRArbitrary
+        samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    else
+        @assert samplesWritten == bufLen
+    end
 
     return buffer
 end
