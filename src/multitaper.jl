@@ -119,7 +119,7 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing
     n_samples > 0 || throw(ArgumentError("`n_samples` must be positive"))
     nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
     freq = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
-    fft_input_tmp = Vector{T}(undef, nfft)
+    fft_input_tmp = zeros(T, nfft)
     fft_output_tmp = Vector{fftouttype(T)}(undef, length(freq))
     plan = onesided ? plan_rfft(fft_input_tmp; flags=fft_flags) :
            plan_fft(fft_input_tmp; flags=fft_flags)
@@ -146,7 +146,6 @@ function mt_fft_tapered!(fft_output, signal, taper_index, config)
     @inbounds for i in eachindex(signal)
         fft_input[i] = config.window[i, taper_index] * signal[i]
     end
-    fft_input[(length(signal) + 1):(config.nfft)] .= 0
 
     # do the FFT
     mul!(fft_output, config.plan, fft_input)
@@ -712,9 +711,9 @@ function coherence_from_cs!(output::AbstractArray{T}, cs_matrix) where T
                 ch2 in 1:n_channels,
                 ch1 in (ch2 + 1):n_channels # lower triangular matrix
 
-        output[ch1, ch2, f] += abs(cs_matrix[ch1, ch2, f]) /
-                                 sqrt(real(cs_matrix[ch1, ch1, f] *
-                                       cs_matrix[ch2, ch2, f]))
+        output[ch1, ch2, f] = abs(cs_matrix[ch1, ch2, f]) /
+                                sqrt(real(cs_matrix[ch1, ch1, f] *
+                                    cs_matrix[ch2, ch2, f]))
     end
     output .+= PermutedDimsArray(output, (2, 1, 3)) # symmetrize
     # diagonal elements should be `1` for any frequency
