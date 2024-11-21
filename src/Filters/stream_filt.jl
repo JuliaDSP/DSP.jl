@@ -336,7 +336,7 @@ function outputlength(kernel::FIRRational, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRArbitrary, inputlength::Integer)
-    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
+    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate - (kernel.ϕAccumulator - 1) / kernel.Δ)
 end
 
 function outputlength(self::FIRFilter, inputlength::Integer)
@@ -378,7 +378,7 @@ end
 
 # TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
 function inputlength(kernel::FIRArbitrary, outputlength::Integer)
-    inLen  = floor(Int, outputlength/kernel.rate)
+    inLen  = floor(Int, (outputlength + (1 - kernel.ϕAccumulator) / kernel.Δ)/kernel.rate)
     inLen += kernel.inputDeficit - 1
 end
 
