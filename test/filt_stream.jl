@@ -361,3 +361,15 @@ end
         test_rational(h, x, interpolation)
     end
 end
+
+# check that these don't throw; the output should actually probably be longer
+@test resample(1:2, 3, [zeros(2); 1; zeros(3)]) == [1, 0, 0, 2] # [1, 0, 0, 2, 0, 0]
+@test resample(1:2, 3//2, [zeros(2); 1; zeros(3)]) == [1, 0] # [1, 0, 0]
+let H = FIRFilter(2.22)
+    setphase!(H, 0.99)
+    @test length(filt(H, 1:2)) == 3
+end
+let H = FIRFilter(122.2)
+    setphase!(H, 0.99)
+    @test length(filt(H, 1:2)) == 124
+end
