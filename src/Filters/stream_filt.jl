@@ -210,14 +210,14 @@ end
 # setphase! set's filter kernel phase index
 #
 function setphase!(kernel::FIRDecimator, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     xThrowaway = round(Int, ϕ)
     kernel.inputDeficit += xThrowaway
     nothing
 end
 
 function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     xThrowaway, ϕIdx = divrem(round(Int, ϕ * kernel.Nϕ), kernel.Nϕ)
     kernel.inputDeficit += xThrowaway
     kernel.ϕIdx = ϕIdx + 1
@@ -225,7 +225,7 @@ function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
 end
 
 function setphase!(kernel::FIRArbitrary, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
     kernel.ϕAccumulator = ϕ * kernel.Nϕ
@@ -395,19 +395,10 @@ end
 # Calculates the delay caused by the FIR filter in # samples, at the input sample rate, caused by the filter process
 #
 
-function timedelay(kernel::Union{FIRRational, FIRInterpolator, FIRArbitrary})
-    (kernel.hLen - 1)/(2.0*kernel.Nϕ)
-end
-
-function timedelay(kernel::Union{FIRStandard, FIRDecimator})
-    (kernel.hLen - 1)/2
-end
-
-
-function timedelay(self::FIRFilter)
-    timedelay(self.kernel)
-end
-
+timedelay(kernel::Union{FIRRational,FIRInterpolator,FIRArbitrary}) =
+    (kernel.hLen - 1) / (2 * kernel.Nϕ)
+timedelay(kernel::Union{FIRStandard,FIRDecimator}) = (kernel.hLen - 1) / 2
+timedelay(self::FIRFilter) = timedelay(self.kernel)
 
 #
 # Single rate filtering
