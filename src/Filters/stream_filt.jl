@@ -111,7 +111,7 @@ function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
     tapsPerϕ     = size(pfb, 1)
-    ϕAccumulator = 1.0
+    ϕAccumulator = 0.0
     ϕIdx         = 1
     α            = 0.0
     Δ            = Nϕ/rate
@@ -228,8 +228,8 @@ function setphase!(kernel::FIRArbitrary, ϕ::Real)
     ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕAccumulator = ϕ*(kernel.Nϕ) + 1.0
-    kernel.ϕIdx         = floor(kernel.ϕAccumulator)
+    kernel.ϕAccumulator = ϕ * kernel.Nϕ
+    kernel.ϕIdx         = 1 + floor(Int, kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
@@ -257,7 +257,7 @@ function reset!(kernel::FIRDecimator)
 end
 
 function reset!(kernel::FIRArbitrary)
-    kernel.ϕAccumulator = 1.0
+    kernel.ϕAccumulator = 0.0
     kernel.ϕIdx         = 1
     kernel.α            = 0.0
     kernel.inputDeficit = 1
@@ -336,7 +336,7 @@ function outputlength(kernel::FIRRational, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRArbitrary, inputlength::Integer)
-    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate - (kernel.ϕAccumulator - 1) / kernel.Δ)
+    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate - kernel.ϕAccumulator / kernel.Δ)
 end
 
 function outputlength(self::FIRFilter, inputlength::Integer)
@@ -382,7 +382,7 @@ end
 
 function inputlength(kernel::FIRArbitrary, outputlength::Integer, r::RoundingMode=RoundDown)
     d      = r == RoundUp || r == RoundFromZero ? 1 : 0
-    inLen  = floor(Int, (outputlength - d + (kernel.ϕAccumulator - 1) / kernel.Δ)/kernel.rate) + d
+    inLen  = floor(Int, (outputlength - d + kernel.ϕAccumulator / kernel.Δ)/kernel.rate) + d
     inLen += kernel.inputDeficit - 1
 end
 
@@ -569,18 +569,18 @@ end
 # Arbitrary resampling
 #
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
-#   [1] uses a phase accumilator that increments by Δ (Nϕ/rate)
+#   [1] uses a phase accumulator that increments by Δ (Nϕ/rate)
 
 function update!(kernel::FIRArbitrary)
     kernel.ϕAccumulator += kernel.Δ
 
-    if kernel.ϕAccumulator > kernel.Nϕ
-        kernel.xIdx        += div(kernel.ϕAccumulator-1, kernel.Nϕ)
-        kernel.ϕAccumulator = mod(kernel.ϕAccumulator-1, kernel.Nϕ) + 1
+    if kernel.ϕAccumulator >= kernel.Nϕ
+        Δx, kernel.ϕAccumulator = divrem(kernel.ϕAccumulator, kernel.Nϕ)
+        kernel.xIdx += Int(Δx)
     end
 
-    kernel.ϕIdx = floor(Int, kernel.ϕAccumulator)
-    kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
+    kernel.α, foffset = modf(kernel.ϕAccumulator)
+    kernel.ϕIdx = 1 + Int(foffset)
 end
 
 function filt!(
