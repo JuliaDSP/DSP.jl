@@ -84,17 +84,17 @@ end
     idxLower = round(Int, yLen/3)
     idxUpper = idxLower*2
     yDelta   = abs.(y[idxLower:idxUpper].-yy[idxLower:idxUpper])
-    @test all(map(delta -> abs(delta) < 0.00025, yDelta))
+    @test maximum(yDelta) < 0.00025
 
     # Test Float32 ratio (#302)
     f32_ratio = convert(Float32, ratio)
     f32_y     = resample(x, f32_ratio)
-    ty        = range(0, length=yLen, step=step(tx)/ratio)
+    ty        = range(0, length=yLen, step=step(tx)/f32_ratio)
     yy        = sinpi.(2*ty)
     idxLower  = round(Int, yLen/3)
     idxUpper  = idxLower*2
     yDelta    = abs.(f32_y[idxLower:idxUpper].-yy[idxLower:idxUpper])
-    @test all(map(delta -> abs(delta) < 0.00025, yDelta))
+    @test maximum(yDelta) < 0.00025
 end
 
 @testset "arbitrary ratio" begin
