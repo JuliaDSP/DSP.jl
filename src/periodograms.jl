@@ -581,7 +581,8 @@ end
 
 function welch_config_default_window()
     # deprecation added in 0.8, TODO for 0.9: replace with just `hanning`
-    Base.depwarn("Omitting `window` is deprecated; specify `window=nothing` for the old behaviour or `window=hanning` for the future default.", :WelchConfig)
+    Base.depwarn("Omitting `window` is deprecated; \
+        specify `window=nothing` for the old behaviour or `window=hanning` for the future default.", :WelchConfig)
     return nothing
 end
 
