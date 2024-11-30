@@ -632,7 +632,7 @@ const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
 const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
-function matrix_window(func, dims::Tuple, arg::Union{RealOr2,Nothing}=nothing;
+function matrix_window(func, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,Nothing}=nothing;
         padding::IntegerOr2=0, zerophase::BoolOr2=false)
     length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
     paddings = argdup(padding)
@@ -650,13 +650,13 @@ end
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
              :triang, :bartlett, :bartlett_hann, :blackman)
-    @eval function $func(dims; padding::IntegerOr2=0, zerophase::BoolOr2=false)
+    @eval function $func(dims::Tuple{Integer,Integer}; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims; padding, zerophase)
     end
 end
 
 for func in (:tukey, :gaussian, :kaiser)
-    @eval function $func(dims, arg::RealOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
+    @eval function $func(dims::Tuple{Integer,Integer}, arg::RealOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims, arg; padding, zerophase)
     end
 end
