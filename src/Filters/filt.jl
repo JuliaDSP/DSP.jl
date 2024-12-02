@@ -117,14 +117,16 @@ filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSection
 
 """
     DF2TFilter(coef::FilterCoefficients{:z}[, si])
-    DF2TFilter(coef::FilterCoefficients{:z}[, sitype::Type])
+    DF2TFilter(coef::FilterCoefficients{:z}[, sitype::Type][, coldims::Tuple])
 
 Construct a stateful direct form II transposed filter with
 coefficients `coef`.
 
 One can optionally specify as the second argument either
 - `si`, an array representing the initial filter state, or
-- `sitype`, the eltype of a zeroed `si`
+- `sitype`, the eltype of a zeroed `si` and/or `coldims`, the size of extra dimensions
+  of the input. E.g. to column-wise filter an input with dims `(L, N1, N2)`, set
+  `coldims` to `(N1, N2)`.
 
 The initial filter state defaults to zeros if called with one argument.
 
@@ -159,8 +161,9 @@ DF2TFilter(coef::SecondOrderSections{:z,T,G}, state::S) where {T,G,S<:Array} =
     DF2TFilter{SecondOrderSections{:z,T,G},S}(coef, state)
 
 ## PolynomialRatio
-DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T) where {T,V} =
-    DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1))
+DF2TFilter(coef::PolynomialRatio{:z,T}, coldims::Tuple{Vararg{Integer}}) where {T} = DF2TFilter(coef, T, coldims)
+DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1, coldims...))
 
 function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:PolynomialRatio,Array{T,N}} where T, x::AbstractArray{<:Any, N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
@@ -200,8 +203,9 @@ function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:PolynomialRatio,Arr
 end
 
 ## SecondOrderSections
-DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T) where {T,G,V} =
-    DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads)))
+DF2TFilter(coef::SecondOrderSections{:z,T}, coldims::Tuple{Vararg{Integer}}) where {T} = DF2TFilter(coef, T, coldims)
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,G,V} =
+    DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads), coldims...))
 
 function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:SecondOrderSections,<:Array}, x::AbstractArray{<:Any, N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
@@ -213,8 +217,9 @@ function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:SecondOrderSections
 end
 
 ## Biquad
-DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T) where {T,V} =
-    DF2TFilter(coef, zeros(promote_type(T, V), 2))
+DF2TFilter(coef::Biquad{:z,T}, coldims::Tuple{Vararg{Integer}}) where {T} = DF2TFilter(coef, T, coldims)
+DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,V} =
+    DF2TFilter(coef, zeros(promote_type(T, V), 2, coldims...))
 
 function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:Biquad,Array{T, N}} where T, x::AbstractArray{<:Any, N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
@@ -241,9 +246,7 @@ filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractArray{V}) wh
     filt!(similar(x, promote_type(T, V)), f, x)
 
 # Fall back to SecondOrderSections
-DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
-DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Array,Type}) =
-    DF2TFilter(convert(SecondOrderSections, coef), arg)
+DF2TFilter(coef::FilterCoefficients{:z}, args...) = DF2TFilter(convert(SecondOrderSections, coef), args...)
 
 #
 # filtfilt

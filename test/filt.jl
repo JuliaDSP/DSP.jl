@@ -96,15 +96,15 @@ end
     y_ref = filt(b, a, ones(2*sz[1]))
     x = ones(sz)
 
-    H = DF2TFilter(PolynomialRatio(b, a), zeros(1, sz[2:end]...))
+    H = DF2TFilter(PolynomialRatio(b, a),sz[2:end])
     @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
     @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
 
-    H = DF2TFilter(SecondOrderSections(PolynomialRatio(b, a)), zeros(2, 1, sz[2:end]...))
+    H = DF2TFilter(SecondOrderSections(PolynomialRatio(b, a)), sz[2:end])
     @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
     @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
 
-    H = DF2TFilter(Biquad(PolynomialRatio(b, a)), zeros(2, sz[2:end]...))
+    H = DF2TFilter(Biquad(PolynomialRatio(b, a)), sz[2:end])
     @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
     @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
 end
