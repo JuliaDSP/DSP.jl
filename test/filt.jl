@@ -63,6 +63,18 @@ using DSP, Test, Random, FilterTestHelpers
     @test_nowarn filt(f, s)
 end
 
+@testset "multi-column filt $D-D" for D in 1:4
+     b = [0.1, 0.1]
+     a = [1.0, -0.8]
+     sz = (10, ntuple(n -> n+1, Val(D))...)
+     y_ref = filt(b, a, ones(sz[1]))
+     x = ones(sz)
+     @test all(col -> col ≈ y_ref, eachslice(filt(b, a, x); dims=ntuple(n -> n+1, Val(D))))
+     @test all(col -> col ≈ y_ref, eachslice(filt(PolynomialRatio(b, a), x); dims=ntuple(n -> n+1, Val(D))))
+     @test all(col -> col ≈ y_ref, eachslice(filt(Biquad(PolynomialRatio(b, a)), x); dims=ntuple(n -> n+1, Val(D))))
+     @test all(col -> col ≈ y_ref, eachslice(filt(SecondOrderSections(PolynomialRatio(b, a)), x); dims=ntuple(n -> n+1, Val(D))))
+end
+
 #
 # filtfilt
 #
