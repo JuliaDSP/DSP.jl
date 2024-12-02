@@ -136,37 +136,39 @@ struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
     coef::T
     state::S
 
-    function DF2TFilter{Ti,Si}(coef::PolynomialRatio{:z}, state::Vector) where {Ti,Si}
-        length(state) == max(length(coefa(coef)), length(coefb(coef)))-1 ||
+    function DF2TFilter{Ti,Si}(coef::PolynomialRatio{:z}, state::Array) where {Ti,Si}
+        size(state, 1) == max(length(coefa(coef)), length(coefb(coef)))-1 ||
             throw(ArgumentError("length of state vector must match filter order"))
         new{Ti,Si}(coef, state)
     end
-    function DF2TFilter{Ti,Si}(coef::SecondOrderSections{:z}, state::Matrix) where {Ti,Si}
+    function DF2TFilter{Ti,Si}(coef::SecondOrderSections{:z}, state::Array) where {Ti,Si}
         (size(state, 1) == 2 && size(state, 2) == length(coef.biquads)) ||
             throw(ArgumentError("state must be 2 x nbiquads"))
         new{Ti,Si}(coef, state)
     end
-    function DF2TFilter{Ti,Si}(coef::Biquad{:z}, state::Vector) where {Ti,Si}
-        length(state) == 2 || throw(ArgumentError("length of state must be 2"))
+    function DF2TFilter{Ti,Si}(coef::Biquad{:z}, state::Array) where {Ti,Si}
+        size(state,1) == 2 || throw(ArgumentError("length of state must be 2"))
         new{Ti,Si}(coef, state)
     end
 end
 
-DF2TFilter(coef::Union{PolynomialRatio{:z,T},Biquad{:z,T}}, state::Vector{S}) where {T,S} =
-    DF2TFilter{typeof(coef),Vector{S}}(coef, state)
+DF2TFilter(coef::Union{PolynomialRatio{:z,T},Biquad{:z,T}}, state::S) where {T,S<:Array} =
+    DF2TFilter{typeof(coef),S}(coef, state)
 
-DF2TFilter(coef::SecondOrderSections{:z,T,G}, state::Matrix{S}) where {T,G,S} =
-    DF2TFilter{SecondOrderSections{:z,T,G},Matrix{S}}(coef, state)
+DF2TFilter(coef::SecondOrderSections{:z,T,G}, state::S) where {T,G,S<:Array} =
+    DF2TFilter{SecondOrderSections{:z,T,G},S}(coef, state)
 
 ## PolynomialRatio
 DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T) where {T,V} =
     DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1))
 
-function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x::AbstractVector)
-    length(x) != length(out) && throw(ArgumentError("out size must match x"))
+function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:PolynomialRatio,Array{T,N}} where T, x::AbstractArray{<:Any, N}) where N
+    size(x) != size(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
-    n = length(si) + 1
+    size(x)[2:end] != size(si)[2:end] && throw(ArgumentError("state size must match x"))
+
+    n = size(si, 1) + 1
     b = coefb(f.coef)
     if n == 1
         mul!(out, x, b[1])
@@ -180,12 +182,18 @@ function filt!(out::AbstractVector, f::DF2TFilter{<:PolynomialRatio,<:Vector}, x
             elseif bs < n
                 append!(b, zero(eltype(b)) for _ in 1:(n-bs))
             end
-            _filt_iir!(out, b, a, x, si, 1)
+            for col in CartesianIndices(axes(x)[2:end])
+                _filt_iir!(out, b, a, x, view(si, :, col), col)
+            end
         elseif n <= SMALL_FILT_CUTOFF
             vtup = ntuple(j -> b[j], Val(length(b)))
-            si .= getfield.(_filt_fir!(out, vtup, x, si, Val(:DF2)), :value)
+            for col in CartesianIndices(axes(x)[2:end])
+                si .= getfield.(_filt_fir!(out, vtup, x, view(si, :, col), col, Val(true)), :value)
+            end
         else
-            _filt_fir!(out, b, x, si, 1)
+            for col in CartesianIndices(axes(x)[2:end])
+                _filt_fir!(out, b, x, view(si, :, col), col)
+            end
         end
     end
     return out
@@ -195,25 +203,31 @@ end
 DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T) where {T,G,V} =
     DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads)))
 
-function filt!(out::AbstractVector, f::DF2TFilter{<:SecondOrderSections,<:Matrix}, x::AbstractVector)
-    length(x) != length(out) && throw(ArgumentError("out size must match x"))
-    _filt!(out, f.state, f.coef, x, 1)
-    out
+function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:SecondOrderSections,<:Array}, x::AbstractArray{<:Any, N}) where N
+    size(x) != size(out) && throw(ArgumentError("out size must match x"))
+    size(x)[2:end] != size(f.state)[3:end] && throw(ArgumentError("state size must match x"))
+    for col in CartesianIndices(axes(x)[2:end])
+        _filt!(out, view(f.state, :, :, col), f.coef, x, col)
+    end
+    return out
 end
 
 ## Biquad
 DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T) where {T,V} =
     DF2TFilter(coef, zeros(promote_type(T, V), 2))
 
-function filt!(out::AbstractVector, f::DF2TFilter{<:Biquad,<:Vector}, x::AbstractVector)
-    length(x) != length(out) && throw(ArgumentError("out size must match x"))
+function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:Biquad,Array{T, N}} where T, x::AbstractArray{<:Any, N}) where N
+    size(x) != size(out) && throw(ArgumentError("out size must match x"))
     si = f.state
-    (si[1], si[2]) = _filt!(out, si[1], si[2], f.coef, x, 1)
-    out
+    size(x)[2:end] != size(si)[2:end] && throw(ArgumentError("state size must match x"))
+    for col in CartesianIndices(axes(x)[2:end])
+        (si[1, col], si[2, col]) = _filt!(out, si[1, col], si[2, col], f.coef, x, col)
+    end
+    return out
 end
 
 """
-    filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V}
+    filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractArray{V}) where {T,V}
 
 Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
 
@@ -223,12 +237,12 @@ Apply the [stateful filter](@ref stateful-filter-objects) `f` on `x`.
     For more control over the output type, provide a preallocated
     output array `out` to `filt!(out, f, x)`.
 """
-filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractVector{V}) where {T,V} =
+filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractArray{V}) where {T,V} =
     filt!(similar(x, promote_type(T, V)), f, x)
 
 # Fall back to SecondOrderSections
 DF2TFilter(coef::FilterCoefficients{:z}) = DF2TFilter(convert(SecondOrderSections, coef))
-DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Matrix,Type}) =
+DF2TFilter(coef::FilterCoefficients{:z}, arg::Union{Array,Type}) =
     DF2TFilter(convert(SecondOrderSections, coef), arg)
 
 #

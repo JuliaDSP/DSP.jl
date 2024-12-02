@@ -118,7 +118,7 @@ end
 const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, colv) where {N,T}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, colv, _::Val{AsVecElem}=Val(false)) where {N,T,AsVecElem}
     silen = N - 1
     si_end = Symbol(:si_, silen)
 
@@ -137,7 +137,7 @@ const SMALL_FILT_VECT_CUTOFF = 19
                 out[i, col] = val
             end
         end
-        if colv isa Val{:DF2}
+        if AsVecElem
             return Base.@ntuple $silen j -> VecElement(si_j)
         end
     end
