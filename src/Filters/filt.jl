@@ -191,7 +191,7 @@ function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:PolynomialRatio,Arr
         elseif n <= SMALL_FILT_CUTOFF
             vtup = ntuple(j -> b[j], Val(length(b)))
             for col in CartesianIndices(axes(x)[2:end])
-                si .= getfield.(_filt_fir!(out, vtup, x, view(si, :, col), col, Val(true)), :value)
+                _filt_fir!(out, vtup, x, view(si, :, col), col, Val(true))
             end
         else
             for col in CartesianIndices(axes(x)[2:end])
