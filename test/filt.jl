@@ -80,10 +80,10 @@ end
      @test all(col -> col ≈ y_ref, eachslice(filt(Biquad(PolynomialRatio(b, a)), x); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(filt(SecondOrderSections(PolynomialRatio(b, a)), x); dims=slicedims))
      # with si given
-     @test all(col -> col ≈ y_ref, eachslice(filt(b, a, x, zeros(1, sz[2:end]...)); dims=slicedims))
-     @test all(col -> col ≈ y_ref, eachslice(filt(PolynomialRatio(b, a), x, zeros(1, sz[2:end]...)); dims=slicedims))
-     @test all(col -> col ≈ y_ref, eachslice(filt(Biquad(PolynomialRatio(b, a)), x, zeros(2, sz[2:end]...)); dims=slicedims))
-     @test all(col -> col ≈ y_ref, eachslice(filt(SecondOrderSections(PolynomialRatio(b, a)), x, zeros(2, 1, sz[2:end]...)); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(first(filt(b, a, x, zeros(1, sz[2:end]...))); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(first(filt(PolynomialRatio(b, a), x, zeros(1, sz[2:end]...))); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(first(filt(Biquad(PolynomialRatio(b, a)), x, zeros(2, sz[2:end]...))); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(first(filt(SecondOrderSections(PolynomialRatio(b, a)), x, zeros(2, 1, sz[2:end]...))); dims=slicedims))
      # use _small_filt_fir!
      b = [0.1, 0.1]
      a = [1.0]
@@ -190,6 +190,40 @@ end
     filt!(vec(x), b, a, vec(x), z)
 
     @test matlab_filt ≈ x
+end
+
+@testset "blockwise filt for $T" for T in [PolynomialRatio, ZeroPoleGain, SecondOrderSections], extra_dims in [(), (2,), (2, 3)]
+    x = rand(1000, extra_dims...)
+    H = T(PolynomialRatio([0.1, 0.1], [1, 0.8]))
+    y_ref = filt(H, x)
+    if T == PolynomialRatio
+        state = DSP.Filters._zerosi(H, x)
+    else
+        state = DSP.Filters._zerosi(SecondOrderSections(H), x)
+    end
+    y_test = similar(x)
+    all_cols = map(_ -> :, extra_dims)
+    for i in 1:100:size(x,1)
+        y_test[i:i+99, all_cols...], state = filt(H, x[i:i+99, all_cols...], state)
+    end
+    @test y_ref ≈ y_test
+end
+
+@testset "blockwise filt! for $T" for T in [PolynomialRatio, ZeroPoleGain, SecondOrderSections], extra_dims in [(), (2,), (2, 3)]
+    x = rand(1000, extra_dims...)
+    H = T(PolynomialRatio([0.1, 0.1], [1, 0.8]))
+    y_ref = filt(H, x)
+    if T == PolynomialRatio
+        state = DSP.Filters._zerosi(H, x)
+    else
+        state = DSP.Filters._zerosi(SecondOrderSections(H), x)
+    end
+    y_test = similar(x)
+    all_cols = map(_ -> :, extra_dims)
+    for i in 1:100:size(x,1)
+        _, state = filt!(view(y_test, i:i+99, all_cols...), H, x[i:i+99, all_cols...], state)
+    end
+    @test y_ref ≈ y_test
 end
 
 #######################################

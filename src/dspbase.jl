@@ -16,7 +16,11 @@ state vector `si` (defaults to zeros).
 Inputs that are `Number`s are treated as one-element `Vector`s.
 """
 function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
-              x::AbstractArray{T}, si::AbstractArray{S} = _zerosi(b,a,T)) where {T,S}
+              x::AbstractArray{T}) where {T}
+    first(filt(b, a, x, _zerosi(b,a,T)))
+end
+function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
+    x::AbstractArray{T}, si::AbstractArray{S}) where {T,S}
     filt!(similar(x, promote_type(eltype(b), eltype(a), T, S)), b, a, x, si)
 end
 
@@ -29,8 +33,11 @@ end
 Same as [`filt`](@ref) but writes the result into the `out` argument, which may
 alias the input `x` to modify it in-place.
 """
+filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
+    x::AbstractArray{T}) where {T} =
+    first(filt!(out, b, a, x, _zerosi(b,a,T)))
 function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
-               x::AbstractArray{T}, si::AbstractArray{S,N} = _zerosi(b,a,T)) where {T,S,N}
+               x::AbstractArray{T}, si::AbstractArray{S,N}) where {T,S,N}
     isempty(b) && throw(ArgumentError("filter vector b must be non-empty"))
     isempty(a) && throw(ArgumentError("filter vector a must be non-empty"))
     a[1] == 0  && throw(ArgumentError("filter vector a[1] must be nonzero"))
@@ -49,8 +56,17 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
     end
 
-    iszero(size(x, 1)) && return out
-    isone(sz) && return (k = b[1] / a[1]; @noinline mul!(out, x, k)) # Simple scaling without memory
+    if N > 1
+        si = copy(si)
+    else
+        si = repeat(si, outer=(1, size(x)[2:end]...))
+    end
+
+    iszero(size(x, 1)) && return (out, si)
+    if isone(sz)
+        k = b[1] / a[1]
+        return (@noinline mul!(out, x, k), si) # Simple scaling without memory
+    end
 
     # Filter coefficient normalization
     if !isone(a[1])
@@ -65,19 +81,15 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     if as == 1 && bs <= SMALL_FILT_CUTOFF
         _small_filt_fir!(out, b, x, si, Val(bs))
     else
-        initial_si = si
-        si = similar(si, axes(si, 1))
         for col in CartesianIndices(axes(x)[2:end])
-            # Reset the filter state
-            copyto!(si, view(initial_si, :, N > 1 ? col : CartesianIndex()))
             if as > 1
-                _filt_iir!(out, b, a, x, si, col)
+                _filt_iir!(out, b, a, x, view(si, :, col), col)
             else
-                _filt_fir!(out, b, x, si, col)
+                _filt_fir!(out, b, x, view(si, :, col), col)
             end
         end
     end
-    return out
+    return (out, si)
 end
 
 # Transposed direct form II
@@ -146,13 +158,13 @@ end
 # Convert array filter tap input to tuple for small-filtering
 function _small_filt_fir!(
     out::AbstractArray, h::AbstractVector, x::AbstractArray,
-        si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
+        si::AbstractArray, ::Val{bs}) where {bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
     for col in CartesianIndices(axes(x)[2:end])
-        v_si = N > 1 ? view(si, :, col) : si
+        v_si = view(si, :, col)
         _filt_fir!(out, b, x, v_si, col)
     end
 end

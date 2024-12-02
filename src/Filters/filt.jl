@@ -16,8 +16,7 @@ Same as [`filt()`](@ref) but writes the result into the `out`
 argument. Output array `out` may not be an alias of `x`, i.e. filtering may
 not be done in place.
 """
-filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si=_zerosi(f, x)) =
-    filt!(out, coefb(f), coefa(f), x, si)
+filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si...) = filt!(out, coefb(f), coefa(f), x, si...)
 
 """
     filt(f::FilterCoefficients{:z}, x::AbstractArray[, si])
@@ -32,7 +31,7 @@ to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
 interpreted as an FIR filter, and a naïve or FFT-based algorithm is
 selected based on the data and filter length.
 """
-filt(f::PolynomialRatio{:z}, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+filt(f::PolynomialRatio{:z}, x, si...) = filt(coefb(f), coefa(f), x, si...)
 
 ## SecondOrderSections
 _zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
@@ -58,25 +57,29 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     si
 end
 
+filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray) =
+    first(filt!(out, f, x, _zerosi(f, x)))
 function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
-                    si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
+                    si::AbstractArray{S,N}) where {S,N}
     biquads = f.biquads
 
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && size(si)[3:end] != size(x)[2:end])) &&
         throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
-    initial_si = si
-    si = similar(si, axes(si)[1:2])
-    for col in CartesianIndices(axes(x)[2:end])
-        copyto!(si, view(initial_si, :, :, N > 2 ? col : CartesianIndex()))
-        _filt!(out, si, f, x, col)
+    if N > 2
+        si = copy(si)
+    else
+        si = repeat(si, outer=(1, 1, size(x)[2:end]...))
     end
-    out
+    for col in CartesianIndices(axes(x)[2:end])
+        _filt!(out, view(si, :, :, col), f, x, col)
+    end
+    return (out, si)
 end
 
-filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(similar(x, promote_type(T, G, S)), f, x, si)
+filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si...) where {T,G,S<:Number} =
+    filt!(similar(x, promote_type(T, G, S)), f, x, si...)
 
 ## Biquad
 _zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
@@ -95,25 +98,32 @@ function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
     (si1, si2)
 end
 
+filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray) =
+    first(filt!(out, f, x, _zerosi(f, x)))
 # filt! variant that preserves si
 function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
-                    si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
+                    si::AbstractArray{S,N}) where {S,N}
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
     (size(si, 1) != 2 || (N > 1 && size(si)[2:end] != size(x)[2:end])) &&
         throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
-    for col in CartesianIndices(axes(x)[2:end])
-        _filt!(out, si[1, N > 1 ? col : CartesianIndex()], si[2, N > 1 ? col : CartesianIndex()], f, x, col)
+    if N > 1
+        si = copy(si)
+    else
+        si = repeat(si, outer=(1, size(x)[2:end]...))
     end
-    out
+    for col in CartesianIndices(axes(x)[2:end])
+        si[:,col] .= _filt!(out, si[1, col], si[2, col], f, x, col)
+    end
+    return (out, si)
 end
 
-filt(f::Biquad{:z,T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(similar(x, promote_type(T, S)), f, x, si)
+filt(f::Biquad{:z,T}, x::AbstractArray{S}, si...) where {T,S<:Number} =
+    filt!(similar(x, promote_type(T, S)), f, x, si...)
 
 ## For arbitrary filters, convert to SecondOrderSections
-filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
-filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSections, f), x)
+filt(f::FilterCoefficients{:z}, x, si...) = filt(convert(SecondOrderSections, f), x, si...)
+filt!(out, f::FilterCoefficients{:z}, x, si...) = filt!(out, convert(SecondOrderSections, f), x, si...)
 
 """
     DF2TFilter(coef::FilterCoefficients{:z})
@@ -375,7 +385,7 @@ function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1])))
+        reverse!(first(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))))
         filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
