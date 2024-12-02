@@ -68,7 +68,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     else
         initial_si = si
         si = similar(si, axes(si, 1))
-        for col in axes(x, 2)
+        for col in CartesianIndices(axes(x)[2:end])
             # Reset the filter state
             copyto!(si, view(initial_si, :, N > 1 ? col : 1))
             if as > 1

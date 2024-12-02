@@ -40,7 +40,7 @@ _zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
-                x::AbstractArray, col::Int) where {S,N}
+                x::AbstractArray, col::Union{Int,CartesianIndex}) where {S,N}
     g = f.g
     biquads = f.biquads
     n = length(biquads)
@@ -69,7 +69,7 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
 
     initial_si = si
     si = similar(si, axes(si)[1:2])
-    for col = 1:ncols
+    for col in CartesianIndices(axes(x)[2:end])
         copyto!(si, view(initial_si, :, :, N > 2 ? col : 1))
         _filt!(out, si, f, x, col)
     end
@@ -85,7 +85,7 @@ _zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
-                x::AbstractArray, col::Int)
+                x::AbstractArray, col::Union{Int,CartesianIndex})
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
         yi = muladd(f.b0, xi, si1)
@@ -105,7 +105,7 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
     (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
         throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
-    for col = 1:ncols
+    for col in CartesianIndices(axes(x)[2:end])
         _filt!(out, si[1, N > 1 ? col : 1], si[2, N > 1 ? col : 1], f, x, col)
     end
     out
