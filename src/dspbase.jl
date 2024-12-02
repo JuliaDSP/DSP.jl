@@ -69,7 +69,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         si = similar(si, axes(si, 1))
         for col in CartesianIndices(axes(x)[2:end])
             # Reset the filter state
-            copyto!(si, view(initial_si, :, N > 1 ? col : 1))
+            copyto!(si, view(initial_si, :, N > 1 ? col : CartesianIndex()))
             if as > 1
                 _filt_iir!(out, b, a, x, si, col)
             else
@@ -123,7 +123,7 @@ const SMALL_FILT_VECT_CUTOFF = 19
     si_end = Symbol(:si_, silen)
 
     quote
-        col = colv isa Val{:DF2} ? 1 : colv
+        col = colv isa Val{:DF2} ? CartesianIndex() : colv
         N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
         for i in axes(x, 1)

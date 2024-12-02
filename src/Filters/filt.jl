@@ -69,7 +69,7 @@ function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
     initial_si = si
     si = similar(si, axes(si)[1:2])
     for col in CartesianIndices(axes(x)[2:end])
-        copyto!(si, view(initial_si, :, :, N > 2 ? col : 1))
+        copyto!(si, view(initial_si, :, :, N > 2 ? col : CartesianIndex()))
         _filt!(out, si, f, x, col)
     end
     out
@@ -103,7 +103,7 @@ function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
         throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
     for col in CartesianIndices(axes(x)[2:end])
-        _filt!(out, si[1, N > 1 ? col : 1], si[2, N > 1 ? col : 1], f, x, col)
+        _filt!(out, si[1, N > 1 ? col : CartesianIndex()], si[2, N > 1 ? col : CartesianIndex()], f, x, col)
     end
     out
 end
