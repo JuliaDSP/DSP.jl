@@ -42,11 +42,10 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs = length(b)
     sz = max(as, bs)
     silen = sz - 1
-    ncols = size(x, 2)
 
     if size(si, 1) != silen
         throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
-    elseif N > 1 && size(si, 2) != ncols
+    elseif N > 1 && size(si)[2:end] != size(x)[2:end]
         throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
     end
 

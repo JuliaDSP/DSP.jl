@@ -61,10 +61,9 @@ end
 function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
     biquads = f.biquads
-    ncols = Base.trailingsize(x, 2)
 
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
-    (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && Base.trailingsize(si, 3) != ncols)) &&
+    (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && size(si)[3:end] != size(x)[2:end])) &&
         throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
     initial_si = si
@@ -99,10 +98,8 @@ end
 # filt! variant that preserves si
 function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
                     si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
-    ncols = Base.trailingsize(x, 2)
-
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
-    (size(si, 1) != 2 || (N > 1 && Base.trailingsize(si, 2) != ncols)) &&
+    (size(si, 1) != 2 || (N > 1 && size(si)[2:end] != size(x)[2:end])) &&
         throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
     for col in CartesianIndices(axes(x)[2:end])
