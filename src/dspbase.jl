@@ -152,7 +152,7 @@ function _small_filt_fir!(
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
-    for col in axes(x, 2)
+    for col in CartesianIndices(axes(x)[2:end])
         v_si = N > 1 ? view(si, :, col) : si
         _filt_fir!(out, b, x, v_si, col)
     end
