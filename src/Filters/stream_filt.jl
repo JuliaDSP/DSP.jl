@@ -111,7 +111,7 @@ function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
     tapsPerϕ     = size(pfb, 1)
-    ϕAccumulator = 1.0
+    ϕAccumulator = 0.0
     ϕIdx         = 1
     α            = 0.0
     Δ            = Nϕ/rate
@@ -210,14 +210,14 @@ end
 # setphase! set's filter kernel phase index
 #
 function setphase!(kernel::FIRDecimator, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     xThrowaway = round(Int, ϕ)
     kernel.inputDeficit += xThrowaway
     nothing
 end
 
 function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     xThrowaway, ϕIdx = divrem(round(Int, ϕ * kernel.Nϕ), kernel.Nϕ)
     kernel.inputDeficit += xThrowaway
     kernel.ϕIdx = ϕIdx + 1
@@ -225,11 +225,11 @@ function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
 end
 
 function setphase!(kernel::FIRArbitrary, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(ArgumentError("ϕ must be >= 0"))
+    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
     (ϕ, xThrowaway) = modf(ϕ)
     kernel.inputDeficit += round(Int, xThrowaway)
-    kernel.ϕAccumulator = ϕ*(kernel.Nϕ) + 1.0
-    kernel.ϕIdx         = floor(kernel.ϕAccumulator)
+    kernel.ϕAccumulator = ϕ * kernel.Nϕ
+    kernel.ϕIdx         = 1 + floor(Int, kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
@@ -257,7 +257,7 @@ function reset!(kernel::FIRDecimator)
 end
 
 function reset!(kernel::FIRArbitrary)
-    kernel.ϕAccumulator = 1.0
+    kernel.ϕAccumulator = 0.0
     kernel.ϕIdx         = 1
     kernel.α            = 0.0
     kernel.inputDeficit = 1
@@ -332,11 +332,11 @@ function outputlength(kernel::FIRDecimator, inputlength::Integer)
 end
 
 function outputlength(kernel::FIRRational, inputlength::Integer)
-    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, 1)
+    outputlength(inputlength-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
 end
 
 function outputlength(kernel::FIRArbitrary, inputlength::Integer)
-    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate)
+    ceil(Int, (inputlength-kernel.inputDeficit+1) * kernel.rate - kernel.ϕAccumulator / kernel.Δ)
 end
 
 function outputlength(self::FIRFilter, inputlength::Integer)
@@ -347,43 +347,47 @@ end
 #
 # Calculates the input length of a multirate filtering operation,
 # given the output length
+# With RoundDown, inputlength returns the largest input length such that the
+# actual output length will be at most the given one.
+# With RoundUp, inputlength returns the shortest input length such that the
+# actual output length will be at least the given one.
 #
 
-function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer)
+function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer, r::RoundingMode=RoundDown)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
-    inLen         = (outputlength * decimation + initialϕ - 1) / interpolation
-    floor(Int, inLen)
+    d             = r == RoundUp || r == RoundFromZero ? decimation : 1
+    inLen         = (outputlength * decimation + initialϕ - d) / interpolation
+    round(Int, inLen, r)
 end
 
-function inputlength(::FIRStandard, outputlength::Integer)
+function inputlength(::FIRStandard, outputlength::Integer, ::RoundingMode=RoundDown)
     outputlength
 end
 
-function inputlength(kernel::FIRInterpolator, outputlength::Integer)
-    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx)
+function inputlength(kernel::FIRInterpolator, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRDecimator, outputlength::Integer)
-    inLen  = inputlength(outputlength, 1//kernel.decimation, 1)
+function inputlength(kernel::FIRDecimator, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen  = inputlength(outputlength, 1//kernel.decimation, 1, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRRational, outputlength::Integer)
-    inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx)
-    inLen += kernel.inputDeficit - 1
-
-end
-
-# TODO: figure out why this fails. Might be fine, but the filter operation might not being stepping through the phases correcty.
-function inputlength(kernel::FIRArbitrary, outputlength::Integer)
-    inLen  = floor(Int, outputlength/kernel.rate)
+function inputlength(kernel::FIRRational, outputlength::Integer, r::RoundingMode=RoundDown)
+    inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(self::FIRFilter, outputlength::Integer)
-    inputlength(self.kernel, outputlength)
+function inputlength(kernel::FIRArbitrary, outputlength::Integer, r::RoundingMode=RoundDown)
+    d      = r == RoundUp || r == RoundFromZero ? 1 : 0
+    inLen  = floor(Int, (outputlength - d + kernel.ϕAccumulator / kernel.Δ)/kernel.rate) + d
+    inLen += kernel.inputDeficit - 1
+end
+
+function inputlength(self::FIRFilter, outputlength::Integer, r::RoundingMode=RoundDown)
+    inputlength(self.kernel, outputlength, r)
 end
 
 
@@ -391,19 +395,10 @@ end
 # Calculates the delay caused by the FIR filter in # samples, at the input sample rate, caused by the filter process
 #
 
-function timedelay(kernel::Union{FIRRational, FIRInterpolator, FIRArbitrary})
-    (kernel.hLen - 1)/(2.0*kernel.Nϕ)
-end
-
-function timedelay(kernel::Union{FIRStandard, FIRDecimator})
-    (kernel.hLen - 1)/2
-end
-
-
-function timedelay(self::FIRFilter)
-    timedelay(self.kernel)
-end
-
+timedelay(kernel::Union{FIRRational,FIRInterpolator,FIRArbitrary}) =
+    (kernel.hLen - 1) / (2 * kernel.Nϕ)
+timedelay(kernel::Union{FIRStandard,FIRDecimator}) = (kernel.hLen - 1) / 2
+timedelay(self::FIRFilter) = timedelay(self.kernel)
 
 #
 # Single rate filtering
@@ -565,18 +560,18 @@ end
 # Arbitrary resampling
 #
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
-#   [1] uses a phase accumilator that increments by Δ (Nϕ/rate)
+#   [1] uses a phase accumulator that increments by Δ (Nϕ/rate)
 
 function update!(kernel::FIRArbitrary)
     kernel.ϕAccumulator += kernel.Δ
 
-    if kernel.ϕAccumulator > kernel.Nϕ
-        kernel.xIdx        += div(kernel.ϕAccumulator-1, kernel.Nϕ)
-        kernel.ϕAccumulator = mod(kernel.ϕAccumulator-1, kernel.Nϕ) + 1
+    if kernel.ϕAccumulator >= kernel.Nϕ
+        Δx, kernel.ϕAccumulator = divrem(kernel.ϕAccumulator, kernel.Nϕ)
+        kernel.xIdx += Int(Δx)
     end
 
-    kernel.ϕIdx = floor(Int, kernel.ϕAccumulator)
-    kernel.α    = kernel.ϕAccumulator - kernel.ϕIdx
+    kernel.α, foffset = modf(kernel.ϕAccumulator)
+    kernel.ϕIdx = 1 + Int(foffset)
 end
 
 function filt!(
@@ -645,7 +640,11 @@ function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKe
     buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
     samplesWritten = filt!(buffer, self, x)
 
-    samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    if Tk <: FIRArbitrary
+        samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    else
+        @assert samplesWritten == bufLen
+    end
 
     return buffer
 end
@@ -694,11 +693,14 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
 
     # Calculate the number of 0's required
     outLen      = ceil(Int, length(x)*rate)
-    reqInlen    = inputlength(self, outLen)
+    reqInlen    = inputlength(self, outLen, RoundUp)
     reqZerosLen = reqInlen - length(x)
     xPadded     = [x; zeros(eltype(x), reqZerosLen)]
 
-    filt(self, xPadded)
+    y = filt(self, xPadded)
+    @assert length(y) >= outLen
+    length(y) > outLen && resize!(y, outLen)
+    return y
 end
 
 function resample(x::AbstractVector, rate::Real)
