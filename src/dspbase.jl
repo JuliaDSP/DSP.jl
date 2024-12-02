@@ -1,6 +1,6 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-const SMALL_FILT_CUTOFF = 58
+const SMALL_FILT_CUTOFF = 66
 
 _zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
 
@@ -35,7 +35,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     isempty(a) && throw(ArgumentError("filter vector a must be non-empty"))
     a[1] == 0  && throw(ArgumentError("filter vector a[1] must be nonzero"))
     if size(x) != size(out)
-        throw(ArgumentError("output size $(size(out)) must match input size $(size(x))"))
+        throw(ArgumentError(lazy"output size $(size(out)) must match input size $(size(x))"))
     end
 
     as = length(a)
@@ -109,35 +109,39 @@ function _filt_fir!(out, b, x, si, col)
 end
 
 #
-# filt implementation for FIR filters (faster than Base)
+# filt implementation for FIR filters
 #
 
+### NOTE ###
+# Fragile because of the impact of @inbounds and checkbounds
+# on the effects system
+
+const SMALL_FILT_VECT_CUTOFF = 19
+
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col) where {N,T}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, colv) where {N,T}
     silen = N - 1
     si_end = Symbol(:si_, silen)
-    SMALL_FILT_VECT_CUTOFF = 18
-    si_check = N > SMALL_FILT_VECT_CUTOFF ? :(nothing) : :(@assert length(siarr) == $silen)
 
-    q = quote
-        $si_check
+    quote
+        col = colv isa Val{:DF2} ? 1 : colv
+        N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
         for i in axes(x, 1)
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
-            Base.@nexprs $(silen-1) j -> (si_j = muladd(xi, b[j+1], si_{j+1}))
-            $si_end = b[N] * xi
-            out[i, col] = val
+            Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
+            $si_end = xi * b[N]
+            if N > SMALL_FILT_VECT_CUTOFF
+                @inbounds out[i, col] = val
+            else
+                out[i, col] = val
+            end
+        end
+        if colv isa Val{:DF2}
+            return Base.@ntuple $silen j -> VecElement(si_j)
         end
     end
-
-    if N > SMALL_FILT_VECT_CUTOFF
-        loop_args = q.args[6].args[2].args
-        for i in (2, 10)
-            loop_args[i] = :(@inbounds $(loop_args[i]))
-        end
-    end
-    q
 end
 
 # Convert array filter tap input to tuple for small-filtering
@@ -146,9 +150,10 @@ function _small_filt_fir!(
         si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
-    b = ntuple(j -> @inbounds(h[j]), Val(bs))
+    length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
+    b = ntuple(j -> h[j], Val(bs))
     for col in axes(x, 2)
-        v_si = view(si, :, N > 1 ? col : 1)
+        v_si = N > 1 ? view(si, :, col) : si
         _filt_fir!(out, b, x, v_si, col)
     end
 end
@@ -820,7 +825,7 @@ end
 dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
 function dsp_reverse(v, vaxes)
     vsize = length(v)
-    reflected_start = - first(vaxes[1]) - vsize + 1
+    reflected_start = - first(only(vaxes)) - vsize + 1
     reflected_axes = (reflected_start : reflected_start + vsize - 1,)
     out = similar(v, reflected_axes)
     copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)

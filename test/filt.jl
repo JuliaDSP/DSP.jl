@@ -55,6 +55,8 @@ using DSP, Test, Random, FilterTestHelpers
     @test filt([0, 0, 1, 0.8], [1], [1; zeros(9)]) == [0; 0; 1; 0.8; zeros(6)]
     @test filt(DF2TFilter(PolynomialRatio([1], [1, -0.5])), [1; zeros(9)]) ≈ 0.5.^(0:9)
     @test filt([1], [1, -0.5], [1; zeros(9)]) ≈ 0.5.^(0:9)
+    @test_nowarn filt(DF2TFilter(PolynomialRatio([1:5;], [1, -0.5])), ones(10))
+    @test_nowarn filt(DF2TFilter(PolynomialRatio(rand(DSP.SMALL_FILT_CUTOFF + 1), [1])), ones(10))
 
     # DF2TFilter{:z} state type selection for ZeroPoleGain (issue #371)
     s = rand(30) + im * rand(30)
@@ -259,7 +261,8 @@ end
 # fftfilt/filt
 #
 
-@testset "fftfilt $xlen/$blen" for xlen in 2 .^ (7:18) .- 1, blen in 2 .^ (1:6) .- 1
+# make sure to include blen > SMALL_FILT_CUTOFF
+@testset "fftfilt $xlen/$blen" for xlen in 2 .^ (7:18) .- 1, blen in 2 .^ (1:7) .- 1
     b = randn(blen)
     for x in (rand(xlen), rand(xlen, 2))
         out = similar(x)
