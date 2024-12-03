@@ -63,6 +63,9 @@ using DSP, Test, Random, FilterTestHelpers
     df = digitalfilter(Lowpass(0.25), Butterworth(4))
     f = @test_nowarn DF2TFilter(df, ComplexF64)
     @test_nowarn filt(f, s)
+
+    # DF2TFilter{ZPG/SOS} stackoverflow error
+    @test_throws MethodError DF2TFilter(ZeroPoleGain([1], [2], 3), :D, 'x', Ref(1))
 end
 
 @testset "multi-column filt $D-D" for D in 1:4

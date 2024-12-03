@@ -246,7 +246,10 @@ filt(f::DF2TFilter{<:FilterCoefficients{:z},<:Array{T}}, x::AbstractArray{V}) wh
     filt!(similar(x, promote_type(T, V)), f, x)
 
 # Fall back to SecondOrderSections
-DF2TFilter(coef::FilterCoefficients{:z}, args...) = DF2TFilter(convert(SecondOrderSections, coef), args...)
+DF2TFilter(coef::FilterCoefficients{:z}, coldims::Tuple{Vararg{Integer}}=()) =
+    DF2TFilter(convert(SecondOrderSections, coef), coldims)
+DF2TFilter(coef::FilterCoefficients{:z}, ::Type{V}, coldims::Tuple{Vararg{Integer}}=()) where {V} =
+    DF2TFilter(convert(SecondOrderSections, coef), V, coldims)
 
 #
 # filtfilt
