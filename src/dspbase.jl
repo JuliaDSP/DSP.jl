@@ -42,11 +42,10 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs = length(b)
     sz = max(as, bs)
     silen = sz - 1
-    ncols = size(x, 2)
 
     if size(si, 1) != silen
         throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
-    elseif N > 1 && size(si, 2) != ncols
+    elseif N > 1 && size(si)[2:end] != size(x)[2:end]
         throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
     end
 
@@ -70,7 +69,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         si = similar(si, axes(si, 1))
         for col in CartesianIndices(axes(x)[2:end])
             # Reset the filter state
-            copyto!(si, view(initial_si, :, N > 1 ? col : 1))
+            copyto!(si, view(initial_si, :, N > 1 ? col : CartesianIndex()))
             if as > 1
                 _filt_iir!(out, b, a, x, si, col)
             else
@@ -124,7 +123,7 @@ const SMALL_FILT_VECT_CUTOFF = 19
     si_end = Symbol(:si_, silen)
 
     quote
-        col = colv isa Val{:DF2} ? 1 : colv
+        col = colv isa Val{:DF2} ? CartesianIndex() : colv
         N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
         for i in axes(x, 1)
@@ -152,7 +151,7 @@ function _small_filt_fir!(
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
-    for col in axes(x, 2)
+    for col in CartesianIndices(axes(x)[2:end])
         v_si = N > 1 ? view(si, :, col) : si
         _filt_fir!(out, b, x, v_si, col)
     end
