@@ -6,33 +6,28 @@
 using ..DSP: _filt_fir!, _filt_iir!
 
 ## PolynomialRatio
-_zerosi(f::PolynomialRatio{:z,T}, ::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), max(-firstindex(f.a), -firstindex(f.b)))
 
 """
-    filt!(out, f, x[, si])
+    filt!(out, f, x)
 
 Same as [`filt()`](@ref) but writes the result into the `out`
 argument. Output array `out` may not be an alias of `x`, i.e. filtering may
 not be done in place.
 """
-filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si=_zerosi(f, x)) =
-    filt!(out, coefb(f), coefa(f), x, si)
+filt!(out, f::PolynomialRatio{:z}, x::AbstractArray) = filt!(out, coefb(f), coefa(f), x)
 
 """
-    filt(f::FilterCoefficients{:z}, x::AbstractArray[, si])
+    filt(f::FilterCoefficients{:z}, x::AbstractArray)
 
 Apply filter or filter coefficients `f` along the first dimension
-of array `x`. If `f` is a filter coefficient object, `si`
-is an optional array representing the initial filter state (defaults
-to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
+of array `x`. If `f` is a `PolynomialRatio`, `Biquad`, or
 `SecondOrderSections`, filtering is implemented directly. If
 `f` is a `ZeroPoleGain` object, it is first converted to a
 `SecondOrderSections` object.  If `f` is a Vector, it is
 interpreted as an FIR filter, and a naïve or FFT-based algorithm is
 selected based on the data and filter length.
 """
-filt(f::PolynomialRatio{:z}, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+filt(f::PolynomialRatio{:z}, x) = filt(coefb(f), coefa(f), x)
 
 ## SecondOrderSections
 _zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
