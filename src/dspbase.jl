@@ -134,14 +134,13 @@ end
 # Convert array filter tap input to tuple for small-filtering
 function _small_filt_fir!(
     out::AbstractArray, h::AbstractVector, x::AbstractArray,
-        si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
+        si::AbstractVector, ::Val{bs}) where {bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
     for col in CartesianIndices(axes(x)[2:end])
-        v_si = N > 1 ? view(si, :, col) : si
-        _filt_fir!(out, b, x, v_si, col)
+        _filt_fir!(out, b, x, si, col)
     end
 end
 
