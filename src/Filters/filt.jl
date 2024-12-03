@@ -370,8 +370,9 @@ function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))
+        _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
+        reverse!(extrapolated)
+        _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end
