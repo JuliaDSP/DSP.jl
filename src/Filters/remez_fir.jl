@@ -100,11 +100,9 @@ CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
 function lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
     retval = 1.0
     q = x[k]
-    for l = 1 : m
-        for j = l : m : n
-            if j != k
-                retval *= 2.0 * (q - x[j])
-            end
+    for l = 1:m, j = l:m:n
+        if j != k
+            retval *= 2.0 * (q - x[j])
         end
     end
     1.0 / retval
