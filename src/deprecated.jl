@@ -52,3 +52,27 @@ import .Util.nextfastfft
     filt(f::SecondOrderSections{:z}, x::AbstractArray, si::AbstractVecOrMat),
     filt(DF2TFilter(f, repeat(si; outer=(1, 1, size(x)[2:end]...))), x)
 )
+@deprecate(
+    filt!(out, f::Biquad{:z}, x::AbstractVector, si::AbstractVector),
+    filt!(out, DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt!(out, f::Biquad{:z}, x::AbstractArray{<:Any, N}, si::AbstractArray{<:Any, N}) where {N},
+    filt!(out, DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt!(out, f::Biquad{:z}, x::AbstractArray, si::AbstractVector),
+    filt!(out, DF2TFilter(f, repeat(si; outer=(1, size(x)[2:end]...))), x)
+)
+@deprecate(
+    filt(f::Biquad{:z}, x::AbstractVector, si::AbstractVector),
+    filt(DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt(f::Biquad{:z}, x::AbstractArray{<:Any, N}, si::AbstractArray{<:Any, N}) where {N},
+    filt(DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt(f::Biquad{:z}, x::AbstractArray, si::AbstractVector),
+    filt(DF2TFilter(f, repeat(si; outer=(1, size(x)[2:end]...))), x)
+)
