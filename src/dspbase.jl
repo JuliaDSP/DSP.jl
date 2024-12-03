@@ -118,12 +118,11 @@ end
 const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, colv) where {N,T}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}=Val(false)) where {N,T,StoreSI}
     silen = N - 1
     si_end = Symbol(:si_, silen)
 
     quote
-        col = colv isa Val{:DF2} ? CartesianIndex() : colv
         N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
         for i in axes(x, 1)
@@ -137,9 +136,10 @@ const SMALL_FILT_VECT_CUTOFF = 19
                 out[i, col] = val
             end
         end
-        if colv isa Val{:DF2}
-            return Base.@ntuple $silen j -> VecElement(si_j)
+        if StoreSI
+            Base.@nexprs $silen j -> siarr[j] = si_j
         end
+        return nothing
     end
 end
 

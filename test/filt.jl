@@ -63,6 +63,9 @@ using DSP, Test, Random, FilterTestHelpers
     df = digitalfilter(Lowpass(0.25), Butterworth(4))
     f = @test_nowarn DF2TFilter(df, ComplexF64)
     @test_nowarn filt(f, s)
+
+    # DF2TFilter{ZPG/SOS} stackoverflow error
+    @test_throws MethodError DF2TFilter(ZeroPoleGain([1], [2], 3), :D, 'x', Ref(1))
 end
 
 @testset "multi-column filt $D-D" for D in 1:4
@@ -87,6 +90,26 @@ end
      y_ref = filt(b, a, ones(sz[1]))
      @test all(col -> col ≈ y_ref, eachslice(filt(b, a, x); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(filt(PolynomialRatio(b, a), x); dims=slicedims))
+end
+
+@testset "multi-column DF2TFilter $D-D" for D in 1:4
+    b = [0.1, 0.1]
+    a = [1.0, -0.8]
+    sz = (10, ntuple(n -> n+1, Val(D))...)
+    y_ref = filt(b, a, ones(2*sz[1]))
+    x = ones(sz)
+
+    H = DF2TFilter(PolynomialRatio(b, a),sz[2:end])
+    @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
+    @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
+
+    H = DF2TFilter(SecondOrderSections(PolynomialRatio(b, a)), sz[2:end])
+    @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
+    @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
+
+    H = DF2TFilter(Biquad(PolynomialRatio(b, a)), sz[2:end])
+    @test all(col -> col ≈ y_ref[1:sz[1]], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
+    @test all(col -> col ≈ y_ref[sz[1]+1:end], eachslice(filt(H, x); dims=ntuple(n -> n+1, Val(D))))
 end
 
 #
