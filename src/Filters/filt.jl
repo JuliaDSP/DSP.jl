@@ -144,12 +144,12 @@ struct DF2TFilter{T<:FilterCoefficients{:z},S<:Array}
         new{Ti,Si}(coef, state)
     end
     function DF2TFilter{Ti,Si}(coef::SecondOrderSections{:z}, state::Array) where {Ti,Si}
-        (size(state, 1) == 2 && size(state, 2) == length(coef.biquads)) ||
+        size(state, 1) == 2 && size(state, 2) == length(coef.biquads) ||
             throw(ArgumentError("state must be 2 x nbiquads"))
         new{Ti,Si}(coef, state)
     end
     function DF2TFilter{Ti,Si}(coef::Biquad{:z}, state::Array) where {Ti,Si}
-        size(state,1) == 2 || throw(ArgumentError("length of state must be 2"))
+        size(state, 1) == 2 || throw(ArgumentError("length of state must be 2"))
         new{Ti,Si}(coef, state)
     end
 end
@@ -165,7 +165,7 @@ DF2TFilter(coef::PolynomialRatio{:z,T}, coldims::Tuple{Vararg{Integer}}) where {
 DF2TFilter(coef::PolynomialRatio{:z,T}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,V} =
     DF2TFilter(coef, zeros(promote_type(T, V), max(length(coefa(coef)), length(coefb(coef))) - 1, coldims...))
 
-function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:PolynomialRatio,Array{T,N}} where T, x::AbstractArray{<:Any, N}) where N
+function filt!(out::AbstractArray{<:Any,N}, f::DF2TFilter{<:PolynomialRatio,Array{T,N}} where T, x::AbstractArray{<:Any,N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
 
     si = f.state
@@ -207,7 +207,7 @@ DF2TFilter(coef::SecondOrderSections{:z,T}, coldims::Tuple{Vararg{Integer}}) whe
 DF2TFilter(coef::SecondOrderSections{:z,T,G}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,G,V} =
     DF2TFilter(coef, zeros(promote_type(T, G, V), 2, length(coef.biquads), coldims...))
 
-function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:SecondOrderSections,<:Array}, x::AbstractArray{<:Any, N}) where N
+function filt!(out::AbstractArray{<:Any,N}, f::DF2TFilter{<:SecondOrderSections,<:Array}, x::AbstractArray{<:Any,N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
     size(x)[2:end] != size(f.state)[3:end] && throw(ArgumentError("state size must match x"))
     for col in CartesianIndices(axes(x)[2:end])
@@ -221,7 +221,7 @@ DF2TFilter(coef::Biquad{:z,T}, coldims::Tuple{Vararg{Integer}}) where {T} = DF2T
 DF2TFilter(coef::Biquad{:z,T}, ::Type{V}=T, coldims::Tuple{Vararg{Integer}}=()) where {T,V} =
     DF2TFilter(coef, zeros(promote_type(T, V), 2, coldims...))
 
-function filt!(out::AbstractArray{<:Any, N}, f::DF2TFilter{<:Biquad,Array{T, N}} where T, x::AbstractArray{<:Any, N}) where N
+function filt!(out::AbstractArray{<:Any,N}, f::DF2TFilter{<:Biquad,Array{T,N}} where T, x::AbstractArray{<:Any,N}) where N
     size(x) != size(out) && throw(ArgumentError("out size must match x"))
     si = f.state
     size(x)[2:end] != size(si)[2:end] && throw(ArgumentError("state size must match x"))
