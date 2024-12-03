@@ -30,8 +30,6 @@ selected based on the data and filter length.
 filt(f::PolynomialRatio{:z}, x) = filt(coefb(f), coefa(f), x)
 
 ## SecondOrderSections
-_zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
-    zeros(promote_type(T, G, S), 2, length(f.biquads))
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
@@ -53,25 +51,19 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     si
 end
 
-function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
-                    si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
-    biquads = f.biquads
-
+function filt!(out::AbstractArray, f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
-    (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && size(si)[3:end] != size(x)[2:end])) &&
-        throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
-    initial_si = si
-    si = similar(si, axes(si)[1:2])
+    si = Matrix{promote_type(T, G, S)}(undef, 2, length(f.biquads))
     for col in CartesianIndices(axes(x)[2:end])
-        copyto!(si, view(initial_si, :, :, N > 2 ? col : CartesianIndex()))
+        fill!(si, zero(eltype(si)))
         _filt!(out, si, f, x, col)
     end
     out
 end
 
-filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(similar(x, promote_type(T, G, S)), f, x, si)
+filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S<:Number} =
+    filt!(similar(x, promote_type(T, G, S)), f, x)
 
 ## Biquad
 _zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =

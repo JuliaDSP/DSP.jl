@@ -28,3 +28,27 @@ import .Util.nextfastfft
     filt(f::PolynomialRatio{:z}, x::AbstractArray, si::AbstractVector),
     filt(DF2TFilter(f, repeat(si; outer=(1, size(x)[2:end]...))), x)
 )
+@deprecate(
+    filt!(out, f::SecondOrderSections{:z}, x::AbstractVector, si::AbstractVecOrMat),
+    filt!(out, DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt!(out, f::SecondOrderSections{:z}, x::AbstractArray, si::AbstractArray),
+    filt!(out, DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt!(out, f::SecondOrderSections{:z}, x::AbstractArray, si::AbstractVecOrMat),
+    filt!(out, DF2TFilter(f, repeat(si; outer=(1, 1, size(x)[2:end]...))), x)
+)
+@deprecate(
+    filt(f::SecondOrderSections{:z}, x::AbstractVector, si::AbstractVecOrMat),
+    filt(DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt(f::SecondOrderSections{:z}, x::AbstractArray, si::AbstractArray),
+    filt(DF2TFilter(f, copy(si)), x)
+)
+@deprecate(
+    filt(f::SecondOrderSections{:z}, x::AbstractArray, si::AbstractVecOrMat),
+    filt(DF2TFilter(f, repeat(si; outer=(1, 1, size(x)[2:end]...))), x)
+)

@@ -83,7 +83,7 @@ end
      @test all(col -> col ≈ y_ref, eachslice(filt(b, a, x, zeros(1, sz[2:end]...)); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(PolynomialRatio(b, a), x, zeros(1, sz[2:end]...))); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(filt(Biquad(PolynomialRatio(b, a)), x, zeros(2, sz[2:end]...)); dims=slicedims))
-     @test all(col -> col ≈ y_ref, eachslice(filt(SecondOrderSections(PolynomialRatio(b, a)), x, zeros(2, 1, sz[2:end]...)); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(SecondOrderSections(PolynomialRatio(b, a)), x, zeros(2, 1, sz[2:end]...))); dims=slicedims))
      # use _small_filt_fir!
      b = [0.1, 0.1]
      a = [1.0]
