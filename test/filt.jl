@@ -80,7 +80,7 @@ end
      @test all(col -> col ≈ y_ref, eachslice(filt(Biquad(PolynomialRatio(b, a)), x); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(filt(SecondOrderSections(PolynomialRatio(b, a)), x); dims=slicedims))
      # with si given
-     @test all(col -> col ≈ y_ref, eachslice(filt(b, a, x, zeros(1, sz[2:end]...)); dims=slicedims))
+     @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(b, a, x, zeros(1, sz[2:end]...))); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(PolynomialRatio(b, a), x, zeros(1, sz[2:end]...))); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(Biquad(PolynomialRatio(b, a)), x, zeros(2, sz[2:end]...))); dims=slicedims))
      @test all(col -> col ≈ y_ref, eachslice(@test_deprecated(filt(SecondOrderSections(PolynomialRatio(b, a)), x, zeros(2, 1, sz[2:end]...))); dims=slicedims))
@@ -187,7 +187,12 @@ end
     b = [0.4, 1]
     z = [0.4750]
     x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-    filt!(vec(x), b, a, vec(x), z)
+    @test_deprecated(filt!(vec(x), b, a, vec(x), z))
+
+    @test matlab_filt ≈ x
+
+    x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
+    filt!(vec(x), DF2TFilter(PolynomialRatio(b, a), z), vec(x))
 
     @test matlab_filt ≈ x
 end
