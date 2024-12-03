@@ -116,19 +116,24 @@ filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
 filt!(out, f::FilterCoefficients{:z}, x) = filt!(out, convert(SecondOrderSections, f), x)
 
 """
-    DF2TFilter(coef::FilterCoefficients{:z}[, si])
-    DF2TFilter(coef::FilterCoefficients{:z}[, sitype::Type][, coldims::Tuple])
+    DF2TFilter(coef::FilterCoefficients{:z})
+    DF2TFilter(coef::FilterCoefficients{:z}, coldims::Tuple)
+    DF2TFilter(coef::FilterCoefficients{:z}, sitype::Type, coldims::Tuple = ())
+    DF2TFilter(coef::FilterCoefficients{:z}, si)
 
 Construct a stateful direct form II transposed filter with
 coefficients `coef`.
 
-One can optionally specify as the second argument either
-- `si`, an array representing the initial filter state, or
-- `sitype`, the eltype of a zeroed `si` and/or `coldims`, the size of extra dimensions
-  of the input. E.g. to column-wise filter an input with dims `(L, N1, N2)`, set
-  `coldims` to `(N1, N2)`.
+The initial filter state defaults to zeros (of a type derived from `coef`)
+suitable for vector input. Another element type of the state can be specified
+with `sitype`.
 
-The initial filter state defaults to zeros if called with one argument.
+To allow column-wise filtering of higher-dimensional input, the size of the
+extra dimensions have to be given in `coldims`. To e.g. column-wise filter an
+input with size `(L, N1, N2)`, set `coldims` to `(N1, N2)`.
+
+Alternatively, an array representing the initial filter state can be passed
+as `si`.
 
 If `coef` is a `PolynomialRatio`, `Biquad`, or `SecondOrderSections`,
 filtering is implemented directly. If `coef` is a `ZeroPoleGain`
