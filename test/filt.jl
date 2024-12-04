@@ -186,15 +186,21 @@ end
     a = [0.9, 0.6]
     b = [0.4, 1]
     z = [0.4750]
-    x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-    @test_deprecated(filt!(vec(x), b, a, vec(x), z))
+    x  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
+    @test_deprecated(filt!(x, b, a, x, z))
 
     @test matlab_filt ≈ x
 
-    x  = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t')
-    filt!(vec(x), DF2TFilter(PolynomialRatio(b, a), z), vec(x))
+    x = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
+    filt!(x, DF2TFilter(PolynomialRatio(b, a), z), x)
 
     @test matlab_filt ≈ x
+
+    # With initial conditions: a lowpass 5-pole butterworth filter with W_n = 0.25,
+    # and a stable initial filter condition matched to the initial value
+    zpg = digitalfilter(Lowpass(0.25), Butterworth(5))
+    si = [0.9967207836936347, -1.4940914728163142, 1.2841226760316475, -0.4524417279474106, 0.07559488540931815]
+    @test filt(DF2TFilter(PolynomialRatio(zpg), si), ones(10)) ≈ ones(10) # Shouldn't affect DC offset
 end
 
 #######################################
