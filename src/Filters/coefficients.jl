@@ -191,8 +191,8 @@ function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
     end
 end
 
-coef_s(p::LaurentPolynomial{T}) where T = (n = firstindex(p);  append!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
-coef_z(p::LaurentPolynomial{T}) where T = (n = -lastindex(p); prepend!(reverse!(coeffs(p)), zero(T) for _ in 1:n))
+coef_s(p::LaurentPolynomial) = p[end:-1:0]
+coef_z(p::LaurentPolynomial) = p[0:-1:begin]
 
 """
     coefb(f::PolynomialRatio)
