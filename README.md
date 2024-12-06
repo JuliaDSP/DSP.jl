@@ -3,7 +3,7 @@ DSP.jl
 
 [![CI](https://github.com/JuliaDSP/DSP.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaDSP/DSP.jl/actions?query=workflow%3ACI+branch%3Amaster)
 [![codecov](https://codecov.io/gh/JuliaDSP/DSP.jl/graph/badge.svg?token=dpulG6Nqqo)](https://codecov.io/gh/JuliaDSP/DSP.jl)
-[![Documentation (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.juliadsp.org/stable/contents/)
+[![Documentation (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.juliadsp.org/stable/)
 [![Documentation (latest)](https://img.shields.io/badge/docs-dev-blue.svg)](https://docs.juliadsp.org/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8344531.svg)](https://doi.org/10.5281/zenodo.8344531)
 
