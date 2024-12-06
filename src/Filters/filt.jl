@@ -6,37 +6,30 @@
 using ..DSP: _filt_fir!, _filt_iir!
 
 ## PolynomialRatio
-_zerosi(f::PolynomialRatio{:z,T}, ::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), max(-firstindex(f.a), -firstindex(f.b)))
 
 """
-    filt!(out, f, x[, si])
+    filt!(out, f, x)
 
 Same as [`filt()`](@ref) but writes the result into the `out`
 argument. Output array `out` may not be an alias of `x`, i.e. filtering may
 not be done in place.
 """
-filt!(out, f::PolynomialRatio{:z}, x::AbstractArray, si=_zerosi(f, x)) =
-    filt!(out, coefb(f), coefa(f), x, si)
+filt!(out, f::PolynomialRatio{:z}, x::AbstractArray) = filt!(out, coefb(f), coefa(f), x)
 
 """
-    filt(f::FilterCoefficients{:z}, x::AbstractArray[, si])
+    filt(f::FilterCoefficients{:z}, x::AbstractArray)
 
 Apply filter or filter coefficients `f` along the first dimension
-of array `x`. If `f` is a filter coefficient object, `si`
-is an optional array representing the initial filter state (defaults
-to zeros). If `f` is a `PolynomialRatio`, `Biquad`, or
+of array `x`. If `f` is a `PolynomialRatio`, `Biquad`, or
 `SecondOrderSections`, filtering is implemented directly. If
 `f` is a `ZeroPoleGain` object, it is first converted to a
 `SecondOrderSections` object.  If `f` is a Vector, it is
 interpreted as an FIR filter, and a naïve or FFT-based algorithm is
 selected based on the data and filter length.
 """
-filt(f::PolynomialRatio{:z}, x, si=_zerosi(f, x)) = filt(coefb(f), coefa(f), x, si)
+filt(f::PolynomialRatio{:z}, x) = filt(coefb(f), coefa(f), x)
 
 ## SecondOrderSections
-_zerosi(f::SecondOrderSections{:z,T,G}, ::AbstractArray{S}) where {T,G,S} =
-    zeros(promote_type(T, G, S), 2, length(f.biquads))
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
@@ -58,29 +51,21 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
     si
 end
 
-function filt!(out::AbstractArray, f::SecondOrderSections{:z}, x::AbstractArray,
-                    si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
-    biquads = f.biquads
-
+function filt!(out::AbstractArray, f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
-    (size(si, 1) != 2 || size(si, 2) != length(biquads) || (N > 2 && size(si)[3:end] != size(x)[2:end])) &&
-        throw(ArgumentError("si must be 2 x nbiquads or 2 x nbiquads x nsignals"))
 
-    initial_si = si
-    si = similar(si, axes(si)[1:2])
+    si = Matrix{promote_type(T, G, S)}(undef, 2, length(f.biquads))
     for col in CartesianIndices(axes(x)[2:end])
-        copyto!(si, view(initial_si, :, :, N > 2 ? col : CartesianIndex()))
+        fill!(si, zero(eltype(si)))
         _filt!(out, si, f, x, col)
     end
     out
 end
 
-filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,G,S<:Number} =
-    filt!(similar(x, promote_type(T, G, S)), f, x, si)
+filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S<:Number} =
+    filt!(similar(x, promote_type(T, G, S)), f, x)
 
 ## Biquad
-_zerosi(::Biquad{:z,T}, ::AbstractArray{S}) where {T,S} =
-    zeros(promote_type(T, S), 2)
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
@@ -95,21 +80,17 @@ function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
     (si1, si2)
 end
 
-# filt! variant that preserves si
-function filt!(out::AbstractArray, f::Biquad{:z}, x::AbstractArray,
-                    si::AbstractArray{S,N}=_zerosi(f, x)) where {S,N}
+function filt!(out::AbstractArray, f::Biquad{:z,T}, x::AbstractArray{S}) where {T,S}
     size(x) != size(out) && throw(DimensionMismatch("out size must match x"))
-    (size(si, 1) != 2 || (N > 1 && size(si)[2:end] != size(x)[2:end])) &&
-        throw(ArgumentError("si must have two rows and 1 or nsignals columns"))
 
     for col in CartesianIndices(axes(x)[2:end])
-        _filt!(out, si[1, N > 1 ? col : CartesianIndex()], si[2, N > 1 ? col : CartesianIndex()], f, x, col)
+        _filt!(out, zero(promote_type(T, S)), zero(promote_type(T, S)), f, x, col)
     end
     out
 end
 
-filt(f::Biquad{:z,T}, x::AbstractArray{S}, si=_zerosi(f, x)) where {T,S<:Number} =
-    filt!(similar(x, promote_type(T, S)), f, x, si)
+filt(f::Biquad{:z,T}, x::AbstractArray{S}) where {T,S<:Number} =
+    filt!(similar(x, promote_type(T, S)), f, x)
 
 ## For arbitrary filters, convert to SecondOrderSections
 filt(f::FilterCoefficients{:z}, x) = filt(convert(SecondOrderSections, f), x)
@@ -375,8 +356,9 @@ function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,
     istart = 1
     for i = 1:Base.trailingsize(x, 2)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        reverse!(filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1])))
-        filt!(extrapolated, f, extrapolated, mul!(zitmp, zi, extrapolated[1]))
+        _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
+        reverse!(extrapolated)
+        _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
         for j = 1:size(x, 1)
             @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
         end

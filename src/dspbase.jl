@@ -2,35 +2,29 @@
 
 const SMALL_FILT_CUTOFF = 66
 
-_zerosi(b,a,T) = zeros(promote_type(eltype(b), eltype(a), T), max(length(a), length(b))-1)
-
 """
     filt(b::Union{AbstractVector,Number},
          a::Union{AbstractVector,Number},
-         x::AbstractArray,
-         [si::AbstractArray])
+         x::AbstractArray)
 
-Apply filter described by vectors `a` and `b` to vector `x`, with an optional initial filter
-state vector `si` (defaults to zeros).
+Apply filter described by vectors `a` and `b` to vector `x`.
 
 Inputs that are `Number`s are treated as one-element `Vector`s.
 """
-function filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
-              x::AbstractArray{T}, si::AbstractArray{S} = _zerosi(b,a,T)) where {T,S}
-    filt!(similar(x, promote_type(eltype(b), eltype(a), T, S)), b, a, x, si)
-end
+filt(b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number}, x::AbstractArray{T}) where {T} =
+    filt!(similar(x, promote_type(eltype(b), eltype(a), T)), b, a, x)
 
 # in-place filtering: returns results in the out argument, which may shadow x
 # (and does so by default)
 
 """
-    filt!(out, b, a, x, [si])
+    filt!(out, b, a, x)
 
 Same as [`filt`](@ref) but writes the result into the `out` argument, which may
 alias the input `x` to modify it in-place.
 """
 function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{AbstractVector, Number},
-               x::AbstractArray{T}, si::AbstractArray{S,N} = _zerosi(b,a,T)) where {T,S,N}
+               x::AbstractArray{T}) where {T}
     isempty(b) && throw(ArgumentError("filter vector b must be non-empty"))
     isempty(a) && throw(ArgumentError("filter vector a must be non-empty"))
     a[1] == 0  && throw(ArgumentError("filter vector a[1] must be nonzero"))
@@ -41,13 +35,6 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     as = length(a)
     bs = length(b)
     sz = max(as, bs)
-    silen = sz - 1
-
-    if size(si, 1) != silen
-        throw(ArgumentError("initial state vector si must have max(length(a),length(b))-1 rows"))
-    elseif N > 1 && size(si)[2:end] != size(x)[2:end]
-        throw(ArgumentError("initial state si must be a vector or have the same number of columns as x"))
-    end
 
     iszero(size(x, 1)) && return out
     isone(sz) && return (k = b[1] / a[1]; @noinline mul!(out, x, k)) # Simple scaling without memory
@@ -62,14 +49,15 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
     1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
+    si = Vector{promote_type(eltype(b), eltype(a), T)}(undef, sz - 1)
+
     if as == 1 && bs <= SMALL_FILT_CUTOFF
+        fill!(si, zero(eltype(si)))
         _small_filt_fir!(out, b, x, si, Val(bs))
     else
-        initial_si = si
-        si = similar(si, axes(si, 1))
         for col in CartesianIndices(axes(x)[2:end])
             # Reset the filter state
-            copyto!(si, view(initial_si, :, N > 1 ? col : CartesianIndex()))
+            fill!(si, zero(eltype(si)))
             if as > 1
                 _filt_iir!(out, b, a, x, si, col)
             else
@@ -146,14 +134,13 @@ end
 # Convert array filter tap input to tuple for small-filtering
 function _small_filt_fir!(
     out::AbstractArray, h::AbstractVector, x::AbstractArray,
-        si::AbstractArray{S,N}, ::Val{bs}) where {S,N,bs}
+        si::AbstractVector, ::Val{bs}) where {bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
     for col in CartesianIndices(axes(x)[2:end])
-        v_si = N > 1 ? view(si, :, col) : si
-        _filt_fir!(out, b, x, v_si, col)
+        _filt_fir!(out, b, x, si, col)
     end
 end
 
