@@ -276,9 +276,9 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     for i = 1:Base.trailingsize(x, 2)
         istart = 1 + (i - 1) * size(x, 1)
         extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), 1)
+        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), CartesianIndex())
         reverse!(extrapolated)
-        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), 1)
+        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), CartesianIndex())
         for j = 1:size(x, 1)
             out[j, i] = extrapolated[end-pad_length+1-j]
         end
