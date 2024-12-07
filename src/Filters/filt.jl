@@ -515,10 +515,9 @@ function _fftfilt!(
         xstart = off - nb + npadbefore + 1
         n = min(nfft - npadbefore, nx - xstart + 1)
 
-        tmp1[1:npadbefore] .= zero(W)
-        tmp1[npadbefore+n+1:end] .= zero(W)
-
+        fill!(tmp1, zero(W))
         copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
+
         mul!(tmp2, p1, tmp1)
         broadcast!(*, tmp2, tmp2, filterft)
         mul!(tmp1, p2, tmp2)
