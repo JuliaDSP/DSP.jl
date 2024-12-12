@@ -36,7 +36,7 @@ julia> diric(0, 4)
 ```
 """
 function diric(Ω::T, n::Integer) where T <: AbstractFloat
-    n > 0 || throw(ArgumentError("n=$n not positive"))
+    n > 0 || throw(DomainError(n, "n not positive"))
     sign = one(T)
     if isodd(n)
         Ω = rem2pi(Ω, RoundNearest) # [-π,π)
