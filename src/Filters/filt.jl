@@ -312,7 +312,8 @@ function filtfilt(b::AbstractVector, x::AbstractArray)
     extrapolated = similar(x, T, (size(x, 1)+2*(nb-1), size(x)[2:end]...))
 
     # Convolve b with its reverse
-    newb = filt(b, reverse(b))
+    newb = reverse(b)
+    filt!(newb, b, newb)
     resize!(newb, 2nb-1)
     for i = 1:nb-1
         newb[nb+i] = newb[nb-i]
@@ -324,10 +325,10 @@ function filtfilt(b::AbstractVector, x::AbstractArray)
     end
 
     # Filter
-    out = filt(newb, extrapolated)
+    filt!(extrapolated, newb, extrapolated)
 
     # Drop garbage at start
-    return out[2nb-1:end, axes(out)[2:end]...]
+    return extrapolated[2nb-1:end, axes(extrapolated)[2:end]...]
 end
 
 # Choose whether to use FIR or iir_filtfilt depending on
