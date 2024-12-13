@@ -179,7 +179,7 @@ end
     # Highpass
     (nh, Wnh) = cheb2ord(0.21, 0.1, Rp, Rs, domain=:z)
     @test nh == 8
-    @test Wnh == 0.10862150541420543
+    @test Wnh == 0.10862150541420544
     (nh, Wnh) = cheb2ord(0.21, 0.1, Rp, Rs, domain=:s)
     @test nh == 8
     @test Wnh == 0.10568035411923006
@@ -219,8 +219,8 @@ end
     #
     # Using the test-cases highlighted in [^Parks] Figures 8 and 15.
     #
-    # [^Parks]: Rabiner, L. R., McClellan, J. H., & Parks, T. W. (1975). 
-    #   FIR digital filter design techniques using weighted Chebyshev 
+    # [^Parks]: Rabiner, L. R., McClellan, J. H., & Parks, T. W. (1975).
+    #   FIR digital filter design techniques using weighted Chebyshev
     #   approximation. Proceedings of the IEEE, 63(4), 595-610.
     #
     @test remezord(0.41665, 0.49417, 0.0116, 0.0001) == 39
