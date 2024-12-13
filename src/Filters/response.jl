@@ -125,7 +125,7 @@ end
 Impulse response of a digital `filter` with `n` points.
 """
 function impresp(filter::FilterCoefficients{:z}, n=100)
-  i = [1; zeros(n-1)]
+  i = setindex!(zeros(n), 1, 1)
   filt(filter, i)
 end
 
@@ -160,16 +160,16 @@ function _freqrange(filter::FilterCoefficients{:s})
     filter = convert(ZeroPoleGain, filter)
     w_interesting = sort!(Float64.(abs.([filter.p; filter.z])))
     include_zero = !isempty(w_interesting) && iszero(w_interesting[1])
-    w_interesting = collect(Iterators.dropwhile(iszero, w_interesting))
-    if isempty(w_interesting) # no non-zero poles or zeros
-        if !include_zero || !isfinite(1/filter.k)
-            return [0; 10 .^ (0:6)] # fallback
+    first_nonzero = findfirst(!iszero, w_interesting)
+    if isnothing(first_nonzero) # no non-zero poles or zeros
+        if !include_zero || !isfinite(1 / filter.k)
+            return setindex!(10.0 .^ (-1:6), 0.0, 1) # fallback
         end
         # include the point where |H|=1 (if any) and go further by factor 10
-        return range(0.0, stop=10 * Float64(max(filter.k, 1/filter.k)), length=200)
+        return collect(range(0.0, stop=10 * Float64(max(filter.k, 1 / filter.k)), length=200))
     end
-    # normal case: go from smalles to largest pole/zero, extended by factor 10
-    w_min, w_max = w_interesting[[1,end]]
-    w = 10 .^ range(log10(w_min)-1, stop=log10(w_max)+1, length=200)
-    return include_zero ? [0.0; w] : w
+    # normal case: go from smallest to largest pole/zero, extended by factor 10
+    w_min, w_max = w_interesting[first_nonzero], w_interesting[end]
+    w = 10 .^ range(log10(w_min) - 1, stop=log10(w_max) + 1, length=200)
+    return include_zero ? pushfirst!(w, 0.0) : w
 end

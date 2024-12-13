@@ -122,16 +122,14 @@ function brent(f, x1::T, x2::T) where {T<:AbstractFloat}
     m1, m2 = m, m
     fm = f(m)
     fm1, fm2 = fm, fm
-    iter = 0
 
-    while (iter < 1_000)
+    for _ in 1:1000
         p, q = zero(T), zero(T)
         xt = rtol * abs(m) + ϵ
         c = (b + a) / 2
         if (abs(m - c) ≤ 2 * xt - (b - a) / 2)
             break
         end
-        iter += 1
         if (abs(k1) > xt) # trial parabolic fit
             r = (m - m1) * (fm - fm2)
             q = (m - m2) * (fm - fm1)

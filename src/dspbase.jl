@@ -615,7 +615,7 @@ function _conv_kern_fft!(out::AbstractArray{T, N},
     copyto!(out,
             output_indices,
             raw_out,
-            CartesianIndices(UnitRange.(1, outsize)))
+            CartesianIndices(outsize))
 end
 function _conv_kern_fft!(out::AbstractArray{T}, output_indices, u, v) where {T}
     outsize = size(output_indices)
@@ -631,7 +631,7 @@ function _conv_kern_fft!(out::AbstractArray{T}, output_indices, u, v) where {T}
     copyto!(out,
             output_indices,
             upad,
-            CartesianIndices(UnitRange.(1, outsize)))
+            CartesianIndices(outsize))
 end
 
 function _conv_td!(out, output_indices, u::AbstractArray{<:Number, N}, v::AbstractArray{<:Number, N}) where {N}
@@ -652,7 +652,7 @@ end
 
 # whether the given axis are to be considered to carry an offset for `conv!` and `conv`
 conv_axis_with_offset(::Base.OneTo) = false
-conv_axis_with_offset(a::Any) = throw(ArgumentError("unsupported axis type $(typeof(a))"))
+conv_axis_with_offset(a::Any) = throw(ArgumentError(lazy"unsupported axis type $(typeof(a))"))
 
 function conv_axes_with_offset(as::Tuple...)
     with_offset = ((map(a -> map(conv_axis_with_offset, a), as)...)...,)
@@ -808,8 +808,8 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
 end
 
 
-dsp_reverse(v, ::NTuple{<:Any, Base.OneTo{Int}}) = reverse(v, dims = 1)
-function dsp_reverse(v, vaxes)
+dsp_reverse(v::AbstractVector, ::Tuple{Base.OneTo}) = reverse(v)
+function dsp_reverse(v::AbstractVector, vaxes::Tuple{AbstractUnitRange})
     vsize = length(v)
     reflected_start = - first(only(vaxes)) - vsize + 1
     reflected_axes = (reflected_start : reflected_start + vsize - 1,)

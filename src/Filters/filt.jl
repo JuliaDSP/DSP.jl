@@ -36,17 +36,16 @@ function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSectio
                 x::AbstractArray, col::Union{Int,CartesianIndex}) where {S,N}
     g = f.g
     biquads = f.biquads
-    n = length(biquads)
     @inbounds for i in axes(x, 1)
         yi = x[i, col]
-        for fi = 1:n
+        for fi in eachindex(biquads)
             biquad = biquads[fi]
             xi = yi
             yi = muladd(biquad.b0, xi, si[1, fi])
             si[1, fi] = muladd(biquad.a1, -yi, muladd(biquad.b1, xi, si[2, fi]))
             si[2, fi] = muladd(biquad.b2, xi, -biquad.a2 * yi)
         end
-        out[i, col] = yi*g
+        out[i, col] = g * yi
     end
     si
 end
@@ -250,16 +249,17 @@ DF2TFilter(coef::FilterCoefficients{:z}, ::Type{V}, coldims::Tuple{Vararg{Intege
 #
 # in place in output. The istart and n parameters determine the portion
 # of the input signal x to extrapolate.
-function extrapolate_signal!(out, ostart, sig, istart, n, pad_length)
+function extrapolate_signal!(out, sig, pad_length)
+    n = length(sig)
     length(out) >= n + 2 * pad_length || throw(ArgumentError("output is incorrectly sized"))
-    x = 2 * sig[istart]
-    for i = 0:pad_length-1
-        out[ostart+i] = x - sig[istart+pad_length-i]
-    end
-    copyto!(out, ostart+pad_length, sig, istart, n)
-    x = 2 * sig[istart+n-1]
+    x = 2 * sig[1]
     for i = 1:pad_length
-        out[ostart+n+pad_length+i-1] = x - sig[istart+n-1-i]
+        out[i] = x - sig[2+pad_length-i]
+    end
+    copyto!(out, 1+pad_length, sig, 1, n)
+    x = 2 * sig[n]
+    for i = 1:pad_length
+        out[n+pad_length+i] = x - sig[n-i]
     end
     out
 end
@@ -273,14 +273,13 @@ function iir_filtfilt(b::AbstractVector, a::AbstractVector, x::AbstractArray)
     extrapolated = Vector{t}(undef, size(x, 1) + 2 * pad_length)
     out = similar(x, t)
 
-    for i = 1:Base.trailingsize(x, 2)
-        istart = 1 + (i - 1) * size(x, 1)
-        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
-        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), 1)
+    for col in CartesianIndices(axes(x)[2:end])
+        extrapolate_signal!(extrapolated, view(x, :, col), pad_length)
+        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), CartesianIndex())
         reverse!(extrapolated)
-        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), 1)
-        for j = 1:size(x, 1)
-            out[j, i] = extrapolated[end-pad_length+1-j]
+        _filt_iir!(extrapolated, bn, an, extrapolated, mul!(zitmp, zi, extrapolated[1]), CartesianIndex())
+        for j in axes(x, 1)
+            out[j, col] = extrapolated[end-pad_length+1-j]
         end
     end
 
@@ -310,25 +309,26 @@ function filtfilt(b::AbstractVector, x::AbstractArray)
     nb = length(b)
     # Only need as much padding as the order of the filter
     T = Base.promote_eltype(b, x)
-    extrapolated = similar(x, T, size(x, 1)+2nb-2, Base.trailingsize(x, 2))
+    extrapolated = similar(x, T, (size(x, 1)+2*(nb-1), size(x)[2:end]...))
 
     # Convolve b with its reverse
-    newb = filt(b, reverse(b))
+    newb = reverse(b, 1)
+    filt!(newb, b, newb)
     resize!(newb, 2nb-1)
     for i = 1:nb-1
         newb[nb+i] = newb[nb-i]
     end
 
     # Extrapolate each column
-    for i = 1:size(extrapolated, 2)
-        extrapolate_signal!(extrapolated, (i-1)*size(extrapolated, 1)+1, x, (i-1)*size(x, 1)+1, size(x, 1), nb-1)
+    for col in CartesianIndices(axes(x)[2:end])
+        @views extrapolate_signal!(extrapolated[:, col], x[:, col], nb-1)
     end
 
     # Filter
-    out = filt(newb, extrapolated)
+    filt!(extrapolated, newb, extrapolated)
 
     # Drop garbage at start
-    reshape(out[2nb-1:end, :], size(x))
+    return extrapolated[2nb-1:end, axes(extrapolated)[2:end]...]
 end
 
 # Choose whether to use FIR or iir_filtfilt depending on
@@ -353,16 +353,14 @@ function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,
     extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
     out = similar(x, t)
 
-    istart = 1
-    for i = 1:Base.trailingsize(x, 2)
-        extrapolate_signal!(extrapolated, 1, x, istart, size(x, 1), pad_length)
+    for col in CartesianIndices(axes(x)[2:end])
+        extrapolate_signal!(extrapolated, view(x, :, col), pad_length)
         _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
         reverse!(extrapolated)
         _filt!(extrapolated, mul!(zitmp, zi, extrapolated[1]), f, extrapolated, CartesianIndex())
-        for j = 1:size(x, 1)
-            @inbounds out[j, i] = extrapolated[end-pad_length+1-j]
+        for j in axes(x, 1)
+            out[j, col] = extrapolated[end-pad_length+1-j]
         end
-        istart += size(x, 1)
     end
 
     out
@@ -413,7 +411,7 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     biquads = f.biquads
     si = Matrix{T}(undef, 2, length(biquads))
     y = one(T)
-    for i = 1:length(biquads)
+    for i in eachindex(biquads)
         biquad = biquads[i]
         a1, a2, b0, b1, b2 = biquad.a1, biquad.a2, biquad.b0, biquad.b1, biquad.b2
 
@@ -515,10 +513,9 @@ function _fftfilt!(
         xstart = off - nb + npadbefore + 1
         n = min(nfft - npadbefore, nx - xstart + 1)
 
-        tmp1[1:npadbefore] .= zero(W)
-        tmp1[npadbefore+n+1:end] .= zero(W)
-
+        fill!(tmp1, zero(W))
         copyto!(tmp1, npadbefore+1, x, colstart+xstart, n)
+
         mul!(tmp2, p1, tmp1)
         broadcast!(*, tmp2, tmp2, filterft)
         mul!(tmp1, p2, tmp2)

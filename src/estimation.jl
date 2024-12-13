@@ -166,11 +166,11 @@ function quinn(x::Vector{<:Real}, f0::Real, Fs::Real; tol=1e-6, maxiters::Intege
 
     # Initialize algorithm
     α = 2cos(ω̂)
+    β = zero(eltype(x))
+    ξ = zeros(eltype(x), N)
+    ξ[1] = x[1]
 
     # iteration
-    ξ = zeros(eltype(x), N)
-    β = zero(eltype(x))
-    ξ[1] = x[1]
     iter = 0
     for outer iter = 1:maxiters
         ξ[2] = muladd(α, ξ[1], x[2])
@@ -194,11 +194,12 @@ function quinn(x::Vector{<:Complex}, f0::Real, Fs::Real; tol=1e-6, maxiters::Int
 
     # Remove any DC term in s
     x = x .- mean(x)
-    N = length(x)
 
-    # iteration
+    N = length(x)
     ξ = zeros(eltype(x), N)
     ξ[1] = x[1]
+
+    # iteration
     iter = 0
     for outer iter = 1:maxiters
         S = zero(eltype(x))
