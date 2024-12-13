@@ -380,7 +380,8 @@ for (fcn, filt) in ((:ellipord, "Elliptic (Cauer)"), (:cheb1ord, "Chebyshev Type
 
         Integer and natural frequency order estimation for $($filt) Filters. `Wp` and `Ws`
         indicate the passband and stopband frequency edges, and `Rp` and `Rs` indicate the
-        maximum ripple loss in the passband and the minimum ripple attenuation in the stopband, (in dB.)\n
+        maximum loss in the passband and the minimum attenuation in the stopband, (in dB.)
+
         Based on the ordering of passband and stopband edges, the Lowpass or Highpass filter type is inferred.
         `N` indicates the smallest integer filter order that achieves the desired specifications,
         and `ωn` contains the natural frequency of the filter, (in this case, simply the passband edge.)\n
