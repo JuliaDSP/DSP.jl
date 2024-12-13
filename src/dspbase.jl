@@ -800,8 +800,7 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
     B[CartesianIndices(A)] = A
     u = fft(_zeropad(u, m))
     vt = fft(_zeropad(transpose(v), n))
-    p = plan_fft(B)
-    C = inv(p) * ((p * B) .*= u .* transpose(vt))
+    C = ifft(fft(B) .*= u .* transpose(vt))
     if T <: Real
         return real(C)
     end
