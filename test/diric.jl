@@ -1,7 +1,7 @@
 # diric.jl Dirichlet kernel tests
 
 @testset "diric" begin
-    @test_throws ArgumentError diric(0, -2)
+    @test_throws DomainError diric(0, -2)
     @test @inferred(diric(0, 4)) ≈ 1
     @test @inferred(diric(0 // 1, 5)) == 1
     @test @inferred(diric(4π, 4)) ≈ 1

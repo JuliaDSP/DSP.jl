@@ -266,7 +266,7 @@ end
 
     f = Elliptic(20, 0.1, 10)
     zpkfilter_eq(f, matlab_f)
-    zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 20, 0.1, 10), eps=1e-9)
+    zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 20, 0.1, 10), atol=1e-9)
 
     # 19 pole elliptic filter prototype with 0.1 dB passband ripple and 10
     # dB stopband ripple from MATLAB 2013b:
@@ -309,7 +309,7 @@ end
 
     f = Elliptic(19, 0.1, 10)
     zpkfilter_eq(f, matlab_f)
-    zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 19, 0.1, 10), eps=4e-9)
+    zpkfilter_accuracy(f, matlab_f, Elliptic(BigFloat, 19, 0.1, 10), atol=4e-9)
 end
 
 #
