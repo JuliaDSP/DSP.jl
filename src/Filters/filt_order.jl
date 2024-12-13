@@ -208,6 +208,7 @@ function bsfcost(est_func::F, Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, 
 end
 
 function bsfmin(est_func::F, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where {F}
+    @inline
     # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
     Δ = eps(typeof(Wp[1]))^(2 / 3)
     C₁(w) = bsfcost(est_func, w, true, Wp, Ws, Rp, Rs)
@@ -328,6 +329,7 @@ end
 # Elliptic/Chebyshev1 Estimation
 #
 function ordfreq_est(order_estimate, domain::Symbol, Wp::Real, Ws::Real, Rp::Real, Rs::Real)
+    @inline
     ftype = (Wp < Ws) ? Lowpass : Highpass
     if (domain == :z)
         Ωp = tanpi(Wp / 2)
@@ -349,6 +351,7 @@ end
 
 function ordfreq_est(order_estimate::F, domain::Symbol,
         Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where {F}
+    @inline
     Wps = sort_W(Wp)
     Wss = sort_W(Ws)
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
