@@ -324,7 +324,7 @@ function test_arbitrary(Th, x, resampleRate, numFilters::Integer)
 
     results = (naiveResult, statelessResult, statefulResult, piecewiseResult)
     commonLen = minimum(length, results)
-    resize!.(results, commonLen)
+    foreach(x -> resize!(x, commonLen), results)
 
     @test naiveResult ≈ statelessResult
     @test naiveResult ≈ statefulResult

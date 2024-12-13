@@ -58,11 +58,10 @@ function tffilter_accuracy(f1, f2, accurate_f)
     accuracy_check(loss(a1, accurate_a), loss(a2, accurate_a), "a")
 end
 
-function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothing, eps=0.0)
+function zpkfilter_accuracy(f1, f2, accurate_f; relerr=1, compare_gain_at=nothing, atol=0.0)
     z1, p1 = sort(f1.z; lt), sort(f1.p; lt)
     z2, p2 = sort(f2.z; lt), sort(f2.p; lt)
     accurate_z, accurate_p = sort(accurate_f.z; lt), sort(accurate_f.p; lt)
-    atol = eps
     if !isempty(z1) || !isempty(z2) || !isempty(accurate_z)
         @test ≈(z1, accurate_z; atol)
         @test ≈(z2, accurate_z; atol)

@@ -52,22 +52,23 @@ end
 end
 
 @testset "quinn" begin
-    ### real input
-    fs = 100
-    t = range(0, 5; step=1/fs)
-    fr = 28.3
-    sr = cospi.(2 * fr * t .+ 1 / 4.2)
     function test_quinn(f, s, args...)
         (f_est_real, maxiter) = quinn(s, args...)
         @test maxiter == false
         @test isapprox(f_est_real, f; atol=1e-3)
         return nothing
     end
+    ### real input
+    fs = 100
+    t = range(0, 5; step=1/fs)
+    fr = 28.3
+    sr = cospi.(2 * fr * t .+ 1 / 4.2)
     test_quinn(fr, sr, 50, fs)
     # use default initial guess
     test_quinn(fr, sr, fs) # initial guess given by Jacobsen
     # use default fs
     test_quinn(fr / fs, sr) # fs = 1.0, initial guess given by Jacobsen
+
     ### complex input
     fc = -40.3
     sc = cispi.(2 * fc * t .+ 1 / 1.4)
