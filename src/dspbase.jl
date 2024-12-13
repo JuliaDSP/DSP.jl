@@ -798,7 +798,8 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
     n = length(v) + size(A, 2) - 1
     B = zeros(T, m, n)
     B[CartesianIndices(A)] = A
-    u, vt = fft.(_zeropad.((u, transpose(v)), (m, n)))
+    u = fft(_zeropad(u, m))
+    vt = fft(_zeropad(transpose(v), n))
     p = plan_fft(B)
     C = inv(p) * ((p * B) .*= u .* transpose(vt))
     if T <: Real
