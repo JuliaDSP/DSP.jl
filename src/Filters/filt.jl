@@ -312,7 +312,7 @@ function filtfilt(b::AbstractVector, x::AbstractArray)
     extrapolated = similar(x, T, (size(x, 1)+2*(nb-1), size(x)[2:end]...))
 
     # Convolve b with its reverse
-    newb = reverse(b)
+    newb = reverse(b, 1)
     filt!(newb, b, newb)
     resize!(newb, 2nb-1)
     for i = 1:nb-1
