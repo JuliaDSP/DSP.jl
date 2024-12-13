@@ -402,7 +402,7 @@ function unsafe_conv_kern_os_edge!(
         # on an edge.
         #
         # First make all entries equal to the center blocks:
-        @inbounds copyto!(perimeter_range, 1, center_block_ranges, 1, N)
+        copyto!(perimeter_range, 1, center_block_ranges, 1, N)
 
         # For the dimensions chosen to be on an edge (edge_dims), get the
         # ranges of the blocks that would need to be padded (lie on an edge)
@@ -421,7 +421,7 @@ function unsafe_conv_kern_os_edge!(
             # The center region for non-edge dimensions has been specified above,
             # so finish specifying the region of the perimeter for this edge
             # block
-            @inbounds for (i, dim) in enumerate(edge_dims)
+            for (i, dim) in enumerate(edge_dims)
                 perimeter_range[dim] = perimeter_edge_ranges[i]
             end
 
@@ -429,7 +429,7 @@ function unsafe_conv_kern_os_edge!(
             block_region = CartesianIndices(
                 NTuple{N, UnitRange{Int}}(perimeter_range)
             )
-            @inbounds for block_pos in block_region
+            for block_pos in block_region
                 # Figure out which portion of the input data should be transformed
 
                 block_idx = convert(NTuple{N, Int}, block_pos)
@@ -571,7 +571,7 @@ function unsafe_conv_kern_os!(out,
     # Portion of buffer with valid result of convolution
     valid_buff_region = CartesianIndices(UnitRange.(sv, nffts))
     # Iterate over block indices (not data indices) that do not need to be padded
-    @inbounds for block_pos in CartesianIndices(center_block_ranges)
+    for block_pos in CartesianIndices(center_block_ranges)
         # Calculate portion of data to transform
 
         block_idx = convert(NTuple{N, Int}, block_pos)
@@ -794,13 +794,13 @@ function conv(u::AbstractVector{T}, v::Transpose{T,<:AbstractVector}, A::Abstrac
     if any(conv_axis_with_offset, (axes(u)..., axes(v)..., axes(A)...))
         throw(ArgumentError("offset axes not supported"))
     end
-    m = length(u)+size(A,1)-1
-    n = length(v)+size(A,2)-1
+    m = length(u) + size(A, 1) - 1
+    n = length(v) + size(A, 2) - 1
     B = zeros(T, m, n)
-    B[1:size(A,1),1:size(A,2)] = A
-    u = fft([u;zeros(T,m-length(u))])
-    v = fft([v transpose(zeros(T,n-length(v)))])
-    C = ifft(fft(B) .* (u * v))
+    B[CartesianIndices(A)] = A
+    u = fft(_zeropad(u, m))
+    vt = fft(_zeropad(transpose(v), n))
+    C = ifft(fft(B) .*= u .* transpose(vt))
     if T <: Real
         return real(C)
     end
