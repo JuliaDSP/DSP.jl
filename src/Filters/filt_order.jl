@@ -196,7 +196,7 @@ end
 #
 # Bandstop cost functions and passband minimization
 #
-function bsfcost(est_func, Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+function bsfcost(est_func::F, Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where {F}
     # override one of the passband edges with the test frequency.
     Wpc = uselowband ? (Wx, Wp[2]) : (Wp[1], Wx)
 
@@ -207,7 +207,7 @@ function bsfcost(est_func, Wx::Real, uselowband::Bool, Wp::Tuple{Real,Real}, Ws:
     est_func(Rp, Rs, warp)
 end
 
-function bsfmin(est_func::T, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where T
+function bsfmin(est_func::F, Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where {F}
     # NOTE: the optimization function will adjust the corner frequencies in Wp, returning a new passband tuple.
     Δ = eps(typeof(Wp[1]))^(2 / 3)
     C₁(w) = bsfcost(est_func, w, true, Wp, Ws, Rp, Rs)
@@ -347,8 +347,8 @@ function ordfreq_est(order_estimate, domain::Symbol, Wp::Real, Ws::Real, Rp::Rea
     N, ωn
 end
 
-function ordfreq_est(order_estimate, domain::Symbol,
-        Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real)
+function ordfreq_est(order_estimate::F, domain::Symbol,
+        Wp::Tuple{Real,Real}, Ws::Tuple{Real,Real}, Rp::Real, Rs::Real) where {F}
     Wps = sort_W(Wp)
     Wss = sort_W(Ws)
     (Wps[1] < Wss[1]) != (Wps[2] > Wss[2]) && throw(ArgumentError("Pass and stopband edges must be ordered for Bandpass/Bandstop filters."))
