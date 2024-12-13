@@ -634,7 +634,6 @@ const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
 function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,Nothing}=nothing;
         padding::IntegerOr2=0, zerophase::BoolOr2=false) where {F}
-    length(dims) == 2 || throw(ArgumentError("`dims` must be length 2"))
     paddings = argdup(padding)
     zerophases = argdup(zerophase)
     if isnothing(arg)
