@@ -1,4 +1,4 @@
-using ..DSP: _zeropad
+using ..DSP.Convolutions: _zeropad
 
 const PFB{T} = Matrix{T}          # polyphase filter bank
 
