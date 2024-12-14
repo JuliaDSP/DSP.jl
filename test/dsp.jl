@@ -2,9 +2,8 @@
 # TODO: parameterize conv tests
 using Test, OffsetArrays
 using DSP: filt, filt!, deconv, conv, xcorr,
-           optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!
            nextfastfft
-
+using DSP.Convolutions: optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!
 
 
 @testset "filt" begin
