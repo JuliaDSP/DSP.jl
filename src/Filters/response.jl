@@ -4,7 +4,7 @@
 # Frequency response of a digital filter
 #
 
-using ..DSP: xcorr
+using ..Convolutions: xcorr
 
 """
     H, w = freqresp(filter::FilterCoefficients)

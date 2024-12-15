@@ -1,7 +1,5 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 
-using .Convolutions: _zeropad_keep_offset, conv
-
 const SMALL_FILT_CUTOFF = 66
 
 """
@@ -172,83 +170,3 @@ function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
     x[1] = 1
     filt(b, a, x)
 end
-
-dsp_reverse(v::AbstractVector, ::Tuple{Base.OneTo}) = reverse(v)
-function dsp_reverse(v::AbstractVector, vaxes::Tuple{AbstractUnitRange})
-    vsize = length(v)
-    reflected_start = - first(only(vaxes)) - vsize + 1
-    reflected_axes = (reflected_start : reflected_start + vsize - 1,)
-    out = similar(v, reflected_axes)
-    copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
-end
-
-
-"""
-    xcorr(u; padmode::Symbol=:none, scaling::Symbol=:none)
-    xcorr(u, v; padmode::Symbol=:none, scaling::Symbol=:none)
-
-With two arguments, compute the cross-correlation of two vectors, by calculating
-the similarity between `u` and `v` with various offsets of `v`. Delaying `u`
-relative to `v` will shift the result to the right. If one argument is provided,
-calculate `xcorr(u, u; kwargs...)`.
-
-The size of the output depends on the `padmode` keyword argument: with `padmode =
-:none` the length of the result will be `length(u) + length(v) - 1`, as with `conv`.
-With `padmode = :longest`, the shorter of the arguments will be padded so they
-are of equal length. This gives a result with length `2*max(length(u), length(v))-1`,
-with the zero-lag condition at the center.
-
-The keyword argument `scaling` can be provided. Possible arguments are the default
-`:none` and `:biased`. `:biased` is valid only if the vectors have the same length,
-or only one vector is provided, dividing the result by `length(u)`.
-
-!!! note
-
-    In this package, `xcorr` conjugates the second argument `v`, choosing the same
-    convention as MATLAB's `xcorr` and `scipy.signal.correlate`. This differs from
-    the inner product convention more prevalent in physics, that conjugates the
-    first vector.
-# Examples
-
-```jldoctest
-julia> xcorr([1,2,3],[1,2,3])
-5-element Vector{Int64}:
-  3
-  8
- 14
-  8
-  3
-```
-"""
-function xcorr(
-    u::AbstractVector, v::AbstractVector; padmode::Symbol=:none, scaling::Symbol=:none
-)
-    su = size(u, 1); sv = size(v, 1)
-
-    if scaling == :biased && su != sv
-        throw(DimensionMismatch("scaling only valid for vectors of same length"))
-    end
-
-    if padmode == :longest
-        if su < sv
-            u = _zeropad_keep_offset(u, sv)
-        elseif sv < su
-            v = _zeropad_keep_offset(v, su)
-        end
-    elseif padmode != :none
-        throw(ArgumentError("padmode keyword argument must be either :none or :longest"))
-    end
-
-    res = conv(u, dsp_reverse(conj(v), axes(v)))
-    if scaling == :biased
-        res = _normalize!(res, su)
-    end
-
-    return res
-end
-
-_normalize!(x::AbstractArray{<:Integer}, sz::Int) = (x ./ sz)   # does not mutate x
-_normalize!(x::AbstractArray, sz::Int) = (x ./= sz)
-
-# TODO: write specialized (r/)fft-ed autocorrelation functions
-xcorr(u::AbstractVector; kwargs...) = xcorr(u, u; kwargs...)
