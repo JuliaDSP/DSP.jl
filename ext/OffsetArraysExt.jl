@@ -1,7 +1,7 @@
 module OffsetArraysExt
-import DSP
+import DSP.Convolutions
 import OffsetArrays
 
-DSP.Convolutions.conv_axis_with_offset(::OffsetArrays.IdOffsetRange) = true
+Convolutions.conv_axis_with_offset(::OffsetArrays.IdOffsetRange) = true
 
 end
