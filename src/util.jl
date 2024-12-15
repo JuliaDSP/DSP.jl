@@ -1,10 +1,9 @@
 module Util
-using ..DSP: xcorr
 import Base: *
 using LinearAlgebra: mul!, BLAS
 using FFTW
 using Statistics: mean
-using ..Convolutions: nextfastfft
+using ..Convolutions: nextfastfft, xcorr
 
 export  hilbert,
         fftintype,
