@@ -1,10 +1,9 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 # TODO: parameterize conv tests
 using Test, OffsetArrays
-using DSP: filt, filt!, deconv, conv, xcorr,
+using DSP: filt, filt!, deconv
+using DSP.Convolutions: conv, xcorr, nextfastfft,
            optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!
-           nextfastfft
-
 
 
 @testset "filt" begin
