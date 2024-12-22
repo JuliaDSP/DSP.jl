@@ -536,7 +536,7 @@ function conv_axes_with_offset(as::Tuple...)
     return !isempty(with_offset) && first(with_offset)
 end
 
-const FFTTypes = Union{Float32,Float64,ComplexF32,ComplexF64}
+const FFTTypes = FFTW.fftwNumber
 
 """
     conv!(out, u, v; algorithm=:auto)
