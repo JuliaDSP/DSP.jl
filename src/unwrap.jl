@@ -94,7 +94,8 @@ mutable struct Pixel{T}
         return pixel
     end
 end
-Pixel(v, rng) = Pixel{typeof(v)}(0, v, rand(rng), 1)
+Pixel(v, rel::Float64) = Pixel{typeof(v)}(0, v, rel, 1)
+Pixel(v, rng::AbstractRNG) = Pixel(v, rand(rng))
 @inline Base.length(p::Pixel) = p.head.groupsize
 
 struct Edge{T}
@@ -146,8 +147,13 @@ end
 # function to broadcast
 function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
     pixel_image = similar(wrapped_image, Pixel{T})
-    Threads.@threads for i in eachindex(wrapped_image, pixel_image)
-        pixel_image[i] = Pixel(wrapped_image[i], rng)
+
+    # Initialize reliability values before going parallel. This ensures that
+    # reliability values are generated in a deterministic order.
+    rels = rand(rng, Float64, size(wrapped_image))
+
+    Threads.@threads for i in eachindex(wrapped_image, pixel_image, rels)
+        pixel_image[i] = Pixel(wrapped_image[i], rels[i])
     end
     return pixel_image
 end
