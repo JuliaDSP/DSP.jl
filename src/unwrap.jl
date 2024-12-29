@@ -95,7 +95,6 @@ mutable struct Pixel{T}
     end
 end
 Pixel(v, rel::Float64) = Pixel{typeof(v)}(0, v, rel, 1)
-Pixel(v, rng::AbstractRNG) = Pixel(v, rand(rng))
 @inline Base.length(p::Pixel) = p.head.groupsize
 
 struct Edge{T}
