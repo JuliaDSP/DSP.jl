@@ -46,11 +46,11 @@ wrapping discontinuities across all `ndims(m)` dimensions.
 
 A common usage for unwrapping across a singleton dimension is for a phase
 measurement over time, such as when
-comparing successive frames of a short-time-fourier-transform, as
+comparing successive frames of a short-time Fourier transform, as
 each frame is wrapped to stay within (-pi, pi].
 
 A common usage for unwrapping across multiple dimensions is for a phase
-measurement of a scene, such as when retrieving the phase information of
+measurement of a scene, such as when retrieving the phase information
 of an image, as each pixel is wrapped to stay within (-pi, pi].
 
 # Arguments
@@ -254,8 +254,8 @@ function populate_edges!(edges::Vector{Edge{T}}, pixel_image::AbstractArray{Pixe
 end
 
 function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, range) where {T, N}
-    # get the shifted pixel indices in CartesinanIndex form
-    # This gets all the nearest neighbors (CartesionIndex{N}() = one(CartesianIndex{N}))
+    # get the shifted pixel indices in CartesianIndex form
+    # This gets all the nearest neighbors
     one_cart = oneunit(CartesianIndex{N})
     pixel_shifts = -one_cart:one_cart
     image_inds = CartesianIndices(pixel_image)
