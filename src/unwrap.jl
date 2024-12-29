@@ -23,7 +23,7 @@ function unwrap!(y::AbstractArray{T,N}, m::AbstractArray{T,N}; dims=nothing, ran
     end
     if dims isa Integer
         accumulate!(unwrap_kernel(range), y, m; dims)
-    elseif dims == 1:N
+    elseif dims isa Colon || dims == 1:N
         unwrap_nd!(y, m; range, kwargs...)
     else
         throw(ArgumentError("`unwrap!`: Invalid dims specified: $dims"))
