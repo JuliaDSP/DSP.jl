@@ -257,7 +257,7 @@ function calculate_reliability!(pix_rels::AbstractArray{T, N}, src, circular_dim
     fi, li = first(image_inds) + one_cart, last(image_inds) - one_cart
     size_img = size(pix_rels)
     # inner loop
-    for i in fi:li
+    Threads.@threads for i in fi:li
         pix_rels[i] = calculate_pixel_reliability(src, i, pixel_shifts, range)
     end
 
