@@ -162,14 +162,7 @@ function filt!(out::AbstractArray{<:Any,N}, f::DF2TFilter{<:PolynomialRatio,Arra
         mul!(out, x, b[1])
     else
         a = coefa(f.coef)
-        as = length(a)
-        bs = length(b)
-        if as != 1
-            if as < n
-                append!(a, zero(eltype(a)) for _ in 1:(n-as))
-            elseif bs < n
-                append!(b, zero(eltype(b)) for _ in 1:(n-bs))
-            end
+        if length(a) != 1
             for col in CartesianIndices(axes(x)[2:end])
                 _filt_iir!(out, b, a, x, view(si, :, col), col)
             end

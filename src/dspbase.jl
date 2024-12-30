@@ -45,9 +45,6 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
         a = @noinline broadcast(/, a, norml)
         b = @noinline broadcast(/, b, norml)
     end
-    # Pad the coefficients with zeros if needed
-    bs<sz   && (b = copyto!(zeros(eltype(b), sz), b))
-    1<as<sz && (a = copyto!(zeros(eltype(a), sz), a))
 
     si = Vector{promote_type(eltype(b), eltype(a), T)}(undef, sz - 1)
 
@@ -75,10 +72,22 @@ function _filt_iir!(out, b, a, x, si, col)
         xi = x[i, col]
         val = muladd(xi, b[1], si[1])
         out[i, col] = val
-        for j=1:(silen-1)
+        for j in 1:min(length(a), length(b), silen) - 1
             si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
-        si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
+        if length(a) == length(b)
+            si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
+        elseif length(a) > length(b)
+            for j in length(b):silen-1
+                si[j] = muladd(val, -a[j+1], si[j+1])
+            end
+            si[silen] = -a[silen+1]*val
+        else
+            for j in length(a):silen-1
+                si[j] = muladd(xi, b[j+1], si[j+1])
+            end
+            si[silen] = xi*b[silen+1]
+        end
     end
 end
 
