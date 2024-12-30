@@ -46,11 +46,11 @@ wrapping discontinuities across all `ndims(m)` dimensions.
 
 A common usage for unwrapping across a singleton dimension is for a phase
 measurement over time, such as when
-comparing successive frames of a short-time-fourier-transform, as
+comparing successive frames of a short-time Fourier transform, as
 each frame is wrapped to stay within (-pi, pi].
 
 A common usage for unwrapping across multiple dimensions is for a phase
-measurement of a scene, such as when retrieving the phase information of
+measurement of a scene, such as when retrieving the phase information
 of an image, as each pixel is wrapped to stay within (-pi, pi].
 
 # Arguments
@@ -94,7 +94,7 @@ mutable struct Pixel{T}
         return pixel
     end
 end
-Pixel(v, rng) = Pixel{typeof(v)}(0, v, rand(rng), 1)
+Pixel(v, rel::Float64) = Pixel{typeof(v)}(0, v, rel, 1)
 @inline Base.length(p::Pixel) = p.head.groupsize
 
 struct Edge{T}
@@ -146,8 +146,13 @@ end
 # function to broadcast
 function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
     pixel_image = similar(wrapped_image, Pixel{T})
-    Threads.@threads for i in eachindex(wrapped_image, pixel_image)
-        pixel_image[i] = Pixel(wrapped_image[i], rng)
+
+    # Initialize reliability values before going parallel. This ensures that
+    # reliability values are generated in a deterministic order.
+    rels = rand(rng, Float64, size(wrapped_image))
+
+    Threads.@threads for i in eachindex(wrapped_image, pixel_image, rels)
+        pixel_image[i] = Pixel(wrapped_image[i], rels[i])
     end
     return pixel_image
 end
@@ -248,8 +253,8 @@ function populate_edges!(edges::Vector{Edge{T}}, pixel_image::AbstractArray{Pixe
 end
 
 function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, range) where {T, N}
-    # get the shifted pixel indices in CartesinanIndex form
-    # This gets all the nearest neighbors (CartesionIndex{N}() = one(CartesianIndex{N}))
+    # get the shifted pixel indices in CartesianIndex form
+    # This gets all the nearest neighbors
     one_cart = oneunit(CartesianIndex{N})
     pixel_shifts = -one_cart:one_cart
     image_inds = CartesianIndices(pixel_image)
