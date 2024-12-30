@@ -1,5 +1,7 @@
 using DSP, Test
-using Random: MersenneTwister
+using Random: MersenneTwister, default_rng, seed!
+using StableRNGs
+using Statistics: mean
 
 @testset "Unwrap 1D" begin
     @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
@@ -135,5 +137,22 @@ end
         unwrap!(f_wr, dims=1:3, circular_dims=(true, true, true))
         offset = first(f_uw) - first(f_wr)
         @test (f_wr.+offset) ≈ f_uw #oop, 3wrap
+    end
+end
+
+@testset "reproducible unwrap" begin
+    function measure(s, rng, seed=rand(UInt))
+        u1 = unwrap(s; dims=1:ndims(s), rng=seed!(rng, seed))
+        u2 = unwrap(s; dims=1:ndims(s), rng=seed!(rng, seed))
+        return sqrt(mean(abs2, u1 - u2))
+    end
+
+    x1 = 1234 * rand(10_000)
+    x2 = 1357 * rand(200, 200)
+    x3 = 1248 * rand(30, 30, 30)
+
+    for x in (x1, x2, x3)
+        @test measure(x, default_rng()) == measure(x, MersenneTwister()) ==
+              measure(x, StableRNG(10)) == 0.0
     end
 end
