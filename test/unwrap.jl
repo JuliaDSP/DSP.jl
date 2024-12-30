@@ -4,27 +4,29 @@ using StableRNGs
 using Statistics: mean
 
 @testset "Unwrap 1D" begin
-    @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 - 2pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1, 0.2 - 2pi, 0.3 - 2pi, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
-    @test unwrap([0.1 + 2pi, 0.2, 0.3, 0.4]) ≈ [0.1 + 2pi, 0.2 + 2pi, 0.3 + 2pi, 0.4 + 2pi]
-    @test unwrap([0.1, 0.2 + 6pi, 0.3, 0.4]) ≈ [0.1, 0.2, 0.3, 0.4]
+    unwrapped = [0.1, 0.2, 0.3, 0.4]
+    @test unwrap([0.1, 0.2, 0.3, 0.4]) ≈ unwrapped
+    @test unwrap([0.1, 0.2 + 2pi, 0.3, 0.4]) ≈ unwrapped
+    @test unwrap([0.1, 0.2 - 2pi, 0.3, 0.4]) ≈ unwrapped
+    @test unwrap([0.1, 0.2 - 2pi, 0.3 - 2pi, 0.4]) ≈ unwrapped
+    @test unwrap([0.1 + 2pi, 0.2, 0.3, 0.4]) ≈ unwrapped .+ 2pi
+    @test unwrap([0.1, 0.2 + 6pi, 0.3, 0.4]) ≈ unwrapped
 
     test_v = [0.1, 0.2, 0.3 + 2pi, 0.4]
     res_v = unwrap(test_v)
-    @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
+    @test res_v ≈ unwrapped
+    @test test_v == [0.1, 0.2, 0.3 + 2pi, 0.4]
+
     res_v .= 0
     unwrap!(res_v, test_v)
-    @test res_v ≈ [0.1, 0.2, 0.3, 0.4]
-    @test test_v ≈ [0.1, 0.2, 0.3 + 2pi, 0.4]
-    unwrap!(test_v)
-    @test test_v ≈ [0.1, 0.2, 0.3, 0.4]
+    @test res_v ≈ unwrapped
+    @test test_v == [0.1, 0.2, 0.3 + 2pi, 0.4]
+
+    @test unwrap!(test_v) === test_v
+    @test test_v ≈ unwrapped
 
     # test unwrapping within multi-dimensional array
-    wrapped = [0.1, 0.2 + 2pi, 0.3, 0.4]
-    unwrapped = [0.1, 0.2, 0.3, 0.4]
-    wrapped = hcat(wrapped, wrapped)
+    wrapped = repeat([0.1, 0.2 + 2pi, 0.3, 0.4], 1, 2)
     unwrapped = hcat(unwrapped, unwrapped)
     @test unwrap(wrapped, dims=2) ≈ wrapped
     @test unwrap(wrapped, dims=1) ≈ unwrapped
@@ -103,40 +105,30 @@ end
 
 @testset "Unwrap 3D" begin
     types = (Float32, Float64, BigFloat)
-    f(x, y, z) = 0.1x^2 - 2y + 2z
+
+    f_nowrap(x, y, z) = 0.1x^2 - 2y + 2z
     f_wraparound2(x, y, z) = 5*sin(x) + 2*cos(y) + z
     f_wraparound3(x, y, z) = 5*sin(x) + 2*cos(y) - 4*cos(z)
+
     for T in types
         grid = range(zero(T), stop=2convert(T, π), length=11)
-        f_uw = f.(grid, grid', reshape(grid, 1, 1, :))
-        f_wr = f_uw .% (2convert(T, π))
-        uw_test = unwrap(f_wr, dims=1:3)
-        offset = first(f_uw) - first(uw_test)
-        @test (uw_test.+offset) ≈ f_uw rtol=eps(T) #oop, nowrap
-        # test in-place version
-        unwrap!(f_wr, dims=1:3)
-        offset = first(f_uw) - first(f_wr)
-        @test (f_wr.+offset) ≈ f_uw rtol=eps(T) #ip, nowrap
 
-        f_uw = f_wraparound2.(grid, grid', reshape(grid, 1, 1, :))
-        f_wr = f_uw .% (2convert(T, π))
-        uw_test = unwrap(f_wr, dims=1:3)
-        offset = first(f_uw) - first(uw_test)
-        @test (uw_test.+offset) ≈ f_uw #oop, 2wrap
-        # test in-place version
-        unwrap!(f_wr, dims=1:3, circular_dims=(true, true, false))
-        offset = first(f_uw) - first(f_wr)
-        @test (f_wr.+offset) ≈ f_uw #ip, 2wrap
+        for (func, circular_dims) in (
+            (f_nowrap,      (false, false, false)),
+            (f_wraparound2, (true, true, false)),
+            (f_wraparound3, (true, true, true))
+        )
+            f_uw = func.(grid, grid', reshape(grid, 1, 1, :))
+            f_wr = f_uw .% (2convert(T, π))
+            uw_test = unwrap(f_wr; dims=1:3, circular_dims)
+            offset = first(f_uw) - first(uw_test)
+            @test (uw_test .+ offset) ≈ f_uw rtol = eps(T)  # oop
 
-        f_uw = f_wraparound3.(grid, grid', reshape(grid, 1, 1, :))
-        f_wr = f_uw .% (2convert(T, π))
-        uw_test = unwrap(f_wr, dims=1:3, circular_dims=(true, true, true))
-        offset = first(f_uw) - first(uw_test)
-        @test (uw_test.+offset) ≈ f_uw #oop, 3wrap
-        # test in-place version
-        unwrap!(f_wr, dims=1:3, circular_dims=(true, true, true))
-        offset = first(f_uw) - first(f_wr)
-        @test (f_wr.+offset) ≈ f_uw #oop, 3wrap
+            # test in-place version
+            unwrap!(f_wr; dims=1:3, circular_dims)
+            offset = first(f_uw) - first(f_wr)
+            @test (f_wr .+ offset) ≈ f_uw rtol = eps(T)     # ip
+        end
     end
 end
 
