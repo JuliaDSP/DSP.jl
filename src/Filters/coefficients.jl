@@ -44,12 +44,16 @@ Base.promote_rule(::Type{ZeroPoleGain{D,Z1,P1,K1}}, ::Type{ZeroPoleGain{D,Z2,P2,
 
 Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
 
+function checked_abs(e::Integer)
+    ae = abs(e)
+    ae < 0 && throw(DomainError(e, "abs(e) is negative. Promote e to a wider int type, or reconsider f^e"))
+    return ae
+end
+
 function Base.:^(f::ZeroPoleGain{D}, e::Integer) where {D}
-    if e < 0
-        return inv(f^-e)
-    else
-        return ZeroPoleGain{D}(repeat(f.z, e), repeat(f.p, e), f.k^e)
-    end
+    ae = checked_abs(e)
+    res = ZeroPoleGain{D}(repeat(f.z, ae), repeat(f.p, ae), f.k^ae)
+    return e < 0 ? inv(res) : res
 end
 
 #
@@ -184,11 +188,9 @@ end
 Base.inv(f::PolynomialRatio{D}) where {D} = PolynomialRatio{D}(f.a, f.b)
 
 function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
-    if e < 0
-        return PolynomialRatio{D}(f.a^-e, f.b^-e)
-    else
-        return PolynomialRatio{D}(f.b^e, f.a^e)
-    end
+    ae = checked_abs(e)
+    p = PolynomialRatio{D}(f.b^ae, f.a^ae)
+    return e < 0 ? inv(p) : p
 end
 
 coef_s(p::LaurentPolynomial) = p[end:-1:0]
@@ -469,17 +471,12 @@ SecondOrderSections{D}(f::FilterCoefficients{D}) where {D} = SecondOrderSections
 Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.biquads), inv(f.g))
 
 function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
-    if e < 0
-        return inv(f)^-e
-    else
-        return SecondOrderSections{D}(repeat(f.biquads, e), f.g^e)
-    end
+    ae = checked_abs(e)
+    pf = e < 0 ? inv(f) : f
+    return SecondOrderSections{D}(repeat(pf.biquads, ae), pf.g^ae)
 end
 
 function Base.:^(f::Biquad{D}, e::Integer) where {D}
-    if e < 0
-        return inv(f)^-e
-    else
-        return SecondOrderSections{D}(fill(f, e), 1)
-    end
+    ae = checked_abs(e)
+    return SecondOrderSections{D}(fill(e < 0 ? inv(f) : f, ae), 1)
 end
