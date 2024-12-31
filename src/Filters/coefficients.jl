@@ -306,7 +306,45 @@ Base.promote_rule(::Type{SecondOrderSections{D,T1,G1}}, ::Type{SecondOrderSectio
 
 SecondOrderSections{D,T,G}(f::SecondOrderSections) where {D,T,G} =
     SecondOrderSections{D,T,G}(f.biquads, f.g)
+SecondOrderSections{D,T,G}(f::Biquad{D}) where {D,T,G} = SecondOrderSections{D,T,G}([f], one(G))
+
 SecondOrderSections{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} = SecondOrderSections{D,T,G}(f)
+SecondOrderSections{D}(f::Biquad{D,T}) where {D,T} = SecondOrderSections{D,T,Int}(f)
+
+*(f::SecondOrderSections{D}, g::Number) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
+*(g::Number, f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
+*(f1::SecondOrderSections{D}, f2::SecondOrderSections{D}) where {D} =
+    SecondOrderSections{D}([f1.biquads; f2.biquads], f1.g * f2.g)
+*(f1::SecondOrderSections{D}, fs::SecondOrderSections{D}...) where {D} =
+    SecondOrderSections{D}(vcat(f1.biquads, map(f -> f.biquads, fs)...), f1.g * prod(f.g for f in fs))
+
+*(f1::Biquad{D}, f2::Biquad{D}) where {D} = SecondOrderSections{D}([f1, f2], 1)
+*(f1::Biquad{D}, fs::Biquad{D}...) where {D} = SecondOrderSections{D}([f1, fs...], 1)
+*(f1::SecondOrderSections{D}, f2::Biquad{D}) where {D} =
+    SecondOrderSections{D}([f1.biquads; f2], f1.g)
+*(f1::Biquad{D}, f2::SecondOrderSections{D}) where {D} =
+    SecondOrderSections{D}([f1; f2.biquads], f2.g)
+
+Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.biquads), inv(f.g))
+
+function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
+    ae = checked_abs(e)
+    pf = e < 0 ? inv(f) : f
+    return SecondOrderSections{D}(repeat(pf.biquads, ae), pf.g^ae)
+end
+
+function Base.:^(f::Biquad{D}, e::Integer) where {D}
+    ae = checked_abs(e)
+    return SecondOrderSections{D}(fill(e < 0 ? inv(f) : f, ae), 1)
+end
+
+function Biquad{D,T}(f::SecondOrderSections{D}) where {D,T}
+    if length(f.biquads) != 1
+        throw(ArgumentError("only a single second order section may be converted to a biquad"))
+    end
+    Biquad{D,T}(f.biquads[1] * f.g)
+end
+Biquad{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} = Biquad{D,promote_type(T, G)}(f)
 
 function ZeroPoleGain{D,Z,P,K}(f::SecondOrderSections{D}) where {D,Z,P,K}
     z = Z[]
@@ -322,14 +360,6 @@ function ZeroPoleGain{D,Z,P,K}(f::SecondOrderSections{D}) where {D,Z,P,K}
 end
 ZeroPoleGain{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} =
     ZeroPoleGain{D,complex(T),complex(T),G}(f)
-
-function Biquad{D,T}(f::SecondOrderSections{D}) where {D,T}
-    if length(f.biquads) != 1
-        throw(ArgumentError("only a single second order section may be converted to a biquad"))
-    end
-    Biquad{D,T}(f.biquads[1] * f.g)
-end
-Biquad{D}(f::SecondOrderSections{D,T,G}) where {D,T,G} = Biquad{D,promote_type(T,G)}(f)
 
 PolynomialRatio{D,T}(f::SecondOrderSections{D}) where {D,T} = PolynomialRatio{D,T}(ZeroPoleGain(f))
 PolynomialRatio{D}(f::SecondOrderSections{D}) where {D} = PolynomialRatio{D}(ZeroPoleGain(f))
@@ -449,34 +479,4 @@ end
 SecondOrderSections{D}(f::ZeroPoleGain{D,Z,P,K}) where {D,Z,P,K} =
     SecondOrderSections{D,promote_type(real(Z), real(P)), K}(f)
 
-
-SecondOrderSections{D,T,G}(f::Biquad{D}) where {D,T,G} = SecondOrderSections{D,T,G}([f], one(G))
-SecondOrderSections{D}(f::Biquad{D,T}) where {D,T} = SecondOrderSections{D,T,Int}(f)
 SecondOrderSections{D}(f::FilterCoefficients{D}) where {D} = SecondOrderSections{D}(ZeroPoleGain(f))
-
-*(f::SecondOrderSections{D}, g::Number) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
-*(g::Number, f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(f.biquads, f.g * g)
-*(f1::SecondOrderSections{D}, f2::SecondOrderSections{D}) where {D} =
-    SecondOrderSections{D}([f1.biquads; f2.biquads], f1.g * f2.g)
-*(f1::SecondOrderSections{D}, fs::SecondOrderSections{D}...) where {D} =
-    SecondOrderSections{D}(vcat(f1.biquads, map(f -> f.biquads, fs)...), f1.g * prod(f.g for f in fs))
-
-*(f1::Biquad{D}, f2::Biquad{D}) where {D} = SecondOrderSections{D}([f1, f2], 1)
-*(f1::Biquad{D}, fs::Biquad{D}...) where {D} = SecondOrderSections{D}([f1, fs...], 1)
-*(f1::SecondOrderSections{D}, f2::Biquad{D}) where {D} =
-    SecondOrderSections{D}([f1.biquads; f2], f1.g)
-*(f1::Biquad{D}, f2::SecondOrderSections{D}) where {D} =
-    SecondOrderSections{D}([f1; f2.biquads], f2.g)
-
-Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.biquads), inv(f.g))
-
-function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
-    ae = checked_abs(e)
-    pf = e < 0 ? inv(f) : f
-    return SecondOrderSections{D}(repeat(pf.biquads, ae), pf.g^ae)
-end
-
-function Base.:^(f::Biquad{D}, e::Integer) where {D}
-    ae = checked_abs(e)
-    return SecondOrderSections{D}(fill(e < 0 ? inv(f) : f, ae), 1)
-end
