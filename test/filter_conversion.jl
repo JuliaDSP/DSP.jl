@@ -219,7 +219,7 @@ end
         p = rand(ComplexF64, Npc) .- (0.5 + 0.5im);
         p = [p; conj(p); rand(Npr) .- 0.5; zeros(max(2Nzc+Nzr-2Npc-Npr, 0))]
         H′ = ZeroPoleGain(z, p,
-            (rand() + 0.5) * rand([-1, 1]), # non-zero gain with random sign
+            (rand() + 0.5) * rand((-1, 1)), # non-zero gain with random sign
         )
         maybe_biquad = length(z) ≤ 2 && length(p) ≤ 2 ? (Biquad,) : ()
         for T ∈ (PolynomialRatio, ZeroPoleGain, SecondOrderSections, maybe_biquad...)
@@ -236,6 +236,11 @@ end
             @test filt(H^0, x) ≈ x
         end
     end
+    # test that checked_abs in Base.^ throws DomainError instead of StackOverFlowError
+    @test_throws "abs(e)" PolynomialRatio([1.0], [2.0])^typemin(Int)
+    @test_throws DomainError ZeroPoleGain([1], [2], 3)^typemin(Int)
+    @test_throws DomainError Biquad(1:5...)^typemin(Int)
+    @test_throws DomainError SecondOrderSections(Biquad(1:5...))^typemin(Int)
 end
 
 @testset "types" begin
