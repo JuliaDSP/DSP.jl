@@ -236,11 +236,11 @@ end
             @test filt(H^0, x) ≈ x
         end
     end
-    # test that checked_abs in Base.^ throws DomainError instead of StackOverFlowError
-    @test_throws "abs(e)" PolynomialRatio([1.0], [2.0])^typemin(Int)
-    @test_throws DomainError ZeroPoleGain([1], [2], 3)^typemin(Int)
-    @test_throws DomainError Biquad(1:5...)^typemin(Int)
-    @test_throws DomainError SecondOrderSections(Biquad(1:5...))^typemin(Int)
+    # test that ^ doesn't cause stack overflow
+    @test_nowarn PolynomialRatio([1.0], [2.0])^typemin(Int8)
+    @test_nowarn ZeroPoleGain([1], [2], 3)^typemin(Int8)
+    @test_nowarn Biquad(1:5...)^typemin(Int8)
+    @test_nowarn SecondOrderSections(Biquad(1:5...))^typemin(Int8)
 end
 
 @testset "types" begin

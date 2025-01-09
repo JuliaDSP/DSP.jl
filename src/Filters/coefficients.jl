@@ -1,5 +1,7 @@
 # Filter types and conversions
 
+using Base: uabs
+
 abstract type FilterCoefficients{Domain} end
 
 Base.convert(::Type{T}, f::FilterCoefficients) where {T<:FilterCoefficients} = T(f)
@@ -44,14 +46,8 @@ Base.promote_rule(::Type{ZeroPoleGain{D,Z1,P1,K1}}, ::Type{ZeroPoleGain{D,Z2,P2,
 
 Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
 
-function checked_abs(e::Integer)
-    ae = abs(e)
-    ae < 0 && throw(DomainError(e, "abs(e) is negative. Promote e to a wider int type, or reconsider f^e"))
-    return ae
-end
-
 function Base.:^(f::ZeroPoleGain{D}, e::Integer) where {D}
-    ae = checked_abs(e)
+    ae = uabs(e)
     res = ZeroPoleGain{D}(repeat(f.z, ae), repeat(f.p, ae), f.k^ae)
     return e < 0 ? inv(res) : res
 end
@@ -188,9 +184,12 @@ end
 Base.inv(f::PolynomialRatio{D}) where {D} = PolynomialRatio{D}(f.a, f.b)
 
 function Base.:^(f::PolynomialRatio{D,T}, e::Integer) where {D,T}
-    ae = checked_abs(e)
-    p = PolynomialRatio{D}(f.b^ae, f.a^ae)
-    return e < 0 ? inv(p) : p
+    ae = uabs(e)
+    b, a = f.b^ae, f.a^ae
+    if e < 0
+        b, a = a, b
+    end
+    return PolynomialRatio{D}(b, a)
 end
 
 coef_s(p::LaurentPolynomial) = p[end:-1:0]
@@ -328,13 +327,13 @@ SecondOrderSections{D}(f::Biquad{D,T}) where {D,T} = SecondOrderSections{D,T,Int
 Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.biquads), inv(f.g))
 
 function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
-    ae = checked_abs(e)
+    ae = uabs(e)
     pf = e < 0 ? inv(f) : f
     return SecondOrderSections{D}(repeat(pf.biquads, ae), pf.g^ae)
 end
 
 function Base.:^(f::Biquad{D}, e::Integer) where {D}
-    ae = checked_abs(e)
+    ae = uabs(e)
     return SecondOrderSections{D}(fill(e < 0 ? inv(f) : f, ae), 1)
 end
 
