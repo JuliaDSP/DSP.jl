@@ -245,6 +245,7 @@ end
         @test length(zpg.z) == length(zpg.p) == 128
         @test all(==(2), zpg.z)
         @test all(==(1), zpg.p)
+        @test zpg.k ≈ inv(3)^128
     end
     let bq = Biquad(1:5...)
         sos1 = bq^typemin(Int8)
