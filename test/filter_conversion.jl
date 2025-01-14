@@ -237,10 +237,22 @@ end
         end
     end
     # test that ^ doesn't cause stack overflow
-    @test_nowarn PolynomialRatio([1.0], [2.0])^typemin(Int8)
-    @test_nowarn ZeroPoleGain([1], [2], 3)^typemin(Int8)
-    @test_nowarn Biquad(1:5...)^typemin(Int8)
-    @test_nowarn SecondOrderSections(Biquad(1:5...))^typemin(Int8)
+    let H = PolynomialRatio([1.0], [2.0])^typemin(Int8)
+        @test coefb(H) == [2.0^128]
+        @test coefa(H) == [1.0]
+    end
+    let zpg = ZeroPoleGain([1], [2], 3)^typemin(Int8)
+        @test length(zpg.z) == length(zpg.p) == 128
+        @test all(==(2), zpg.z)
+        @test all(==(1), zpg.p)
+    end
+    let bq = Biquad(1:5...)
+        sos1 = bq^typemin(Int8)
+        sos2 = SecondOrderSections(bq)^typemin(Int8)
+        @test all(==(inv(bq)), sos1.biquads)
+        @test all(==(inv(bq)), sos2.biquads)
+        @test sos1.g == sos2.g == 1
+    end
 end
 
 @testset "types" begin
