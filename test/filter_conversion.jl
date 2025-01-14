@@ -249,6 +249,7 @@ end
     let bq = Biquad(1:5...)
         sos1 = bq^typemin(Int8)
         sos2 = SecondOrderSections(bq)^typemin(Int8)
+        @test length(sos1.biquads) == length(sos2.biquads) == 128
         @test all(==(inv(bq)), sos1.biquads)
         @test all(==(inv(bq)), sos2.biquads)
         @test sos1.g == sos2.g == 1
