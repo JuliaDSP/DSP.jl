@@ -48,11 +48,8 @@ Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
 
 function Base.:^(f::ZeroPoleGain{D}, e::Integer) where {D}
     ae = uabs(e)
-    z, p, k = repeat(f.z, ae), repeat(f.p, ae), f.k
-    if e < 0
-        z, p, k = p, z, inv(k)
-    end
-    return ZeroPoleGain{D}(z, p, k^ae)
+    z, p = repeat(f.z, ae), repeat(f.p, ae)
+    return e < 0 ? ZeroPoleGain{D}(p, z, inv(f.k)^ae) : ZeroPoleGain{D}(z, p, f.k^ae)
 end
 
 #
@@ -331,8 +328,12 @@ Base.inv(f::SecondOrderSections{D}) where {D} = SecondOrderSections{D}(inv.(f.bi
 
 function Base.:^(f::SecondOrderSections{D}, e::Integer) where {D}
     ae = uabs(e)
-    pf = e < 0 ? inv(f) : f
-    return SecondOrderSections{D}(repeat(pf.biquads, ae), pf.g^ae)
+    if e < 0
+        inv_f = inv(f)
+        return SecondOrderSections{D}(repeat(inv_f.biquads, ae), inv_f.g^ae)
+    else
+        return SecondOrderSections{D}(repeat(f.biquads, ae), f.g^ae)
+    end
 end
 
 function Base.:^(f::Biquad{D}, e::Integer) where {D}
