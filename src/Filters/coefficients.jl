@@ -48,8 +48,11 @@ Base.inv(f::ZeroPoleGain{D}) where {D} = ZeroPoleGain{D}(f.p, f.z, inv(f.k))
 
 function Base.:^(f::ZeroPoleGain{D}, e::Integer) where {D}
     ae = uabs(e)
-    res = ZeroPoleGain{D}(repeat(f.z, ae), repeat(f.p, ae), f.k^ae)
-    return e < 0 ? inv(res) : res
+    z, p, k = repeat(f.z, ae), repeat(f.p, ae), f.k
+    if e < 0
+        z, p, k = p, z, inv(k)
+    end
+    return ZeroPoleGain{D}(z, p, k^ae)
 end
 
 #
