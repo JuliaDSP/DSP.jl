@@ -219,7 +219,7 @@ end
         p = rand(ComplexF64, Npc) .- (0.5 + 0.5im);
         p = [p; conj(p); rand(Npr) .- 0.5; zeros(max(2Nzc+Nzr-2Npc-Npr, 0))]
         H′ = ZeroPoleGain(z, p,
-            (rand() + 0.5) * rand([-1, 1]), # non-zero gain with random sign
+            (rand() + 0.5) * rand((-1, 1)), # non-zero gain with random sign
         )
         maybe_biquad = length(z) ≤ 2 && length(p) ≤ 2 ? (Biquad,) : ()
         for T ∈ (PolynomialRatio, ZeroPoleGain, SecondOrderSections, maybe_biquad...)
@@ -235,6 +235,25 @@ end
             end
             @test filt(H^0, x) ≈ x
         end
+    end
+    # test that ^ doesn't cause stack overflow
+    let H = PolynomialRatio([1.0], [2.0])^typemin(Int8)
+        @test coefb(H) == [2.0^128]
+        @test coefa(H) == [1.0]
+    end
+    let zpg = ZeroPoleGain([1], [2], 3)^typemin(Int8)
+        @test length(zpg.z) == length(zpg.p) == 128
+        @test all(==(2), zpg.z)
+        @test all(==(1), zpg.p)
+        @test zpg.k ≈ inv(3)^128
+    end
+    let bq = Biquad(1:5...)
+        sos1 = bq^typemin(Int8)
+        sos2 = SecondOrderSections(bq)^typemin(Int8)
+        @test length(sos1.biquads) == length(sos2.biquads) == 128
+        @test all(==(inv(bq)), sos1.biquads)
+        @test all(==(inv(bq)), sos2.biquads)
+        @test sos1.g == sos2.g == 1
     end
 end
 
