@@ -674,9 +674,31 @@ function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
 end
 
 
-# Compute FIR coefficients necessary for arbitrary rate resampling
+"""
+    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, att=60)
+
+Compute FIR coefficients necessary for arbitrary rate resampling
+with `Nϕ` filters / phases, stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+"""
 function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
-    f_nyq       = rate >= 1.0 ? 1.0 / Nϕ : rate / Nϕ
+    f_nyq = rate >= 1.0 ? 1.0 / Nϕ : rate / Nϕ
+    return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
+end
+
+"""
+    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
+
+Compute FIR coefficients necessary for rational rate resampling,
+with stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+"""
+function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
+    Nϕ         = numerator(rate)
+    decimation = denominator(rate)
+    f_nyq      = min(1 / Nϕ, 1 / decimation)
+    return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
+end
+
+function _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
     cutoff      = f_nyq * rel_bw
     trans_width = cutoff * 0.2
 
@@ -684,31 +706,6 @@ function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0,
     hLen, α = kaiserord(trans_width, attenuation)
 
     # Round the number of taps up to a multiple of Nϕ.
-    # Otherwise the missing taps will be filled with 0.
-    hLen = Nϕ * ceil(Int, hLen / Nϕ)
-
-    # Ensure that the filter is an odd length
-    if iseven(hLen)
-        hLen += 1
-    end
-
-    # Design filter
-    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
-    rmul!(h, Nϕ)
-end
-
-# Compute FIR coefficients necessary for rational rate resampling
-function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
-    Nϕ          = numerator(rate)
-    decimation  = denominator(rate)
-    f_nyq       = min(1 / Nϕ, 1 / decimation)
-    cutoff      = f_nyq * rel_bw
-    trans_width = cutoff * 0.2
-
-    # Determine resampling filter order
-    hLen, α = kaiserord(trans_width, attenuation)
-
-    # Round the number of taps up to a multiple of Nϕ (same as interpolation factor).
     # Otherwise the missing taps will be filled with 0.
     hLen = Nϕ * ceil(Int, hLen / Nϕ)
 

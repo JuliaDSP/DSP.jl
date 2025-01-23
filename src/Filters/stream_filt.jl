@@ -145,12 +145,15 @@ end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
 """
-    FIRFilter(h::Vector[, ratio::Union{Integer,Rational}])
+    FIRFilter(h::Vector, ratio::Union{Integer,Rational}=1, args...)
+    FIRFilter(ratio::Union{Integer,Rational}, args...)
 
 Construct a stateful FIRFilter object from the vector of filter taps `h`.
 `ratio` is an optional rational integer which specifies
 the input to output sample rate relationship (e.g. `147//160` for
 converting recorded audio from 48 KHz to 44.1 KHz).
+
+Constructs `h` with `resample_filter(ratio, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     interpolation = numerator(resampleRatio)
@@ -178,13 +181,16 @@ end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
 """
-    FIRFilter(h::Vector, rate::AbstractFloat[, Nϕ::Integer=32])
+    FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32, args...)
+    FIRFilter(rate::AbstractFloat, Nϕ::Integer=32, args...)
 
 Returns a polyphase FIRFilter object from the vector of filter taps `h`.
 `rate` is a floating point number that specifies the input to output
 sample-rate relationship ``\\frac{fs_{out}}{fs_{in}}``. `Nϕ` is an
 optional parameter which specifies the number of *phases* created from
 `h`. `Nϕ` defaults to 32.
+
+Constructs `h` with `resample_filter(rate, Nϕ, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     rate > 0.0 || throw(DomainError(rate, "rate must be greater than 0"))
@@ -200,9 +206,9 @@ function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32, args...)
     FIRFilter(h, rate, Nϕ)
 end
 
-function FIRFilter(rate::Union{Integer,Rational})
-    h = resample_filter(rate)
-    FIRFilter(h, rate)
+function FIRFilter(ratio::Union{Integer,Rational}, args...)
+    h = resample_filter(ratio, args...)
+    FIRFilter(h, ratio)
 end
 
 

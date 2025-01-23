@@ -59,6 +59,7 @@ parameters.
 
 ```@docs
 FIRFilter
+resample_filter
 ```
 
 ## Filter application
