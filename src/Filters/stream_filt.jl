@@ -81,12 +81,12 @@ FIRRational(h::Vector,ratio::Integer)=FIRRational(h,convert(Rational,ratio))
 #
 # Arbitrary resampler FIR kernel
 #
-# This kernel is different from the others in that it has two polyphase filtlter banks.
-# The the second filter bank, dpfb, is the derivative of pfb. The purpose of this is to
-# allow us to compute two y values, yLower & yUpper, whitout having to advance the input
-# index by 1. It makes the kernel simple by not having to store extra state in the case
-# when where's at the last polphase branch and the last available input sample. By using
-# a derivitive filter, we can always compute the output in that scenario.
+# This kernel is different from the others in that it has two polyphase filter banks.
+# The second filter bank, dpfb, is the derivative of pfb. The purpose of this is to
+# allow us to compute two y values, yLower & yUpper, without having to advance the input
+# index by 1. It makes the kernel simpler by not having to store extra state in the case
+# when where's at the last polyphase branch and the last available input sample. By using
+# a derivative filter, we can always compute the output in that scenario.
 # See section 7.6.1 in [1] for a better explanation.
 
 mutable struct FIRArbitrary{T} <: FIRKernel{T}
@@ -195,9 +195,9 @@ function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
-function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32)
-    h = resample_filter(rate, Nϕ)
-    FIRFilter(h, rate)
+function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32, args...)
+    h = resample_filter(rate, Nϕ, args...)
+    FIRFilter(h, rate, Nϕ)
 end
 
 function FIRFilter(rate::Union{Integer,Rational})
@@ -680,9 +680,15 @@ zeros to `x`. The result is that when the input and output signals
 are plotted on top of each other, they correlate very well, but one
 signal will have more samples than the other.
 """
-function resample(x::AbstractVector, rate::Real, h::Vector)
-    self = FIRFilter(h, rate)
+function resample(x::AbstractVector, rate::Union{Integer,Rational}, h::Vector)
+    _resample(x, rate, FIRFilter(h, rate))
+end
 
+function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Integer=32)
+    _resample(x, rate, FIRFilter(h, rate, Nϕ))
+end
+
+function _resample(x::AbstractVector, rate::Real, self::FIRFilter)
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
@@ -692,7 +698,7 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     setphase!(self, τ)
 
     # Calculate the number of 0's required
-    outLen      = ceil(Int, length(x)*rate)
+    outLen      = ceil(Int, length(x) * rate)
     reqInlen    = inputlength(self, outLen, RoundUp)
     reqZerosLen = reqInlen - length(x)
     xPadded     = [x; zeros(eltype(x), reqZerosLen)]
@@ -703,21 +709,46 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     return y
 end
 
-function resample(x::AbstractVector, rate::Real)
-    h = resample_filter(rate)
+"""
+    resample(x::AbstractVector, rate::Real, args::Real...)
+
+Constructs a filter with `resample_filter` using the optional arguments `args`,
+and resamples the signal `x` with it.
+"""
+function resample(x::AbstractVector, rate::Union{Integer,Rational}, args...)
+    h = resample_filter(rate, args...)
     resample(x, rate, h)
+end
+
+function resample(x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32, args...)
+    h = resample_filter(rate, Nϕ, args...)
+    resample(x, rate, h, Nϕ)
 end
 
 """
     resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
+    resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
 
 Resample an array `x` along dimension `dims`.
+If `rate` is an `AbstractFloat`, the number of phases `Nϕ`
+to be used in constructing `FIRArbitrary` can be supplied
+as an optional argument, which defaults to 32.
 """
-function resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
-    mapslices(x; dims) do x
-        resample(x, rate, h)
+function resample(x::AbstractArray, rate::Union{Integer,Rational}, h::Vector; dims)
+    mapslices(x; dims) do v
+        resample(v, rate, h)
     end
 end
+function resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
+    mapslices(x; dims) do v
+        resample(v, rate, h, Nϕ)
+    end
+end
+
+resample(x::AbstractArray, rate::Union{Integer,Rational}, args...; dims) =
+    resample(x, rate, resample_filter(rate, args...); dims)
+resample(x::AbstractArray, rate::AbstractFloat, Nϕ=32, args...; dims) =
+    resample(x, rate, resample_filter(rate, Nϕ, args...), Nϕ; dims)
 
 #
 # References
