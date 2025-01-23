@@ -197,7 +197,7 @@ coefa
 ## Examples
 
 Construct a 4th order elliptic lowpass filter with normalized cutoff
-frequency 0.2, 0.5 dB of passband ripple, and 30 dB attentuation in
+frequency 0.2, 0.5 dB of passband ripple, and 30 dB attenuation in
 the stopband and extract the coefficients of the numerator and
 denominator of the transfer function:
 

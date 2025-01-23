@@ -296,14 +296,13 @@ end
 
 function taps2pfb(h::Vector{T}, Nϕ::Integer) where T
     hLen     = length(h)
-    tapsPerϕ = ceil(Int, hLen/Nϕ)
-    pfbSize  = tapsPerϕ * Nϕ
+    tapsPerϕ = ceil(Int, hLen / Nϕ)
     pfb      = Matrix{T}(undef, tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
         tap = hIdx > hLen ? zero(T) : h[hIdx]
-        @inbounds pfb[rowIdx,colIdx] = tap
+        pfb[rowIdx, colIdx] = tap
         hIdx += 1
     end
 
@@ -420,10 +419,10 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::
 
     h = kernel.h
     for i = 1:min(kernel.hLen-1, xLen)
-        @inbounds buffer[i] = unsafe_dot(h, history, x, i)
+        buffer[i] = unsafe_dot(h, history, x, i)
     end
     for i = kernel.hLen:xLen
-        @inbounds buffer[i] = unsafe_dot(h, x, i)
+        buffer[i] = unsafe_dot(h, x, i)
     end
 
     self.history = shiftin!(history, x)
@@ -551,8 +550,8 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
             accumulator = unsafe_dot(kernel.h, x, inputIdx)
         end
 
-        @inbounds buffer[bufIdx] = accumulator
-        inputIdx                += kernel.decimation
+        buffer[bufIdx] = accumulator
+        inputIdx      += kernel.decimation
     end
 
     kernel.inputDeficit = inputIdx - xLen
