@@ -365,7 +365,7 @@ end
 
 @test resample(1:2, 3, [zeros(2); 1; zeros(3)]) == [1, 0, 0, 2, 0, 0]
 @test resample(1:2, 3//2, [zeros(2); 1; zeros(3)]) == [1, 0, 0]
-let H = FIRFilter(2.22)
+for H in (FIRFilter(2.22), FIRFilter(222//100))
     setphase!(H, 0.99)
     @test length(filt(H, 1:2)) == 3
 end

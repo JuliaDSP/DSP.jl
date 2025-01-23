@@ -45,21 +45,31 @@ using DelimitedFiles: readdlm
     y4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_2_3.txt"),'\t'))
     y4_jl = resample(x_ml, rate, h4_ml)
     @test y4_jl ≈ y4_ml
+
+    using DSP.Filters: FIRStandard, FIRInterpolator
+    # test FIRRational(::Vector, ::Int(/Int32)) inferred result type
+    FIRFutyp = Union{FIRFilter{<:FIRInterpolator}, FIRFilter{<:FIRStandard}}
+    @test only(Base.return_types(FIRFilter, (Vector, Int))) == FIRFutyp
+    @test only(Base.return_types(FIRFilter, (Vector, Int32))) == FIRFutyp
 end
 
 @testset "array signal" begin
-    rate   = 1//2
-    x_ml   = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
-    h1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
-    y1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
+    rate  = 1//2
+    x_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
+    h1_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
+    y1_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
+    expected_result = [y1_ml ℯ * y1_ml]
+    X = [x_ml ℯ * x_ml]
 
-    expected_result = [y1_ml 2y1_ml]
-    X = [x_ml 2x_ml]
-    y1_jl  = resample(X, rate, h1_ml, dims=1)
+    y1_jl  = resample(X, rate, h1_ml; dims=1)
+    arb_y1 = resample(X, float(rate); dims=1)
     @test y1_jl ≈ expected_result
+    @test arb_y1 ≈ expected_result  rtol = 0.002     # test that arb resampling gets close
 
-    y1_jl  = resample(X', rate, h1_ml, dims=2)
+    y1_jl  = resample(X', rate, h1_ml; dims=2)
+    arb_y1 = resample(X', float(rate); dims=2)
     @test y1_jl ≈ expected_result'
+    @test arb_y1 ≈ expected_result' rtol = 0.002
 
     expected_result_3d = permutedims(reshape(expected_result, (size(expected_result, 1), size(expected_result, 2), 1)), (3, 1, 2))
     X_3d = permutedims(reshape(X, (size(X, 1), size(X, 2), 1)), (3, 1, 2))

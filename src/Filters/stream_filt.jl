@@ -26,17 +26,16 @@ mutable struct FIRInterpolator{T} <: FIRKernel{T}
     ϕIdx::Int
 end
 
-function FIRInterpolator(h::Vector, interpolation::Integer)
-    pfb           = taps2pfb(h, interpolation)
-    tapsPerϕ, Nϕ  = size(pfb)
-    interpolation = interpolation
-    inputDeficit  = 1
-    ϕIdx          = 1
-    hLen          = length(h)
+function FIRInterpolator(h::Vector, interpolation::Int)
+    pfb          = taps2pfb(h, interpolation)
+    tapsPerϕ, Nϕ = size(pfb)
+    inputDeficit = 1
+    ϕIdx         = 1
+    hLen         = length(h)
 
     FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, hLen, inputDeficit, ϕIdx)
 end
-
+FIRInterpolator(h::Vector, interpolation::Integer) = FIRInterpolator(h, Int(interpolation))
 
 # Decimator FIR kernel
 mutable struct FIRDecimator{T} <: FIRKernel{T}
@@ -46,13 +45,13 @@ mutable struct FIRDecimator{T} <: FIRKernel{T}
     inputDeficit::Int
 end
 
-function FIRDecimator(h::Vector, decimation::Integer)
+function FIRDecimator(h::Vector, decimation::Int)
     h            = reverse(h)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)
 end
-
+FIRDecimator(h::Vector, decimation::Integer) = FIRDecimator(h, Int(decimation))
 
 # Rational resampler FIR kernel
 mutable struct FIRRational{T}  <: FIRKernel{T}
@@ -66,7 +65,7 @@ mutable struct FIRRational{T}  <: FIRKernel{T}
     inputDeficit::Int
 end
 
-function FIRRational(h::Vector, ratio::Rational)
+function FIRRational(h::Vector, ratio::Rational{Int})
     pfb          = taps2pfb(h, numerator(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
@@ -75,8 +74,7 @@ function FIRRational(h::Vector, ratio::Rational)
     hLen         = length(h)
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, hLen, ϕIdx, inputDeficit)
 end
-
-FIRRational(h::Vector, ratio::Integer) = FIRRational(h, convert(Rational, ratio))
+FIRRational(h::Vector, ratio::Union{Integer,Rational}) = FIRRational(h, convert(Rational{Int}, ratio))
 
 #
 # Arbitrary resampler FIR kernel
@@ -104,9 +102,7 @@ mutable struct FIRArbitrary{T} <: FIRKernel{T}
     const hLen::Int
 end
 
-function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
-    rate         = convert(Float64, rate_in)
-    Nϕ           = convert(Int, Nϕ_in)
+function FIRArbitrary(h::Vector, rate::Float64, Nϕ::Int)
     dh           = [diff(h); zero(eltype(h))]
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
@@ -133,7 +129,7 @@ function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
         hLen
     )
 end
-
+FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer) = FIRArbitrary(h, convert(Float64, rate), convert(Int, Nϕ))
 
 # FIRFilter - the kernel does the heavy lifting
 mutable struct FIRFilter{Tk<:FIRKernel}
@@ -163,12 +159,12 @@ function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     if resampleRatio == 1                                     # single-rate
         kernel     = FIRStandard(h)
         historyLen = kernel.hLen - 1
-    elseif interpolation == 1                                 # decimate
-        kernel     = FIRDecimator(h, decimation)
-        historyLen = kernel.hLen - 1
     elseif decimation == 1                                    # interpolate
         kernel     = FIRInterpolator(h, interpolation)
         historyLen = kernel.tapsPerϕ - 1
+    elseif interpolation == 1                                 # decimate
+        kernel     = FIRDecimator(h, decimation)
+        historyLen = kernel.hLen - 1
     else                                                      # rational
         kernel     = FIRRational(h, resampleRatio)
         historyLen = kernel.tapsPerϕ - 1
