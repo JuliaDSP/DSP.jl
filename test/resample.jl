@@ -182,6 +182,6 @@ end
     # check that non-Int / Rational{Int} ratios get converted properly
     x = rand(200)
     @test resample(x, Int32(3)) == resample(x, 3)
-    @test resample(x, 1 // Int32(3)) == resample(x, 1 // 3)
+    @test resample(x, Rational{Int32}(1, 3)) == resample(x, 1 // 3)
     @test resample(x, Rational{Int32}(2, 3)) == resample(x, 2 // 3)
 end

@@ -682,14 +682,14 @@ are plotted on top of each other, they correlate very well, but one
 signal will have more samples than the other.
 """
 function resample(x::AbstractVector, rate::Union{Integer,Rational}, h::Vector)
-    _resample(x, rate, FIRFilter(h, rate))
+    _resample!(x, rate, FIRFilter(h, rate))
 end
 
 function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Integer=32)
-    _resample(x, rate, FIRFilter(h, rate, Nϕ))
+    _resample!(x, rate, FIRFilter(h, rate, Nϕ))
 end
 
-function _resample(x::AbstractVector, rate::Real, self::FIRFilter)
+function _resample!(x::AbstractVector, rate::Real, self::FIRFilter)
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
@@ -716,14 +716,9 @@ end
 Constructs a filter with `resample_filter` using the optional arguments `args`,
 and resamples the signal `x` with it.
 """
-function resample(x::AbstractVector, rate::Union{Integer,Rational}, args...)
-    h = resample_filter(rate, args...)
-    resample(x, rate, h)
-end
-
-function resample(x::AbstractVector, rate::AbstractFloat, Nϕ::Integer=32, args...)
-    h = resample_filter(rate, Nϕ, args...)
-    resample(x, rate, h, Nϕ)
+function resample(x::AbstractVector, rate::Real, args::Real...)
+    sf = FIRFilter(rate, args...)
+    _resample!(x, rate, sf)
 end
 
 """
@@ -736,20 +731,22 @@ to be used in constructing `FIRArbitrary` can be supplied
 as an optional argument, which defaults to 32.
 """
 function resample(x::AbstractArray, rate::Union{Integer,Rational}, h::Vector; dims)
-    mapslices(x; dims) do v
-        resample(v, rate, h)
-    end
+    sf = FIRFilter(h, rate)
+    return _resample!(x, rate, sf; dims)
 end
 function resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
-    mapslices(x; dims) do v
-        resample(v, rate, h, Nϕ)
-    end
+    sf = FIRFilter(h, rate, Nϕ)
+    _resample!(x, rate, sf; dims)
 end
 
-resample(x::AbstractArray, rate::Union{Integer,Rational}, args...; dims) =
-    resample(x, rate, resample_filter(rate, args...); dims)
-resample(x::AbstractArray, rate::AbstractFloat, Nϕ=32, args...; dims) =
-    resample(x, rate, resample_filter(rate, Nϕ, args...), Nϕ; dims)
+resample(x::AbstractArray, rate::Real, args::Real...; dims) =
+    _resample!(x, rate, FIRFilter(rate, args...); dims)
+
+_resample!(x::AbstractArray, rate::Real, sf::FIRFilter; dims) =
+    mapslices(x; dims) do v
+        reset!(sf)
+        _resample!(v, rate, sf)
+    end
 
 #
 # References
