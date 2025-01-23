@@ -677,7 +677,7 @@ end
 """
     resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, att=60)
 
-Compute FIR coefficients necessary for arbitrary rate resampling
+Compute FIR coefficients suitable for arbitrary rate resampling
 with `Nϕ` filters / phases, stop-band attenuation `att`, and relative bandwidth `rel_bw`.
 """
 function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
@@ -688,7 +688,7 @@ end
 """
     resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
 
-Compute FIR coefficients necessary for rational rate resampling,
+Compute FIR coefficients suitable for rational rate resampling,
 with stop-band attenuation `att`, and relative bandwidth `rel_bw`.
 """
 function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
