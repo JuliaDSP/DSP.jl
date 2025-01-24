@@ -14,15 +14,16 @@
 #  close(fid)
 #end
 
-using DSP, Test
+using DSP, Test, FilterTestHelpers
 using Statistics: mean
-using FFTW: fftfreq
+using FFTW: fft, fftfreq, fftshift, rfft, ifft
+using DSP: allocate_output
 
 @testset "matlab ref" begin
-    x0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_x.txt"),'\t'))
-    f0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_f.txt"),'\t'))
-    t0 = vec(readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_t.txt"),'\t'))
-    p0 = readdlm(joinpath(dirname(@__FILE__), "data", "spectrogram_p.txt"),'\t')
+    x0 = reference_data("spectrogram_x.txt") |> vec
+    f0 = reference_data("spectrogram_f.txt") |> vec
+    t0 = reference_data("spectrogram_t.txt") |> vec
+    p0 = reference_data("spectrogram_p.txt")
     spec = spectrogram(x0, 256, 128; fs=10)
     p, f, t = power(spec), freq(spec), time(spec)
 
@@ -264,9 +265,9 @@ end
 end
 
 @testset "2D" begin
-    data2d = readdlm(joinpath(dirname(@__FILE__), "data", "per2dx.txt"),'\t')
-    expectedsum = vec(readdlm(joinpath(dirname(@__FILE__), "data", "per2dsum.txt"),'\t'))
-    expectedmean = vec(readdlm(joinpath(dirname(@__FILE__), "data", "per2dmean.txt"),'\t'))
+    data2d = reference_data("per2dx.txt")
+    expectedsum = vec(reference_data("per2dsum.txt"))
+    expectedmean = vec(reference_data("per2dmean.txt"))
     # 2-d periodgram (radialsum)
     # computed in octave with raPsd2d ((C) E. Ruzanski) replacing nanmean with nansum
     # P = raPsd2d(x,1)'*n^2
@@ -330,11 +331,11 @@ end
     nfft = 512
     nwin = 400
     nhop = 160
-    s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
+    s = vec(reference_data("stft_x.txt"))
 
     Sjl = stft(s, nwin, nwin-nhop; nfft=nfft, fs=fs, window=hanning)
-    Sml_re = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_real.txt"),'\t')
-    Sml_im = readdlm(joinpath(dirname(@__FILE__), "data", "stft_S_imag.txt"),'\t')
+    Sml_re = reference_data("stft_S_real.txt")
+    Sml_im = reference_data("stft_S_imag.txt")
     Sml = complex.(Sml_re, Sml_im)
     @test Sjl ≈ Sml
 end
@@ -376,8 +377,8 @@ end
 
 @testset "mt_pgram" begin
     # MATLAB: x = pmtm(stft_x, 4, 5000, 16000, 'unity')
-    s = vec(readdlm(joinpath(dirname(@__FILE__), "data", "stft_x.txt"),'\t'))
-    mtdata = vec(readdlm(joinpath(dirname(@__FILE__), "data", "mt_pgram.txt")))
+    s = vec(reference_data("stft_x.txt"))
+    mtdata = vec(reference_data("mt_pgram.txt"))
     @test power(mt_pgram(s; fs=16000)) ≈ mtdata
     @test power(mt_pgram(s; fs=16000, window=dpss(length(s), 4))) ≈ mtdata
 
@@ -397,14 +398,14 @@ end
         @test pointer(x) == pointer(q.buf)
     end
 
-    x = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_x.txt")))
+    x = vec(reference_data("pmtm_x.txt"))
     @test eltype(x) <: Float64
 
     # MATLAB code:
     # fft = 2^nextpow2(length(x));
     # [pxx,fx] = pmtm(x,4,nfft,1000,'unity');
-    fx = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_fx.txt")))
-    pxx = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_pxx.txt")))
+    fx = vec(reference_data("pmtm_fx.txt"))
+    pxx = vec(reference_data("pmtm_pxx.txt"))
 
     fs = 1000
     nw=4
@@ -447,13 +448,13 @@ end
     @test_throws DimensionMismatch mt_pgram!(similar(out, length(out)+1), x, config)
     @test_throws DimensionMismatch mt_pgram!(out, vcat(x, one(eltype(x))), config)
 
-    y = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_y.txt")))
+    y = vec(reference_data("pmtm_y.txt"))
     z = x + im*y
     @test eltype(z) <: Complex{Float64}
 
     # MATLAB code: `[pzz,fz] = pmtm(z,4,nfft,1000, 'unity')`
-    fz = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_fz.txt")))
-    pzz = vec(readdlm(joinpath(dirname(@__FILE__), "data", "pmtm_pzz.txt")))
+    fz = vec(reference_data("pmtm_fz.txt"))
+    pzz = vec(reference_data("pmtm_pzz.txt"))
     result = mt_pgram(z; fs=fs, nw=nw, nfft=nfft)
     result_mask = 0 .< freq(result) .< 500
     freqs = freq(result)[result_mask]

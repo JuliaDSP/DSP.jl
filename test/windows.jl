@@ -1,4 +1,4 @@
-using FFTW, DSP, Test, DelimitedFiles
+using FFTW, DSP, Test, FilterTestHelpers
 
 # not exported, but used for some internal testing
 using DSP.Windows: makewindow
@@ -29,7 +29,7 @@ end
 @testset "dspss" begin
     # Test dpss against dpss computed with MATLAB
     d1 = dpss(128, 4)
-    d2 = readdlm(joinpath(dirname(@__FILE__), "data", "dpss128,4.txt"), '\t')
+    d2 = reference_data("dpss128,4.txt")
     @test d1 ≈ d2
 
     # Test dpsseig against dpss from MATLAB
@@ -50,16 +50,16 @@ end
 
     hanning_jl = hanning(128)
     hann_jl = hann(128)
-    hanning_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hanning128.txt"), '\t')
+    hanning_ml = reference_data("hanning128.txt")
     @test hanning_jl ≈ hanning_ml
     @test hann_jl ≈ hanning_ml
 
     hamming_jl = hamming(128)
-    hamming_ml = readdlm(joinpath(dirname(@__FILE__), "data", "hamming128.txt"), '\t')
+    hamming_ml = reference_data("hamming128.txt")
     @test hamming_jl ≈ hamming_ml
 
     triang_jl = triang(128)
-    triang_ml = readdlm(joinpath(dirname(@__FILE__), "data", "triang128.txt"), '\t')
+    triang_ml = reference_data("triang128.txt")
     @test triang_jl ≈ triang_ml
 
     # for odd `n` the `triang` window should be the middle n-2 samples of the
@@ -67,38 +67,38 @@ end
     @test triang(5) ≈ bartlett(7)[2:6]
 
     bartlett_jl = bartlett(128)
-    bartlett_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett128.txt"), '\t')
+    bartlett_ml = reference_data("bartlett128.txt")
     @test bartlett_jl ≈ bartlett_ml
 
     barthann_jl = bartlett_hann(128)
-    barthann_ml = readdlm(joinpath(dirname(@__FILE__), "data", "bartlett_hann128.txt"), '\t')
+    barthann_ml = reference_data("bartlett_hann128.txt")
     @test bartlett_jl ≈ bartlett_ml
 
     blackman_jl = blackman(128)
-    blackman_ml = readdlm(joinpath(dirname(@__FILE__), "data", "blackman128.txt"), '\t')
+    blackman_ml = reference_data("blackman128.txt")
     @test blackman_jl ≈ blackman_ml
     @test minimum(blackman_jl) == 0.0
 
     kaiser_jl = kaiser(128, 0.4/π)
-    kaiser_ml = readdlm(joinpath(dirname(@__FILE__), "data", "kaiser128,0.4.txt"), '\t')
+    kaiser_ml = reference_data("kaiser128,0.4.txt")
     @test kaiser_jl ≈ kaiser_ml
 
     gaussian_jl = gaussian(128, 0.2)
-    gaussian_ref = readdlm(joinpath(dirname(@__FILE__), "data", "gaussian128,0.2.txt"), '\t')
+    gaussian_ref = reference_data("gaussian128,0.2.txt")
     @test gaussian_jl ≈ gaussian_ref
 
     tukey_jl = tukey(128, 0.4)
-    tukey_ml = readdlm(joinpath(dirname(@__FILE__), "data", "tukey128,0.4.txt"), '\t')
+    tukey_ml = reference_data("tukey128,0.4.txt")
     @test tukey_jl ≈ tukey_ml
 
     @test tukey(128, 0) == rect(128)
 
     lanczos_jl = lanczos(128)
-    lanczos_ref = readdlm(joinpath(dirname(@__FILE__), "data", "lanczos128.txt"), '\t')
+    lanczos_ref = reference_data("lanczos128.txt")
     @test lanczos_jl ≈ lanczos_ref
 
     cosine_jl = cosine(128)
-    cosine_ref = readdlm(joinpath(dirname(@__FILE__), "data", "cosine128.txt"), '\t')
+    cosine_ref = reference_data("cosine128.txt")
     @test cosine_jl ≈ cosine_ref
 end
 
