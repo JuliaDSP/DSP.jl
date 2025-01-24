@@ -23,6 +23,14 @@ reference_data(s) = vec(readdlm(joinpath(dirname(@__FILE__), "data", s), '\t'))
 end
 
 @testset "array signal" begin
+    x, mat, rate = rand(10_000), rand(121, 212), 1.23456789
+    h = resample_filter(rate)
+    # check that filtering with taps from `resample_filter` give equal results
+    @test resample(x, rate) == resample(x, rate, h)
+    @test resample(x, rate, 64, 0.8) == resample(x, rate, resample_filter(rate, 64, 0.8), 64)
+    @test resample(mat, rate; dims=1) == resample(mat, rate, h; dims=1)
+    @test resample(mat, rate; dims=2) == resample(mat, rate, h; dims=2)
+
     rate  = 1//2
     x_ml  = reference_data("resample_x.txt")
     h1_ml = reference_data("resample_taps_1_2.txt")
