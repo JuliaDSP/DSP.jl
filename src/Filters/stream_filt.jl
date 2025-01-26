@@ -623,31 +623,38 @@ function filt!(
     return bufIdx
 end
 
-function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
-    bufLen         = outputlength(self, length(x))
+function filt(self::FIRFilter, x::AbstractVector)
+    buffer, bufLen = allocate_output(self, x)
+    samplesWritten = filt!(buffer, self, x)
+    return checked_ff_output(buffer, self, bufLen, samplesWritten)
+end
+
+function allocate_output(sf::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
     # In some cases when `filt(::FIRFilter{FIRArbitrary}, x)` is called
     # with certain values of `x`, `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
     # tries to write one sample too many to the buffer and a `BoundsError`
-    # is thrown.  Add one extra sample to catch these exceptional cases.
+    # is thrown. Add one extra sample to catch these exceptional cases.
     #
     # See https://github.com/JuliaDSP/DSP.jl/issues/317
     #
     # FIXME: Remove this if and when the code in
     #        `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
     #        is updated to properly account for pathological arbitrary rates.
+    outLen = outputlength(sf, length(x))
     if Tk <: FIRArbitrary
-        bufLen += 1
+        outLen += 1
     end
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
+    out = Vector{promote_type(Th, Tx)}(undef, outLen)
+    return out, outLen
+end
 
+function checked_ff_output(out, ::FIRFilter{Tk}, bufLen, samplesWritten) where Tk<:FIRKernel
     if Tk <: FIRArbitrary
-        samplesWritten == bufLen || resize!(buffer, samplesWritten)
+        samplesWritten == bufLen || resize!(out, samplesWritten)
     else
-        @assert samplesWritten == bufLen
+        samplesWritten == bufLen || throw(AssertionError("Length of resampled output different from expectation."))
     end
-
-    return buffer
+    return out
 end
 
 
@@ -689,24 +696,39 @@ function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Intege
     _resample!(x, rate, FIRFilter(h, rate, Nϕ))
 end
 
-function _resample!(x::AbstractVector, rate::Real, self::FIRFilter)
+function _resample!(x::AbstractVector{T}, rate::Real, sf::FIRFilter) where T
+    undelay!(sf)
+    outLen  = ceil(Int, length(x) * rate)
+    xPadded = copyto!(allocate_inbuf(sf, length(x), T, outLen), x)
+
+    out, bufLen    = allocate_output(sf, xPadded)
+    samplesWritten = filt!(out, sf, xPadded)
+    return checked_resample_output(out, bufLen, outLen, samplesWritten, sf)
+end
+
+function undelay!(sf::FIRFilter)
     # Get delay, in # of samples at the output rate, caused by filtering processes
-    τ = timedelay(self)
+    τ = timedelay(sf)
 
     # Use setphase! to
     #   a) adjust the input samples to skip over before producing and output (integer part of τ)
     #   b) set the ϕ index of the PFB (fractional part of τ)
-    setphase!(self, τ)
+    setphase!(sf, τ)
+end
 
-    # Calculate the number of 0's required
-    outLen      = ceil(Int, length(x) * rate)
-    reqInlen    = inputlength(self, outLen, RoundUp)
-    reqZerosLen = reqInlen - length(x)
-    xPadded     = [x; zeros(eltype(x), reqZerosLen)]
+function allocate_inbuf(sf::FIRFilter, xLen::Int, ::Type{T}, outLen::Int) where T<:Number
+    reqInlen = inputlength(sf, outLen, RoundUp)
+    xPadded  = Vector{T}(undef, reqInlen)
+    xPadded[xLen+1:end] .= zero(T)
+    return xPadded
+end
 
-    y = filt(self, xPadded)
-    @assert length(y) >= outLen
-    length(y) > outLen && resize!(y, outLen)
+function checked_resample_output(y::AbstractVector, bufLen, outLen, samplesWritten, ::FIRFilter{Tk}) where Tk<:FIRKernel
+    if !(Tk <: FIRArbitrary)
+        samplesWritten == bufLen || throw(AssertionError("Length of resampled output different from expectation."))
+    end
+    samplesWritten >= outLen || throw(AssertionError("Resample output shorter than expected."))
+    length(y) == outLen || resize!(y, outLen)
     return y
 end
 
@@ -742,11 +764,21 @@ end
 resample(x::AbstractArray, rate::Real, args::Real...; dims) =
     _resample!(x, rate, FIRFilter(rate, args...); dims)
 
-_resample!(x::AbstractArray, rate::Real, sf::FIRFilter; dims) =
-    mapslices(x; dims) do v
-        reset!(sf)
-        _resample!(v, rate, sf)
+function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter; dims::Int) where T
+    undelay!(sf)
+    size_v  = size(x, dims)
+    outLen  = ceil(Int, size_v * rate)
+    xPadded = allocate_inbuf(sf, size_v, T, outLen)
+    buffer, bufLen = allocate_output(sf, xPadded)
+
+    mapslices(x; dims) do v::AbstractVector
+        undelay!(reset!(sf))
+        length(buffer) == bufLen || resize!(buffer, bufLen)
+        copyto!(xPadded, v)
+        samplesWritten = filt!(buffer, sf, xPadded)
+        return checked_resample_output(buffer, bufLen, outLen, samplesWritten, sf)
     end
+end
 
 #
 # References

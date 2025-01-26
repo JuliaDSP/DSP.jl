@@ -31,8 +31,8 @@ end
     @test resample(mat, rate; dims=1) == resample(mat, rate, h; dims=1)
     @test resample(mat, rate; dims=2) == resample(mat, rate, h; dims=2)
 
-    rate  = 1//2
-    x_ml  = reference_vec("resample_x.txt")
+    rate = 1//2
+    x_ml = reference_vec("resample_x.txt")
     h_ml = reference_vec("resample_taps_1_2.txt")
     y_ml = reference_vec("resample_y_1_2.txt")
     expected_result = [y_ml ℯ * y_ml]
@@ -54,13 +54,19 @@ end
 
     expected_result_3d = permutedims(reshape(expected_result, (size(expected_result, 1), size(expected_result, 2), 1)), (3, 1, 2))
     X_3d = permutedims(reshape(X, (size(X, 1), size(X, 2), 1)), (3, 1, 2))
-    y_jl  = resample(X_3d, rate, h_ml, dims=2)
+    y_jl = resample(X_3d, rate, h_ml; dims=2)
     @test y_jl ≈ expected_result_3d
 
     expected_result_3d = permutedims(expected_result_3d, (1, 3, 2))
     X_3d = permutedims(X_3d, (1, 3, 2))
-    y_jl  = resample(X_3d, rate, h_ml, dims=3)
+    y_jl = resample(X_3d, rate, h_ml; dims=3)
     @test y_jl ≈ expected_result_3d
+
+    # check buffer is resized properly (vs old implementation)
+    for dims in 1:3
+        A = rand(3, 3, 3)
+        @test resample(A, 1.2; dims) == mapslices(v -> resample(v, 1.2), A; dims)
+    end
 end
 
 @testset "irrational ratio" begin
