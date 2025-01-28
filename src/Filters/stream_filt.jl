@@ -132,11 +132,11 @@ end
 FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer) = FIRArbitrary(h, convert(Float64, rate), convert(Int, Nϕ))
 
 # FIRFilter - the kernel does the heavy lifting
-mutable struct FIRFilter{Tk<:FIRKernel}
-    kernel::Tk
+mutable struct FIRFilter{Tk<:FIRKernel,T}
+    const kernel::Tk
+    const h::Vector{T}
+    const historyLen::Int
     history::Vector
-    historyLen::Int
-    h::Vector
 end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
@@ -172,7 +172,7 @@ function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
 
     history = zeros(historyLen)
 
-    FIRFilter(kernel, history, historyLen, h)
+    FIRFilter(kernel, h, historyLen, history)
 end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
@@ -193,7 +193,7 @@ function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
     history    = zeros(historyLen)
-    FIRFilter(kernel, history, historyLen, h)
+    FIRFilter(kernel, h, historyLen, history)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate

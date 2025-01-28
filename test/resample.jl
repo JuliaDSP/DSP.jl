@@ -185,7 +185,7 @@ end
     FIRFutyp = Union{FIRFilter{<:FIRInterpolator},FIRFilter{<:FIRStandard}}
     @test only(Base.return_types(FIRFilter, (Vector, Int64))) <: FIRFutyp broken=VERSION<v"1.11"
     @test only(Base.return_types(FIRFilter, (Vector, Int32))) <: FIRFutyp broken=VERSION<v"1.11"
-    FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T}},FIRFilter{FIRStandard{T}}} where T
+    FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T},T},FIRFilter{FIRStandard{T},T}} where T
     @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int64))) == FIRFutype{Float64}
     @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int32))) == FIRFutype{Float64}
 
