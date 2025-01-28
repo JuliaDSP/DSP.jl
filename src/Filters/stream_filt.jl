@@ -624,7 +624,8 @@ function filt!(
 end
 
 function filt(self::FIRFilter, x::AbstractVector)
-    buffer, bufLen = allocate_output(self, x)
+    buffer = allocate_output(self, x)
+    bufLen = length(buffer)
     samplesWritten = filt!(buffer, self, x)
     return checked_ff_output(buffer, self, bufLen, samplesWritten)
 end
@@ -645,7 +646,7 @@ function allocate_output(sf::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,
         outLen += 1
     end
     out = Vector{promote_type(Th, Tx)}(undef, outLen)
-    return out, outLen
+    return out
 end
 
 function checked_ff_output(out, ::FIRFilter{Tk}, bufLen, samplesWritten) where Tk<:FIRKernel
@@ -701,9 +702,10 @@ function _resample!(x::AbstractVector{T}, rate::Real, sf::FIRFilter) where T
     outLen  = ceil(Int, length(x) * rate)
     xPadded = copyto!(allocate_inbuf(sf, length(x), T, outLen), x)
 
-    out, bufLen    = allocate_output(sf, xPadded)
-    samplesWritten = filt!(out, sf, xPadded)
-    return checked_resample_output(out, bufLen, outLen, samplesWritten, sf)
+    buffer = allocate_output(sf, xPadded)
+    bufLen = length(buffer)
+    samplesWritten = filt!(buffer, sf, xPadded)
+    return checked_resample_output(buffer, bufLen, outLen, samplesWritten, sf)
 end
 
 function undelay!(sf::FIRFilter)
@@ -769,7 +771,8 @@ function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter; dims::Int) w
     size_v  = size(x, dims)
     outLen  = ceil(Int, size_v * rate)
     xPadded = allocate_inbuf(sf, size_v, T, outLen)
-    buffer, bufLen = allocate_output(sf, xPadded)
+    buffer  = allocate_output(sf, xPadded)
+    bufLen  = length(buffer)
 
     mapslices(x; dims) do v::AbstractVector
         undelay!(reset!(sf))
