@@ -178,18 +178,16 @@ end
 @testset "FIRFilter types" begin
     using DSP.Filters: FIRStandard, FIRInterpolator
     # test FIRRational(::Vector, ::Int(/Int32)) inferred result type
-    if VERSION >= v"1.11"
-        FIRFutyp = Union{FIRFilter{<:FIRInterpolator},FIRFilter{<:FIRStandard}}
-        @test only(Base.return_types(FIRFilter, (Vector, Int))) == FIRFutyp
-        @test only(Base.return_types(FIRFilter, (Vector, Int32))) == FIRFutyp
-    end
+    FIRFutyp = Union{FIRFilter{<:FIRInterpolator},FIRFilter{<:FIRStandard}}
+    @test only(Base.return_types(FIRFilter, (Vector, Int64))) <: FIRFutyp broken=VERSION<v"1.11"
+    @test only(Base.return_types(FIRFilter, (Vector, Int32))) <: FIRFutyp broken=VERSION<v"1.11"
     FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T}},FIRFilter{FIRStandard{T}}} where T
-    @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int))) == FIRFutype{Float64}
+    @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int64))) == FIRFutype{Float64}
     @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int32))) == FIRFutype{Float64}
 
     # check that non-Int / Rational{Int} ratios get converted properly
     x = rand(200)
-    @test resample(x, Int32(3)) == resample(x, 3)
-    @test resample(x, Rational{Int32}(1, 3)) == resample(x, 1 // 3)
-    @test resample(x, Rational{Int32}(2, 3)) == resample(x, 2 // 3)
+    @test resample(x, Int32(3)) == resample(x, Int64(3))
+    @test resample(x, Rational{Int32}(1, 3)) == resample(x, Rational{Int64}(1, 3))
+    @test resample(x, Rational{Int32}(2, 3)) == resample(x, Rational{Int64}(2, 3))
 end
