@@ -340,10 +340,10 @@ end
 # Zero phase digital filtering for second order sections
 function filtfilt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S}
     zi = filt_stepstate(f)
-    pad_length = 6 * length(f.biquads)
+    pad_length = min(6 * length(f.biquads), size(x, 1) - 1)
     t = promote_type(T, G, S)
     zitmp = similar(zi, t)
-    extrapolated = Vector{t}(undef, size(x, 1)+pad_length*2)
+    extrapolated = Vector{t}(undef, size(x, 1) + pad_length * 2)
     out = similar(x, t)
 
     for col in CartesianIndices(axes(x)[2:end])

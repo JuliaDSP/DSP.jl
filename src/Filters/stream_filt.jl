@@ -3,7 +3,7 @@ const PFB{T} = Matrix{T}          # polyphase filter bank
 abstract type FIRKernel{T} end
 
 # Single rate FIR kernel
-mutable struct FIRStandard{T} <: FIRKernel{T}
+struct FIRStandard{T} <: FIRKernel{T}
     h::Vector{T}
     hLen::Int
 end
@@ -17,96 +17,92 @@ end
 
 # Interpolator FIR kernel
 mutable struct FIRInterpolator{T} <: FIRKernel{T}
-    pfb::PFB{T}
-    interpolation::Int
-    Nϕ::Int
-    tapsPerϕ::Int
+    const pfb::PFB{T}
+    const interpolation::Int
+    const Nϕ::Int
+    const tapsPerϕ::Int
+    const hLen::Int
     inputDeficit::Int
     ϕIdx::Int
-    hLen::Int
 end
 
-function FIRInterpolator(h::Vector, interpolation::Integer)
-    pfb           = taps2pfb(h, interpolation)
-    tapsPerϕ, Nϕ  = size(pfb)
-    interpolation = interpolation
-    inputDeficit  = 1
-    ϕIdx          = 1
-    hLen          = length(h)
+function FIRInterpolator(h::Vector, interpolation::Int)
+    pfb          = taps2pfb(h, interpolation)
+    tapsPerϕ, Nϕ = size(pfb)
+    inputDeficit = 1
+    ϕIdx         = 1
+    hLen         = length(h)
 
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, inputDeficit, ϕIdx,   hLen)
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, hLen, inputDeficit, ϕIdx)
 end
-
+FIRInterpolator(h::Vector, interpolation::Integer) = FIRInterpolator(h, Int(interpolation))
 
 # Decimator FIR kernel
 mutable struct FIRDecimator{T} <: FIRKernel{T}
-    h::Vector{T}
-    hLen::Int
-    decimation::Int
+    const h::Vector{T}
+    const hLen::Int
+    const decimation::Int
     inputDeficit::Int
 end
 
-function FIRDecimator(h::Vector, decimation::Integer)
+function FIRDecimator(h::Vector, decimation::Int)
     h            = reverse(h)
     hLen         = length(h)
     inputDeficit = 1
     FIRDecimator(h, hLen, decimation, inputDeficit)
 end
-
+FIRDecimator(h::Vector, decimation::Integer) = FIRDecimator(h, Int(decimation))
 
 # Rational resampler FIR kernel
 mutable struct FIRRational{T}  <: FIRKernel{T}
-    pfb::PFB{T}
-    ratio::Rational{Int}
-    Nϕ::Int
-    ϕIdxStepSize::Int
-    tapsPerϕ::Int
+    const pfb::PFB{T}
+    const ratio::Rational{Int}
+    const Nϕ::Int
+    const ϕIdxStepSize::Int
+    const tapsPerϕ::Int
+    const hLen::Int
     ϕIdx::Int
     inputDeficit::Int
-    hLen::Int
 end
 
-function FIRRational(h::Vector, ratio::Rational)
+function FIRRational(h::Vector, ratio::Rational{Int})
     pfb          = taps2pfb(h, numerator(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
     ϕIdx         = 1
     inputDeficit = 1
     hLen         = length(h)
-    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, ϕIdx, inputDeficit, hLen)
+    FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, hLen, ϕIdx, inputDeficit)
 end
-
-FIRRational(h::Vector,ratio::Integer)=FIRRational(h,convert(Rational,ratio))
+FIRRational(h::Vector, ratio::Union{Integer,Rational}) = FIRRational(h, convert(Rational{Int}, ratio))
 
 #
 # Arbitrary resampler FIR kernel
 #
-# This kernel is different from the others in that it has two polyphase filtlter banks.
-# The the second filter bank, dpfb, is the derivative of pfb. The purpose of this is to
-# allow us to compute two y values, yLower & yUpper, whitout having to advance the input
-# index by 1. It makes the kernel simple by not having to store extra state in the case
-# when where's at the last polphase branch and the last available input sample. By using
-# a derivitive filter, we can always compute the output in that scenario.
+# This kernel is different from the others in that it has two polyphase filter banks.
+# The second filter bank, dpfb, is the derivative of pfb. The purpose of this is to
+# allow us to compute two y values, yLower & yUpper, without having to advance the input
+# index by 1. It makes the kernel simpler by not having to store extra state in the case
+# when where's at the last polyphase branch and the last available input sample. By using
+# a derivative filter, we can always compute the output in that scenario.
 # See section 7.6.1 in [1] for a better explanation.
 
 mutable struct FIRArbitrary{T} <: FIRKernel{T}
-    rate::Float64
-    pfb::PFB{T}
-    dpfb::PFB{T}
-    Nϕ::Int
-    tapsPerϕ::Int
+    const rate::Float64
+    const pfb::PFB{T}
+    const dpfb::PFB{T}
+    const Nϕ::Int
+    const tapsPerϕ::Int
     ϕAccumulator::Float64
     ϕIdx::Int
     α::Float64
-    Δ::Float64
+    const Δ::Float64
     inputDeficit::Int
     xIdx::Int
-    hLen::Int
+    const hLen::Int
 end
 
-function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
-    rate         = convert(Float64, rate_in)
-    Nϕ           = convert(Int, Nϕ_in)
+function FIRArbitrary(h::Vector, rate::Float64, Nϕ::Int)
     dh           = [diff(h); zero(eltype(h))]
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
@@ -133,7 +129,7 @@ function FIRArbitrary(h::Vector, rate_in::Real, Nϕ_in::Integer)
         hLen
     )
 end
-
+FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer) = FIRArbitrary(h, convert(Float64, rate), convert(Int, Nϕ))
 
 # FIRFilter - the kernel does the heavy lifting
 mutable struct FIRFilter{Tk<:FIRKernel}
@@ -145,12 +141,15 @@ end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
 """
-    FIRFilter(h::Vector[, ratio::Union{Integer,Rational}])
+    FIRFilter(h::Vector, ratio::Union{Integer,Rational}=1)
+    FIRFilter(ratio::Union{Integer,Rational}, args...)
 
 Construct a stateful FIRFilter object from the vector of filter taps `h`.
 `ratio` is an optional rational integer which specifies
 the input to output sample rate relationship (e.g. `147//160` for
 converting recorded audio from 48 KHz to 44.1 KHz).
+
+Constructs `h` with `resample_filter(ratio, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     interpolation = numerator(resampleRatio)
@@ -160,12 +159,12 @@ function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
     if resampleRatio == 1                                     # single-rate
         kernel     = FIRStandard(h)
         historyLen = kernel.hLen - 1
-    elseif interpolation == 1                                 # decimate
-        kernel     = FIRDecimator(h, decimation)
-        historyLen = kernel.hLen - 1
     elseif decimation == 1                                    # interpolate
         kernel     = FIRInterpolator(h, interpolation)
         historyLen = kernel.tapsPerϕ - 1
+    elseif interpolation == 1                                 # decimate
+        kernel     = FIRDecimator(h, decimation)
+        historyLen = kernel.hLen - 1
     else                                                      # rational
         kernel     = FIRRational(h, resampleRatio)
         historyLen = kernel.tapsPerϕ - 1
@@ -178,13 +177,16 @@ end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
 """
-    FIRFilter(h::Vector, rate::AbstractFloat[, Nϕ::Integer=32])
+    FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
+    FIRFilter(rate::AbstractFloat, Nϕ::Integer=32, args...)
 
 Returns a polyphase FIRFilter object from the vector of filter taps `h`.
 `rate` is a floating point number that specifies the input to output
 sample-rate relationship ``\\frac{fs_{out}}{fs_{in}}``. `Nϕ` is an
 optional parameter which specifies the number of *phases* created from
 `h`. `Nϕ` defaults to 32.
+
+Constructs `h` with `resample_filter(rate, Nϕ, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     rate > 0.0 || throw(DomainError(rate, "rate must be greater than 0"))
@@ -195,14 +197,14 @@ function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
-function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32)
-    h = resample_filter(rate, Nϕ)
-    FIRFilter(h, rate)
+function FIRFilter(rate::AbstractFloat, Nϕ::Integer=32, args...)
+    h = resample_filter(rate, Nϕ, args...)
+    FIRFilter(h, rate, Nϕ)
 end
 
-function FIRFilter(rate::Union{Integer,Rational})
-    h = resample_filter(rate)
-    FIRFilter(h, rate)
+function FIRFilter(ratio::Union{Integer,Rational}, args...)
+    h = resample_filter(ratio, args...)
+    FIRFilter(h, ratio)
 end
 
 
@@ -290,14 +292,13 @@ end
 
 function taps2pfb(h::Vector{T}, Nϕ::Integer) where T
     hLen     = length(h)
-    tapsPerϕ = ceil(Int, hLen/Nϕ)
-    pfbSize  = tapsPerϕ * Nϕ
+    tapsPerϕ = ceil(Int, hLen / Nϕ)
     pfb      = Matrix{T}(undef, tapsPerϕ, Nϕ)
     hIdx     = 1
 
     for rowIdx in tapsPerϕ:-1:1, colIdx in 1:Nϕ
         tap = hIdx > hLen ? zero(T) : h[hIdx]
-        @inbounds pfb[rowIdx,colIdx] = tap
+        pfb[rowIdx, colIdx] = tap
         hIdx += 1
     end
 
@@ -414,10 +415,10 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::
 
     h = kernel.h
     for i = 1:min(kernel.hLen-1, xLen)
-        @inbounds buffer[i] = unsafe_dot(h, history, x, i)
+        buffer[i] = unsafe_dot(h, history, x, i)
     end
     for i = kernel.hLen:xLen
-        @inbounds buffer[i] = unsafe_dot(h, x, i)
+        buffer[i] = unsafe_dot(h, x, i)
     end
 
     self.history = shiftin!(history, x)
@@ -545,8 +546,8 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x:
             accumulator = unsafe_dot(kernel.h, x, inputIdx)
         end
 
-        @inbounds buffer[bufIdx] = accumulator
-        inputIdx                += kernel.decimation
+        buffer[bufIdx] = accumulator
+        inputIdx      += kernel.decimation
     end
 
     kernel.inputDeficit = inputIdx - xLen
@@ -680,9 +681,15 @@ zeros to `x`. The result is that when the input and output signals
 are plotted on top of each other, they correlate very well, but one
 signal will have more samples than the other.
 """
-function resample(x::AbstractVector, rate::Real, h::Vector)
-    self = FIRFilter(h, rate)
+function resample(x::AbstractVector, rate::Union{Integer,Rational}, h::Vector)
+    _resample!(x, rate, FIRFilter(h, rate))
+end
 
+function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Integer=32)
+    _resample!(x, rate, FIRFilter(h, rate, Nϕ))
+end
+
+function _resample!(x::AbstractVector, rate::Real, self::FIRFilter)
     # Get delay, in # of samples at the output rate, caused by filtering processes
     τ = timedelay(self)
 
@@ -692,7 +699,7 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     setphase!(self, τ)
 
     # Calculate the number of 0's required
-    outLen      = ceil(Int, length(x)*rate)
+    outLen      = ceil(Int, length(x) * rate)
     reqInlen    = inputlength(self, outLen, RoundUp)
     reqZerosLen = reqInlen - length(x)
     xPadded     = [x; zeros(eltype(x), reqZerosLen)]
@@ -703,21 +710,43 @@ function resample(x::AbstractVector, rate::Real, h::Vector)
     return y
 end
 
-function resample(x::AbstractVector, rate::Real)
-    h = resample_filter(rate)
-    resample(x, rate, h)
+"""
+    resample(x::AbstractVector, rate::Real, args::Real...)
+
+Constructs a filter with `resample_filter` using the optional arguments `args`,
+and resamples the signal `x` with it.
+"""
+function resample(x::AbstractVector, rate::Real, args::Real...)
+    sf = FIRFilter(rate, args...)
+    _resample!(x, rate, sf)
 end
 
 """
     resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
+    resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
 
 Resample an array `x` along dimension `dims`.
+If `rate` is an `AbstractFloat`, the number of phases `Nϕ`
+to be used in constructing `FIRArbitrary` can be supplied
+as an optional argument, which defaults to 32.
 """
-function resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
-    mapslices(x; dims) do x
-        resample(x, rate, h)
-    end
+function resample(x::AbstractArray, rate::Union{Integer,Rational}, h::Vector; dims)
+    sf = FIRFilter(h, rate)
+    return _resample!(x, rate, sf; dims)
 end
+function resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
+    sf = FIRFilter(h, rate, Nϕ)
+    _resample!(x, rate, sf; dims)
+end
+
+resample(x::AbstractArray, rate::Real, args::Real...; dims) =
+    _resample!(x, rate, FIRFilter(rate, args...); dims)
+
+_resample!(x::AbstractArray, rate::Real, sf::FIRFilter; dims) =
+    mapslices(x; dims) do v
+        reset!(sf)
+        _resample!(v, rate, sf)
+    end
 
 #
 # References

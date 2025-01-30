@@ -2,64 +2,55 @@ using DSP
 using Test
 using DelimitedFiles: readdlm
 
+reference_data(s) = vec(readdlm(joinpath(dirname(@__FILE__), "data", s), '\t'))
+
 @testset "rational ratio" begin
     # AM Modulator
     # sig(t) = [(1 + sin(2π*0.005*t)) * sin(2π*.05*t) for t in t]
-    x_ml   = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
+    x_ml  = reference_data("resample_x.txt")
 
     #
-    # [y1,b1] = resample(x, 1, 2)
+    # [y,b] = resample(x, $num, $den)
     #
-    rate   = 1//2
-    h1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
-    y1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
-    y1_jl  = resample(x_ml, rate, h1_ml)
-    @test y1_jl ≈ y1_ml
-
-
-    #
-    # [y2,b2] = resample(x, 2, 1)
-    #
-    rate   = 2//1
-    h2_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_2_1.txt"),'\t'))
-    y2_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_2_1.txt"),'\t'))
-    y2_jl  = resample(x_ml, rate, h2_ml)
-    @test y2_jl ≈ y2_ml
-
-
-    #
-    # [y3,b3] = resample(x, 3, 2)
-    #
-    rate   = 3//2
-    h3_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_3_2.txt"),'\t'))
-    y3_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_3_2.txt"),'\t'))
-    y3_jl  = resample(x_ml, rate, h3_ml)
-    @test y3_jl ≈ y3_ml
-
-
-    #
-    # [y4,b4] = resample(x, 2, 3)
-    #
-    rate  = 2//3
-    h4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_2_3.txt"),'\t'))
-    y4_ml = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_2_3.txt"),'\t'))
-    y4_jl = resample(x_ml, rate, h4_ml)
-    @test y4_jl ≈ y4_ml
+    for rate in (1//2, 2//1, 3//2, 2//3)
+        num, den = numerator(rate), denominator(rate)
+        h1_ml = reference_data("resample_taps_$(num)_$(den).txt")
+        y1_ml = reference_data("resample_y_$(num)_$(den).txt")
+        y1_jl = resample(x_ml, rate, h1_ml)
+        @test y1_ml ≈ y1_jl
+        @test y1_ml ≈ resample(x_ml, rate) rtol = 0.001     # check default taps are ok
+    end
 end
 
 @testset "array signal" begin
-    rate   = 1//2
-    x_ml   = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_x.txt"),'\t'))
-    h1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_taps_1_2.txt"),'\t'))
-    y1_ml  = vec(readdlm(joinpath(dirname(@__FILE__), "data", "resample_y_1_2.txt"),'\t'))
+    x, mat, rate = rand(10_000), rand(121, 212), 1.23456789
+    h = resample_filter(rate)
+    # check that filtering with taps from `resample_filter` give equal results
+    @test resample(x, rate) == resample(x, rate, h)
+    @test resample(x, rate, 64, 0.8) == resample(x, rate, resample_filter(rate, 64, 0.8), 64)
+    @test resample(mat, rate; dims=1) == resample(mat, rate, h; dims=1)
+    @test resample(mat, rate; dims=2) == resample(mat, rate, h; dims=2)
 
-    expected_result = [y1_ml 2y1_ml]
-    X = [x_ml 2x_ml]
-    y1_jl  = resample(X, rate, h1_ml, dims=1)
+    rate  = 1//2
+    x_ml  = reference_data("resample_x.txt")
+    h1_ml = reference_data("resample_taps_1_2.txt")
+    y1_ml = reference_data("resample_y_1_2.txt")
+    expected_result = [y1_ml ℯ * y1_ml]
+    X = [x_ml ℯ * x_ml]
+
+    y1_jl  = resample(X, rate, h1_ml; dims=1)
+    arb_y1 = resample(X, float(rate); dims=1)
+    rat_y1 = resample(X, rate; dims=1)
     @test y1_jl ≈ expected_result
+    @test arb_y1 ≈ expected_result  rtol = 0.002     # test that default taps are good enough
+    @test rat_y1 ≈ expected_result  rtol = 0.0005
 
-    y1_jl  = resample(X', rate, h1_ml, dims=2)
+    y1_jl  = resample(X', rate, h1_ml; dims=2)
+    arb_y1 = resample(X', float(rate); dims=2)
+    rat_y1 = resample(X', rate; dims=2)
     @test y1_jl ≈ expected_result'
+    @test arb_y1 ≈ expected_result' rtol = 0.002
+    @test rat_y1 ≈ expected_result' rtol = 0.0005
 
     expected_result_3d = permutedims(reshape(expected_result, (size(expected_result, 1), size(expected_result, 2), 1)), (3, 1, 2))
     X_3d = permutedims(reshape(X, (size(X, 1), size(X, 2), 1)), (3, 1, 2))
@@ -182,4 +173,21 @@ end
         @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
         @test outputlength(H, inputlength(H, yL, RoundUp)-1) < yL <= outputlength(H, inputlength(H, yL, RoundUp))
     end
+end
+
+@testset "FIRFilter types" begin
+    using DSP.Filters: FIRStandard, FIRInterpolator
+    # test FIRRational(::Vector, ::Int(/Int32)) inferred result type
+    FIRFutyp = Union{FIRFilter{<:FIRInterpolator},FIRFilter{<:FIRStandard}}
+    @test only(Base.return_types(FIRFilter, (Vector, Int64))) <: FIRFutyp broken=VERSION<v"1.11"
+    @test only(Base.return_types(FIRFilter, (Vector, Int32))) <: FIRFutyp broken=VERSION<v"1.11"
+    FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T}},FIRFilter{FIRStandard{T}}} where T
+    @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int64))) == FIRFutype{Float64}
+    @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int32))) == FIRFutype{Float64}
+
+    # check that non-Int / Rational{Int} ratios get converted properly
+    x = rand(200)
+    @test resample(x, Int32(3)) == resample(x, Int64(3))
+    @test resample(x, Rational{Int32}(1, 3)) == resample(x, Rational{Int64}(1, 3))
+    @test resample(x, Rational{Int32}(2, 3)) == resample(x, Rational{Int64}(2, 3))
 end

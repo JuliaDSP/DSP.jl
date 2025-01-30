@@ -301,6 +301,7 @@ end
 
     f = digitalfilter(Bandpass(0.1, 0.3), Butterworth(2))
     @test filtfilt(convert(SecondOrderSections, f), x) ≈ filtfilt(convert(PolynomialRatio, f), x)
+    @test_nowarn filtfilt(f, [1.])  # check that pad_length won't throw oob
 end
 
 #

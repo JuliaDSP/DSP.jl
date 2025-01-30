@@ -124,7 +124,7 @@ function landen(k::Real)
     kn = Vector{typeof(k)}(undef, niter)
     # Eq. (50)
     for i = 1:niter
-        kn[i] = k = abs2(k/(1+sqrt(1-abs2(k))))
+        kn[i] = k = abs2(k / (1 + sqrt(1 - abs2(k))))
     end
     kn
 end
@@ -223,7 +223,7 @@ end
     Elliptic(n::Integer, rp::Real, rs::Real)
 
 `n` pole elliptic (Cauer) filter with `rp` dB ripple in the
-passband and `rs` dB attentuation in the stopband.
+passband and `rs` dB attenuation in the stopband.
 """
 Elliptic(n::Integer, rp::Real, rs::Real) = Elliptic(Float64, n, rp, rs)
 
@@ -473,7 +473,7 @@ Here, `m` and `n` are respectively the numbers of zeros and poles in the s-domai
 then additional `n-m` zeros are added at `z = -1`.
 """
 function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
-    ztype = typeof(0 + zero(Z)/fs)
+    ztype = typeof(0 + zero(Z) / fs)
     z = fill(convert(ztype, -1), max(length(f.p), length(f.z)))
 
     ptype = typeof(0 + zero(P) / fs)
@@ -481,17 +481,17 @@ function bilinear(f::ZeroPoleGain{:s,Z,P,K}, fs::Real) where {Z,P,K}
 
     num = one(one(fs) - one(Z))
     for i = 1:length(f.z)
-        z[i] = (2 + f.z[i] / fs)/(2 - f.z[i] / fs)
+        z[i] = (2 + f.z[i] / fs) / (2 - f.z[i] / fs)
         num *= (2 * fs - f.z[i])
     end
 
     den = one(one(fs) - one(P))
     for i = 1:length(f.p)
-        p[i] = (2 + f.p[i] / fs)/(2 - f.p[i]/fs)
+        p[i] = (2 + f.p[i] / fs) / (2 - f.p[i] / fs)
         den *= (2 * fs - f.p[i])
     end
 
-    ZeroPoleGain{:z}(z, p, f.k * real(num)/real(den))
+    ZeroPoleGain{:z}(z, p, f.k * real(num) / real(den))
 end
 
 # Pre-warp filter frequencies for digital filtering
@@ -545,12 +545,12 @@ end
 # Get length and alpha for Kaiser window filter with specified
 # transition band width and stopband attenuation in dB
 function kaiserord(transitionwidth::Real, attenuation::Real=60)
-    n = ceil(Int, (attenuation - 7.95)/(π*2.285*transitionwidth))+1
+    n = ceil(Int, (attenuation - 7.95) / (π * 2.285 * transitionwidth)) + 1
 
     if attenuation > 50
-        β = 0.1102*(attenuation - 8.7)
+        β = 0.1102 * (attenuation - 8.7)
     elseif attenuation >= 21
-        β = 0.5842*(attenuation - 21)^0.4 + 0.07886*(attenuation - 21)
+        β = 0.5842 * (attenuation - 21)^0.4 + 0.07886 * (attenuation - 21)
     else
         β = 0.0
     end
@@ -670,13 +670,35 @@ function digitalfilter(ftype::FilterType, proto::FIRWindow; fs::Real=2)
     coefs = firprototype(length(proto.window), ftype, fs)
     @assert length(proto.window) == length(coefs)
     out = (coefs .*= proto.window)
-    proto.scale ? rmul!(out, 1/scalefactor(out, ftype, fs)) : out
+    proto.scale ? rmul!(out, 1 / scalefactor(out, ftype, fs)) : out
 end
 
 
-# Compute FIR coefficients necessary for arbitrary rate resampling
-function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuation = 60)
-    f_nyq       = rate >= 1.0 ? 1.0/Nϕ : rate/Nϕ
+"""
+    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, att=60)
+
+Compute FIR coefficients suitable for arbitrary rate resampling
+with `Nϕ` filters / phases, stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+"""
+function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
+    f_nyq = rate >= 1.0 ? 1.0 / Nϕ : rate / Nϕ
+    return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
+end
+
+"""
+    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
+
+Compute FIR coefficients suitable for rational rate resampling,
+with stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+"""
+function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
+    Nϕ         = numerator(rate)
+    decimation = denominator(rate)
+    f_nyq      = min(1 / Nϕ, 1 / decimation)
+    return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
+end
+
+function _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
     cutoff      = f_nyq * rel_bw
     trans_width = cutoff * 0.2
 
@@ -685,35 +707,10 @@ function resample_filter(rate::AbstractFloat, Nϕ = 32, rel_bw = 1.0, attenuatio
 
     # Round the number of taps up to a multiple of Nϕ.
     # Otherwise the missing taps will be filled with 0.
-    hLen = Nϕ * ceil(Int, hLen/Nϕ)
+    hLen = Nϕ * ceil(Int, hLen / Nϕ)
 
     # Ensure that the filter is an odd length
-    if (iseven(hLen))
-        hLen += 1
-    end
-
-    # Design filter
-    h = digitalfilter(Lowpass(cutoff), FIRWindow(kaiser(hLen, α)))
-    rmul!(h, Nϕ)
-end
-
-# Compute FIR coefficients necessary for rational rate resampling
-function resample_filter(rate::Union{Integer,Rational}, rel_bw = 1.0, attenuation = 60)
-    Nϕ          = numerator(rate)
-    decimation  = denominator(rate)
-    f_nyq       = min(1/Nϕ, 1/decimation)
-    cutoff      = f_nyq * rel_bw
-    trans_width = cutoff * 0.2
-
-    # Determine resampling filter order
-    hLen, α = kaiserord(trans_width, attenuation)
-
-    # Round the number of taps up to a multiple of Nϕ (same as interpolation factor).
-    # Otherwise the missing taps will be filled with 0.
-    hLen = Nϕ * ceil(Int, hLen/Nϕ)
-
-    # Ensure that the filter is an odd length
-    if (iseven(hLen))
+    if iseven(hLen)
         hLen += 1
     end
 

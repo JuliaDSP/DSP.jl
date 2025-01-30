@@ -179,9 +179,9 @@ function test_interpolation(h::AbstractVector{T}, x::AbstractVector{V}, interpol
     x2         = x[pivotPoint+1:end]
 
     @printfifinteractive( """\n\n
-        _ _  _ ___ ____ ____ ___  _    ____ ____ ___ _ ____ _  _
-        | |\\ |  |  |___ |__/ |__] |    |  | |__|  |  | |  | |\\ |
-        | | \\|  |  |___ |  \\ |    |___ |__| |  |  |  | |__| | \\|\n\n""" )
+        _ _  _ ___ ____ ____ ___  ____ _   ____ ___ _ ____ _  _
+        | |\\ |  |  |___ |__/ |__] |  | |   |__|  |  | |  | |\\ |
+        | | \\|  |  |___ |  \\ |    |__| |__ |  |  |  | |__| | \\|\n\n""")
     @printfifinteractive( "Testing interpolation, h::%s, x::%s. xLen = %d, hLen = %d, interpolation = %d\n", typeof(h), typeof(x), xLen, hLen, interpolation )
 
     @printfifinteractive( "\n\tNaive interpolation with filt\n\t\t")
