@@ -29,7 +29,7 @@ end
 @testset "dspss" begin
     # Test dpss against dpss computed with MATLAB
     d1 = dpss(128, 4)
-    d2 = reference_data("dpss128,4.txt")
+    d2 = read_reference_data("dpss128,4.txt")
     @test d1 ≈ d2
 
     # Test dpsseig against dpss from MATLAB
@@ -50,16 +50,16 @@ end
 
     hanning_jl = hanning(128)
     hann_jl = hann(128)
-    hanning_ml = reference_data("hanning128.txt")
+    hanning_ml = read_reference_data("hanning128.txt")
     @test hanning_jl ≈ hanning_ml
     @test hann_jl ≈ hanning_ml
 
     hamming_jl = hamming(128)
-    hamming_ml = reference_data("hamming128.txt")
+    hamming_ml = read_reference_data("hamming128.txt")
     @test hamming_jl ≈ hamming_ml
 
     triang_jl = triang(128)
-    triang_ml = reference_data("triang128.txt")
+    triang_ml = read_reference_data("triang128.txt")
     @test triang_jl ≈ triang_ml
 
     # for odd `n` the `triang` window should be the middle n-2 samples of the
@@ -67,38 +67,38 @@ end
     @test triang(5) ≈ bartlett(7)[2:6]
 
     bartlett_jl = bartlett(128)
-    bartlett_ml = reference_data("bartlett128.txt")
+    bartlett_ml = read_reference_data("bartlett128.txt")
     @test bartlett_jl ≈ bartlett_ml
 
     barthann_jl = bartlett_hann(128)
-    barthann_ml = reference_data("bartlett_hann128.txt")
+    barthann_ml = read_reference_data("bartlett_hann128.txt")
     @test bartlett_jl ≈ bartlett_ml
 
     blackman_jl = blackman(128)
-    blackman_ml = reference_data("blackman128.txt")
+    blackman_ml = read_reference_data("blackman128.txt")
     @test blackman_jl ≈ blackman_ml
     @test minimum(blackman_jl) == 0.0
 
     kaiser_jl = kaiser(128, 0.4/π)
-    kaiser_ml = reference_data("kaiser128,0.4.txt")
+    kaiser_ml = read_reference_data("kaiser128,0.4.txt")
     @test kaiser_jl ≈ kaiser_ml
 
     gaussian_jl = gaussian(128, 0.2)
-    gaussian_ref = reference_data("gaussian128,0.2.txt")
+    gaussian_ref = read_reference_data("gaussian128,0.2.txt")
     @test gaussian_jl ≈ gaussian_ref
 
     tukey_jl = tukey(128, 0.4)
-    tukey_ml = reference_data("tukey128,0.4.txt")
+    tukey_ml = read_reference_data("tukey128,0.4.txt")
     @test tukey_jl ≈ tukey_ml
 
     @test tukey(128, 0) == rect(128)
 
     lanczos_jl = lanczos(128)
-    lanczos_ref = reference_data("lanczos128.txt")
+    lanczos_ref = read_reference_data("lanczos128.txt")
     @test lanczos_jl ≈ lanczos_ref
 
     cosine_jl = cosine(128)
-    cosine_ref = reference_data("cosine128.txt")
+    cosine_ref = read_reference_data("cosine128.txt")
     @test cosine_jl ≈ cosine_ref
 end
 

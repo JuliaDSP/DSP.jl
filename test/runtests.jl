@@ -17,7 +17,7 @@ module_tests = [
     :Unwrap => ["unwrap.jl"]
 ]
 
-!(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 
 seed!(1776)
 

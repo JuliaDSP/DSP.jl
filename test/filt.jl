@@ -1,4 +1,4 @@
-!(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 using DSP, Test, Random, FilterTestHelpers
 #
 # filt with different filter forms
@@ -181,17 +181,17 @@ end
 #
 ##############
 @testset "filt! with init. cond." begin
-    matlab_filt = reference_data("filt_check.txt")
+    matlab_filt = read_reference_data("filt_check.txt")
 
     a = [0.9, 0.6]
     b = [0.4, 1]
     z = [0.4750]
-    x = vec(reference_data("spectrogram_x.txt"))
+    x = vec(read_reference_data("spectrogram_x.txt"))
     @test_deprecated(filt!(x, b, a, x, z))
 
     @test matlab_filt ≈ x
 
-    x = vec(reference_data("spectrogram_x.txt"))
+    x = vec(read_reference_data("spectrogram_x.txt"))
     filt!(x, DF2TFilter(PolynomialRatio(b, a), z), x)
 
     @test matlab_filt ≈ x
@@ -215,22 +215,22 @@ end
 #
 #######################################
 @testset "filtfilt 1D" begin
-    x2_matlab = reference_data("filtfilt_output.txt")
+    x2_matlab = read_reference_data("filtfilt_output.txt")
 
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
-    x = reference_data("spectrogram_x.txt")
+    x = read_reference_data("spectrogram_x.txt")
 
     @test x2_matlab ≈ filtfilt(b, a, x)
 end
 
 # Make sure above doesn't crash for real coeffs & complex data.
 @testset "filtfilt 1D Complex" begin
-    x2_matlab = reference_data("filtfilt_output.txt")
+    x2_matlab = read_reference_data("filtfilt_output.txt")
 
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
-    x = reference_data("spectrogram_x.txt")
+    x = read_reference_data("spectrogram_x.txt")
 
     y = x .+ 1im .* randn(size(x, 1))
 
@@ -260,9 +260,9 @@ end
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.        , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
 
-    x2_output = reference_data("filtfilt_output_2d.txt")
+    x2_output = read_reference_data("filtfilt_output_2d.txt")
 
-    x = reference_data("spectrogram_x.txt")
+    x = read_reference_data("spectrogram_x.txt")
     x = repeat(x, outer=(1, 3))
     x[:,2] = circshift(x[:,2], 64)
     x[:,3] = circshift(x[:,3], 128)
@@ -291,7 +291,7 @@ end
 # the extrapolation will differ slightly.)
 #######################################
 @testset "filtfilt SOS" begin
-    x = reference_data("spectrogram_x.txt")
+    x = read_reference_data("spectrogram_x.txt")
 
     f = digitalfilter(Lowpass(0.2), Butterworth(4))
     @test filtfilt(convert(SecondOrderSections, f), x) ≈ filtfilt(convert(PolynomialRatio, f), x)

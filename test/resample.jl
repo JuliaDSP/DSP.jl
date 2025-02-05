@@ -1,8 +1,8 @@
 using DSP
 using Test
-using FilterTestHelpers: reference_data
+using FilterTestHelpers: read_reference_data
 
-reference_vec(s) = vec(reference_data(s))
+reference_vec(s) = vec(read_reference_data(s))
 
 @testset "rational ratio" begin
     # AM Modulator
