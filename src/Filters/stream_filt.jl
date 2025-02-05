@@ -718,6 +718,9 @@ function checked_resample_output!(y::AbstractVector, outLen, samplesWritten, ::F
     if !(Tk <: FIRArbitrary)
         samplesWritten == length(y) || throw(AssertionError("Length of resampled output different from expectation."))
     end
+    # bufLen == length(y) is the size of the allocated output.
+    # outLen: the desired output length ceil(Int, rate * length(input)), but we can overshoot
+    # samplesWritten: number of samples actually written to y; if longer, y[samplesWritten+1:end] contains invalid data
     samplesWritten >= outLen || throw(AssertionError("Resample output shorter than expected."))
     length(y) == outLen || resize!(y, outLen)
     return y
@@ -760,7 +763,7 @@ function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter; dims::Int) w
     size_v  = size(x, dims)
     outLen  = ceil(Int, size_v * rate)
     xPadded = Vector{T}(undef, inputlength(sf, outLen, RoundUp))
-    xPadded[length(x)+1:end] .= zero(T)
+    xPadded[size_v+1:end] .= zero(T)
     buffer  = allocate_output(sf, xPadded)
     bufLen  = length(buffer)
 
