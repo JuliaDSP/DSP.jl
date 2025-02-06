@@ -1,8 +1,11 @@
 module FilterTestHelpers
-using DSP, Test
+using DSP, Test, DelimitedFiles
 
 export tffilter_eq, zpkfilter_eq, tffilter_accuracy, zpkfilter_accuracy,
-       matrix_to_sosfilter, sosfilter_to_matrix
+       matrix_to_sosfilter, sosfilter_to_matrix,
+       read_reference_data
+
+read_reference_data(s, delim='\t') = readdlm(joinpath(@__DIR__, "data", s), delim)
 
 function lt(a, b)
     if abs(real(a) - real(b)) > 1e-10

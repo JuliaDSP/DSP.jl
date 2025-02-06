@@ -1,7 +1,8 @@
 using DSP, Test
-using DelimitedFiles: readdlm
 using Polynomials: Polynomial
 
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
+using FilterTestHelpers: read_reference_data
 
 #######################################
 #
@@ -13,8 +14,8 @@ using Polynomials: Polynomial
 #######################################
 @testset "freqresp from TF" begin
     # Matlab
-    freqz_eg1_w_abs = readdlm(joinpath(dirname(@__FILE__), "data", "freqz-eg1.txt"),'\t')
-    matlab_abs   = freqz_eg1_w_abs[:,2]
+    freqz_eg1_w_abs = read_reference_data("freqz-eg1.txt")
+    matlab_abs = freqz_eg1_w_abs[:, 2]
 
     # Julia
     b0 = 0.05634
@@ -83,7 +84,7 @@ end
         @test stepresp(H, 10) == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     end
 
-    matlab_resp = readdlm(joinpath(dirname(@__FILE__), "data", "responses-eg1.txt"),'\t')
+    matlab_resp = read_reference_data("responses-eg1.txt")
     b0 = 0.05634
     b1 = [1,  1]
     b2 = [1, -1.0166, 1]
@@ -169,7 +170,7 @@ end
     phasedeg = (180/pi)*phaseresp(PolynomialRatio{:s}(b, a), w)
 
     # Matlab
-    freqs_eg1_w_mag_phasedeg = readdlm(joinpath(dirname(@__FILE__), "data", "freqs-eg1.txt"),'\t')
+    freqs_eg1_w_mag_phasedeg = read_reference_data("freqs-eg1.txt")
     matlab_w        = freqs_eg1_w_mag_phasedeg[:,1]
     matlab_mag      = freqs_eg1_w_mag_phasedeg[:,2]
     matlab_phasedeg = freqs_eg1_w_mag_phasedeg[:,3]
@@ -196,7 +197,7 @@ end
 #
 # ######################################
 @testset "grpdelay" begin
-    matlab_delay = readdlm(joinpath(dirname(@__FILE__), "data", "grpdelay_eg1.txt"),'\t')
+    matlab_delay = read_reference_data("grpdelay_eg1.txt")
     b0 = 0.05634
     b1 = [1,  1]
     b2 = [1, -1.0166, 1]

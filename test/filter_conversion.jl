@@ -1,4 +1,4 @@
-!(dirname(@__FILE__) in LOAD_PATH) && push!(LOAD_PATH, dirname(@__FILE__))
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 using DSP, Test, FilterTestHelpers, Polynomials
 using Polynomials.PolyCompat
 

@@ -1,3 +1,5 @@
+using ..DSP: _zeropad
+
 const PFB{T} = Matrix{T}          # polyphase filter bank
 
 abstract type FIRKernel{T} end
@@ -132,11 +134,11 @@ end
 FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer) = FIRArbitrary(h, convert(Float64, rate), convert(Int, Nϕ))
 
 # FIRFilter - the kernel does the heavy lifting
-mutable struct FIRFilter{Tk<:FIRKernel}
-    kernel::Tk
+mutable struct FIRFilter{Tk<:FIRKernel,T}
+    const kernel::Tk
+    const h::Vector{T}
+    const historyLen::Int
     history::Vector
-    historyLen::Int
-    h::Vector
 end
 
 # Constructor for single-rate, decimating, interpolating, and rational resampling filters
@@ -172,7 +174,7 @@ function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
 
     history = zeros(historyLen)
 
-    FIRFilter(kernel, history, historyLen, h)
+    FIRFilter(kernel, h, historyLen, history)
 end
 
 # Constructor for arbitrary resampling filter (polyphase interpolator w/ intra-phase linear interpolation)
@@ -193,7 +195,7 @@ function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
     history    = zeros(historyLen)
-    FIRFilter(kernel, history, historyLen, h)
+    FIRFilter(kernel, h, historyLen, history)
 end
 
 # Constructor for a resampling FIR filter, where the user needs only to set the sampling rate
@@ -623,31 +625,34 @@ function filt!(
     return bufIdx
 end
 
-function filt(self::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
-    bufLen         = outputlength(self, length(x))
+function filt(self::FIRFilter{Tk}, x::AbstractVector) where Tk<:FIRKernel
+    buffer = allocate_output(self, x)
+    bufLen = length(buffer)
+    samplesWritten = filt!(buffer, self, x)
+    if Tk <: FIRArbitrary
+        samplesWritten == bufLen || resize!(buffer, samplesWritten)
+    else
+        samplesWritten == bufLen || throw(AssertionError("Length of resampled output different from expectation."))
+    end
+    return buffer
+end
+
+function allocate_output(sf::FIRFilter{Tk}, x::AbstractVector{Tx}) where {Th,Tx,Tk<:FIRKernel{Th}}
     # In some cases when `filt(::FIRFilter{FIRArbitrary}, x)` is called
     # with certain values of `x`, `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
     # tries to write one sample too many to the buffer and a `BoundsError`
-    # is thrown.  Add one extra sample to catch these exceptional cases.
+    # is thrown. Add one extra sample to catch these exceptional cases.
     #
     # See https://github.com/JuliaDSP/DSP.jl/issues/317
     #
     # FIXME: Remove this if and when the code in
     #        `filt!(buffer, ::FIRFilter{FIRArbitrary}, x)`
     #        is updated to properly account for pathological arbitrary rates.
+    outLen = outputlength(sf, length(x))
     if Tk <: FIRArbitrary
-        bufLen += 1
+        outLen += 1
     end
-    buffer         = Vector{promote_type(Th,Tx)}(undef, bufLen)
-    samplesWritten = filt!(buffer, self, x)
-
-    if Tk <: FIRArbitrary
-        samplesWritten == bufLen || resize!(buffer, samplesWritten)
-    else
-        @assert samplesWritten == bufLen
-    end
-
-    return buffer
+    return Vector{promote_type(Th, Tx)}(undef, outLen)
 end
 
 
@@ -689,24 +694,34 @@ function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Intege
     _resample!(x, rate, FIRFilter(h, rate, Nϕ))
 end
 
-function _resample!(x::AbstractVector, rate::Real, self::FIRFilter)
+function _resample!(x::AbstractVector, rate::Real, sf::FIRFilter)
+    undelay!(sf)
+    outLen  = ceil(Int, length(x) * rate)
+    xPadded = _zeropad(x, inputlength(sf, outLen, RoundUp))
+
+    buffer = allocate_output(sf, xPadded)
+    samplesWritten = filt!(buffer, sf, xPadded)
+    return checked_resample_output!(buffer, outLen, samplesWritten, sf)
+end
+
+function undelay!(sf::FIRFilter)
     # Get delay, in # of samples at the output rate, caused by filtering processes
-    τ = timedelay(self)
+    τ = timedelay(sf)
 
     # Use setphase! to
     #   a) adjust the input samples to skip over before producing and output (integer part of τ)
     #   b) set the ϕ index of the PFB (fractional part of τ)
-    setphase!(self, τ)
+    setphase!(sf, τ)
+end
 
-    # Calculate the number of 0's required
-    outLen      = ceil(Int, length(x) * rate)
-    reqInlen    = inputlength(self, outLen, RoundUp)
-    reqZerosLen = reqInlen - length(x)
-    xPadded     = [x; zeros(eltype(x), reqZerosLen)]
-
-    y = filt(self, xPadded)
-    @assert length(y) >= outLen
-    length(y) > outLen && resize!(y, outLen)
+function checked_resample_output!(y::AbstractVector, outLen, samplesWritten, ::FIRFilter{Tk}) where Tk<:FIRKernel
+    if !(Tk <: FIRArbitrary)
+        samplesWritten == length(y) || throw(AssertionError("Length of resampled output different from expectation."))
+    end
+    # outLen: the desired output length ceil(Int, rate * length(input)), but we can overshoot
+    # samplesWritten: number of samples actually written to y; if longer, y[samplesWritten+1:end] contains invalid data
+    samplesWritten >= outLen || throw(AssertionError("Resample output shorter than expected."))
+    length(y) == outLen || resize!(y, outLen)
     return y
 end
 
@@ -742,11 +757,23 @@ end
 resample(x::AbstractArray, rate::Real, args::Real...; dims) =
     _resample!(x, rate, FIRFilter(rate, args...); dims)
 
-_resample!(x::AbstractArray, rate::Real, sf::FIRFilter; dims) =
-    mapslices(x; dims) do v
-        reset!(sf)
-        _resample!(v, rate, sf)
+function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter; dims::Int) where T
+    undelay!(sf)
+    size_v  = size(x, dims)
+    outLen  = ceil(Int, size_v * rate)
+    xPadded = Vector{T}(undef, inputlength(sf, outLen, RoundUp))
+    xPadded[size_v+1:end] .= zero(T)
+    buffer  = allocate_output(sf, xPadded)
+    bufLen  = length(buffer)
+
+    mapslices(x; dims) do v::AbstractVector
+        undelay!(reset!(sf))
+        length(buffer) == bufLen || resize!(buffer, bufLen)
+        copyto!(xPadded, v)
+        samplesWritten = filt!(buffer, sf, xPadded)
+        return checked_resample_output!(buffer, outLen, samplesWritten, sf)
     end
+end
 
 #
 # References

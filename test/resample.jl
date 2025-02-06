@@ -1,24 +1,25 @@
-using DSP
-using Test
-using DelimitedFiles: readdlm
+using DSP, Test
 
-reference_data(s) = vec(readdlm(joinpath(dirname(@__FILE__), "data", s), '\t'))
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
+using FilterTestHelpers: read_reference_data
+
+reference_vec(s) = vec(read_reference_data(s))
 
 @testset "rational ratio" begin
     # AM Modulator
     # sig(t) = [(1 + sin(2π*0.005*t)) * sin(2π*.05*t) for t in t]
-    x_ml  = reference_data("resample_x.txt")
+    x_ml = reference_vec("resample_x.txt")
 
     #
     # [y,b] = resample(x, $num, $den)
     #
     for rate in (1//2, 2//1, 3//2, 2//3)
         num, den = numerator(rate), denominator(rate)
-        h1_ml = reference_data("resample_taps_$(num)_$(den).txt")
-        y1_ml = reference_data("resample_y_$(num)_$(den).txt")
-        y1_jl = resample(x_ml, rate, h1_ml)
-        @test y1_ml ≈ y1_jl
-        @test y1_ml ≈ resample(x_ml, rate) rtol = 0.001     # check default taps are ok
+        h_ml = reference_vec("resample_taps_$(num)_$(den).txt")
+        y_ml = reference_vec("resample_y_$(num)_$(den).txt")
+        y_jl = resample(x_ml, rate, h_ml)
+        @test y_ml ≈ y_jl
+        @test y_ml ≈ resample(x_ml, rate) rtol = 0.001     # check default taps are ok
     end
 end
 
@@ -31,36 +32,42 @@ end
     @test resample(mat, rate; dims=1) == resample(mat, rate, h; dims=1)
     @test resample(mat, rate; dims=2) == resample(mat, rate, h; dims=2)
 
-    rate  = 1//2
-    x_ml  = reference_data("resample_x.txt")
-    h1_ml = reference_data("resample_taps_1_2.txt")
-    y1_ml = reference_data("resample_y_1_2.txt")
-    expected_result = [y1_ml ℯ * y1_ml]
+    rate = 1//2
+    x_ml = reference_vec("resample_x.txt")
+    h_ml = reference_vec("resample_taps_1_2.txt")
+    y_ml = reference_vec("resample_y_1_2.txt")
+    expected_result = [y_ml ℯ * y_ml]
     X = [x_ml ℯ * x_ml]
 
-    y1_jl  = resample(X, rate, h1_ml; dims=1)
-    arb_y1 = resample(X, float(rate); dims=1)
-    rat_y1 = resample(X, rate; dims=1)
-    @test y1_jl ≈ expected_result
-    @test arb_y1 ≈ expected_result  rtol = 0.002     # test that default taps are good enough
-    @test rat_y1 ≈ expected_result  rtol = 0.0005
+    y_jl  = resample(X, rate, h_ml; dims=1)
+    arb_y = resample(X, float(rate); dims=1)
+    rat_y = resample(X, rate; dims=1)
+    @test y_jl ≈ expected_result
+    @test arb_y ≈ expected_result  rtol = 0.002     # test that default taps are good enough
+    @test rat_y ≈ expected_result  rtol = 0.0005
 
-    y1_jl  = resample(X', rate, h1_ml; dims=2)
-    arb_y1 = resample(X', float(rate); dims=2)
-    rat_y1 = resample(X', rate; dims=2)
-    @test y1_jl ≈ expected_result'
-    @test arb_y1 ≈ expected_result' rtol = 0.002
-    @test rat_y1 ≈ expected_result' rtol = 0.0005
+    y_jl  = resample(X', rate, h_ml; dims=2)
+    arb_y = resample(X', float(rate); dims=2)
+    rat_y = resample(X', rate; dims=2)
+    @test y_jl ≈ expected_result'
+    @test arb_y ≈ expected_result' rtol = 0.002
+    @test rat_y ≈ expected_result' rtol = 0.0005
 
     expected_result_3d = permutedims(reshape(expected_result, (size(expected_result, 1), size(expected_result, 2), 1)), (3, 1, 2))
     X_3d = permutedims(reshape(X, (size(X, 1), size(X, 2), 1)), (3, 1, 2))
-    y1_jl  = resample(X_3d, rate, h1_ml, dims=2)
-    @test y1_jl ≈ expected_result_3d
+    y_jl = resample(X_3d, rate, h_ml; dims=2)
+    @test y_jl ≈ expected_result_3d
 
     expected_result_3d = permutedims(expected_result_3d, (1, 3, 2))
     X_3d = permutedims(X_3d, (1, 3, 2))
-    y1_jl  = resample(X_3d, rate, h1_ml, dims=3)
-    @test y1_jl ≈ expected_result_3d
+    y_jl = resample(X_3d, rate, h_ml; dims=3)
+    @test y_jl ≈ expected_result_3d
+
+    # check buffer is resized properly (vs old implementation)
+    for dims in 1:3
+        A = rand(3, 3, 3)
+        @test resample(A, 1.2; dims) == mapslices(v -> resample(v, 1.2), A; dims)
+    end
 end
 
 @testset "irrational ratio" begin
@@ -165,9 +172,7 @@ end
         @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
         @test outputlength(H, inputlength(H, yL, RoundUp)-1) < yL <= outputlength(H, inputlength(H, yL, RoundUp))
     end
-    let
-        M = 2.0
-        H = FIRFilter(resample_filter(M), M)
+    let M = 2.0, H = FIRFilter(resample_filter(M), M)
         setphase!(H, timedelay(H))
         yL = 200
         @test outputlength(H, inputlength(H, yL)) <= yL < outputlength(H, inputlength(H, yL)+1)
@@ -181,7 +186,7 @@ end
     FIRFutyp = Union{FIRFilter{<:FIRInterpolator},FIRFilter{<:FIRStandard}}
     @test only(Base.return_types(FIRFilter, (Vector, Int64))) <: FIRFutyp broken=VERSION<v"1.11"
     @test only(Base.return_types(FIRFilter, (Vector, Int32))) <: FIRFutyp broken=VERSION<v"1.11"
-    FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T}},FIRFilter{FIRStandard{T}}} where T
+    FIRFutype{T} = Union{FIRFilter{FIRInterpolator{T},T},FIRFilter{FIRStandard{T},T}} where T
     @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int64))) == FIRFutype{Float64}
     @test only(Base.return_types(FIRFilter, (Vector{Float64}, Int32))) == FIRFutype{Float64}
 
