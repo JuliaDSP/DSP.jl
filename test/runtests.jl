@@ -17,8 +17,6 @@ module_tests = [
     :Unwrap => ["unwrap.jl"]
 ]
 
-!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
-
 seed!(1776)
 
 @testset verbose=true "DSP.jl" begin

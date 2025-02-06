@@ -1,5 +1,6 @@
-using DSP
-using Test
+using DSP, Test
+
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 using FilterTestHelpers: read_reference_data
 
 reference_vec(s) = vec(read_reference_data(s))

@@ -1,6 +1,9 @@
-using DSP, FFTW, Test, FilterTestHelpers
+using DSP, FFTW, Test
 using Statistics: mean
 using DSP: allocate_output
+
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
+using FilterTestHelpers
 
 const epsilon = 10^-3
 

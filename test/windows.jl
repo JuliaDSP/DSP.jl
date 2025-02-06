@@ -1,4 +1,7 @@
-using FFTW, DSP, Test, FilterTestHelpers
+using FFTW, DSP, Test
+
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
+using FilterTestHelpers
 
 # not exported, but used for some internal testing
 using DSP.Windows: makewindow

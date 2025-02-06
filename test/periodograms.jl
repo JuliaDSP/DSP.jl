@@ -14,10 +14,13 @@
 #  close(fid)
 #end
 
-using DSP, Test, FilterTestHelpers
+using DSP, Test
 using Statistics: mean
 using FFTW: fft, fftfreq, fftshift, rfft, ifft
 using DSP: allocate_output
+
+!(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
+using FilterTestHelpers
 
 @testset "matlab ref" begin
     x0 = read_reference_data("spectrogram_x.txt") |> vec
