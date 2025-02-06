@@ -694,7 +694,7 @@ function resample(x::AbstractVector, rate::AbstractFloat, h::Vector, Nϕ::Intege
     _resample!(x, rate, FIRFilter(h, rate, Nϕ))
 end
 
-function _resample!(x::AbstractVector{T}, rate::Real, sf::FIRFilter) where T
+function _resample!(x::AbstractVector, rate::Real, sf::FIRFilter)
     undelay!(sf)
     outLen  = ceil(Int, length(x) * rate)
     xPadded = _zeropad(x, inputlength(sf, outLen, RoundUp))
@@ -718,7 +718,6 @@ function checked_resample_output!(y::AbstractVector, outLen, samplesWritten, ::F
     if !(Tk <: FIRArbitrary)
         samplesWritten == length(y) || throw(AssertionError("Length of resampled output different from expectation."))
     end
-    # bufLen == length(y) is the size of the allocated output.
     # outLen: the desired output length ceil(Int, rate * length(input)), but we can overshoot
     # samplesWritten: number of samples actually written to y; if longer, y[samplesWritten+1:end] contains invalid data
     samplesWritten >= outLen || throw(AssertionError("Resample output shorter than expected."))
