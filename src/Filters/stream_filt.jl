@@ -244,12 +244,11 @@ setphase!(self::FIRFilter, ϕ::Real) = setphase!(self.kernel, ϕ)
 # reset! filter and its kernel to an initial state
 #
 
-# Generic case for FIRInterpolator and FIRStandard
-function reset!(kernel::FIRKernel)
+function reset!(kernel::FIRStandard)
     kernel
 end
 
-function reset!(kernel::FIRRational)
+function reset!(kernel::Union{FIRRational,FIRInterpolator})
     kernel.ϕIdx         = 1
     kernel.inputDeficit = 1
     kernel

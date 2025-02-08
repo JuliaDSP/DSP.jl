@@ -63,6 +63,12 @@ end
     y_jl = resample(X_3d, rate, h_ml; dims=3)
     @test y_jl ≈ expected_result_3d
 
+    # also test FIRInterpolator is reset!ed properly (issue #625)
+    interp = 2
+    v = randn(100)
+    res_v = resample(v, interp)
+    @test resample([v v], interp; dims=1) == [res_v res_v]
+
     # check buffer is resized properly (vs old implementation)
     for dims in 1:3
         A = rand(3, 3, 3)
