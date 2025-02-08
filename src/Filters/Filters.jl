@@ -6,7 +6,7 @@ using Polynomials: LaurentPolynomial, Polynomial, coeffs, derivative, fromroots,
 import Base: *
 using LinearAlgebra: I, mul!, rmul!
 using Statistics: middle
-using SpecialFunctions: ellipk
+using Elliptic: K as ellipk
 using ..DSP: optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
 import ..DSP: filt, filt!
 using FFTW
