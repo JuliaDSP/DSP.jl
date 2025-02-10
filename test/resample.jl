@@ -64,9 +64,10 @@ end
     @test y_jl ≈ expected_result_3d
 
     # check buffer is resized properly (vs old implementation)
-    for dims in 1:3
+    # also test that FIRInterpolator/Decimator is reset!ed properly (issue #625)
+    for dims in 1:3, rate in (1.2, 0.8, 4, 2//1, 1//2)
         A = rand(3, 3, 3)
-        @test resample(A, 1.2; dims) == mapslices(v -> resample(v, 1.2), A; dims)
+        @test resample(A, rate; dims) == mapslices(v -> resample(v, rate), A; dims)
     end
 end
 
