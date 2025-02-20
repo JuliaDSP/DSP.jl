@@ -491,8 +491,8 @@ function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
 
     n_samples = mt_config.n_samples
     if demean
-        mean_per_channel = Vector{T}(undef, n_channels)
-        demeaned_signal = Matrix{T}(undef, n_channels, n_samples)
+        mean_per_channel = Matrix{T}(undef, 1, n_channels)
+        demeaned_signal = Matrix{T}(undef, n_samples, n_channels)
     else
         mean_per_channel = nothing
         demeaned_signal = nothing
@@ -529,7 +529,7 @@ end
 Computes multitapered cross power spectra between channels of a signal. Arguments:
 
 * `output`: `n_channels` x `n_channels` x `length(config.freq)`. Can be created by `DSP.allocate_output(config)`.
-* `signal`: `n_channels` x `n_samples`
+* `signal`: `n_samples` x `n_channels`
 * `config`: `MTCrossSpectraConfig{T}`: optionally pass a [`MTCrossSpectraConfig`](@ref) to
   preallocate temporary and choose configuration settings.
   Otherwise, one may pass any keyword arguments accepted by this object.
@@ -542,19 +542,18 @@ See also [`mt_cross_power_spectra`](@ref) and [`MTCrossSpectraConfig`](@ref).
 mt_cross_power_spectra!
 
 function mt_cross_power_spectra!(output, signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
-    n_channels, n_samples = size(signal)
+    n_samples, n_channels = size(signal)
     config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra!(output, signal, config)
 end
 
-@views function mt_cross_power_spectra!(output, signal::AbstractMatrix,
-                                   config::MTCrossSpectraConfig)
+function mt_cross_power_spectra!(output, signal::AbstractMatrix, config::MTCrossSpectraConfig)
     n_chan = config.n_channels
     n_samples = config.mt_config.n_samples
     n_freqi = length(config.freq_inds)
 
-    if size(signal) != (n_chan, n_samples)
+    if size(signal) != (n_samples, n_chan)
         throw(DimensionMismatch(lazy"Size of `signal` does not match `(config.n_channels, config.mt_config.n_samples)`;
         got `size(signal)`=$(size(signal)) but `(config.n_channels, config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
@@ -576,9 +575,9 @@ end
     else
         mt_fft_tapered_multichannel!(x_mt, signal, config)
     end
-    x_mt[1, :, :] ./= sqrt(2)
+    @views x_mt[1, :, :] ./= sqrt(2)
     if iseven(config.mt_config.nfft)
-        x_mt[end, :, :] ./= sqrt(2)
+        @views x_mt[end, :, :] ./= sqrt(2)
     end
     cs_inner!(output, config.normalization_weights, x_mt, config)
     return CrossPowerSpectra(output, config.freq)
@@ -586,16 +585,17 @@ end
 
 function mt_fft_tapered_multichannel_ensure_aligned!(x_mt, signal, config)
     fft_output = config.mt_config.fft_output_tmp
-    for k in 1:(config.n_channels), taper in 1:config.mt_config.ntapers
-        # we do this in two steps so that we are sure `fft_output` has the memory alignment FFTW expects (without needing the `FFTW.UNALIGNED` flag)
-        mt_fft_tapered!(fft_output, signal[k, :], taper, config.mt_config)
+    for k in 1:config.n_channels, taper in 1:config.mt_config.ntapers
+        # we do this in two steps to ensure `fft_output` has the memory alignment FFTW expects
+        # (without needing the `FFTW.UNALIGNED` flag)
+        mt_fft_tapered!(fft_output, view(signal, :, k), taper, config.mt_config)
         x_mt[:, taper, k] .= fft_output
     end
 end
 
 @views function mt_fft_tapered_multichannel!(x_mt, signal, config)
     for k in 1:(config.n_channels), taper in 1:config.mt_config.ntapers
-        mt_fft_tapered!(x_mt[:, taper, k], signal[k, :], taper, config.mt_config)
+        mt_fft_tapered!(x_mt[:, taper, k], signal[:, k], taper, config.mt_config)
     end
 end
 
@@ -626,7 +626,7 @@ end
 
 Computes multitapered cross power spectra between channels of a signal. Arguments:
 
-* `signal`: `n_channels` x `n_samples`
+* `signal`: `n_samples` x `n_channels`
 * Optionally pass an [`MTCrossSpectraConfig`](@ref) object to preallocate temporary variables
 and choose configuration settings. Otherwise, any keyword arguments accepted by [`MTCrossSpectraConfig`](@ref) may be passed here.
 
@@ -638,7 +638,7 @@ See also [`mt_cross_power_spectra!`](@ref) and [`MTCrossSpectraConfig`](@ref).
 mt_cross_power_spectra
 
 function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
-    n_channels, n_samples = size(signal)
+    n_samples, n_channels = size(signal)
     config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra(signal, config)
@@ -768,7 +768,7 @@ function mt_coherence!(output, signal::AbstractMatrix,
     n_samples = config.cs_config.mt_config.n_samples
     n_freqs = length(config.cs_config.freq)
 
-    if size(signal) != (n_chan, n_samples)
+    if size(signal) != (n_samples, n_chan)
         throw(DimensionMismatch(lazy"Size of `signal` does not match `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`;
             got `size(signal)`=$(size(signal)) but `(config.cs_config.n_channels, config.cs_config.mt_config.n_samples)`=$((n_chan, n_samples))"))
     end
@@ -783,7 +783,7 @@ function mt_coherence!(output, signal::AbstractMatrix,
 end
 
 function mt_coherence!(output, signal::AbstractMatrix{T}; kwargs...) where {T}
-    n_channels, n_samples = size(signal)
+    n_samples, n_channels = size(signal)
     config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_coherence!(output, signal, config)
 end
@@ -795,7 +795,7 @@ end
 
 Arguments:
 
-* `signal`: `n_channels` x `n_samples` matrix
+* `signal`: `n_samples` x `n_channels` matrix
 * Optionally pass an `MTCoherenceConfig` to pre-allocate temporary variables and choose configuration settings, otherwise, see [`MTCrossSpectraConfig`](@ref) for the meaning of the keyword arguments.
 
 Returns a `Coherence` object.
@@ -805,7 +805,7 @@ See also [`mt_coherence`](@ref) and [`MTCoherenceConfig`](@ref).
 mt_coherence
 
 function mt_coherence(signal::AbstractMatrix{T}; kwargs...) where {T}
-    n_channels, n_samples = size(signal)
+    n_samples, n_channels = size(signal)
     config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
     return mt_coherence(signal, config)
 end

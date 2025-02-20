@@ -103,14 +103,14 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
     noise = rand(1024) * 2 .- 1
 
     T = Float64
-    same_signal = Matrix{T}(undef, 2, n_samples)
-    same_signal[1, :] = sin_1
-    same_signal[2, :] = sin_1
+    same_signal = Matrix{T}(undef, n_samples, 2)
+    same_signal[:, 1] = sin_1
+    same_signal[:, 2] = sin_1
     coh = avg_coh(mt_coherence(same_signal; demean=true, fs, freq_range))
     same_signal_coherence = coh[2, 1]
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(same_signal)...; demean=true, fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; demean=true, fs, freq_range)
     out = allocate_output(config)
     coh2 = avg_coh(mt_coherence!(out, same_signal, config))
     @test coh ≈ coh2
@@ -123,12 +123,12 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
     for i in 1:2, j in 1:2, f in eachindex(freq(coh_object))
         @test coherence(coh_object)[i, j, f] == coherence(coh_object)[j, i, f]
         if i == j
-            @test coherence(coh_object)[i,j, f] == 1
+            @test coherence(coh_object)[i, j, f] == 1
         end
     end
 
     # check that manually demeaning with `demean=false` gives the same result
-    same_signal_demeaned = same_signal .- mean(same_signal; dims = 2)
+    same_signal_demeaned = same_signal .- mean(same_signal; dims = 1)
     coh3 = avg_coh(mt_coherence(same_signal_demeaned; demean = false))
     @test coh3 ≈ coh2
 
@@ -139,23 +139,23 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
 
     @test abs(same_signal_coherence - 1) < epsilon
 
-    phase_shift = Matrix{T}(undef, 2, n_samples)
-    phase_shift[1, :] = sin_1
-    phase_shift[2, :] = sin_2
+    phase_shift = Matrix{T}(undef, n_samples, 2)
+    phase_shift[:, 1] = sin_1
+    phase_shift[:, 2] = sin_2
     coh = avg_coh(mt_coherence(phase_shift; fs, freq_range))
-    phase_shift_coherence = coh[2,1]
+    phase_shift_coherence = coh[2, 1]
     @test abs(phase_shift_coherence - 1) < epsilon
-    @test coh[1,1] ≈ 1
-    @test coh[2,2] ≈ 1
+    @test coh[1, 1] ≈ 1
+    @test coh[2, 2] ≈ 1
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(phase_shift)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; fs, freq_range)
     out = allocate_output(config)
     coh2 = avg_coh(mt_coherence!(out, phase_shift, config))
     @test coh ≈ coh2
 
     # test out-of-place with config the same result
-    config = MTCoherenceConfig{T}(size(phase_shift)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; fs, freq_range)
     coh3 = avg_coh(mt_coherence(phase_shift, config))
     @test coh ≈ coh3
 
@@ -164,52 +164,52 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
     @test coh ≈ coh4
 
     # Construct the config via an `MTConfig`
-    mt_config = MTConfig{T}(size(phase_shift, 2); fs)
-    config = MTCoherenceConfig(size(phase_shift, 1), mt_config; freq_range)
+    mt_config = MTConfig{T}(size(phase_shift, 1); fs)
+    config = MTCoherenceConfig(size(phase_shift, 2), mt_config; freq_range)
     coh5 = avg_coh(mt_coherence(phase_shift, config))
     @test coh ≈ coh5
     # test that including type parameter produces the same result
-    config = @test_nowarn MTCoherenceConfig{T}(size(phase_shift, 1), mt_config; freq_range)
+    config = @test_nowarn MTCoherenceConfig{T}(size(phase_shift, 2), mt_config; freq_range)
     cohT = avg_coh(mt_coherence(phase_shift, config))
     @test coh5 == cohT
 
     # Construct the config via an `MTCrossSpectraConfig`
-    cs_config = MTCrossSpectraConfig(size(phase_shift, 1), mt_config; freq_range)
+    cs_config = MTCrossSpectraConfig(size(phase_shift, 2), mt_config; freq_range)
     # also test with type parameter
     config, configT = MTCoherenceConfig(cs_config), MTCoherenceConfig{T}(cs_config)
     coh5, cohT = avg_coh.(mt_coherence.((phase_shift,), (config, configT)))
     @test coh ≈ coh5 == cohT
 
-    different_signal = Matrix{T}(undef, 2, n_samples)
-    different_signal[1, :] = sin_1
-    different_signal[2, :] = noise
+    different_signal = Matrix{T}(undef, n_samples, 2)
+    different_signal[:, 1] = sin_1
+    different_signal[:, 2] = noise
     coh = avg_coh(mt_coherence(different_signal; fs, freq_range))
-    different_signal_coherence = coh[2,1]
+    different_signal_coherence = coh[2, 1]
     # .8 is arbitrary, but represents a high coherence, so if a sine wave is
     # that coherent with noise, there is a problem
     @test different_signal_coherence < 0.8
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(different_signal)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; fs, freq_range)
     out = allocate_output(config)
     coh2 = avg_coh(mt_coherence!(out, different_signal, config))
     @test coh ≈ coh2
 
-    less_noisy = Matrix{T}(undef, 2, n_samples)
-    less_noisy[1, :] = sin_1
-    less_noisy[2, :] .= sin_1 .+ noise
+    less_noisy = Matrix{T}(undef, n_samples, 2)
+    less_noisy[:, 1] = sin_1
+    less_noisy[:, 2] .= sin_1 .+ noise
     coh = avg_coh(mt_coherence(less_noisy; fs, freq_range))
     less_noisy_coherence = coh[2, 1]
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(less_noisy)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; fs, freq_range)
     out = allocate_output(config)
     coh2 = avg_coh(mt_coherence!(out, less_noisy, config))
     @test coh ≈ coh2
 
-    more_noisy = Matrix{T}(undef, 2, n_samples)
-    more_noisy[1, :] = sin_1
-    more_noisy[2, :] .= sin_1 .+ 3 * noise
+    more_noisy = Matrix{T}(undef, n_samples, 2)
+    more_noisy[:, 1] = sin_1
+    more_noisy[:, 2] .= sin_1 .+ 3 * noise
     coh = avg_coh(mt_coherence(more_noisy; fs, freq_range))
     more_noisy_coherence = coh[2, 1]
     @test less_noisy_coherence < same_signal_coherence
@@ -217,22 +217,22 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
     @test different_signal_coherence < more_noisy_coherence
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(more_noisy)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(2, n_samples; fs, freq_range)
     out = allocate_output(config)
     coh2 = avg_coh(mt_coherence!(out, more_noisy, config))
     @test coh ≈ coh2
 
-    several_signals = Matrix{T}(undef, 3, n_samples)
-    several_signals[1, :] = sin_1
-    several_signals[2, :] = sin_2
-    several_signals[3, :] = noise
+    several_signals = Matrix{T}(undef, n_samples, 3)
+    several_signals[:, 1] = sin_1
+    several_signals[:, 2] = sin_2
+    several_signals[:, 3] = noise
     several_signals_coherences = avg_coh(mt_coherence(several_signals; fs, freq_range))
     @test length(several_signals_coherences) == 9
     @test several_signals_coherences[2, 1] ≈ phase_shift_coherence
     @test several_signals_coherences[3, 1] ≈ different_signal_coherence
 
     # test in-place gets the same result
-    config = MTCoherenceConfig{T}(size(several_signals)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(3, n_samples; fs, freq_range)
     out = allocate_output(config)
     @test eltype(out) == Float64
     coh2 = avg_coh(mt_coherence!(out, several_signals, config))
@@ -240,7 +240,7 @@ avg_coh(x) = dropdims(mean(coherence(x); dims=3); dims=3)
 
     T = Float32
     # Float32 output:
-    config = MTCoherenceConfig{T}(size(several_signals)...; fs, freq_range)
+    config = MTCoherenceConfig{T}(3, n_samples; fs, freq_range)
     out = allocate_output(config)
     @test eltype(out) == Float32
     coh3 = avg_coh(mt_coherence!(out, several_signals, config))
@@ -258,19 +258,19 @@ end
     sin_1 = sinpi.(2 * 12.0 * t)  # 12 Hz sinusoid signal
     sin_2 = sinpi.(2 * 12.0 * t .+ 1)
     noise = vec(read_reference_data("noise.txt", '\n')) # generated by `rand(1024) * 2 .- 1`
-    more_noisy = Array{Float64,3}(undef, 1, 2, n_samples)
-    more_noisy[1, 1, :] = sin_1
-    more_noisy[1, 2, :] .= sin_1 .+ 3 * noise
+    more_noisy = Matrix{Float64}(undef, n_samples, 2)
+    more_noisy[:, 1] = sin_1
+    more_noisy[:, 2] .= sin_1 .+ 3 * noise
 
     ## to generate the reference result:
-    # using PyMNE
+    # using PyMNE; more_noisy = reshape(more_noisy', 1, 2, n_samples)
     # mne_coherence_matrix, _ = PyMNE.connectivity.spectral_connectivity(more_noisy, method="coh",sfreq=fs,mode="multitaper",fmin=10,fmax=15,verbose=false)
     # coh = dropdims(mean(mne_coherence_matrix; dims=3); dims=3)[2, 1]
     coh = 0.982356762670818
 
     mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCoherenceConfig(2, mt_config; freq_range = (10,15), demean=true)
-    result = avg_coh(mt_coherence(dropdims(more_noisy;dims=1), config))
+    result = avg_coh(mt_coherence(more_noisy, config))
     @test result[2, 1] ≈ coh
 end
 
@@ -278,11 +278,11 @@ end
     fs = 1000.0
     n_samples = 1024
     t = (0:1023) ./ fs
-    data = Array{Float64, 3}(undef, 1, 2, n_samples)
-    data[1, 1, :] = sinpi.(2 * 12.0 * t) # 12 Hz sinusoid signal
-    data[1, 2, :] = sinpi.(2 * 12.0 * t .+ 1)
+    signal = Matrix{Float64}(undef, n_samples, 2)
+    signal[:, 1] = sinpi.(2 * 12.0 * t) # 12 Hz sinusoid signal
+    signal[:, 2] = sinpi.(2 * 12.0 * t .+ 1)
     ## Script to generate reference data:
-    # using PyMNE, DelimitedFiles
+    # using PyMNE, DelimitedFiles; data = reshape(signal', 1, 2, n_samples)
     # result = PyMNE.time_frequency.csd_array_multitaper(data, fs, n_fft = nextpow(2, n_samples), low_bias=true, adaptive=false)
     # csd_array_multitaper_frequencies = result.frequencies
     # csd_array_multitaper_values = reduce((x,y) -> cat(x,y; dims=3), [ r.get_data() for r in result])
@@ -294,7 +294,6 @@ end
     csd_array_multitaper_values_im = reshape(read_reference_data("csd_array_multitaper_values_im.txt", '\n'), (2,2,512))
     csd_array_multitaper_values = csd_array_multitaper_values_re + im*csd_array_multitaper_values_im
 
-    signal = dropdims(data; dims=1)
     mt_config = DSP.Periodograms.dpss_config(Float64, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
     config = MTCrossSpectraConfig(2, mt_config; demean=true)
     result = mt_cross_power_spectra(signal, config)
@@ -303,7 +302,7 @@ end
     @test power(result)[:,:,2:end] ≈ csd_array_multitaper_values
 
     # Test in-place. Full precision:
-    config = MTCrossSpectraConfig(size(signal, 1), mt_config; demean=true)
+    config = MTCrossSpectraConfig(2, mt_config; demean=true)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float64}
     result2 = mt_cross_power_spectra!(out, signal, config)
@@ -312,7 +311,7 @@ end
 
     # Float32 output:
     mt_config32 = DSP.Periodograms.dpss_config(Float32, n_samples; fs, keep_only_large_evals=true, weight_by_evals=true)
-    config = MTCrossSpectraConfig(size(signal, 1), mt_config32; demean=true)
+    config = MTCrossSpectraConfig(2, mt_config32; demean=true)
     out = allocate_output(config)
     @test eltype(out) == Complex{Float32}
     result2 = mt_cross_power_spectra!(out, signal, config)
@@ -334,26 +333,26 @@ end
     fs = 1000.0
     n_samples = 1024
     t = (0:1023) ./ fs
-    noise = vec(read_reference_data("noise.txt", '\n'))
+    noise = read_reference_data("noise.txt", '\n')
     signal = sinpi.(2 * 12.0 * t) .+ 3 * noise
-    cs = mt_cross_power_spectra(reshape(signal, 1, :); fs)
-    p = mt_pgram(signal; fs)
+    cs = mt_cross_power_spectra(signal; fs)
+    p = mt_pgram(vec(signal); fs)
 
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # out-of-place with config
     config = MTCrossSpectraConfig{Float64}(1, length(signal); fs)
-    cs = mt_cross_power_spectra(reshape(signal, 1, :), config)
+    cs = mt_cross_power_spectra(signal, config)
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # in-place without config
     out = allocate_output(config)
-    cs = mt_cross_power_spectra!(out, reshape(signal, 1, :); fs)
+    cs = mt_cross_power_spectra!(out, signal; fs)
     @test freq(cs) ≈ freq(p)
     @test dropdims(power(cs); dims=(1,2)) ≈ power(p)
 
     # rm once two-sided FFTs supported
-    @test_throws ArgumentError mt_cross_power_spectra(reshape(complex.(signal), 1, :); fs)
+    @test_throws ArgumentError mt_cross_power_spectra(complex.(signal); fs)
 end
