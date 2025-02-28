@@ -436,9 +436,16 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     function MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
         n_channels::Int, normalization_weights::T1, x_mt::T2,
         demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
-        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C, override_warn::Bool
     ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
         check_onesided_real(mt_config)  # this restriction is artificial; the code needs to be generalized
+        if n_channels > mt_config.n_samples && !override_warn
+            Base.depwarn("n_channels > n_samples; this is likely a mistake.
+                From v0.9 onwards, each column is interpreted as a separate signal,
+                whereas in v0.8 and earlier, each row was interpreted as a separate signal.
+                To suppress this warning, pass `override_warn=true` to `MTCrossSpectraConfig`.",
+                :mt_cross_power_spectra; force=true)
+        end
         return new{T,T1,T2,T3,T4,F,T5,T6,C}(
             n_channels, normalization_weights, x_mt,
             demean, mean_per_channel, demeaned_signal, freq, freq_range,
@@ -447,12 +454,12 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     end
     function MTCrossSpectraConfig(n_channels::Int, normalization_weights::T1, x_mt::T2,
         demean::Bool, mean_per_channel::T3, demeaned_signal::T4, freq::F, freq_range::T5,
-        freq_inds::T6, ensure_aligned::Bool, mt_config::C
+        freq_inds::T6, ensure_aligned::Bool, mt_config::C, override_warn::Bool=false
     ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
         MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C}(
             n_channels, normalization_weights, x_mt,
             demean, mean_per_channel, demeaned_signal, freq, freq_range,
-            freq_inds, ensure_aligned, mt_config
+            freq_inds, ensure_aligned, mt_config, override_warn
         )
     end
 end
@@ -486,8 +493,8 @@ end
 MTCrossSpectraConfig{T}(n_channels, mt_config::MTConfig{T}; kwargs...) where {T} =
     MTCrossSpectraConfig(n_channels, mt_config; kwargs...)
 
-function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
-        freq_range=nothing, ensure_aligned = T == Float32 || T == Complex{Float32}) where {T}
+function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false, freq_range=nothing,
+        ensure_aligned = T == Float32 || T == Complex{Float32}, override_warn=false) where {T}
 
     n_samples = mt_config.n_samples
     if demean
@@ -512,7 +519,7 @@ function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
     end
     return MTCrossSpectraConfig(n_channels, normalization_weights, x_mt, demean,
                                 mean_per_channel, demeaned_signal, freq,
-                                freq_range, freq_inds, ensure_aligned, mt_config)
+                                freq_range, freq_inds, ensure_aligned, mt_config, override_warn)
 end
 
 function allocate_output(config::MTCrossSpectraConfig{T}) where {T}
