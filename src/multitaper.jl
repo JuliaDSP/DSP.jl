@@ -440,10 +440,14 @@ struct MTCrossSpectraConfig{T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
     ) where {T,T1,T2,T3,T4,F,T5,T6,C<:MTConfig{T}}
         check_onesided_real(mt_config)  # this restriction is artificial; the code needs to be generalized
         if n_channels > mt_config.n_samples && !override_warn
-            Base.depwarn("n_channels > n_samples; this is likely a mistake.
+            Base.depwarn(
+                """
+                n_channels > n_samples; this is likely a mistake.
                 From v0.9 onwards, each column is interpreted as a separate signal,
                 whereas in v0.8 and earlier, each row was interpreted as a separate signal.
-                To suppress this warning, pass `override_warn=true` to `MTCrossSpectraConfig`.",
+                To suppress this warning, pass `override_warn=true` as a keyword argument to
+                `MTCoherenceConfig`, `MTCrossSpectraConfig`, `mt_coherence`, or `mt_cross_power_spectra`.
+                """,
                 :mt_cross_power_spectra; force=true)
         end
         return new{T,T1,T2,T3,T4,F,T5,T6,C}(
@@ -484,9 +488,10 @@ Returns a `CrossPowerSpectra` object.
 function MTCrossSpectraConfig{T}(n_channels, n_samples; fs=1, demean=false,
                                  freq_range=nothing,
                                  ensure_aligned = T == Float32 || T == Complex{Float32},
+                                 override_warn=false,
                                  kwargs...) where {T}
     mt_config = MTConfig{T}(n_samples; fs, kwargs...)
-    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean, freq_range, ensure_aligned)
+    return MTCrossSpectraConfig{T}(n_channels, mt_config; demean, freq_range, ensure_aligned, override_warn)
 end
 
 # extra method to ensure it's ok to pass the redundant type parameter {T}
