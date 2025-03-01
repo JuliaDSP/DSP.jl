@@ -326,6 +326,11 @@ end
     @test_throws DimensionMismatch mt_cross_power_spectra!(similar(out, size(out, 1) + 1, size(out, 2), size(out, 3)), signal, config)
     @test_throws DimensionMismatch mt_cross_power_spectra!(out, vcat(signal, signal), config)
 
+    # test warnings for n_channels > n_samples
+    @test_warn "n_channels > n_samples" mt_cross_power_spectra(rand(10, 100))
+    @test_warn "n_channels > n_samples" mt_coherence(rand(10, 100))
+    @test_nowarn mt_cross_power_spectra(rand(10, 100); override_warn=true)
+    @test_nowarn mt_coherence(rand(10, 100); override_warn=true)
 end
 
 
