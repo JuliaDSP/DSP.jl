@@ -717,24 +717,24 @@ function conv!(
         return (first(au)+first(av) : last(au)+last(av)) .- offset
     end)
 
-    if algorithm===:auto
+    if algorithm === :auto
         algorithm = T <: FFTTypes ? :fast : :direct
     end
-    if algorithm===:fast
+    if algorithm === :fast
         if length(u) * length(v) < 2^16 # TODO: better heuristic
             algorithm = :direct
         else
             algorithm = :fft
         end
     end
-    if algorithm===:direct
+    if algorithm === :direct || any(isempty, (u, v)) # ensure correct handling of empty arrays
         return _conv_td!(out, output_indices, u, v)
     else
         if output_indices != CartesianIndices(out)
             fill!(out, zero(eltype(out)))
         end
         os_nffts = length(u) >= length(v) ? map(optimalfftfiltlength, size(v), size(u)) : map(optimalfftfiltlength, size(u), size(v))
-        if algorithm===:fft
+        if algorithm === :fft
             if any(os_nffts .< size(output_indices))
                 algorithm = :fft_overlapsave
             else
