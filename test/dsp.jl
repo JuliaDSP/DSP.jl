@@ -45,6 +45,7 @@ end
         out = zeros(ntuple(_ -> 4, N))
         @test conv(A, B; algorithm) == out
         @test conv(B, A; algorithm) == out
+        @test conv(B, B; algorithm) == B
     end
 
     @testset "conv-1D" begin
