@@ -1,8 +1,8 @@
 # This file was formerly a part of Julia. License is MIT: https://julialang.org/license
 # TODO: parameterize conv tests
 using Test, OffsetArrays
-using DSP: filt, filt!, deconv, conv, xcorr,
-           optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!
+using DSP: filt, filt!, deconv, conv, conv!, xcorr,
+           optimalfftfiltlength, unsafe_conv_kern_os!, _conv_kern_fft!,
            nextfastfft
 
 
@@ -37,6 +37,16 @@ end
 @testset "conv" begin
 
     @test optimalfftfiltlength(1, 3) == 1 # Should be at least the first input
+
+    # check that empty arrays are handled correctly (issue #168)
+    for N in (1, 2, 3), algorithm in (:direct, :fft, :fft_simple, :fft_overlapsave)
+        A = rand(ntuple(_ -> 5, N)...)
+        B = Array{Float64}(undef, ntuple(_ -> 0, N))
+        out = zeros(ntuple(_ -> 4, N))
+        @test conv(A, B; algorithm) == out
+        @test conv(B, A; algorithm) == out
+        @test conv(B, B; algorithm) == B
+    end
 
     @testset "conv-1D" begin
         # Convolution
