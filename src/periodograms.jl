@@ -191,9 +191,9 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
     wc = zeros(Int, kmax) # wave count for radial average
     if n1 == nmin        # scale the wavevector for non-square s_fft
         c1 = 1
-        c2 = n1/n2
+        c2 = div(n1, n2)
     else
-        c1 = n2/n1
+        c1 = div(n2, n1)
         c2 = 1
     end
 
