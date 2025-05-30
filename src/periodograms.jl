@@ -201,8 +201,8 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
 
     @inbounds begin
         for j = 1:n2
-            kj2 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
-            kj2 = (kj2*c2)^2
+            kj1 = ifelse(j <= n2>>1 + 1, j-1, -n2+j-1)
+            kj2 = (kj1 * c2)^2
 
             wavenum = round(Int, sqrt_muladd(c1 * (1 - 1), kj2)) + 1
             if wavenum<=kmax
