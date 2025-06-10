@@ -1,6 +1,6 @@
 name = "DSP"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.8.3"
+version = "0.8.4"
 
 [deps]
 Bessels = "0e736298-9ec6-45e8-9647-e4fc86a2fe38"
