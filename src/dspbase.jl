@@ -799,6 +799,9 @@ struct CFFTConvKernel{
 end
 
 function RFFTConvKernel(kernel::AbstractArray{T,N}, outsize::NTuple{N,Int}; fft_flags=FFTW.MEASURE) where {T<:Real,N}
+    all(outsize .> size(kernel)) || throw(
+        ArgumentError("Output dimensions too small for kernel.")
+    )
     nffts = nextfastfft(outsize)
     input_padded = similar(kernel, T, nffts)
     p_rfft = plan_rfft(input_padded; flags=fft_flags)
@@ -811,6 +814,9 @@ function RFFTConvKernel(kernel::AbstractArray{T,N}, outsize::NTuple{N,Int}; fft_
     return RFFTConvKernel(p_rfft, p_irfft, input_buffer, kernel_fft, input_fft, raw_out, axes(kernel))
 end
 function CFFTConvKernel(kernel::AbstractArray{T,N}, outsize::NTuple{N,Int}; fft_flags=FFTW.MEASURE) where {T<:Complex,N}
+    all(outsize .> size(kernel)) || throw(
+        ArgumentError("Output dimensions too small for kernel.")
+    )
     nffts = nextfastfft(outsize)
     input_padded = similar(kernel, T, nffts)
     p_fft = plan_fft(input_padded; flags=fft_flags)
@@ -830,13 +836,18 @@ Base.axes(k::FFTConvKernel) = k.ax
 function conv!(out::AbstractArray{T,N}, x::AbstractArray{<:Number,N}, kern::FFTConvKernel{T,N}) where {T<:Number,N}
     output_indices = get_output_indices(out, x, kern)
     outsize = size(output_indices)
-    all(size(kern.raw_out) .>= outsize) || throw(DimensionMismatch("Input array size is too large for this plan."))
+    all(size(kern.raw_out) .>= outsize) || throw(
+        DimensionMismatch("Input array size is too large for this plan.")
+    )
+
     p, ip = get_kernel_plans(kern)
     _zeropad!(kern.input_padded, x)
     mul!(kern.input_fft, p, kern.input_padded)
     kern.input_fft .*= kern.kernel_fft
     mul!(kern.raw_out, ip, kern.input_fft)
-    return copyto!(out, output_indices, kern.raw_out, CartesianIndices(outsize))
+    copyto!(out, output_indices, kern.raw_out, CartesianIndices(outsize))
+
+    return out
 end
 conv!(out, kern::FFTConvKernel, x::AbstractArray) = conv!(out, x, kern) # assume commutativity if fft used
 
