@@ -673,6 +673,15 @@ end
 
 const FFTTypes = Union{Float32, Float64, ComplexF32, ComplexF64}
 
+function get_output_indices(out, u, v)
+    offset = conv_axes_with_offset(axes(out), axes(u), axes(v)) ? 0 : 1
+    output_indices = CartesianIndices(map(axes(u), axes(v)) do au, av
+        return (first(au)+first(av):last(au)+last(av)) .- offset
+    end)
+    checkbounds(out, output_indices)
+    return output_indices
+end
+
 """
     conv!(out, u, v; algorithm=:auto)
 
@@ -712,10 +721,7 @@ function conv!(
     v::AbstractArray{<:Number, N};
     algorithm=:auto
 ) where {T<:Number, N}
-    offset = conv_axes_with_offset(axes(out), axes(u), axes(v)) ? 0 : 1
-    output_indices = CartesianIndices(map(axes(out), axes(u), axes(v)) do ao, au, av
-        return (first(au)+first(av) : last(au)+last(av)) .- offset
-    end)
+    output_indices = get_output_indices(out, u, v)
 
     if algorithm === :auto
         algorithm = T <: FFTTypes ? :fast : :direct
@@ -755,6 +761,84 @@ function conv!(
         end
     end
 end
+
+
+abstract type FFTConvKernel{T,N} end
+struct RFFTConvKernel{
+    T<:Real,
+    N,
+    M<:AbstractArray{T,N},
+    C<:AbstractArray{Complex{T},N},
+    FP<:AbstractFFTs.Plan{T},
+    IP<:AbstractFFTs.ScaledPlan{Complex{T}},
+    X<:Tuple{Vararg{<:AbstractRange,N}}} <: FFTConvKernel{T,N}
+
+    p_rfft::FP
+    p_irfft::IP
+    input_padded::M
+    kernel_fft::C
+    input_fft::C
+    raw_out::M
+    ax::X
+end
+struct CFFTConvKernel{
+    T<:Complex,
+    N,
+    M<:AbstractArray{T,N},
+    FP<:AbstractFFTs.Plan{T},
+    IP<:AbstractFFTs.ScaledPlan{T},
+    X<:Tuple{Vararg{<:AbstractRange,N}}} <: FFTConvKernel{T,N}
+
+    p_fft::FP
+    p_ifft::IP
+    input_padded::M
+    kernel_fft::M
+    input_fft::M
+    raw_out::M
+    ax::X
+end
+
+function RFFTConvKernel(kernel::AbstractArray{T,N}, outsize::NTuple{N,Int}; fft_flags=FFTW.MEASURE) where {T<:Real,N}
+    nffts = nextfastfft(outsize)
+    input_padded = similar(kernel, T, nffts)
+    p_rfft = plan_rfft(input_padded; flags=fft_flags)
+    input_padded = _zeropad!(input_padded, kernel)  # zeropad after planning as plan may overwrite
+    kernel_fft = p_rfft * input_padded
+    input_fft = similar(kernel_fft)
+    p_irfft = plan_irfft(input_fft, nffts[1]; flags=fft_flags)  # same reason, use on input array
+    raw_out = p_irfft * input_fft
+    input_buffer = oftype(raw_out, input_padded)
+    return RFFTConvKernel(p_rfft, p_irfft, input_buffer, kernel_fft, input_fft, raw_out, axes(kernel))
+end
+function CFFTConvKernel(kernel::AbstractArray{T,N}, outsize::NTuple{N,Int}; fft_flags=FFTW.MEASURE) where {T<:Complex,N}
+    nffts = nextfastfft(outsize)
+    input_padded = similar(kernel, T, nffts)
+    p_fft = plan_fft(input_padded; flags=fft_flags)
+    input_padded = _zeropad!(input_padded, kernel)  # zeropad after planning as plan may overwrite
+    kernel_fft = p_fft * input_padded
+    input_fft = similar(kernel_fft)
+    p_ifft = plan_ifft(input_fft; flags=fft_flags)  # same reason, use on input array
+    raw_out = p_ifft * input_fft
+    input_buffer = oftype(raw_out, input_padded)
+    return CFFTConvKernel(p_fft, p_ifft, input_buffer, kernel_fft, input_fft, raw_out, axes(kernel))
+end
+
+get_kernel_plans(k::RFFTConvKernel) = (k.p_rfft, k.p_irfft)
+get_kernel_plans(k::CFFTConvKernel) = (k.p_fft, k.p_ifft)
+Base.axes(k::FFTConvKernel) = k.ax
+
+function conv!(out::AbstractArray{T,N}, x::AbstractArray{<:Number,N}, kern::FFTConvKernel{T,N}) where {T<:Number,N}
+    output_indices = get_output_indices(out, x, kern)
+    outsize = size(output_indices)
+    all(size(kern.raw_out) .>= outsize) || throw(DimensionMismatch("Input array size is too large for this plan."))
+    p, ip = get_kernel_plans(kern)
+    _zeropad!(kern.input_padded, x)
+    mul!(kern.input_fft, p, kern.input_padded)
+    kern.input_fft .*= kern.kernel_fft
+    mul!(kern.raw_out, ip, kern.input_fft)
+    return copyto!(out, output_indices, kern.raw_out, CartesianIndices(outsize))
+end
+conv!(out, kern::FFTConvKernel, x::AbstractArray) = conv!(out, x, kern) # assume commutativity if fft used
 
 function conv_output_axes(au::Tuple, av::Tuple)
     if conv_axes_with_offset(au, av)
