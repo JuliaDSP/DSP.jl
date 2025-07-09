@@ -222,7 +222,7 @@ end
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-@inline function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
     @inbounds dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
@@ -237,13 +237,13 @@ end
     BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
 end
 
-@inline function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
+function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen = size(a, 1)
     bLen = length(b)
     bLen == aLen-1  || throw(ArgumentError("length(b) must equal size(a, 1) - 1"))
     cLastIdx < aLen || throw(DomainError(cLastIdx, "cLastIdx must be < length(a)"))
 
-    @inbounds dotprod = a[1, aColIdx] * b[cLastIdx]
+    dotprod = a[1, aColIdx] * b[cLastIdx]
     @simd for i in 2:aLen-cLastIdx
         @inbounds dotprod += a[i, aColIdx] * b[i+cLastIdx-1]
     end
@@ -254,7 +254,7 @@ end
     return dotprod
 end
 
-@inline function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
+function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
     @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
@@ -269,7 +269,7 @@ end
     BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
-@inline function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
+function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
     aLen    = length(a)
     dotprod = zero(a[1]*b[1])
     @simd for i in 1:aLen-cLastIdx
