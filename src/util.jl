@@ -225,7 +225,7 @@ end
 function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
-    dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
+    @inbounds dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
     @simd for i in 2:aLen
         @inbounds dotprod += a[i, aColIdx] * b[bBaseIdx + i]
     end
