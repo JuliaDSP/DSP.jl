@@ -497,9 +497,9 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            @inline accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
+            accumulator = @inline unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
         else
-            @inline accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
+            accumulator = @inline unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
         end
 
         buffer[bufIdx]  = accumulator
