@@ -178,21 +178,3 @@ function _small_filt_fir!(
         end
     end
 end
-
-"""
-    deconv(b,a) -> c
-
-Construct vector `c` such that `b = conv(a,c) + r`.
-Equivalent to polynomial division.
-"""
-function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
-    lb = size(b,1)
-    la = size(a,1)
-    if lb < la
-        return [zero(T)]
-    end
-    lx = lb-la+1
-    x = zeros(T, lx)
-    x[1] = 1
-    filt(b, a, x)
-end
