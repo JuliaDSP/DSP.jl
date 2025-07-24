@@ -4,7 +4,7 @@ using LinearAlgebra: Transpose, mul!
 using IterTools: subsets
 using FFTW
 
-export conv, conv!, xcorr, nextfastfft
+export conv, conv!, deconv, xcorr, nextfastfft
 
 # Get next fast FFT size for a given signal length
 const FAST_FFT_SIZES = (2, 3, 5, 7)
@@ -690,6 +690,67 @@ function dsp_reverse(v::AbstractVector, vaxes::Tuple{AbstractUnitRange})
     copyto!(out, reflected_start, Iterators.reverse(v), 1, vsize)
 end
 
+"""
+    deconv(b, a) -> c
+
+Construct vector `c` such that `b = conv(a,c) + r`.
+This is equivalent to polynomial division of `b` by `a`.
+
+# Examples
+```jldoctest
+julia> b = [1.0, 2.0, 3.0, 4.0]; a = [1.0, 1.0];
+
+julia> c = deconv(b, a)
+3-element Vector{Float64}:
+ 1.0
+ 1.0
+ 2.0
+
+julia> conv(a, c)
+4-element Vector{Float64}:
+ 1.0
+ 2.0
+ 3.0
+ 2.0
+```
+"""
+function deconv(b::StridedVector{T}, a::StridedVector{T}) where T
+    lb = length(b)
+    la = length(a)
+
+    # If b is shorter than a, return [0] since polynomial division is impossible
+    if lb < la
+        return [zero(T)]
+    end
+
+    if iszero(a[1])
+        throw(ArgumentError("Leading coefficient of divisor must be non-zero"))
+    end
+
+    V = typeof(one(T) / one(T))
+    c = zeros(V, lb - la + 1)
+
+    if la == 1
+        c .= b ./ a[1]
+    else
+        # Initialize remainder with b
+        r = collect(V, b)
+
+        # Polynomial long division algorithm
+        for i in 1:(lb-la+1)
+            # Next coefficient is ratio of leading terms
+            c_i = r[i] / a[1]
+            c[i] = c_i
+
+            # Subtract a * c[i] from remaining terms
+            for j in 1:la
+                @inbounds r[i+j-1] -= a[j] * c_i
+            end
+        end
+    end
+
+    return c
+end
 
 """
     xcorr(u; padmode::Symbol=:none, scaling::Symbol=:none)
