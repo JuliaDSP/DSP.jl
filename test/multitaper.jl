@@ -24,6 +24,7 @@ const epsilon = 10^-3
         ntapers = 5
         fs = 1
         window = rand(n_samples, ntapers)
+        ftest = false
         for T in (Float32, Float64, Complex{Float32}, Complex{Float64})
             fft_input_tmp = Vector{T}(undef, nfft)
             onesided = T <: Real
@@ -35,42 +36,42 @@ const epsilon = 10^-3
                 plan_fft(fft_input_tmp; flags=fft_flags)
             # Test that the current configuration is valid so we know if it errors later
             # it's because we changed it, not that it was always broken
-            @test MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r) isa MTConfig
+            @test MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r) isa MTConfig
             # now do a series of changes (in let-blocks to introduce new local bindings)
             # and check that they are each invalid
             let n_samples = 201
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let n_samples = -1
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let ntapers = -1
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let fs = -1
-                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let fft_input_tmp = Vector{T}(undef, 2*nfft)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let nfft = 2*nfft, fft_input_tmp = Vector{T}(undef, 2*nfft)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let window = rand(2*ntapers, n_samples)
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             let r = 1.0
-                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                @test_throws DimensionMismatch MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
             end
             if T <: Complex
                 let onesided=true, freqs=rfftfreq(nfft, fs), fft_output_tmp=Vector{fftouttype(T)}(undef, length(freqs)), plan=plan_fft(fft_input_tmp; flags=fft_flags)
-                    @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r)
+                    @test_throws ArgumentError MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r)
                 end
             end
             # let's check that our original config is still valid, meaning we haven't
             # accidentally broken the config by not properly scoping our changes
             # (and therefore invalidating the tests that follow).
-            @test MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, r) isa MTConfig
+            @test MTConfig{T}(n_samples, nfft, ntapers, freqs, fs, plan, fft_input_tmp, fft_output_tmp, window, onesided, ftest, r) isa MTConfig
         end
     end
 
