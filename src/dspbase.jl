@@ -122,14 +122,16 @@ const SMALL_FILT_VECT_CUTOFF = 19
     quote
         N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
+        VECTORIZE_LARGER = N > SMALL_FILT_VECT_CUTOFF
         for i in axes(x, 1)
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
+            if VECTORIZE_LARGER
+                @inbounds out[i, col] = val
+            end
             Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
             $si_end = xi * b[N]
-            if N > SMALL_FILT_VECT_CUTOFF
-                @inbounds out[i, col] = val
-            else
+            if !VECTORIZE_LARGER
                 out[i, col] = val
             end
         end
