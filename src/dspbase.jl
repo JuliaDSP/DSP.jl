@@ -115,7 +115,7 @@ end
 const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}=Val(false)) where {N,T,StoreSI}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N,T,StoreSI}
     silen = N - 1
     si_end = Symbol(:si_, silen)
 
@@ -151,7 +151,7 @@ function _small_filt_fir!(
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
     for col in CartesianIndices(axes(x)[2:end])
-        _filt_fir!(out, b, x, si, col)
+        _filt_fir!(out, b, x, si, col, Val(false))
     end
 end
 
