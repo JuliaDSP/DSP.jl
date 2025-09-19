@@ -115,21 +115,33 @@ end
 const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}=Val(false)) where {N,T,StoreSI}
+@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N,T,StoreSI}
     silen = N - 1
     si_end = Symbol(:si_, silen)
+    @static if VERSION.major == 1 && VERSION.minor == 12
+        STORE_VAL = :(@inbounds out[i, col] = val)
+    else
+        STORE_VAL = :(out[i, col] = val)
+    end
 
     quote
-        N <= SMALL_FILT_VECT_CUTOFF && checkbounds(siarr, $silen)
+        VECTORIZE_LARGER = N > SMALL_FILT_VECT_CUTOFF
+        VECTORIZE_LARGER || checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
-        for i in axes(x, 1)
+        ax = axes(x, 1)
+        if VERSION >= v"1.12"
+            checkbounds(x, ax, col)
+            checkbounds(out, ax, col)
+        end
+        for i in ax
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
+            if VECTORIZE_LARGER
+                $STORE_VAL
+            end
             Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
             $si_end = xi * b[N]
-            if N > SMALL_FILT_VECT_CUTOFF
-                @inbounds out[i, col] = val
-            else
+            if !VECTORIZE_LARGER
                 out[i, col] = val
             end
         end
@@ -143,13 +155,19 @@ end
 # Convert array filter tap input to tuple for small-filtering
 function _small_filt_fir!(
     out::AbstractArray, h::AbstractVector, x::AbstractArray,
-        si::AbstractVector, ::Val{bs}) where {bs}
+    si::AbstractVector, ::Val{bs}
+) where {bs}
 
     bs < 2 && throw(ArgumentError("invalid tuple size"))
     length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
     b = ntuple(j -> h[j], Val(bs))
     for col in CartesianIndices(axes(x)[2:end])
-        _filt_fir!(out, b, x, si, col)
+        @static if VERSION > v"1.13-"
+            fill!(si, zero(eltype(si)))
+            _filt_fir!(out, b, x, si, col, Val(true))
+        else
+            _filt_fir!(out, b, x, si, col, Val(false))
+        end
     end
 end
 
