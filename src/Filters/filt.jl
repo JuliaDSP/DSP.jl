@@ -162,22 +162,32 @@ function filt!(out::AbstractArray{<:Any,N}, f::DF2TFilter{<:PolynomialRatio,Arra
         mul!(out, x, b[1])
     else
         a = coefa(f.coef)
+        outer_dims = CartesianIndices(axes(x)[2:end])
+
         if length(a) != 1
-            for col in CartesianIndices(axes(x)[2:end])
+            for col in outer_dims
                 _filt_iir!(out, b, a, x, view(si, :, col), col)
             end
         elseif n <= SMALL_FILT_CUTOFF
-            vtup = ntuple(j -> b[j], Val(length(b)))
-            for col in CartesianIndices(axes(x)[2:end])
-                _filt_fir!(out, vtup, x, view(si, :, col), col, Val(true))
-            end
+            _small_filt_fir_storesi!(out, b, x, si, Val(length(b)))
         else
-            for col in CartesianIndices(axes(x)[2:end])
+            for col in outer_dims
                 _filt_fir!(out, b, x, view(si, :, col), col)
             end
         end
     end
     return out
+end
+function _small_filt_fir_storesi!(
+    out::AbstractArray, h::AbstractVector, x::AbstractArray,
+        si, ::Val{bs}) where {bs}
+
+    bs < 2 && throw(ArgumentError("invalid tuple size"))
+    length(h) != bs && throw(ArgumentError("length(h) does not match bs"))
+    b = ntuple(j -> h[j], Val(bs))
+    for col in CartesianIndices(axes(x)[2:end])
+        _filt_fir!(out, b, x, view(si, :, col), col, Val(true))
+    end
 end
 
 ## SecondOrderSections
