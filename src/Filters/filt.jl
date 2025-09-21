@@ -33,7 +33,7 @@ filt(f::PolynomialRatio{:z}, x) = filt(coefb(f), coefa(f), x)
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
-                x::AbstractArray, col::Union{Int,CartesianIndex}) where {S,N}
+                x::AbstractArray, col::CartesianIndex) where {S,N}
     g = f.g
     biquads = f.biquads
     @inbounds for i in axes(x, 1)
@@ -68,7 +68,7 @@ filt(f::SecondOrderSections{:z,T,G}, x::AbstractArray{S}) where {T,G,S<:Number} 
 
 # filt! algorithm (no checking, returns si)
 function _filt!(out::AbstractArray, si1::Number, si2::Number, f::Biquad{:z},
-                x::AbstractArray, col::Union{Int,CartesianIndex})
+                x::AbstractArray, col::CartesianIndex)
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
         yi = muladd(f.b0, xi, si1)
