@@ -189,7 +189,7 @@ function _small_filt_fir_storesi!(
     LI = LinearIndices(si)
     for col in CartesianIndices(axes(x)[2:end])
         @static if VERSION > v"1.12-"
-            si_vec = unsafe_wrap(Array, pointer(si, LI[1, col]), col_len)
+            si_vec = Base.wrap(Array, memoryref(si.ref, LI[1, col]), col_len)
         else
             si_vec = view(si, :, col)
         end
