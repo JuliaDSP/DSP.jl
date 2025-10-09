@@ -127,7 +127,7 @@ const SMALL_FILT_VECT_CUTOFF = 19
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
             if VECTORIZE_LARGER
-                out[i, col] = val
+                @inbounds out[i, col] = val
             end
             Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
             $si_end = xi * b[N]
