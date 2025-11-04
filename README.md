@@ -5,7 +5,7 @@ DSP.jl
 [![codecov](https://codecov.io/gh/JuliaDSP/DSP.jl/graph/badge.svg?token=dpulG6Nqqo)](https://codecov.io/gh/JuliaDSP/DSP.jl)
 [![Documentation (stable)](https://img.shields.io/badge/docs-stable-blue.svg)](https://docs.juliadsp.org/stable/)
 [![Documentation (latest)](https://img.shields.io/badge/docs-dev-blue.svg)](https://docs.juliadsp.org/latest/)
-[![DOI](https://zenodo.org/badge/14762054.svg)](https://doi.org/10.5281/zenodo.7016211)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7016211.svg)](https://doi.org/10.5281/zenodo.7016211)
 
 DSP.jl provides a number of common [digital signal processing](https://en.wikipedia.org/wiki/Digital_signal_processing) routines in Julia. These include:
 
