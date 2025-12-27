@@ -846,6 +846,12 @@ The keyword argument `scaling` can be provided. Possible arguments are the defau
 `:none` and `:biased`. `:biased` is valid only if the vectors have the same length,
 or only one vector is provided, dividing the result by `length(u)`.
 
+!!! note
+
+    In this package, `xcorr` conjugates the second argument `v`, choosing the same
+    convention as MATLAB's `xcorr` and `scipy.signal.correlate`. This differs from
+    the inner product convention more prevalent in physics, that conjugates the
+    first vector.
 # Examples
 
 ```jldoctest
