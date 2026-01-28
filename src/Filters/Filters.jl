@@ -9,7 +9,7 @@ using Statistics: middle
 using SpecialFunctions: ellipk
 using ..DSP: optimalfftfiltlength, os_fft_complexity, SMALL_FILT_CUTOFF
 import ..DSP: filt, filt!
-using FFTW
+using ..FFTBackend
 
 include("coefficients.jl")
 export FilterCoefficients,
