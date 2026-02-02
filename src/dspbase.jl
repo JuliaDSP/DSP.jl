@@ -765,13 +765,14 @@ end
 
 abstract type FFTConvKernel{T,N} end
 struct RFFTConvKernel{
-    T<:Real,
-    N,
-    M<:AbstractArray{T,N},
-    C<:AbstractArray{Complex{T},N},
-    FP<:AbstractFFTs.Plan{T},
-    IP<:AbstractFFTs.ScaledPlan{Complex{T}},
-    X<:Tuple{Vararg{<:AbstractRange,N}}} <: FFTConvKernel{T,N}
+        T<:Real,
+        N,
+        M<:AbstractArray{T,N},
+        C<:AbstractArray{Complex{T},N},
+        FP<:AbstractFFTs.Plan{T},
+        IP<:AbstractFFTs.ScaledPlan{Complex{T}},
+        X<:Tuple{Vararg{<:AbstractRange,N}}
+    } <: FFTConvKernel{T,N}
 
     p_rfft::FP
     p_irfft::IP
@@ -782,12 +783,13 @@ struct RFFTConvKernel{
     ax::X
 end
 struct CFFTConvKernel{
-    T<:Complex,
-    N,
-    M<:AbstractArray{T,N},
-    FP<:AbstractFFTs.Plan{T},
-    IP<:AbstractFFTs.ScaledPlan{T},
-    X<:Tuple{Vararg{<:AbstractRange,N}}} <: FFTConvKernel{T,N}
+        T<:Complex,
+        N,
+        M<:AbstractArray{T,N},
+        FP<:AbstractFFTs.Plan{T},
+        IP<:AbstractFFTs.ScaledPlan{T},
+        X<:Tuple{Vararg{<:AbstractRange,N}}
+    } <: FFTConvKernel{T,N}
 
     p_fft::FP
     p_ifft::IP
