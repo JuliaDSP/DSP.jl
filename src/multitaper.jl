@@ -85,7 +85,7 @@ end
             ntapers = 2 * nw - 1,
             taper_weights = fill(1/ntapers, ntapers),
             onesided::Bool=T<:Real,
-            fft_flags = FFTW.MEASURE)
+            fft_flags = FFTBackend.ESTIMATE)
 
 Creates a config object which holds the configuration state
 and temporary variables used in multitaper computations,
@@ -112,7 +112,7 @@ as none of the input arguments change.
 function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing, nw=4,
                      ntapers=2 * nw - 1, taper_weights = fill(1/ntapers, ntapers),
                     onesided::Bool=T <: Real,
-                     fft_flags=FFTW.MEASURE) where {T}
+                     fft_flags=FFTBackend.ESTIMATE) where {T}
     if onesided && T <: Complex
         throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
     end
@@ -180,7 +180,7 @@ function mt_pgram(s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
                   window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
     config = MTConfig{T}(length(s); fs,
         nfft, window, nw, ntapers, onesided,
-        fft_flags=FFTW.ESTIMATE)
+        fft_flags=FFTBackend.ESTIMATE)
     out = allocate_output(config)
     return mt_pgram!(out, s, config)
 end
@@ -191,7 +191,7 @@ function mt_pgram!(output, s::AbstractVector{T}; onesided::Bool=eltype(s)<:Real,
     window::Union{AbstractMatrix,Nothing}=nothing) where T<:Number
     config = MTConfig{T}(length(s); fs,
         nfft, window, nw, ntapers, onesided,
-        fft_flags=FFTW.ESTIMATE)
+        fft_flags=FFTBackend.ESTIMATE)
     return mt_pgram!(output, s, config)
 end
 
@@ -305,7 +305,7 @@ mt_spectrogram!
 function mt_spectrogram!(output, signal::AbstractVector{T}, n::Int=length(signal) >> 3,
         n_overlap::Int=n >> 1; kwargs...) where {T}
     config = MTSpectrogramConfig{T}(length(signal), n, n_overlap;
-        fft_flags=FFTW.ESTIMATE, kwargs...)
+        fft_flags=FFTBackend.ESTIMATE, kwargs...)
     return mt_spectrogram!(output, signal, config)
 end
 
@@ -356,7 +356,7 @@ mt_spectrogram
 
 function mt_spectrogram(signal::AbstractVector{T}, n::Int=length(signal) >> 3,
                         n_overlap::Int=n >> 1; kwargs...) where {T}
-    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTSpectrogramConfig{T}(length(signal), n, n_overlap; fft_flags=FFTBackend.ESTIMATE, kwargs...)
     return mt_spectrogram(signal, config)
 end
 
@@ -543,7 +543,7 @@ mt_cross_power_spectra!
 
 function mt_cross_power_spectra!(output, signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTBackend.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra!(output, signal, config)
 end
@@ -607,9 +607,9 @@ function cs_inner!(output, normalization_weights, x_mt, config)
     output .= zero(eltype(output))
     # Up to the `normalization_weights` scaling, we have
     # J_k^l(f) = x_mt[k, f, l]
-    # Ŝ^lm(f) = output[l, m, f]
+    # Ŝ^lm(f) = output[l, m, f]
     # using the notation from https://en.wikipedia.org/wiki/Multitaper#The_method
-    # so the formula `Ŝ^lm(f) = \sum_k conj(J_k^l(f)) * (J_k^m(f))`` becomes the following loop:
+    # so the formula `Ŝ^lm(f) = \sum_k conj(J_k^l(f)) * (J_k^m(f))`` becomes the following loop:
     @inbounds for (fi, f) in enumerate(freq_inds),
                   m in 1:n_channels,
                   l in 1:n_channels,
@@ -639,7 +639,7 @@ mt_cross_power_spectra
 
 function mt_cross_power_spectra(signal::AbstractMatrix{T}; fs=1, kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTW.ESTIMATE,
+    config = MTCrossSpectraConfig{T}(n_channels, n_samples; fs, fft_flags=FFTBackend.ESTIMATE,
                                      kwargs...)
     return mt_cross_power_spectra(signal, config)
 end
@@ -784,7 +784,7 @@ end
 
 function mt_coherence!(output, signal::AbstractMatrix{T}; kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTBackend.ESTIMATE, kwargs...)
     return mt_coherence!(output, signal, config)
 end
 
@@ -806,7 +806,7 @@ mt_coherence
 
 function mt_coherence(signal::AbstractMatrix{T}; kwargs...) where {T}
     n_channels, n_samples = size(signal)
-    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTW.ESTIMATE, kwargs...)
+    config = MTCoherenceConfig{T}(n_channels, n_samples; fft_flags=FFTBackend.ESTIMATE, kwargs...)
     return mt_coherence(signal, config)
 end
 
