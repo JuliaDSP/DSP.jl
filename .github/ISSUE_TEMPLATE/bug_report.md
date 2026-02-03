@@ -32,7 +32,7 @@ function foo end
 
 ## Platform information
 Copy and paste the output of `versioninfo()` into a code block like this
-````julia-repl
+````
 ```julia-repl
 julia> versioninfo()
 Julia Version 1.12.4
