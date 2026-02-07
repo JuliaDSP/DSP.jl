@@ -1,7 +1,8 @@
 # deprecations in 0.8
-import .Util.nextfastfft
+import .Convolutions.nextfastfft
 @deprecate nextfastfft(ns...) nextfastfft.(ns) false
 
+import .Convolutions.conv
 @deprecate (conv(u::AbstractVector{T}, v::AbstractVector{T}, A::AbstractMatrix{T}) where T) conv(u, transpose(v), A)
 
 @deprecate(
