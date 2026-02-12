@@ -32,8 +32,8 @@ filt(f::PolynomialRatio{:z}, x) = filt(coefb(f), coefa(f), x)
 ## SecondOrderSections
 
 # filt! algorithm (no checking, returns si)
-function _filt!(out::AbstractArray, si::AbstractArray{S,N}, f::SecondOrderSections{:z},
-                x::AbstractArray, col::CartesianIndex) where {S,N}
+function _filt!(out::AbstractArray, si::AbstractMatrix{S}, f::SecondOrderSections{:z},
+                x::AbstractArray, col::CartesianIndex) where {S}
     g = f.g
     biquads = f.biquads
     @inbounds for i in axes(x, 1)
