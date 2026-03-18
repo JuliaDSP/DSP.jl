@@ -75,20 +75,21 @@ function arburg(x::AbstractVector{T}, p::Integer) where T<:Number
         reflection_coeffs[m] = k
 
         rev_buf[1:m] .= a[m:-1:1]
-        @. a[2:m+1] = muladd(k, conj(rev_buf[1:m]), a[2:m+1])
+        kc = conj(k)
+        @. a[2:m+1] = muladd(kc, conj(rev_buf[1:m]), a[2:m+1])
 
         # update prediction errors
         for i in eachindex(ef, eb)
             ef_i, eb_i = ef[i], eb[i]
             ef[i] = muladd(k, eb_i, ef[i])
-            eb[i] = muladd(conj(k), ef_i, eb[i])
+            eb[i] = muladd(kc, ef_i, eb[i])
         end
 
         ratio = one(R) - abs2(k)
         prediction_err *= ratio
     end
 
-    return conj!(a), prediction_err, reflection_coeffs
+    return a, prediction_err, reflection_coeffs
 end
 
 function lpc(x::AbstractVector{<:Number}, p::Integer, ::LPCLevinson)

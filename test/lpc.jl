@@ -1,4 +1,5 @@
 # Filter some noise, try to learn the coefficients
+using DSP, Test
 using Statistics: std
 @testset "$method" for method in (LPCBurg(), LPCLevinson())
     @testset "$T" for T in (Float64, ComplexF64)
