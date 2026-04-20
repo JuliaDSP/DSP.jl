@@ -116,6 +116,8 @@ end
     cosine_jl = cosine(128)
     cosine_ref = read_reference_data("cosine128.txt")
     @test cosine_jl ≈ cosine_ref
+
+    @test_throws ArgumentError blackmanharris(128;term=2)
 end
 
 zeroarg_wins = [rect, hanning, hamming, cosine, lanczos,
