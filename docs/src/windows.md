@@ -12,6 +12,7 @@ bartlett
 gaussian
 bartlett_hann
 blackman
+blackmanharris
 kaiser
 dpss
 dpsseig

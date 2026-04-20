@@ -44,11 +44,12 @@ end
 
 @testset "common windows" begin
     # Checking Hanning, Hamming, Triangular, Bartlett, Bartlett-Hann, Tukey,
-    # and Blackman windows against values computed with MATLAB.
-    # Lanczos and cosine are checked against values generated with DSP.jl v0.4.0
-    # to test for regressions, as there's no reference MATLAB implementation
-    # Gaussian is compared against DSP.jl from commit da1b195, when the
-    # implementation was corrected (see GH issue #204)
+    # Blackman, and Blackman-Harris-4Term windows against values computed with
+    # MATLAB. Lanczos and cosine are checked against values generated with
+    # DSP.jl v0.4.0 and Blackman-Harris-3Term with v0.8.4 to test for
+    # regressions, as there's no reference MATLAB implementation. Gaussian is
+    # compared against DSP.jl from commit da1b195, when the implementation was
+    # corrected (see GH issue #204)
     @test rect(128) == ones(128)
 
     hanning_jl = hanning(128)
@@ -82,6 +83,14 @@ end
     @test blackman_jl ≈ blackman_ml
     @test minimum(blackman_jl) == 0.0
 
+    blackmanharris_3term_jl = blackmanharris(128;term=3)
+    blackmanharris_3term_ref = read_reference_data("blackmanharris_3term_128.txt")
+    @test blackmanharris_3term_jl ≈ blackmanharris_3term_ref
+
+    blackmanharris_4term_jl = blackmanharris(128)
+    blackmanharris_4term_ml = read_reference_data("blackmanharris_4term_128.txt")
+    @test blackmanharris_4term_jl ≈ blackmanharris_4term_ml
+
     kaiser_jl = kaiser(128, 0.4/π)
     kaiser_ml = read_reference_data("kaiser128,0.4.txt")
     @test kaiser_jl ≈ kaiser_ml
@@ -106,7 +115,7 @@ end
 end
 
 zeroarg_wins = [rect, hanning, hamming, cosine, lanczos,
-                bartlett, bartlett_hann, blackman, triang]
+                bartlett, bartlett_hann, blackman, blackmanharris, triang]
 onearg_wins = [gaussian, kaiser, tukey]
 @testset "zero-phase windows" begin
     for winf in zeroarg_wins
