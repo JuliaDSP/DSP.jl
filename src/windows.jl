@@ -496,12 +496,14 @@ $zerophase_docs
 """
 function blackmanharris(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
     if term == 4
+        a0, a1, a2, a3 = 0.35875, 0.48829, 0.14128, 0.01168
         makewindow(n, padding, zerophase) do x
-            0.35875 + 0.48829 * cos(2pi * x) + 0.14128 * cos(4pi * x) + 0.01168 * cos(6pi * x)
+            muladd(a1, cospi(2x), muladd(a2, cospi(4x), muladd(a3, cospi(6x), a0)))
         end
     elseif term == 3
+        a0, a1, a2 = 0.42323, 0.49755, 0.07922
         makewindow(n, padding, zerophase) do x
-            0.42323 + 0.49755 * cos(2pi * x) + 0.07922 * cos(4pi * x)
+            muladd(a1, cospi(2x), muladd(a2, cospi(4x), a0))
         end
     else
         throw(ArgumentError("`term` must be either 3 or 4"))
@@ -551,7 +553,7 @@ $flattop_winplot
 
 Flattop window of length `n` with `padding` zeros and coefficients selected as
 in MATLAB. As the name suggests, this window results in a flat (and wide) main
-lobe with strong sidelobe suppression.
+lobe with sidelobe suppression of about 91 dB.
 
 The window is defined by sampling the continuous function:
 
@@ -576,9 +578,9 @@ $(twoD_docs())
 $zerophase_docs
 """
 function flattop(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    a0, a1, a2, a3, a4 = 0.21557895, 0.41663158, 0.277263158, 0.083578947, 0.006947368
     makewindow(n, padding, zerophase) do x
-        0.21557895 + 0.41663158 * cos(2pi * x) + 0.277263158 * cos(4pi * x) +
-        0.083578947 * cos(6pi * x) + 0.006947368 * cos(8pi * x)
+        muladd(a1, cospi(2x), muladd(a2, cospi(4x), muladd(a3, cospi(6x), muladd(a4, cospi(8x), a0))))
     end
 end
 
