@@ -14,6 +14,7 @@ bartlett_hann
 blackman
 blackmanharris
 kaiser
+flattop
 dpss
 dpsseig
 ```

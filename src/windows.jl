@@ -18,6 +18,7 @@ export  rect,
         blackman,
         blackmanharris,
         kaiser,
+        flattop,
         dpss,
         dpsseig
 
@@ -542,6 +543,45 @@ function kaiser(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
     end
 end
 
+"""
+$flattop_winplot
+
+    flattop(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    flattop(dims; padding=0, zerophase=false)
+
+Flattop window of length `n` with `padding` zeros and coefficients selected as
+in MATLAB. As the name suggests, this window results in a flat (and wide) main
+lobe with strong sidelobe suppression.
+
+The window is defined by sampling the continuous function:
+
+    w3(x) = a0 + a1*cos(2pi*x) + a2*cos(4pi*x) + a3*cos(6pi*x) + a4*cos(8pi*x)
+
+in the range `[-0.5, 0.5]` with the following coefficients:
+
+| Coefficient | Value |
+| --- | --- |
+| a0 | 0.21557895 |
+| a1 | 0.41663158 |
+| a2 | 0.277263158 |
+| a3 | 0.083578947 |
+| a4 | 0.006947368 |
+
+Flat top windows have very low passband ripple (< 0.01 dB) and are used
+primarily for calibration purposes. Their bandwidth is approximately 2.5 times
+wider than a Hanning window.
+
+$(twoD_docs())
+
+$zerophase_docs
+"""
+function flattop(n::Integer; padding::Integer=0, zerophase::Bool=false)
+    makewindow(n, padding, zerophase) do x
+        0.21557895 + 0.41663158 * cos(2pi * x) + 0.277263158 * cos(4pi * x) +
+        0.083578947 * cos(6pi * x) + 0.006947368 * cos(8pi * x)
+    end
+end
+
 # Discrete prolate spheroid sequences (Slepian tapers)
 #
 # See Gruenbacher, D. M., & Hummels, D. R. (1994). A simple algorithm
@@ -699,7 +739,7 @@ function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2
 end
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
-             :triang, :bartlett, :bartlett_hann, :blackman, :blackmanharris)
+    :triang, :bartlett, :bartlett_hann, :blackman, :blackmanharris, :flattop)
     @eval function $func(dims::Tuple{Integer,Integer}; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims; padding, zerophase)
     end

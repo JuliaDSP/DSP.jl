@@ -95,6 +95,10 @@ end
     kaiser_ml = read_reference_data("kaiser128,0.4.txt")
     @test kaiser_jl ≈ kaiser_ml
 
+    flattop_jl = flattop(128)
+    flattop_ml = read_reference_data("flattop.txt")
+    @test flattop_jl ≈ flattop_ml
+
     gaussian_jl = gaussian(128, 0.2)
     gaussian_ref = read_reference_data("gaussian128,0.2.txt")
     @test gaussian_jl ≈ gaussian_ref
@@ -115,7 +119,7 @@ end
 end
 
 zeroarg_wins = [rect, hanning, hamming, cosine, lanczos,
-                bartlett, bartlett_hann, blackman, blackmanharris, triang]
+    bartlett, bartlett_hann, blackman, blackmanharris, triang, flattop]
 onearg_wins = [gaussian, kaiser, tukey]
 @testset "zero-phase windows" begin
     for winf in zeroarg_wins
