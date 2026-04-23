@@ -468,15 +468,19 @@ Blackman-Harris window of length `n` with `padding` zeros. The Blackman-Harris
 window is a linear combination of three or four trigonometric terms, optimized
 for minimum sidelobe level (at the expense of a wider main lobe). The number of
 terms can be selected with `term` ∈ [3,4]. For `term = 3`, the maximum sidelobe
-level is about -69 dB, while for `term = 4` (the default), it improves to -92
-dB.
+level is about -70.83 dB, while for `term = 4` (the default), it improves to
+-92.01 dB. Note, that Nuttall proved those coefficients to not be the most
+optimized ones in [Nuttall, A. H. (1981). Some windows with very good sidelobe
+behavior. IEEE Transactions on Acoustics, Speech, Signal Processing, 29,
+84-91](https://ieeexplore.ieee.org/document/1163506).
+
 
 The 3-term window `w3(x)` and the 4-term window `w4(x)` are defined by sampling
 the following continuous functions in the range `[-0.5, 0.5]`:
 
-    w3(x) = 0.42323 + 0.49755*cos(2pi*x) + 0.07922*cos(4pi*x)
+    w3(x) = 0.42323 + 0.49755*cos(2π*x) + 0.07922*cos(4π*x)
 
-    w4(x) = 0.35875 + 0.48829*cos(2pi*x) + 0.14128*cos(4pi*x) + 0.01168*cos(6pi*x)
+    w4(x) = 0.35875 + 0.48829*cos(2π*x) + 0.14128*cos(4π*x) + 0.01168*cos(6π*x)
 
 For more details see [Harris, F. J. (1978). On the Use of Windows for Harmonic
 Analysis with the Discrete Fourier Transform. Proceedings of the IEEE, 66(1),
@@ -486,9 +490,9 @@ The `blackmanharris` windows do not generally satisfy the Constant Overlap-Add
 (COLA) property. Nevertheless, when using `zerophase = true` and implementing the
 following boundary conditions they approximately do:
 - For the 3-term window the overlap should be 66% and the window length should
-  be a power of 3.
+  be a multiple of 3.
 - For the 4-term window the overlap should be 75% and the window length should
-  be a power of 2.
+  be a multiple of 2.
 
 $(twoD_docs())
 
@@ -557,7 +561,7 @@ lobe with sidelobe suppression of about 91 dB.
 
 The window is defined by sampling the continuous function:
 
-    w3(x) = a0 + a1*cos(2pi*x) + a2*cos(4pi*x) + a3*cos(6pi*x) + a4*cos(8pi*x)
+    w3(x) = a0 + a1*cos(2π*x) + a2*cos(4π*x) + a3*cos(6π*x) + a4*cos(8π*x)
 
 in the range `[-0.5, 0.5]` with the following coefficients:
 
