@@ -13,6 +13,7 @@ gaussian
 bartlett_hann
 blackman
 blackmanharris
+nuttall
 kaiser
 flattop
 dpss

@@ -25,6 +25,7 @@ open(joinpath(@__DIR__, "..", "src", "winplots.jl"), "w") do io
         (bartlett_hann, ()),
         (blackman, ()),
         (blackmanharris, ()),
+        (nuttall, ()),
         (kaiser, (3)),
         (flattop, ()),
         (dpss, (2, 1)),

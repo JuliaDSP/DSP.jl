@@ -17,6 +17,7 @@ export  rect,
         bartlett_hann,
         blackman,
         blackmanharris,
+        nuttall,
         kaiser,
         flattop,
         dpss,
@@ -515,6 +516,57 @@ function blackmanharris(n::Integer; term::Integer=4, padding::Integer=0, zeropha
 end
 
 """
+$nuttall_winplot
+
+    nuttall(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
+    nuttall(dims; term::Integer=4, padding=0, zerophase=false)
+
+Nuttall window of length `n` with `padding` zeros. These windows can be seen as
+the improved version of the Blackman-Harris windows with regard to maximum
+sidelobe level. The number of terms can be selected with `term` ∈ [3,4]. For
+`term = 3`, the maximum sidelobe level is about -71.48 dB, while for `term = 4`
+(the default), it improves to -98.17 dB.
+
+The 3-term window `w3(x)` and the 4-term window `w4(x)` are defined by sampling
+the following continuous functions in the range `[-0.5, 0.5]`:
+
+    w3(x) = 0.4243801 + 0.4973406*cos(2π*x) + 0.0782793*cos(4π*x)
+
+    w4(x) = 0.3635819 + 0.4891775*cos(2π*x) + 0.1365995*cos(4π*x) + 0.0106411*cos(6π*x)
+
+For more details see [Nuttall, A. H. (1981). Some windows with very good
+sidelobe behavior. IEEE Transactions on Acoustics, Speech, Signal Processing,
+29, 84-91](https://ieeexplore.ieee.org/document/1163506)
+
+The `nuttall` windows do not generally satisfy the Constant Overlap-Add
+(COLA) property. Nevertheless, when using `zerophase = true` and implementing the
+following boundary conditions they approximately do:
+- For the 3-term window the overlap should be 66% and the window length should
+  be a multiple of 3.
+- For the 4-term window the overlap should be 75% and the window length should
+  be a multiple of 4.
+
+$(twoD_docs())
+
+$zerophase_docs
+"""
+function nuttall(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
+    if term == 4
+        a0, a1, a2, a3 = 0.3635819, 0.4891775, 0.1365995, 0.0106411
+        makewindow(n, padding, zerophase) do x
+            muladd(a1, cospi(2x), muladd(a2, cospi(4x), muladd(a3, cospi(6x), a0)))
+        end
+    elseif term == 3
+        a0, a1, a2 = 0.4243801, 0.4973406, 0.0782793
+        makewindow(n, padding, zerophase) do x
+            muladd(a1, cospi(2x), muladd(a2, cospi(4x), a0))
+        end
+    else
+        throw(ArgumentError("`term` must be either 3 or 4"))
+    end
+end
+
+"""
 $kaiser_winplot
 
     kaiser(n::Integer, α::Real; padding::Integer=0, zerophase::Bool=false)
@@ -745,7 +797,7 @@ function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2
 end
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
-    :triang, :bartlett, :bartlett_hann, :blackman, :blackmanharris, :flattop)
+    :triang, :bartlett, :bartlett_hann, :blackman, :blackmanharris, :nuttall, :flattop)
     @eval function $func(dims::Tuple{Integer,Integer}; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims; padding, zerophase)
     end
