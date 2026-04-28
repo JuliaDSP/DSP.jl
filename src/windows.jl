@@ -785,7 +785,7 @@ const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
 const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
-function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,IntegerOr2,Nothing}=nothing;
+function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,Nothing}=nothing;
         padding::IntegerOr2=0, zerophase::BoolOr2=false) where {F}
     paddings = argdup(padding)
     zerophases = argdup(zerophase)
@@ -807,14 +807,8 @@ for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
     end
 end
 
-for func in (:tukey, :gaussian, :kaiser)
+for func in (:tukey, :gaussian, :kaiser, :blackmanharris, :nuttall)
     @eval function $func(dims::Tuple{Integer,Integer}, arg::RealOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
-        return matrix_window($func, dims, arg; padding, zerophase)
-    end
-end
-
-for func in (:blackmanharris, :nuttall)
-    @eval function $func(dims::Tuple{Integer,Integer}, arg::IntegerOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims, arg; padding, zerophase)
     end
 end
