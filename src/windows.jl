@@ -462,8 +462,9 @@ end
 """
 $blackmanharris_winplot
 
-    blackmanharris(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
-    blackmanharris(dims; term::Integer=4, padding=0, zerophase=false)
+    blackmanharris(n::Integer, term::Integer=4; padding::Integer=0, zerophase::Bool=false)
+    blackmanharris(dims, term::Integer; padding=0, zerophase=false)
+    blackmanharris(dims, Tuple{term::Integer, term::Integer}; padding=0, zerophase=false)
 
 Blackman-Harris window of length `n` with `padding` zeros. The Blackman-Harris
 window is a linear combination of three or four trigonometric terms, optimized
@@ -474,7 +475,6 @@ level is about -70.83 dB, while for `term = 4` (the default), it improves to
 optimized ones in [Nuttall, A. H. (1981). Some windows with very good sidelobe
 behavior. IEEE Transactions on Acoustics, Speech, Signal Processing, 29,
 84-91](https://ieeexplore.ieee.org/document/1163506).
-
 
 The 3-term window `w3(x)` and the 4-term window `w4(x)` are defined by sampling
 the following continuous functions in the range `[-0.5, 0.5]`:
@@ -499,7 +499,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function blackmanharris(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
+function blackmanharris(n::Integer, term::Integer=4; padding::Integer=0, zerophase::Bool=false)
     if term == 4
         a0, a1, a2, a3 = 0.35875, 0.48829, 0.14128, 0.01168
         makewindow(n, padding, zerophase) do x
@@ -518,8 +518,9 @@ end
 """
 $nuttall_winplot
 
-    nuttall(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
-    nuttall(dims; term::Integer=4, padding=0, zerophase=false)
+    nuttall(n::Integer, term::Integer=4; padding::Integer=0, zerophase::Bool=false)
+    nuttall(dims, term::Integer; padding=0, zerophase=false)
+    nuttall(dims, Tuple{term_x::Integer, term_y::Integer}; padding=0, zerophase=false)
 
 Nuttall window of length `n` with `padding` zeros. These windows can be seen as
 the improved version of the Blackman-Harris windows with regard to maximum
@@ -550,7 +551,7 @@ $(twoD_docs())
 
 $zerophase_docs
 """
-function nuttall(n::Integer; term::Integer=4, padding::Integer=0, zerophase::Bool=false)
+function nuttall(n::Integer, term::Integer=4; padding::Integer=0, zerophase::Bool=false)
     if term == 4
         a0, a1, a2, a3 = 0.3635819, 0.4891775, 0.1365995, 0.0106411
         makewindow(n, padding, zerophase) do x
@@ -781,7 +782,7 @@ const IntegerOr2 = Union{Tuple{Integer, Integer}, Integer}
 const RealOr2 = Union{Tuple{Real, Real}, Real}
 const BoolOr2 = Union{Tuple{Bool, Bool}, Bool}
 
-function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,Nothing}=nothing;
+function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2,IntegerOr2,Nothing}=nothing;
         padding::IntegerOr2=0, zerophase::BoolOr2=false) where {F}
     paddings = argdup(padding)
     zerophases = argdup(zerophase)
@@ -797,7 +798,7 @@ function matrix_window(func::F, dims::Tuple{Integer,Integer}, arg::Union{RealOr2
 end
 
 for func in (:rect, :hanning, :hamming, :cosine, :lanczos,
-    :triang, :bartlett, :bartlett_hann, :blackman, :blackmanharris, :nuttall, :flattop)
+    :triang, :bartlett, :bartlett_hann, :blackman, :flattop)
     @eval function $func(dims::Tuple{Integer,Integer}; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims; padding, zerophase)
     end
@@ -805,6 +806,12 @@ end
 
 for func in (:tukey, :gaussian, :kaiser)
     @eval function $func(dims::Tuple{Integer,Integer}, arg::RealOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
+        return matrix_window($func, dims, arg; padding, zerophase)
+    end
+end
+
+for func in (:blackmanharris, :nuttall)
+    @eval function $func(dims::Tuple{Integer,Integer}, arg::IntegerOr2; padding::IntegerOr2=0, zerophase::BoolOr2=false)
         return matrix_window($func, dims, arg; padding, zerophase)
     end
 end

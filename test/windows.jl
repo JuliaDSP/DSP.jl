@@ -83,7 +83,7 @@ end
     @test blackman_jl ≈ blackman_ml
     @test minimum(blackman_jl) == 0.0
 
-    blackmanharris_3term_jl = blackmanharris(128;term=3)
+    blackmanharris_3term_jl = blackmanharris(128, 3)
     blackmanharris_3term_ref = read_reference_data("blackmanharris_3term_128.txt")
     @test blackmanharris_3term_jl ≈ blackmanharris_3term_ref
 
@@ -91,7 +91,7 @@ end
     blackmanharris_4term_ml = read_reference_data("blackmanharris_4term_128.txt")
     @test blackmanharris_4term_jl ≈ blackmanharris_4term_ml
 
-    nuttall_3term_jl = nuttall(128;term=3)
+    nuttall_3term_jl = nuttall(128, 3)
     nuttall_3term_ref = read_reference_data("nuttall_3term_128.txt")
     @test nuttall_3term_jl ≈ nuttall_3term_ref
 
@@ -125,14 +125,14 @@ end
     cosine_ref = read_reference_data("cosine128.txt")
     @test cosine_jl ≈ cosine_ref
 
-    @test_throws ArgumentError blackmanharris(128;term=2)
-    @test_throws ArgumentError nuttall(128;term=2)
+    @test_throws ArgumentError blackmanharris(128, 2)
+    @test_throws ArgumentError nuttall(128, 2)
 end
 
 zeroarg_wins = [rect, hanning, hamming, cosine, lanczos,
-    bartlett, bartlett_hann, blackman, blackmanharris,
-    nuttall, triang, flattop]
+    bartlett, bartlett_hann, blackman, triang, flattop]
 onearg_wins = [gaussian, kaiser, tukey]
+termarg_wins = [blackmanharris, nuttall]
 @testset "zero-phase windows" begin
     for winf in zeroarg_wins
         if winf == triang
@@ -156,6 +156,16 @@ onearg_wins = [gaussian, kaiser, tukey]
         @test winf(9, 0.5, zerophase=true) == ifftshift(winf(19, 0.5)[2:2:end])
     end
 
+    # Test the window functions that have the term arg (number of ceofficients)
+    for winf in termarg_wins
+        @test winf(8, 4, zerophase=true) == ifftshift(winf(9, 4)[1:8])
+        @test winf(9, 4, zerophase=true) == ifftshift(winf(19, 4)[2:2:end])
+    end
+    # 3-term blackmanharris and nuttall are a spocial case because of their odd
+    # number of coefficients
+    @test blackmanharris(6, 3, zerophase=true) ≈ [1.0, 0.632395, 0.134845, 0.0049, 0.134845, 0.632395]
+    @test nuttall(6, 3, zerophase=true) ≈ [1.0, 0.63391075, 0.13657015, 0.0053188, 0.13657015, 0.63391075]
+
     @test dpss(8, 2, 1, zerophase=true)[:] == ifftshift(dpss(9, 2, 1)[1:8])
     # odd-length zerophase dpss windows not currently supported
     @test_throws ArgumentError dpss(9, 2, 1, zerophase=true)
@@ -173,6 +183,10 @@ end
     @test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
     @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
     @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
+    @test Array{ft,1} == typeof(blackmanharris(n, 4)) && length(blackmanharris(n, 4)) == n
+    @test Array{ft,1} == typeof(blackmanharris(n, 3)) && length(blackmanharris(n, 3)) == n
+    @test Array{ft,1} == typeof(nuttall(n, 4)) && length(nuttall(n, 4)) == n
+    @test Array{ft,1} == typeof(nuttall(n, 3)) && length(nuttall(n, 3)) == n
 end
 
 @testset "tensor product windows" begin
@@ -203,6 +217,26 @@ end
             w_all = (w1_expr, w2_expr, w3_expr)
 
             push_args!(w_all, arg, Real, identity)
+            push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
+            push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
+
+            w1 = eval(w1_expr)
+            w2 = eval(w2_expr)
+            w3 = eval(w3_expr)
+            @test w3 ≈ w1 * w2'
+        end
+    end
+
+    for winf in termarg_wins,
+        arg in (3, 4)
+        for padding in (nothing, 4, (4,5)),
+          zerophase in (nothing, true, (true,false))
+            w1_expr = :($winf(15))
+            w2_expr = :($winf(20))
+            w3_expr = :($winf((15,20)))
+            w_all = (w1_expr, w2_expr, w3_expr)
+
+            push_args!(w_all, arg, Integer, identity)
             push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
             push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
 
