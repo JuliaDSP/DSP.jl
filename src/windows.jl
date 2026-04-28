@@ -79,8 +79,8 @@ include("winplots.jl")
     makewindow(winfunc::Function, n::Integer, padding::Integer, zerophase::Bool)
 
 Generate a discrete window vector of the given length with `padding` zeros.
-`winfunc` should be a function giving the window value in the range of
-[-0.5, 0.5]. The function is assumed to be 0 outside of this range.
+`winfunc` should be a function giving the window value in the domain of
+[-0.5, 0.5]. The function is assumed to be 0 outside of this domain.
 
 $zerophase_docs
 
@@ -159,7 +159,7 @@ The window is defined by sampling the continuous function:
     w(x) = ──────────── = cos²(πx)
                 2
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 The `hanning` window satisfies the Constant Overlap-Add (COLA) property with a
 hop of 0.5, which means that adding together a sequence of delayed windows with
@@ -197,7 +197,7 @@ The window is defined by sampling the continuous function:
 
     w(x) = 0.54 + 0.46*cos(2pi*x)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs())
 
@@ -236,7 +236,7 @@ The window is defined by sampling the continuous function:
            ⎜      ─────────────────────────            2
            ⎝                  2
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs("α"))
 
@@ -276,7 +276,7 @@ The window is defined by sampling the continuous function:
 
     w(x) = cos(πx)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 Note that the cosine window is the square root of the `hanning` window, so it is
 sometimes used when you are applying the window twice, such as the analysis and
@@ -305,7 +305,7 @@ The window is defined by sampling the continuous function:
     w(x) = sinc(2x) = ────────
                          2πx
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs())
 
@@ -338,7 +338,7 @@ The window is defined by sampling the continuous function:
             ⎜1 - ────── abs(x)     n is odd
             ⎝     n+1
 
-in the range `[-0.5, 0.5]`.
+in the domain `[-0.5, 0.5]`.
 
 $(twoD_docs())
 
@@ -371,7 +371,7 @@ The window is defined by sampling the continuous function:
 
     1 - abs(2x)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs())
 
@@ -395,7 +395,7 @@ Gives an n-sample gaussian window defined by sampling the function:
             ⎝ 2   ⎝σ⎠ ⎠
     w(x) = e
 
-in the range `[-0.5,0.5]`. This means that for `σ=0.5` the endpoints of the
+in the domain `[-0.5,0.5]`. This means that for `σ=0.5` the endpoints of the
 window will correspond to 1 standard deviation away from the center.
 
 $(twoD_docs("σ"))
@@ -420,7 +420,7 @@ The window is defined by sampling the continuous function:
 
     w(x) = 0.62 - 0.48*abs(x) + 0.38*cos(2π*x)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs())
 
@@ -446,7 +446,7 @@ The window is defined by sampling the continuous function:
 
     w(x) = 0.42 + 0.5*cos(2π*x) + 0.08*cos(4π*x)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 $(twoD_docs())
 
@@ -477,15 +477,16 @@ behavior. IEEE Transactions on Acoustics, Speech, Signal Processing, 29,
 84-91](https://ieeexplore.ieee.org/document/1163506).
 
 The 3-term window `w3(x)` and the 4-term window `w4(x)` are defined by sampling
-the following continuous functions in the range `[-0.5, 0.5]`:
+the following continuous functions in the domain `[-0.5, 0.5]`:
 
     w3(x) = 0.42323 + 0.49755*cos(2π*x) + 0.07922*cos(4π*x)
 
     w4(x) = 0.35875 + 0.48829*cos(2π*x) + 0.14128*cos(4π*x) + 0.01168*cos(6π*x)
 
+Due to the symmetric definition of the domain around zero, all coefficients are positive.
 For more details see [Harris, F. J. (1978). On the Use of Windows for Harmonic
 Analysis with the Discrete Fourier Transform. Proceedings of the IEEE, 66(1),
-51-83](https://ieeexplore.ieee.org/document/1455106)
+51-83](https://ieeexplore.ieee.org/document/1455106).
 
 The `blackmanharris` windows do not generally satisfy the Constant Overlap-Add
 (COLA) property. Nevertheless, when using `zerophase = true` and implementing the
@@ -529,12 +530,13 @@ sidelobe level. The number of terms can be selected with `term` ∈ [3,4]. For
 (the default), it improves to -98.17 dB.
 
 The 3-term window `w3(x)` and the 4-term window `w4(x)` are defined by sampling
-the following continuous functions in the range `[-0.5, 0.5]`:
+the following continuous functions in the domain `[-0.5, 0.5]`:
 
     w3(x) = 0.4243801 + 0.4973406*cos(2π*x) + 0.0782793*cos(4π*x)
 
     w4(x) = 0.3635819 + 0.4891775*cos(2π*x) + 0.1365995*cos(4π*x) + 0.0106411*cos(6π*x)
 
+Due to the symmetric definition of the domain around zero, all coefficients are positive.
 For more details see [Nuttall, A. H. (1981). Some windows with very good
 sidelobe behavior. IEEE Transactions on Acoustics, Speech, Signal Processing,
 29, 84-91](https://ieeexplore.ieee.org/document/1163506)
@@ -587,7 +589,7 @@ The window is defined by sampling the continuous function:
            ────────────────────
                    I₀(πα)
 
-in the range `[-0.5, 0.5]`
+in the domain `[-0.5, 0.5]`
 
 Where I₀(⋅) is the zeroth-order modified Bessel function of the first kind.
 
@@ -616,7 +618,7 @@ The window is defined by sampling the continuous function:
 
     w3(x) = a0 + a1*cos(2π*x) + a2*cos(4π*x) + a3*cos(6π*x) + a4*cos(8π*x)
 
-in the range `[-0.5, 0.5]` with the following coefficients:
+in the domain `[-0.5, 0.5]` with the following coefficients:
 
 | Coefficient | Value |
 | --- | --- |
@@ -626,6 +628,7 @@ in the range `[-0.5, 0.5]` with the following coefficients:
 | a3 | 0.083578947 |
 | a4 | 0.006947368 |
 
+Due to the symmetric definition of the domain around zero, all coefficients are positive.
 Flat top windows have very low passband ripple (< 0.01 dB) and are used
 primarily for calibration purposes. Their bandwidth is approximately 2.5 times
 wider than a Hanning window.
