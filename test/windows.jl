@@ -47,7 +47,7 @@ end
     # Blackman, Blackman-Harris-4term and Nuttall-4term windows against values
     # computed with MATLAB. Lanczos and cosine are checked against values
     # generated with DSP.jl v0.4.0 and Blackman-Harris-3term as well as
-    # Nuttall-3term with DSP.jl v0.8.4 to test for regressions, as there's no
+    # Nuttall-3term with DSP.jl v0.8.5 to test for regressions, as there's no
     # reference MATLAB implementation. Gaussian is compared against DSP.jl from
     # commit da1b195, when the implementation was corrected (see GH issue #204)
     @test rect(128) == ones(128)
@@ -163,7 +163,7 @@ termarg_wins = [blackmanharris, nuttall]
     end
     # 3-term blackmanharris and nuttall are special cases because of their odd
     # number of coefficients. These coefficients are generated with DSP.jl
-    # v0.8.4 to test for regressions, as there's no reference MATLAB
+    # v0.8.5 to test for regressions, as there's no reference MATLAB
     # implementation.
     @test blackmanharris(6, 3, zerophase=true) ≈ [1.0, 0.632395, 0.134845, 0.0049, 0.134845, 0.632395]
     @test nuttall(6, 3, zerophase=true) ≈ [1.0, 0.63391075, 0.13657015, 0.0053188, 0.13657015, 0.63391075]
