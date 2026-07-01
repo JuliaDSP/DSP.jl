@@ -10,11 +10,11 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: gh-pages
       - run: rm -rf previews/PR${{ github.event.number }}
-      - uses: stefanzweifel/git-auto-commit-action@v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@v7.2.0
         with:
           commit_message: 'Delete preview of PR#${{ github.event.number }}'
           branch: gh-pages

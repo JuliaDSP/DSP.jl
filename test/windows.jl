@@ -14,7 +14,7 @@ using DSP.Windows: makewindow
     @test win ≈ [0.0, 1/6, 1/3, 1/2, -1/3, -1/6] || win ≈ [0.0, 1/6, 1/3, -1/2, -1/3, -1/6]
     # we actually only end up with one real zero here, because one of the
     # "padding" values is used to split the -1/2 from +1/2. For windows that go
-    # to zero padding will actually add `padding` zeros, because evaluting at
+    # to zero padding will actually add `padding` zeros, because evaluating at
     # +/- 0.5 will be zero.
     @test makewindow(identity, 6, 2, false) ≈ [-0.5, -0.3, -0.1, 0.1, 0.3, 0.5, 0.0, 0.0]
     @test makewindow(identity, 6, 2, true) ≈ [0.0, 1/6, 1/3, 1/2, 0.0, -1/2, -1/3, -1/6]
@@ -44,11 +44,12 @@ end
 
 @testset "common windows" begin
     # Checking Hanning, Hamming, Triangular, Bartlett, Bartlett-Hann, Tukey,
-    # and Blackman windows against values computed with MATLAB.
-    # Lanczos and cosine are checked against values generated with DSP.jl v0.4.0
-    # to test for regressions, as there's no reference MATLAB implementation
-    # Gaussian is compared against DSP.jl from commit da1b195, when the
-    # implementation was corrected (see GH issue #204)
+    # Blackman, Blackman-Harris-4term and Nuttall-4term windows against values
+    # computed with MATLAB. Lanczos and cosine are checked against values
+    # generated with DSP.jl v0.4.0 and Blackman-Harris-3term as well as
+    # Nuttall-3term with DSP.jl v0.8.5 to test for regressions, as there's no
+    # reference MATLAB implementation. Gaussian is compared against DSP.jl from
+    # commit da1b195, when the implementation was corrected (see GH issue #204)
     @test rect(128) == ones(128)
 
     hanning_jl = hanning(128)
@@ -82,9 +83,29 @@ end
     @test blackman_jl ≈ blackman_ml
     @test minimum(blackman_jl) == 0.0
 
+    blackmanharris_3term_jl = blackmanharris(128, 3)
+    blackmanharris_3term_ref = read_reference_data("blackmanharris_3term_128.txt")
+    @test blackmanharris_3term_jl ≈ blackmanharris_3term_ref
+
+    blackmanharris_4term_jl = blackmanharris(128)
+    blackmanharris_4term_ml = read_reference_data("blackmanharris_4term_128.txt")
+    @test blackmanharris_4term_jl ≈ blackmanharris_4term_ml
+
+    nuttall_3term_jl = nuttall(128, 3)
+    nuttall_3term_ref = read_reference_data("nuttall_3term_128.txt")
+    @test nuttall_3term_jl ≈ nuttall_3term_ref
+
+    nuttall_4term_jl = nuttall(128)
+    nuttall_4term_ml = read_reference_data("nuttall_4term_128.txt")
+    @test nuttall_4term_jl ≈ nuttall_4term_ml
+
     kaiser_jl = kaiser(128, 0.4/π)
     kaiser_ml = read_reference_data("kaiser128,0.4.txt")
     @test kaiser_jl ≈ kaiser_ml
+
+    flattop_jl = flattop(128)
+    flattop_ml = read_reference_data("flattop.txt")
+    @test flattop_jl ≈ flattop_ml
 
     gaussian_jl = gaussian(128, 0.2)
     gaussian_ref = read_reference_data("gaussian128,0.2.txt")
@@ -103,11 +124,15 @@ end
     cosine_jl = cosine(128)
     cosine_ref = read_reference_data("cosine128.txt")
     @test cosine_jl ≈ cosine_ref
+
+    @test_throws ArgumentError blackmanharris(128, 2)
+    @test_throws ArgumentError nuttall(128, 2)
 end
 
 zeroarg_wins = [rect, hanning, hamming, cosine, lanczos,
-                bartlett, bartlett_hann, blackman, triang]
+    bartlett, bartlett_hann, blackman, triang, flattop]
 onearg_wins = [gaussian, kaiser, tukey]
+termarg_wins = [blackmanharris, nuttall]
 @testset "zero-phase windows" begin
     for winf in zeroarg_wins
         if winf == triang
@@ -131,6 +156,18 @@ onearg_wins = [gaussian, kaiser, tukey]
         @test winf(9, 0.5, zerophase=true) == ifftshift(winf(19, 0.5)[2:2:end])
     end
 
+    # Test the window functions that accept the `term` arg (number of coefficients)
+    for winf in termarg_wins
+        @test winf(8, 4, zerophase=true) == ifftshift(winf(9, 4)[1:8])
+        @test winf(9, 4, zerophase=true) == ifftshift(winf(19, 4)[2:2:end])
+    end
+    # 3-term blackmanharris and nuttall are special cases because of their odd
+    # number of coefficients. These coefficients are generated with DSP.jl
+    # v0.8.5 to test for regressions, as there's no reference MATLAB
+    # implementation.
+    @test blackmanharris(6, 3, zerophase=true) ≈ [1.0, 0.632395, 0.134845, 0.0049, 0.134845, 0.632395]
+    @test nuttall(6, 3, zerophase=true) ≈ [1.0, 0.63391075, 0.13657015, 0.0053188, 0.13657015, 0.63391075]
+
     @test dpss(8, 2, 1, zerophase=true)[:] == ifftshift(dpss(9, 2, 1)[1:8])
     # odd-length zerophase dpss windows not currently supported
     @test_throws ArgumentError dpss(9, 2, 1, zerophase=true)
@@ -148,6 +185,10 @@ end
     @test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
     @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
     @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
+    @test Array{ft,1} == typeof(blackmanharris(n, 4)) && length(blackmanharris(n, 4)) == n
+    @test Array{ft,1} == typeof(blackmanharris(n, 3)) && length(blackmanharris(n, 3)) == n
+    @test Array{ft,1} == typeof(nuttall(n, 4)) && length(nuttall(n, 4)) == n
+    @test Array{ft,1} == typeof(nuttall(n, 3)) && length(nuttall(n, 3)) == n
 end
 
 @testset "tensor product windows" begin
@@ -178,6 +219,26 @@ end
             w_all = (w1_expr, w2_expr, w3_expr)
 
             push_args!(w_all, arg, Real, identity)
+            push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
+            push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
+
+            w1 = eval(w1_expr)
+            w2 = eval(w2_expr)
+            w3 = eval(w3_expr)
+            @test w3 ≈ w1 * w2'
+        end
+    end
+
+    for winf in termarg_wins,
+        arg in (3, 4)
+        for padding in (nothing, 4, (4,5)),
+          zerophase in (nothing, true, (true,false))
+            w1_expr = :($winf(15))
+            w2_expr = :($winf(20))
+            w3_expr = :($winf((15,20)))
+            w_all = (w1_expr, w2_expr, w3_expr)
+
+            push_args!(w_all, arg, Integer, identity)
             push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
             push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
 

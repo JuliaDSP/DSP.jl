@@ -24,7 +24,10 @@ open(joinpath(@__DIR__, "..", "src", "winplots.jl"), "w") do io
         (gaussian, (0.2)),
         (bartlett_hann, ()),
         (blackman, ()),
+        (blackmanharris, ()),
+        (nuttall, ()),
         (kaiser, (3)),
+        (flattop, ()),
         (dpss, (2, 1)),
         ]
 
@@ -34,7 +37,11 @@ open(joinpath(@__DIR__, "..", "src", "winplots.jl"), "w") do io
         fname = split(string(winfunc), ".")[end]
         println(io, "const $(fname)_winplot = padplot(\"\"\"")
         # convert Nx1 matrices to vectors with [:] - necessary for dpss
-        print(io, lineplot(winfunc(n, args...)[:], ylim=[0,ymax], xlim=[1,n], width=70, canvas=BlockCanvas))
+        if (winfunc == flattop)
+            print(io, lineplot(winfunc(n, args...)[:], ylim=[-0.1,ymax], xlim=[1,n], width=70, canvas=BlockCanvas))
+        else
+            print(io, lineplot(winfunc(n, args...)[:], ylim=[0,ymax], xlim=[1,n], width=70, canvas=BlockCanvas))
+        end
         println(io, "\"\"\")\n")
     end
 end

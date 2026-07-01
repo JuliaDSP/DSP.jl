@@ -7,3 +7,7 @@ updates:
     labels:
       - "dependencies"
       - "no changelog"
+  - package-ecosystem: "julia"
+    directory: "/"
+    schedule:
+      interval: "weekly"
