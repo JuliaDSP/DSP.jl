@@ -482,7 +482,7 @@ function periodogram(s::AbstractMatrix{T};
         ptype = 0
     elseif radialsum
         ptype = 1
-    elseif radialavg
+    else    # if radialavg
         ptype = 2
     end
     norm2 = length(s)
