@@ -13,7 +13,8 @@ export arraysplit, nextfastfft, periodogram,
        MTCoherenceConfig, mt_coherence, mt_coherence!,
        coherence
 import ..DSP: allocate_output
-using FFTW
+using ..FFTBackend
+using AbstractFFTs: Frequencies
 
 ## ARRAY SPLITTER
 """
@@ -328,15 +329,17 @@ julia> freq(periodogram([1, 2, 3]; fs=210))
 """
 freq(p::TFR) = p.freq
 freq(p::Periodogram2) = (p.freq1, p.freq2)
-FFTW.fftshift(p::Periodogram{T,<:Frequencies} where T) =
+
+# fftshift methods for Periodogram types
+FFTBackend.fftshift(p::Periodogram{T,<:Frequencies} where T) =
     Periodogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power), fftshift(p.freq))
-FFTW.fftshift(p::Periodogram{T,<:AbstractRange} where T) = p
+FFTBackend.fftshift(p::Periodogram{T,<:AbstractRange} where T) = p
 # 2-d
-FFTW.fftshift(p::Periodogram2{T,<:Frequencies,<:Frequencies} where T) =
+FFTBackend.fftshift(p::Periodogram2{T,<:Frequencies,<:Frequencies} where T) =
     Periodogram2(p.freq1.n_nonnegative == p.freq1.n ? fftshift(p.power,2) : fftshift(p.power), fftshift(p.freq1), fftshift(p.freq2))
-FFTW.fftshift(p::Periodogram2{T,<:AbstractRange,<:Frequencies} where T) =
+FFTBackend.fftshift(p::Periodogram2{T,<:AbstractRange,<:Frequencies} where T) =
     Periodogram2(fftshift(p.power,2), p.freq1, fftshift(p.freq2))
-FFTW.fftshift(p::Periodogram2{T,<:AbstractRange,<:AbstractRange} where T) = p
+FFTBackend.fftshift(p::Periodogram2{T,<:AbstractRange,<:AbstractRange} where T) = p
 
 # Compute the periodogram of a signal S, defined as 1/N*X[s(n)]^2, where X is the
 # DTFT of the signal S.
@@ -775,9 +778,9 @@ struct Spectrogram{T,F<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} 
     freq::F
     time::Float64Range
 end
-FFTW.fftshift(p::Spectrogram{T,<:Frequencies} where T) =
+FFTBackend.fftshift(p::Spectrogram{T,<:Frequencies} where T) =
     Spectrogram(p.freq.n_nonnegative == p.freq.n ? p.power : fftshift(p.power, 1), fftshift(p.freq), p.time)
-FFTW.fftshift(p::Spectrogram{T,<:AbstractRange} where T) = p
+FFTBackend.fftshift(p::Spectrogram{T,<:AbstractRange} where T) = p
 
 """
     time(p)
