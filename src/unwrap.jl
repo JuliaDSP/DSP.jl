@@ -78,37 +78,34 @@ unwrap(m::AbstractArray; kwargs...) = unwrap!(similar(m), m; kwargs...)
  Code inspired by Scipy's implementation, which is under BSD license.
 =#
 
-mutable struct Pixel{T}
+mutable struct Pixel
     periods::Int
-    const val::T
-    reliability::Float64
     groupsize::Int
-    head::Pixel{T}
-    last::Pixel{T}
-    next::Union{Nothing, Pixel{T}}
-    function Pixel{T}(periods, val, rel, gs) where T
-        pixel = new(periods, val, rel, gs)
+    head::Pixel
+    last::Pixel
+    next::Union{Nothing, Pixel}
+    function Pixel(periods, gs)
+        pixel = new(periods, gs)
         pixel.head = pixel
         pixel.last = pixel
         pixel.next = nothing
         return pixel
     end
+    Pixel() = Pixel(0, 1)
 end
-Pixel(v, rel::Float64) = Pixel{typeof(v)}(0, v, rel, 1)
 @inline Base.length(p::Pixel) = p.head.groupsize
 
-struct Edge{T}
+struct Edge
     reliability::Float64
     periods::Int
-    pixel_1::Pixel{T}
-    pixel_2::Pixel{T}
+    pixel_1::Pixel
+    pixel_2::Pixel
 end
-function Edge{T}(p1::Pixel{T}, p2::Pixel{T}, range) where {T}
-    rel = p1.reliability + p2.reliability
-    periods = find_period(p1.val, p2.val, range)
-    return Edge{T}(rel, periods, p1, p2)
+@inline function Edge(img, src, rels, i1, i2, range)
+    rel = rels[i1] + rels[i2]
+    periods = find_period(src[i1], src[i2], range)
+    return Edge(rel, periods, img[i1], img[i2])
 end
-@inline Base.isless(e1::Edge, e2::Edge) = isless(e1.reliability, e2.reliability)
 
 function unwrap_nd!(dest::AbstractArray{T, N},
                     src::AbstractArray{T, N};
@@ -118,19 +115,19 @@ function unwrap_nd!(dest::AbstractArray{T, N},
 
     range_T = convert(T, range)
 
-    pixel_image = init_pixels(src, rng)
-    calculate_reliability(pixel_image, circular_dims, range_T)
-    edges = Edge{T}[]
+    pixel_image, reliabilities = init_pixels(src, rng)
+    calculate_reliability!(reliabilities, src, circular_dims, range_T)
+    edges = Edge[]
     num_edges = _predict_num_edges(size(src), circular_dims)
     sizehint!(edges, num_edges)
     for idx_dim = 1:N
-        populate_edges!(edges, pixel_image, idx_dim, circular_dims[idx_dim], range_T)
+        populate_edges!(edges, pixel_image, src, reliabilities, idx_dim, circular_dims[idx_dim], range_T)
     end
 
     perm = sortperm(map(x -> x.reliability, edges); alg=MergeSort)
     edges = edges[perm]
     gather_pixels!(edges)
-    unwrap_image!(dest, pixel_image, range_T)
+    unwrap_image!(dest, src, pixel_image, range_T)
 
     return dest
 end
@@ -144,17 +141,17 @@ function _predict_num_edges(size_img, circular_dims)
 end
 
 # function to broadcast
-function init_pixels(wrapped_image::AbstractArray{T, N}, rng) where {T, N}
-    pixel_image = similar(wrapped_image, Pixel{T})
+function init_pixels(wrapped_image::AbstractArray, rng)
+    pixel_image = similar(wrapped_image, Pixel)
 
     # Initialize reliability values before going parallel. This ensures that
     # reliability values are generated in a deterministic order.
-    rels = rand(rng, Float64, size(wrapped_image))
+    reliabilities = rand(rng, Float64, size(wrapped_image))
 
-    Threads.@threads for i in eachindex(wrapped_image, pixel_image, rels)
-        pixel_image[i] = Pixel(wrapped_image[i], rels[i])
+    Threads.@threads for i in eachindex(wrapped_image, reliabilities)
+        pixel_image[i] = Pixel()
     end
-    return pixel_image
+    return pixel_image, reliabilities
 end
 
 function gather_pixels!(edges)
@@ -168,10 +165,9 @@ function gather_pixels!(edges)
     end
 end
 
-function unwrap_image!(dest, pixel_image, range)
-    Threads.@threads for i in eachindex(dest, pixel_image)
-        p = pixel_image[i]
-        dest[i] = muladd(range, p.periods, p.val)
+function unwrap_image!(dest, src, pixel_image, range)
+    Threads.@threads for i in eachindex(dest, src, pixel_image)
+        dest[i] = muladd(range, pixel_image[i].periods, src[i])
     end
 end
 
@@ -236,33 +232,33 @@ function merge_into_group!(pixel_base::Pixel, pixel_target::Pixel, periods)
     merge_pixels!(pixel_base, pixel_target, periods)
 end
 
-function populate_edges!(edges::Vector{Edge{T}}, pixel_image::AbstractArray{Pixel{T},N}, dim, connected, range) where {T,N}
+function populate_edges!(edges::Vector{Edge}, pixel_image::AbstractArray{Pixel,N}, src, rels, dim, connected, range) where {N}
     idx_step      = ntuple(i -> Int(i == dim), Val(N))
     idx_step_cart = CartesianIndex{N}(idx_step)
     image_inds    = CartesianIndices(pixel_image)
     fi, li        = first(image_inds), last(image_inds)
     for i in fi:li-idx_step_cart
-        push!(edges, Edge{T}(pixel_image[i], pixel_image[i + idx_step_cart], range))
+        push!(edges, Edge(pixel_image, src, rels, i, i + idx_step_cart, range))
     end
     if connected
         idx_step_cart *= size(pixel_image, dim) - 1
         for i in fi+idx_step_cart:li
-            push!(edges, Edge{T}(pixel_image[i], pixel_image[i - idx_step_cart], range))
+            push!(edges, Edge(pixel_image, src, rels, i, i - idx_step_cart, range))
         end
     end
 end
 
-function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, range) where {T, N}
+function calculate_reliability!(pix_rels::AbstractArray{T, N}, src, circular_dims, range) where {T, N}
     # get the shifted pixel indices in CartesianIndex form
     # This gets all the nearest neighbors
     one_cart = oneunit(CartesianIndex{N})
     pixel_shifts = -one_cart:one_cart
-    image_inds = CartesianIndices(pixel_image)
+    image_inds = CartesianIndices(pix_rels)
     fi, li = first(image_inds) + one_cart, last(image_inds) - one_cart
-    size_img = size(pixel_image)
+    size_img = size(pix_rels)
     # inner loop
     for i in fi:li
-        pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts, range)
+        pix_rels[i] = calculate_pixel_reliability(src, i, pixel_shifts, range)
     end
 
     if !(true in circular_dims)
@@ -285,7 +281,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             end
             border_range = get_border_range(fi:li, idx_dim, li[idx_dim] + 1)
             for i in CartesianIndices(border_range)
-                pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts_border, range)
+                pix_rels[i] = calculate_pixel_reliability(src, i, pixel_shifts_border, range)
             end
             # second border
             pixel_shifts_border = copyto!(pixel_shifts_border, pixel_shifts)
@@ -299,7 +295,7 @@ function calculate_reliability(pixel_image::AbstractArray{T, N}, circular_dims, 
             end
             border_range = get_border_range(fi:li, idx_dim, fi[idx_dim] - 1)
             for i in CartesianIndices(border_range)
-                pixel_image[i].reliability = calculate_pixel_reliability(pixel_image, i, pixel_shifts_border, range)
+                pix_rels[i] = calculate_pixel_reliability(src, i, pixel_shifts_border, range)
             end
         end
     end
@@ -311,9 +307,9 @@ function get_border_range(C::CartesianIndices{N}, border_dim, border_idx) where 
     return NTuple{N,UnitRange{Int}}(border_range)
 end
 
-function calculate_pixel_reliability(pixel_image::AbstractArray{Pixel{T},N}, pixel_index, pixel_shifts, range) where {T,N}
-    pix_val = pixel_image[pixel_index].val
-    rel_contrib(shift) = wrap_val(pixel_image[pixel_index+shift].val - pix_val, range)^2
+function calculate_pixel_reliability(src::AbstractArray{T,N}, pixel_index, pixel_shifts, range) where {T,N}
+    pix_val = src[pixel_index]
+    rel_contrib(shift) = wrap_val(src[pixel_index+shift] - pix_val, range)^2
     # for N=3, pixel_shifts[14] is null shift, can avoid if manually unrolling loop
     sum_val = sum(rel_contrib, pixel_shifts)
     return sum_val
