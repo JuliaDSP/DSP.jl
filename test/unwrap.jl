@@ -66,10 +66,10 @@ end
         A_unwrapped = v_unwrapped .+ v_unwrapped'
         A_wrapped = A_unwrapped .% (2convert(T, π))
 
-        test_unwrapped = unwrap(A_wrapped, dims=1:2)
+        test_unwrapped = unwrap(A_wrapped, dims=:)
         d = first(A_unwrapped) - first(test_unwrapped)
         @test (test_unwrapped .+ d) ≈ A_unwrapped
-        unwrap!(A_wrapped, dims=1:2)
+        unwrap!(A_wrapped, dims=:)
         d = first(A_unwrapped) - first(A_wrapped)
         @test (A_wrapped .+ d) ≈ A_unwrapped
 
@@ -78,7 +78,7 @@ end
         test_range = convert(T, 2)
         A_wrapped_range = A_unwrapped_range .% test_range
 
-        test_unwrapped_range = unwrap(A_wrapped_range, dims=1:2; range=test_range)
+        test_unwrapped_range = unwrap(A_wrapped_range, dims=:; range=test_range)
         d = first(A_unwrapped_range) - first(test_unwrapped_range)
         @test (test_unwrapped_range .+ d) ≈ A_unwrapped_range
 
@@ -91,13 +91,13 @@ end
         # make periodic
         wa_uw[end, :] = wa_uw[1, :]
         wa_w = wa_uw .% (2π)
-        wa_test = unwrap(wa_w, dims=1:2, circular_dims=circular_dims, rng=MersenneTwister(0))
+        wa_test = unwrap(wa_w, dims=:, circular_dims=circular_dims, rng=MersenneTwister(0))
         # with wrap-around, the borders should be equal, but for this problem the
         # image may not be recovered exactly
         @test wa_test[:, 1] ≈ wa_test[:, end]
         @test wa_test[end, :] ≈ wa_test[1, :]
         # In this case, calling unwrap w/o circular_dims does not recover the borders
-        wa_test_nowa = unwrap(wa_w, dims=1:2)
+        wa_test_nowa = unwrap(wa_w, dims=:)
         @test !(wa_test_nowa[end, :] ≈ wa_test_nowa[1, :])
 
     end
@@ -120,12 +120,12 @@ end
         )
             f_uw = func.(grid, grid', reshape(grid, 1, 1, :))
             f_wr = f_uw .% (2convert(T, π))
-            uw_test = unwrap(f_wr; dims=1:3, circular_dims)
+            uw_test = unwrap(f_wr; dims=:, circular_dims)
             offset = first(f_uw) - first(uw_test)
             @test (uw_test .+ offset) ≈ f_uw rtol = eps(T)  # oop
 
             # test in-place version
-            unwrap!(f_wr; dims=1:3, circular_dims)
+            unwrap!(f_wr; dims=:, circular_dims)
             offset = first(f_uw) - first(f_wr)
             @test (f_wr .+ offset) ≈ f_uw rtol = eps(T)     # ip
         end
@@ -134,8 +134,8 @@ end
 
 @testset "reproducible unwrap" begin
     function measure(s, rng, seed=rand(UInt))
-        u1 = unwrap(s; dims=1:ndims(s), rng=seed!(rng, seed))
-        u2 = unwrap(s; dims=1:ndims(s), rng=seed!(rng, seed))
+        u1 = unwrap(s; dims=:, rng=seed!(rng, seed))
+        u2 = unwrap(s; dims=:, rng=seed!(rng, seed))
         return sqrt(mean(abs2, u1 - u2))
     end
 
