@@ -115,7 +115,8 @@ end
 const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
-@generated function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N,T,StoreSI}
+function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N,T,StoreSI}
+if @generated
     silen = N - 1
     si_end = Symbol(:si_, silen)
     @static if VERSION.major == 1 && VERSION.minor == 12
@@ -150,6 +151,14 @@ const SMALL_FILT_VECT_CUTOFF = 19
         end
         return nothing
     end
+else
+    if StoreSI
+        _filt_fir!(out, b, x, siarr, col)
+    else
+        si = copy(siarr)
+        _filt_fir!(out, b, x, si, col)
+    end
+end # end if @generated
 end
 
 # Convert array filter tap input to tuple for small-filtering
