@@ -72,7 +72,7 @@ radians/sample for a digital filter or radians/second for an analog filter.
 """
 function phaseresp(filter::FilterCoefficients, w)
     h = freqresp(filter, w)
-    unwrap(angle.(h); dims=ndims(h))
+    unwrap(angle.(h); dims=:)
 end
 
 """
