@@ -3,6 +3,8 @@ on:
   push:
     branches: [master]
     tags: ['*']
+    paths-ignore:
+      - 'README.md'
   pull_request:
   workflow_dispatch:
 jobs:
@@ -37,7 +39,7 @@ jobs:
             version: '1'
           - os: ubuntu-22.04-arm
             arch: default
-            version: '1'            
+            version: '1'
           - os: ubuntu-latest
             arch: default
             version: 'min'
@@ -51,6 +53,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          show-versioninfo: true
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
