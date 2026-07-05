@@ -28,10 +28,10 @@ using Statistics: mean
     # test unwrapping within multi-dimensional array
     wrapped = repeat([0.1, 0.2 + 2pi, 0.3, 0.4], 1, 2)
     unwrapped = hcat(unwrapped, unwrapped)
-    @test unwrap(wrapped, dims=2) ≈ wrapped
-    @test unwrap(wrapped, dims=1) ≈ unwrapped
-    @test unwrap!(copy(wrapped), dims=2) ≈ wrapped
-    @test unwrap!(copy(wrapped), dims=1) ≈ unwrapped
+    @test unwrap(wrapped; dims=2) ≈ wrapped
+    @test unwrap(wrapped; dims=1) ≈ unwrapped
+    @test unwrap!(copy(wrapped); dims=2) ≈ wrapped
+    @test unwrap!(copy(wrapped); dims=1) ≈ unwrapped
 
     # this should eventually default to the multi-dimensional case
     @test_throws ArgumentError unwrap!(similar(wrapped), wrapped)
@@ -39,7 +39,7 @@ using Statistics: mean
     # test unwrapping with other ranges
     unwrapped = [1.0:100;]
     wrapped = Float64[i % 10 for i in unwrapped]
-    @test unwrap(wrapped, range=10) ≈ unwrapped
+    @test unwrap(wrapped; range=10) ≈ unwrapped
 
     # test generically typed unwrapping
     types = (Float32, Float64, BigFloat)
@@ -66,10 +66,10 @@ end
         A_unwrapped = v_unwrapped .+ v_unwrapped'
         A_wrapped = A_unwrapped .% (2convert(T, π))
 
-        test_unwrapped = unwrap(A_wrapped, dims=:)
+        test_unwrapped = unwrap(A_wrapped; dims=:)
         d = first(A_unwrapped) - first(test_unwrapped)
         @test (test_unwrapped .+ d) ≈ A_unwrapped
-        unwrap!(A_wrapped, dims=:)
+        unwrap!(A_wrapped; dims=:)
         d = first(A_unwrapped) - first(A_wrapped)
         @test (A_wrapped .+ d) ≈ A_unwrapped
 
@@ -78,7 +78,7 @@ end
         test_range = convert(T, 2)
         A_wrapped_range = A_unwrapped_range .% test_range
 
-        test_unwrapped_range = unwrap(A_wrapped_range, dims=:; range=test_range)
+        test_unwrapped_range = unwrap(A_wrapped_range; dims=:, range=test_range)
         d = first(A_unwrapped_range) - first(test_unwrapped_range)
         @test (test_unwrapped_range .+ d) ≈ A_unwrapped_range
 
@@ -91,15 +91,14 @@ end
         # make periodic
         wa_uw[end, :] = wa_uw[1, :]
         wa_w = wa_uw .% (2π)
-        wa_test = unwrap(wa_w, dims=:, circular_dims=circular_dims, rng=MersenneTwister(0))
+        wa_test = unwrap(wa_w; dims=:, circular_dims=circular_dims, rng=MersenneTwister(0))
         # with wrap-around, the borders should be equal, but for this problem the
         # image may not be recovered exactly
         @test wa_test[:, 1] ≈ wa_test[:, end]
         @test wa_test[end, :] ≈ wa_test[1, :]
         # In this case, calling unwrap w/o circular_dims does not recover the borders
-        wa_test_nowa = unwrap(wa_w, dims=:)
+        wa_test_nowa = unwrap(wa_w; dims=:)
         @test !(wa_test_nowa[end, :] ≈ wa_test_nowa[1, :])
-
     end
 end
 
