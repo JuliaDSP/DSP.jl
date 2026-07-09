@@ -49,7 +49,6 @@ struct ArraySplit{T<:AbstractVector,S,W} <: AbstractVector{Vector{S}}
         new{Ti,Si,Wi}(s, buffer, n, noverlap, window, length(s) >= n ? div((length(s) - n),
             n - noverlap) + 1 : 0)
     end
-
 end
 ArraySplit(s::T, n, noverlap, nfft, window::W; kwargs...) where {S,T<:AbstractVector{S},W} =
     ArraySplit{T,fftintype(S),W}(s, n, noverlap, nfft, window; kwargs...)
@@ -186,16 +185,17 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
     n1max != size(s_fft, 1) && throw(ArgumentError("fft size incorrect"))
     m1 = convert(T, 1/r)
     m2 = convert(T, 2/r)
-    wavenum = 0          # wavenumber index
-    kmax = length(out)   # the highest wavenumber
-    wc = zeros(Int, kmax) # wave count for radial average
-    if n1 == nmin        # scale the wavevector for non-square s_fft
+    wavenum = 0             # wavenumber index
+    kmax = length(out)      # the highest wavenumber
+    wc = zeros(Int, kmax)   # wave count for radial average
+    if n1 == nmin           # scale the wavevector for non-square s_fft
         c2 = n1/n2
         c1 = one(c2)
     else
         c1 = n2/n1
         c2 = one(c1)
     end
+    d1, d2 = iseven(n1) ? (m1, 1) : (m2, 2)
 
     sqrt_muladd(a, k) = sqrt(muladd(a, a, k))
 
@@ -218,8 +218,8 @@ function fft2pow2radial!(out::Array{T}, s_fft::Matrix{Complex{T}}, n1::Int, n2::
             end
             wavenum = round(Int, sqrt_muladd(c1 * (n1max - 1), kj2)) + 1
             if wavenum<=kmax
-                out[wavenum] = muladd(abs2(s_fft[n1max, j]), ifelse(iseven(n1), m1, m2), out[wavenum])
-                wc[wavenum] += ifelse(iseven(n1), 1, 2)
+                out[wavenum] = muladd(abs2(s_fft[n1max, j]), d1, out[wavenum])
+                wc[wavenum] += d2
             end
         end
     end

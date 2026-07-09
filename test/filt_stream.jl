@@ -363,13 +363,24 @@ end
     end
 end
 
-@test resample(1:2, 3, [zeros(2); 1; zeros(3)]) == [1, 0, 0, 2, 0, 0]
-@test resample(1:2, 3//2, [zeros(2); 1; zeros(3)]) == [1, 0, 0]
-let H = FIRFilter(2.22)
-    setphase!(H, 0.99)
-    @test length(filt(H, 1:2)) == 3
+@testset "pathological cases: setphase! and outputlength" begin
+    # PR #596
+    @test resample(1:2, 3, [zeros(2); 1; zeros(3)]) == [1, 0, 0, 2, 0, 0]
+    @test resample(1:2, 3//2, [zeros(2); 1; zeros(3)]) == [1, 0, 0]
+    # PR #593
+    let H = FIRFilter(2.22)
+        setphase!(H, 0.99)
+        @test length(filt(H, 1:2)) == 3
+    end
+    let H = FIRFilter(122.2)
+        setphase!(H, 0.99)
+        @test length(filt(H, 1:2)) == 124
+    end
 end
-let H = FIRFilter(122.2)
-    setphase!(H, 0.99)
-    @test length(filt(H, 1:2)) == 124
+
+@testset "FIRArbitrary exceptions" begin
+    @test_throws ArgumentError FIRFilter(rand(10), 1e-13, 1000)
+    @test_throws DomainError FIRFilter(rand(10), 1.1, -1)
+    @test_throws DomainError setphase!(FIRFilter(rand(10), 1.1, 1), -1.0)
+    @test_throws DomainError setphase!(FIRFilter(rand(10), 1.1, 1), nextfloat(maxintfloat()))
 end

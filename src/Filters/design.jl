@@ -707,7 +707,7 @@ function _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
 
     # Round the number of taps up to a multiple of Nϕ.
     # Otherwise the missing taps will be filled with 0.
-    hLen = Nϕ * ceil(Int, hLen / Nϕ)
+    hLen = Nϕ * cld(hLen, Nϕ)
 
     # Ensure that the filter is an odd length
     if iseven(hLen)

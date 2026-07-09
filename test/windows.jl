@@ -178,17 +178,18 @@ end
     n = 12
     ft = typeof(1.0)
     for W in(:rect, :hanning, :hamming, :cosine, :lanczos, :triang, :bartlett, :bartlett_hann, :blackman)
-        @eval @test Array{$ft,1} == typeof($W($n)) && length($W($n)) == $n
+        @eval @test Vector{$ft} == typeof($W($n)) && length($W($n)) == $n
     end
 
-    @test Array{ft,1} == typeof(tukey(n, 0.4)) && length(tukey(n, 0.4)) == n
-    @test Array{ft,1} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
-    @test Array{ft,1} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
-    @test Array{ft,2} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n  # size(,2) depends on the parameters
-    @test Array{ft,1} == typeof(blackmanharris(n, 4)) && length(blackmanharris(n, 4)) == n
-    @test Array{ft,1} == typeof(blackmanharris(n, 3)) && length(blackmanharris(n, 3)) == n
-    @test Array{ft,1} == typeof(nuttall(n, 4)) && length(nuttall(n, 4)) == n
-    @test Array{ft,1} == typeof(nuttall(n, 3)) && length(nuttall(n, 3)) == n
+    @test Vector{ft} == typeof(tukey(n, 0.4)) && length(tukey(n, 0.4)) == n
+    @test Vector{ft} == typeof(gaussian(n, 0.4)) && length(gaussian(n, 0.4)) == n
+    @test Vector{ft} == typeof(kaiser(n, 0.4)) && length(kaiser(n, 0.4)) == n
+    @test Vector{ft} == typeof(blackmanharris(n, 4)) && length(blackmanharris(n, 4)) == n
+    @test Vector{ft} == typeof(blackmanharris(n, 3)) && length(blackmanharris(n, 3)) == n
+    @test Vector{ft} == typeof(nuttall(n, 4)) && length(nuttall(n, 4)) == n
+    @test Vector{ft} == typeof(nuttall(n, 3)) && length(nuttall(n, 3)) == n
+
+    @test Matrix{ft} == typeof(dpss(n, 1.5)) && size(dpss(n, 1.5),1) == n   # size(,2) depends on the parameters
 end
 
 @testset "tensor product windows" begin
@@ -206,46 +207,29 @@ end
         end
     end
 
-    for winf in [zeroarg_wins; onearg_wins],
-         arg in (nothing, 0.4, (0.4, 0.5))
-        # skip invalid combinations
-        winf in zeroarg_wins && arg !== nothing && continue
-        winf in onearg_wins && arg === nothing && continue
-        for padding in (nothing, 4, (4,5)),
-          zerophase in (nothing, true, (true,false))
-            w1_expr = :($winf(15))
-            w2_expr = :($winf(20))
-            w3_expr = :($winf((15,20)))
-            w_all = (w1_expr, w2_expr, w3_expr)
+    function test_matrix_window(winfs, args)
+        for winf in winfs,
+             arg in args
+            for padding in (nothing, 4, (4,5)),
+              zerophase in (nothing, true, (true,false))
+                w1_expr = :($winf(15))
+                w2_expr = :($winf(20))
+                w3_expr = :($winf((15,20)))
+                w_all = (w1_expr, w2_expr, w3_expr)
 
-            push_args!(w_all, arg, Real, identity)
-            push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
-            push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
+                push_args!(w_all, arg, Real, identity)
+                push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
+                push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
 
-            w1 = eval(w1_expr)
-            w2 = eval(w2_expr)
-            w3 = eval(w3_expr)
-            @test w3 ≈ w1 * w2'
+                w1 = eval(w1_expr)
+                w2 = eval(w2_expr)
+                w3 = eval(w3_expr)
+                @test w3 ≈ w1 * w2'
+            end
         end
     end
 
-    for winf in termarg_wins,
-        arg in (3, 4)
-        for padding in (nothing, 4, (4,5)),
-          zerophase in (nothing, true, (true,false))
-            w1_expr = :($winf(15))
-            w2_expr = :($winf(20))
-            w3_expr = :($winf((15,20)))
-            w_all = (w1_expr, w2_expr, w3_expr)
-
-            push_args!(w_all, arg, Integer, identity)
-            push_args!(w_all, padding, Integer, s -> Expr(:kw, :padding, s))
-            push_args!(w_all, zerophase, Bool, s -> Expr(:kw, :zerophase, s))
-
-            w1 = eval(w1_expr)
-            w2 = eval(w2_expr)
-            w3 = eval(w3_expr)
-            @test w3 ≈ w1 * w2'
-        end
-    end
+    test_matrix_window(zeroarg_wins, (nothing,))
+    test_matrix_window(onearg_wins, (0.4, (0.4, 0.5)))
+    test_matrix_window(termarg_wins, (3, 4))
 end

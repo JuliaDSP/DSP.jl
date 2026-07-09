@@ -24,7 +24,7 @@ end
 Frequency response of digital `filter` at normalized frequency or
 frequencies `w` in radians/sample.
 """
-freqresp(filter::FilterCoefficients{:z}, w) = _freq(filter).(exp.(im .* w))
+freqresp(filter::FilterCoefficients{:z}, w) = _freq(filter).(cis.(w))
 
 """
     freqresp(filter::FilterCoefficients{:s}, w)
@@ -104,7 +104,7 @@ function grpdelay(filter::FilterCoefficients{:z}, w)
 
     c = xcorr(b, a; padmode = :none)
     cr = range(0, stop=length(c)-1) .* c
-    ejw = exp.(-im .* w)
+    ejw = cis.(.- w)
     num = Polynomial(cr).(ejw)
     den = Polynomial(c).(ejw)
     return real.(num ./ den) .- (length(a) - 1)
@@ -163,7 +163,7 @@ function _freqrange(filter::FilterCoefficients{:s})
     first_nonzero = findfirst(!iszero, w_interesting)
     if isnothing(first_nonzero) # no non-zero poles or zeros
         if !include_zero || !isfinite(1 / filter.k)
-            return setindex!(10.0 .^ (-1:6), 0.0, 1) # fallback
+            return [0.0, 1.0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6] # fallback
         end
         # include the point where |H|=1 (if any) and go further by factor 10
         return collect(range(0.0, stop=10 * Float64(max(filter.k, 1 / filter.k)), length=200))

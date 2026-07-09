@@ -24,8 +24,8 @@ mutable struct FIRInterpolator{T} <: FIRKernel{T}
     const Nϕ::Int
     const tapsPerϕ::Int
     const hLen::Int
-    inputDeficit::Int
     ϕIdx::Int
+    inputDeficit::Int
 end
 
 function FIRInterpolator(h::Vector, interpolation::Int)
@@ -35,7 +35,7 @@ function FIRInterpolator(h::Vector, interpolation::Int)
     ϕIdx         = 1
     hLen         = length(h)
 
-    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, hLen, inputDeficit, ϕIdx)
+    FIRInterpolator(pfb, interpolation, Nϕ, tapsPerϕ, hLen, ϕIdx, inputDeficit)
 end
 FIRInterpolator(h::Vector, interpolation::Integer) = FIRInterpolator(h, Int(interpolation))
 
@@ -71,9 +71,9 @@ function FIRRational(h::Vector, ratio::Rational{Int})
     pfb          = taps2pfb(h, numerator(ratio))
     tapsPerϕ, Nϕ = size(pfb)
     ϕIdxStepSize = mod(denominator(ratio), numerator(ratio))
+    hLen         = length(h)
     ϕIdx         = 1
     inputDeficit = 1
-    hLen         = length(h)
     FIRRational(pfb, ratio, Nϕ, ϕIdxStepSize, tapsPerϕ, hLen, ϕIdx, inputDeficit)
 end
 FIRRational(h::Vector, ratio::Union{Integer,Rational}) = FIRRational(h, convert(Rational{Int}, ratio))
@@ -95,13 +95,13 @@ mutable struct FIRArbitrary{T} <: FIRKernel{T}
     const dpfb::PFB{T}
     const Nϕ::Int
     const tapsPerϕ::Int
+    const hLen::Int
+    const Δ::Float64
     ϕAccumulator::Float64
     ϕIdx::Int
     α::Float64
-    const Δ::Float64
-    inputDeficit::Int
     xIdx::Int
-    const hLen::Int
+    inputDeficit::Int
 end
 
 function FIRArbitrary(h::Vector, rate::Float64, Nϕ::Int)
@@ -109,26 +109,26 @@ function FIRArbitrary(h::Vector, rate::Float64, Nϕ::Int)
     pfb          = taps2pfb(h,  Nϕ)
     dpfb         = taps2pfb(dh, Nϕ)
     tapsPerϕ     = size(pfb, 1)
+    hLen         = length(h)
+    Δ            = Nϕ / rate
     ϕAccumulator = 0.0
     ϕIdx         = 1
     α            = 0.0
-    Δ            = Nϕ/rate
-    inputDeficit = 1
     xIdx         = 1
-    hLen         = length(h)
+    inputDeficit = 1
     FIRArbitrary(
         rate,
         pfb,
         dpfb,
         Nϕ,
         tapsPerϕ,
+        hLen,
+        Δ,
         ϕAccumulator,
         ϕIdx,
         α,
-        Δ,
-        inputDeficit,
         xIdx,
-        hLen
+        inputDeficit
     )
 end
 FIRArbitrary(h::Vector, rate::Real, Nϕ::Integer) = FIRArbitrary(h, convert(Float64, rate), convert(Int, Nϕ))
@@ -154,6 +154,8 @@ converting recorded audio from 48 KHz to 44.1 KHz).
 Constructs `h` with `resample_filter(ratio, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, resampleRatio::Union{Integer,Rational} = 1)
+    Base.@constprop :aggressive
+    resampleRatio > 0 || throw(DomainError(resampleRatio, "ratio must be positive"))
     interpolation = numerator(resampleRatio)
     decimation    = denominator(resampleRatio)
     historyLen    = 0
@@ -192,6 +194,7 @@ Constructs `h` with `resample_filter(rate, Nϕ, args...)` if it is not provided.
 """
 function FIRFilter(h::Vector, rate::AbstractFloat, Nϕ::Integer=32)
     rate > 0.0 || throw(DomainError(rate, "rate must be greater than 0"))
+    Nϕ > 0 || throw(DomainError(Nϕ, "Nϕ must be greater than 0"))
     kernel     = FIRArbitrary(h, rate, Nϕ)
     historyLen = kernel.tapsPerϕ - 1
     history    = zeros(historyLen)
@@ -229,11 +232,12 @@ function setphase!(kernel::Union{FIRInterpolator, FIRRational}, ϕ::Real)
 end
 
 function setphase!(kernel::FIRArbitrary, ϕ::Real)
-    ϕ >= zero(ϕ) || throw(DomainError(ϕ, "ϕ must be >= 0"))
-    (ϕ, xThrowaway) = modf(ϕ)
-    kernel.inputDeficit += round(Int, xThrowaway)
+    zero(ϕ) <= ϕ < maxintfloat(typeof(ϕ), Int) ||
+        throw(DomainError(ϕ, "ϕ must be >= 0 and < maxintfloat(ϕ)"))
+    ϕ, xThrowaway = modf(ϕ)
+    kernel.inputDeficit += unsafe_trunc(Int, xThrowaway)    # safe, but llvm unable to optimize
     kernel.ϕAccumulator = ϕ * kernel.Nϕ
-    kernel.ϕIdx         = 1 + floor(Int, kernel.ϕAccumulator)
+    kernel.ϕIdx         = 1 + trunc(Int, kernel.ϕAccumulator)
     kernel.α            = modf(kernel.ϕAccumulator)[1]
     nothing
 end
@@ -263,8 +267,8 @@ function reset!(kernel::FIRArbitrary)
     kernel.ϕAccumulator = 0.0
     kernel.ϕIdx         = 1
     kernel.α            = 0.0
-    kernel.inputDeficit = 1
     kernel.xIdx         = 1
+    kernel.inputDeficit = 1
     kernel
 end
 
@@ -293,7 +297,7 @@ end
 
 function taps2pfb(h::Vector{T}, Nϕ::Integer) where T
     hLen     = length(h)
-    tapsPerϕ = ceil(Int, hLen / Nϕ)
+    tapsPerϕ = cld(hLen, Nϕ)
     pfb      = Matrix{T}(undef, tapsPerϕ, Nϕ)
     hIdx     = 1
 
@@ -317,8 +321,8 @@ end
 function outputlength(inputlength::Integer, ratio::Union{Integer,Rational}, initialϕ::Integer)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
-    outLen        = ((inputlength * interpolation) - initialϕ + 1) / decimation
-    ceil(Int, outLen)
+    outLen        = cld((inputlength * interpolation) - initialϕ + 1, decimation)
+    outLen
 end
 
 function outputlength(::FIRStandard, inputlength::Integer)
@@ -348,49 +352,49 @@ end
 
 #
 # Calculates the input length of a multirate filtering operation,
-# given the output length
-# With RoundDown, inputlength returns the largest input length such that the
-# actual output length will be at most the given one.
-# With RoundUp, inputlength returns the shortest input length such that the
-# actual output length will be at least the given one.
+# given the output length. The dividend is assumed positive.
+# With RoundToZero and RoundDown, inputlength returns the largest input length
+# such that the actual output length will be _at most_ the given one.
+# With RoundUp and RoundFromZero, inputlength returns the shortest input length
+# such that the actual output length will be _at least_ the given one.
 #
 
-function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer, r::RoundingMode=RoundDown)
+function inputlength(outputlength::Int, ratio::Union{Integer,Rational}, initialϕ::Integer, r::RoundingMode=RoundToZero)
     interpolation = numerator(ratio)
     decimation    = denominator(ratio)
     d             = r == RoundUp || r == RoundFromZero ? decimation : 1
-    inLen         = (outputlength * decimation + initialϕ - d) / interpolation
-    round(Int, inLen, r)
+    inLen         = div((outputlength * decimation + initialϕ - d), interpolation, r)
+    inLen
 end
 
-function inputlength(::FIRStandard, outputlength::Integer, ::RoundingMode=RoundDown)
+function inputlength(::FIRStandard, outputlength::Int, ::RoundingMode)
     outputlength
 end
 
-function inputlength(kernel::FIRInterpolator, outputlength::Integer, r::RoundingMode=RoundDown)
+function inputlength(kernel::FIRInterpolator, outputlength::Int, r::RoundingMode)
     inLen = inputlength(outputlength, kernel.interpolation, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRDecimator, outputlength::Integer, r::RoundingMode=RoundDown)
+function inputlength(kernel::FIRDecimator, outputlength::Int, r::RoundingMode)
     inLen  = inputlength(outputlength, 1//kernel.decimation, 1, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRRational, outputlength::Integer, r::RoundingMode=RoundDown)
+function inputlength(kernel::FIRRational, outputlength::Int, r::RoundingMode)
     inLen  = inputlength(outputlength, kernel.ratio, kernel.ϕIdx, r)
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(kernel::FIRArbitrary, outputlength::Integer, r::RoundingMode=RoundDown)
+function inputlength(kernel::FIRArbitrary, outputlength::Int, r::RoundingMode)
     d      = r == RoundUp || r == RoundFromZero ? 1 : 0
-    inLen  = floor(Int, (outputlength - d + kernel.ϕAccumulator / kernel.Δ)/kernel.rate) + d
+    inLen  = trunc(Int, (outputlength - d + kernel.ϕAccumulator / kernel.Δ)/kernel.rate) + d
     inLen += kernel.inputDeficit - 1
 end
 
-function inputlength(self::FIRFilter, outputlength::Integer, r::RoundingMode=RoundDown)
-    inputlength(self.kernel, outputlength, r)
-end
+inputlength(kernel::FIRKernel, outputlength::Integer) = inputlength(kernel, Int(outputlength), RoundToZero)
+inputlength(self::FIRFilter, outputlength::Integer, r::RoundingMode=RoundToZero) =
+    inputlength(self.kernel, Int(outputlength), r)
 
 
 #
@@ -486,26 +490,27 @@ function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::
         return bufIdx
     end
 
-    outLen = outputlength(xLen-kernel.inputDeficit+1, kernel.ratio, kernel.ϕIdx)
+    outLen = outputlength(kernel, xLen)
     bufLen >= outLen || throw(ArgumentError("buffer is too small"))
 
     interpolation       = numerator(kernel.ratio)
     decimation          = denominator(kernel.ratio)
     inputIdx            = kernel.inputDeficit
+    ϕIdx                = kernel.ϕIdx
 
     while inputIdx <= xLen
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(kernel.pfb, ϕIdx, x, inputIdx)
         end
 
         buffer[bufIdx]  = accumulator
-        inputIdx       += div(kernel.ϕIdx + decimation - 1, interpolation)
-        ϕIdx            = kernel.ϕIdx + kernel.ϕIdxStepSize
-        kernel.ϕIdx     = ϕIdx > interpolation ? ϕIdx - interpolation : ϕIdx
+        inputIdx       += div(ϕIdx + decimation - 1, interpolation)
+        ϕIdx           += kernel.ϕIdxStepSize
+        kernel.ϕIdx     = ϕIdx = ifelse(ϕIdx > interpolation, ϕIdx - interpolation, ϕIdx)
     end
 
     kernel.inputDeficit = inputIdx - xLen
@@ -569,11 +574,11 @@ function update!(kernel::FIRArbitrary)
 
     if kernel.ϕAccumulator >= kernel.Nϕ
         Δx, kernel.ϕAccumulator = divrem(kernel.ϕAccumulator, kernel.Nϕ)
-        kernel.xIdx += Int(Δx)
+        kernel.xIdx += trunc(Int, Δx)
     end
 
     kernel.α, foffset = modf(kernel.ϕAccumulator)
-    kernel.ϕIdx = 1 + Int(foffset)
+    kernel.ϕIdx = 1 + trunc(Int, foffset)
 end
 
 function filt!(
@@ -746,17 +751,17 @@ as an optional argument, which defaults to 32.
 """
 function resample(x::AbstractArray, rate::Union{Integer,Rational}, h::Vector; dims)
     sf = FIRFilter(h, rate)
-    return _resample!(x, rate, sf; dims)
+    _resample!(x, rate, sf, dims)
 end
 function resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
     sf = FIRFilter(h, rate, Nϕ)
-    _resample!(x, rate, sf; dims)
+    _resample!(x, rate, sf, dims)
 end
 
 resample(x::AbstractArray, rate::Real, args::Real...; dims) =
-    _resample!(x, rate, FIRFilter(rate, args...); dims)
+    _resample!(x, rate, FIRFilter(rate, args...), dims)
 
-function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter; dims::Int) where T
+function _resample!(x::AbstractArray{T}, rate::Real, sf::FIRFilter, dims::Int) where T
     undelay!(sf)
     size_v  = size(x, dims)
     outLen  = ceil(Int, size_v * rate)
@@ -779,7 +784,15 @@ end
 #
 
 # [1] F.J. Harris, *Multirate Signal Processing for Communication Systems*. Prentice Hall, 2004
-# [2] Dick, C.; Harris, F., "Options for arbitrary resamplers in FPGA-based modulators," Signals, Systems and Computers, 2004. Conference Record of the Thirty-Eighth Asilomar Conference on , vol.1, no., pp.777,781 Vol.1, 7-10 Nov. 2004
-# [3] Kim, S.C.; Plishker, W.L.; Bhattacharyya, S.S., "An efficient GPU implementation of an arbitrary resampling polyphase channelizer," Design and Architectures for Signal and Image Processing (DASIP), 2013 Conference on, vol., no., pp.231,238, 8-10 Oct. 2013
-# [4] Horridge, J.P.; Frazer, Gordon J., "Accurate arbitrary resampling with exact delay for radar applications," Radar, 2008 International Conference on , vol., no., pp.123,127, 2-5 Sept. 2008
-# [5] Blok, M., "Fractional delay filter design for sample rate conversion," Computer Science and Information Systems (FedCSIS), 2012 Federated Conference on , vol., no., pp.701,706, 9-12 Sept. 2012
+# [2] Dick, C.; Harris, F., "Options for arbitrary resamplers in FPGA-based modulators",
+#       Signals, Systems and Computers, 2004.
+#       Conference Record of the Thirty-Eighth Asilomar Conference on vol.1, no., pp.777,781 Vol.1, 7-10 Nov. 2004
+# [3] Kim, S.C.; Plishker, W.L.; Bhattacharyya, S.S.,
+#       "An efficient GPU implementation of an arbitrary resampling polyphase channelizer",
+#       Design and Architectures for Signal and Image Processing (DASIP),
+#       2013 Conference on, vol., no., pp.231,238, 8-10 Oct. 2013
+# [4] Horridge, J.P.; Frazer, Gordon J., "Accurate arbitrary resampling with exact delay for radar applications",
+#       Radar, 2008 International Conference on , vol., no., pp.123,127, 2-5 Sept. 2008
+# [5] Blok, M., "Fractional delay filter design for sample rate conversion",
+#       Computer Science and Information Systems (FedCSIS),
+#       2012 Federated Conference on , vol., no., pp.701,706, 9-12 Sept. 2012
