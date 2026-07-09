@@ -359,7 +359,7 @@ end
             xrcfft = fft(x)
         end
         xfft = fft(x)
-        out = zeros(fftouttype(atype),nout,3)
+        out = zeros(fftouttype(atype), (nout, 3))
         if !(onesided == true && atype <: Complex)
             outft = DSP.Periodograms.fft2oneortwosided!(out, xrcfft, nfft, onesided, nout)
         end
