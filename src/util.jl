@@ -181,7 +181,7 @@ amp2db(a::Real) = 20*log10(a)
     rms(s; dims)
 
 Return the root mean square (rms) of signal `s`. Optional keyword parameter
-`dims` can be used to specify the dimensions along which to compue the rms.
+`dims` can be used to specify the dimensions along which to compute the rms.
 """
 function rms(s::AbstractArray{T}; dims=:) where {T<:Number}
     if dims === (:)
@@ -222,11 +222,12 @@ end
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLastIdx::Integer)
+function unsafe_dot(a::AbstractMatrix{T}, aColIdx::Integer, b::AbstractVector{V}, bLastIdx::Integer) where {T,V}
+    @inline     # generally good for performance
     aLen     = size(a, 1)
     bBaseIdx = bLastIdx - aLen
-    @inbounds dotprod  = a[1, aColIdx] * b[ bBaseIdx + 1]
-    @simd for i in 2:aLen
+    dotprod  = zero(promote_type(T, V))
+    @simd for i in 1:aLen
         @inbounds dotprod += a[i, aColIdx] * b[bBaseIdx + i]
     end
 
@@ -234,17 +235,26 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector, bLas
 end
 
 @inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
-    BLAS.dot(size(a, 1), pointer(a, size(a, 1)*(aColIdx-1) + 1), 1, pointer(b, bLastIdx - size(a, 1) + 1), 1)
+    GC.@preserve a b begin
+        pa = pointer(a, size(a, 1)*(aColIdx-1) + 1)
+        pb = pointer(b, bLastIdx - size(a, 1)  + 1)
+        BLAS.dot(size(a, 1), pa, 1, pb, 1)
+    end
 end
 
-function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
+# cold path for FIR(Standard/Decimator) - b is usually history
+function unsafe_dot(
+    a::AbstractMatrix{T}, aColIdx::Integer,
+    b::AbstractVector{V},
+    c::AbstractVector{V}, cLastIdx::Integer
+) where {T,V}
     aLen = size(a, 1)
     bLen = length(b)
     bLen == aLen-1  || throw(ArgumentError("length(b) must equal size(a, 1) - 1"))
     cLastIdx < aLen || throw(DomainError(cLastIdx, "cLastIdx must be < length(a)"))
 
-    dotprod = a[1, aColIdx] * b[cLastIdx]
-    @simd for i in 2:aLen-cLastIdx
+    dotprod = zero(promote_type(T, V))
+    @simd for i in 1:aLen-cLastIdx
         @inbounds dotprod += a[i, aColIdx] * b[i+cLastIdx-1]
     end
     @simd for i in 1:cLastIdx
@@ -254,11 +264,12 @@ function unsafe_dot(a::AbstractMatrix, aColIdx::Integer, b::AbstractVector{T}, c
     return dotprod
 end
 
-function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
+function unsafe_dot(a::AbstractVector{T}, b::AbstractArray{V}, bLastIdx::Integer) where {T,V}
+    @inline     # normally inlines anyway, but just in case
     aLen     = length(a)
     bBaseIdx = bLastIdx - aLen
-    @inbounds dotprod  = a[1] * b[bBaseIdx + 1]
-    @simd for i in 2:aLen
+    dotprod  = zero(promote_type(T, V))
+    @simd for i in 1:aLen
         @inbounds dotprod += a[i] * b[bBaseIdx + i]
     end
 
@@ -266,12 +277,13 @@ function unsafe_dot(a::T, b::AbstractArray, bLastIdx::Integer) where T
 end
 
 @inline function unsafe_dot(a::Vector{T}, b::Array{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
-    BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
+    GC.@preserve a b BLAS.dot(length(a), pointer(a), 1, pointer(b, bLastIdx - length(a) + 1), 1)
 end
 
-function unsafe_dot(a::AbstractVector, b::AbstractVector{T}, c::AbstractVector{T}, cLastIdx::Integer) where T
+# cold path for FIR(Interpolator/Rational/Arbitrary) - b is usually history
+function unsafe_dot(a::AbstractVector{T}, b::AbstractVector{V}, c::AbstractVector{V}, cLastIdx::Integer) where {T,V}
     aLen    = length(a)
-    dotprod = zero(a[1]*b[1])
+    dotprod = zero(promote_type(T, V))
     @simd for i in 1:aLen-cLastIdx
         @inbounds dotprod += a[i] * b[i+cLastIdx-1]
     end
