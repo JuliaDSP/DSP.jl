@@ -49,7 +49,7 @@ function filt!(out::AbstractArray, b::Union{AbstractVector, Number}, a::Union{Ab
     si = Vector{promote_type(eltype(b), eltype(a), T)}(undef, sz - 1)
 
     if as == 1 && bs <= SMALL_FILT_CUTOFF
-        fill!(si, zero(eltype(si)))
+        @static VERSION < v"1.13-" && fill!(si, zero(eltype(si)))
         _small_filt_fir!(out, b, x, si, Val(bs))
     else
         for col in CartesianIndices(axes(x)[2:end])
@@ -119,26 +119,25 @@ function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N
 if @generated
     silen = N - 1
     si_end = Symbol(:si_, silen)
-    @static if VERSION.major == 1 && VERSION.minor == 12
-        STORE_VAL = :(@inbounds out[i, col] = val)
-    else
-        STORE_VAL = :(out[i, col] = val)
-    end
 
     quote
         VECTORIZE_LARGER = N > SMALL_FILT_VECT_CUTOFF
         VECTORIZE_LARGER || checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
         ax = axes(x, 1)
-        if VERSION >= v"1.12"
-            checkbounds(x, ax, col)
-            checkbounds(out, ax, col)
-        end
+        $(@static if VERSION >= v"1.12"
+          :(checkbounds(x, ax, col);
+            checkbounds(out, ax, col))
+        end)
         for i in ax
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
             if VECTORIZE_LARGER
-                $STORE_VAL
+      $(@static if VERSION.major == 1 && VERSION.minor == 12
+                    :(@inbounds out[i, col] = val)
+                else
+                    :(out[i, col] = val)
+                end)
             end
             Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
             $si_end = xi * b[N]
