@@ -1,5 +1,9 @@
 # `Windows` - window functions
 
+
+![window_plot.svg](window_plot.svg)
+
+
 ```@docs
 rect
 hanning
