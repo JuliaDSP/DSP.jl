@@ -114,12 +114,10 @@ end
 
 Returns `grid`, `des`, and `wt` arrays
 """
-function build_grid(nfilt, band_defs, Hz, grid_density, neg)
+function build_grid(nfilt, band_defs, Hz, grid_density, neg::Bool)
     nodd = isodd(nfilt)
     nfcns = nfilt ÷ 2
-    if nodd && !neg
-        nfcns = nfcns + 1
-    end
+    nfcns += nodd & !neg
 
     #
     # SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
@@ -134,31 +132,26 @@ function build_grid(nfilt, band_defs, Hz, grid_density, neg)
         fl = convert(Float64, clamp(b.first[1] / Hz, flimlow, flimhigh))
         fu = convert(Float64, clamp(b.first[2] / Hz, flimlow, flimhigh))
         # make sure desired and weight are functions
-        if !isa(b.second, Tuple{Any, Any})
-            desired = b.second
-            weight = 1.0
-        else
+        if isa(b.second, Tuple{Any, Any})
             desired = b.second[1]
             weight = b.second[2]
+        else
+            desired = b.second
+            weight = 1.0
         end
         if isa(desired, Real)
-            let d = desired
-                desired = _ -> d
-            end
+            desired = Returns(desired)
         end
         if isa(weight, Real)
-            let w = weight
-                weight = _ -> w
-            end
+            weight = Returns(weight)
         end
         return Pair{Tuple{Float64,Float64},Tuple{Any,Any}}((fl, fu), (desired, weight))
     end
     normalized_band_defs = normalize_banddef_entry.(band_defs)
 
-    local ngrid
     # work around JuliaLang/julia#15276
-    let delf=delf
-        ngrid = sum(max(length(band_def.first[1]:delf:band_def.first[2]), 1) for band_def in normalized_band_defs)#::Int
+    ngrid = let delf=delf
+        sum(max(length(band_def.first[1]:delf:band_def.first[2]), 1) for band_def in normalized_band_defs)#::Int
     end
 
     grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
@@ -177,8 +170,7 @@ function build_grid(nfilt, band_defs, Hz, grid_density, neg)
     # TO THE ORIGINAL PROBLEM
     #
     for band_def in normalized_band_defs
-        flow = band_def.first[1]
-        fup = band_def.first[2]
+        flow, fup = band_def.first
         # outline inner loop to have it type-stable (band_def.second is Tuple{Any,Any})
         j = _buildgrid!(grid, des, wt, j, [(flow:delf:fup)[1:end-1]; fup], neg, nodd, Hz,
                         band_def.second)
@@ -189,11 +181,12 @@ function build_grid(nfilt, band_defs, Hz, grid_density, neg)
 end
 
 function _buildgrid!(grid, des, wt, j, fs, neg, nodd, Hz, des_wt)
+    desired, weight = des_wt
     for f in fs
-        change = neg ? (nodd ? sinpi(2f) : sinpi(f)) : (nodd ? 1.0 : cospi(f))
+        change = neg ? sinpi(nodd ? 2f : f) : (nodd ? 1.0 : cospi(f))
         grid[j] = cospi(2f)
-        des[j] = des_wt[1](f * Hz) / change
-        wt[j] = des_wt[2](f * Hz) * change
+        des[j] = desired(f * Hz) / change
+        wt[j] = weight(f * Hz) * change
         j += 1
     end
     return j
