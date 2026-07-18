@@ -116,6 +116,9 @@ function FIRArbitrary(h::Vector, rate::Float64, Nϕ::Int)
     α            = 0.0
     xIdx         = 1
     inputDeficit = 1
+    if Nϕ + Δ > maxintfloat(Float64)    # invariant; ensure safe trunc
+        throw(ArgumentError("Nϕ + Δ must be <= than maxintfloat(Float64)"))
+    end
     FIRArbitrary(
         rate,
         pfb,
@@ -569,16 +572,22 @@ end
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
 #   [1] uses a phase accumulator that increments by Δ (Nϕ/rate)
 
-function update!(kernel::FIRArbitrary)
-    kernel.ϕAccumulator += kernel.Δ
+@fastmath function update!(kernel::FIRArbitrary)
+    ϕAcc = kernel.ϕAccumulator + kernel.Δ
+    xIdx = kernel.xIdx
+    α, ϕosF64 = modf(ϕAcc)
+    ϕ_os = unsafe_trunc(Int, ϕosF64)
 
-    if kernel.ϕAccumulator >= kernel.Nϕ
-        Δx, kernel.ϕAccumulator = divrem(kernel.ϕAccumulator, kernel.Nϕ)
-        kernel.xIdx += trunc(Int, Δx)
+    if ϕ_os >= kernel.Nϕ
+        Δx, ϕ_os = divrem(ϕ_os, kernel.Nϕ)
+        ϕAcc = ϕ_os + α
+        kernel.xIdx = (xIdx += Δx)
     end
-
-    kernel.α, foffset = modf(kernel.ϕAccumulator)
-    kernel.ϕIdx = 1 + trunc(Int, foffset)
+    # "atomic" update
+    kernel.α = α
+    kernel.ϕIdx = 1 + ϕ_os
+    kernel.ϕAccumulator = ϕAcc
+    xIdx
 end
 
 function filt!(
@@ -594,36 +603,37 @@ function filt!(
     history::Vector{Tx} = self.history
 
     # Do we have enough input samples to produce one or more output samples?
-    if xLen < kernel.inputDeficit
-        self.history = shiftin!(history, x)
-        kernel.inputDeficit -= xLen
-        return bufIdx
-    end
+    # if xLen < kernel.inputDeficit     # redundant; while cond covers case.
+    #     self.history = shiftin!(history, x)
+    #     kernel.inputDeficit -= xLen
+    #     return bufIdx
+    # end
 
     # Skip over input samples that are not needed to produce output results.
     # We do this by seting inputIdx to inputDeficit which was calculated in the previous run.
     # InputDeficit is set to 1 when instantiation the FIRArbitrary kernel, that way the first
     #   input always produces an output.
-    kernel.xIdx = kernel.inputDeficit
+    kernel.xIdx = xIdx = kernel.inputDeficit
 
-    while kernel.xIdx <= xLen
+    while xIdx <= xLen
         bufIdx += 1
+        ϕIdx = kernel.ϕIdx
 
-        if kernel.xIdx < kernel.tapsPerϕ
-            yLower = unsafe_dot(pfb,  kernel.ϕIdx, history, x, kernel.xIdx)
-            yUpper = unsafe_dot(dpfb, kernel.ϕIdx, history, x, kernel.xIdx)
+        if xIdx < kernel.tapsPerϕ
+            yLower = unsafe_dot(pfb,  ϕIdx, history, x, xIdx)
+            yUpper = unsafe_dot(dpfb, ϕIdx, history, x, xIdx)
         else
-            yLower = unsafe_dot(pfb,  kernel.ϕIdx, x, kernel.xIdx)
-            yUpper = unsafe_dot(dpfb, kernel.ϕIdx, x, kernel.xIdx)
+            yLower = unsafe_dot(pfb,  ϕIdx, x, xIdx)
+            yUpper = unsafe_dot(dpfb, ϕIdx, x, xIdx)
         end
 
         # Used to have @inbounds. Restore @inbounds if buffer length
         # can be verified prior to access.
         buffer[bufIdx] = muladd(yUpper, kernel.α, yLower)
-        update!(kernel)
+        xIdx = update!(kernel)
     end
 
-    kernel.inputDeficit = kernel.xIdx - xLen
+    kernel.inputDeficit = xIdx - xLen
     self.history        = shiftin!(history, x)
 
     return bufIdx

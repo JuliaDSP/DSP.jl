@@ -309,6 +309,7 @@ julia> shiftin!([1,2,3,4], [5, 6])
 ```
 """
 function shiftin!(a::AbstractVector{T}, b::AbstractVector{T}) where T
+    @noinline
     aLen = length(a)
     bLen = length(b)
     fi_a = firstindex(a)
