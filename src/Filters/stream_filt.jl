@@ -413,9 +413,12 @@ timedelay(self::FIRFilter) = timedelay(self.kernel)
 # Single rate filtering
 #
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRStandard{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRStandard{Th}},
+    x::AbstractVector{Tx}, history::Vector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
-    history::Vector{Tx} = self.history
     bufLen              = length(buffer)
     xLen                = length(x)
 
@@ -439,10 +442,12 @@ end
 # Interpolation
 #
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRInterpolator{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRInterpolator{Th}},
+    x::AbstractVector{Tx}, history::Vector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
-    history::Vector{Tx} = self.history
-    interpolation       = kernel.interpolation
     xLen                = length(x)
     bufLen              = length(buffer)
     bufIdx              = 0
@@ -480,9 +485,12 @@ end
 # Rational resampling
 #
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRRational{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRRational{Th}},
+    x::AbstractVector{Tx}, history::Vector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
-    history::Vector{Tx} = self.history
     xLen                = length(x)
     bufLen              = length(buffer)
     bufIdx              = 0
@@ -527,11 +535,14 @@ end
 # Decimation
 #
 
-function filt!(buffer::AbstractVector{Tb}, self::FIRFilter{FIRDecimator{Th}}, x::AbstractVector{Tx}) where {Tb,Th,Tx}
+function filt!(
+    buffer::AbstractVector{Tb},
+    self::FIRFilter{FIRDecimator{Th}},
+    x::AbstractVector{Tx}, history::Vector{Tx}
+) where {Tb,Th,Tx}
     kernel              = self.kernel
     bufLen              = length(buffer)
     xLen                = length(x)
-    history::Vector{Tx} = self.history
     bufIdx              = 0
 
     if xLen < kernel.inputDeficit
@@ -593,14 +604,13 @@ end
 function filt!(
     buffer::AbstractVector{Tb},
     self::FIRFilter{FIRArbitrary{Th}},
-    x::AbstractVector{Tx}
+    x::AbstractVector{Tx}, history::Vector{Tx}
 ) where {Tb,Th,Tx}
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
     xLen                = length(x)
     bufIdx              = 0
-    history::Vector{Tx} = self.history
 
     # Do we have enough input samples to produce one or more output samples?
     # if xLen < kernel.inputDeficit     # redundant; while cond covers case.
@@ -639,6 +649,29 @@ function filt!(
     return bufIdx
 end
 
+"""
+    filt!(buffer::AbstractVector, self::FIRFilter, x::AbstractVector{Tx})
+    filt!(buffer::AbstractVector, self::FIRFilter, x::AbstractVector{Tx}, history::Vector{Tx})
+
+Filters `x` with `self::FIRFilter` and writes the output to `buffer`.
+A history `Vector` with the same eltype as `x` can be provided that
+will then be set as `self.history`.
+
+The default argument is `convert(Vector{Tx}, self.history)`.
+"""
+filt!(buffer::AbstractVector, self::FIRFilter, x::AbstractVector{Tx}) where Tx =
+    filt!(buffer, self, x, convert(Vector{Tx}, self.history))
+
+
+
+"""
+    filt(self::FIRFilter{Tk}, x::AbstractVector{Th})
+
+Filters `x` with `self::FIRFilter`. The output array will have
+eltype `promote_type(Tk, Th)`.
+
+To choose otherwise, provide an output array as the first argument to `filt!`.
+"""
 function filt(self::FIRFilter{Tk}, x::AbstractVector) where Tk<:FIRKernel
     buffer = allocate_output(self, x)
     bufLen = length(buffer)
