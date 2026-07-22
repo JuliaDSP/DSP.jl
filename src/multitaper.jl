@@ -2,6 +2,8 @@
 ##### Multitapered periodogram
 #####
 
+using Distributions
+
 struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     n_samples::Int
     fs::R1
@@ -13,11 +15,12 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
     fft_output_tmp::T2
     window::W
     onesided::Bool
+    ftest::Bool
     r::R2 # inverse normalization; e.g. equal to `fs*N` for an unwindowed/untapered periodogram of a signal of length `N`
           # e.g. equal to `fs*ntapers*ones(ntapers)` when tapered by properly normalized window functions (i.e. norm-2 equal to 1 for each taper)
           # can be adjusted to weight the tapers, e.g. by the eigenvalues of the DPSS windows
     function MTConfig{T}(n_samples, nfft, ntapers, freq::F, fs::R1, plan::P, fft_input_tmp::T1,
-                         fft_output_tmp::T2, window::W, onesided, r::R2) where {T,R1,F,P,T1,T2,W,R2}
+                         fft_output_tmp::T2, window::W, onesided, ftest, r::R2) where {T,R1,F,P,T1,T2,W,R2}
         n_samples > 0 || throw(ArgumentError("`n_samples` must be positive"))
         nfft >= n_samples || throw(ArgumentError("Must have `nfft >= n_samples`"))
         ntapers > 0 || throw(ArgumentError("`ntapers` must be positive"))
@@ -44,7 +47,7 @@ struct MTConfig{T,R1,F,P,T1,T2,W,R2}
                                         ntapers, freq, plan,
                                         fft_input_tmp,
                                         fft_output_tmp, window,
-                                        onesided, r)
+                                        onesided, ftest, r)
     end
 end
 
@@ -85,6 +88,7 @@ end
             ntapers = 2 * nw - 1,
             taper_weights = fill(1/ntapers, ntapers),
             onesided::Bool=T<:Real,
+            ftest::Bool=false,
             fft_flags = FFTW.MEASURE)
 
 Creates a config object which holds the configuration state
@@ -107,11 +111,12 @@ as none of the input arguments change.
   The default setting is to simply average them.
 * `onesided`: whether or not to compute a "one-sided" FFT by using that real signal data
   yields conjugate-symmetry in Fourier space.
+* `ftest`:  whether or not to compute the significance of harmonic line compenents as described in Thomson (1982; 10.1109/PROC.1982.12433)
 * `fft_flags`: flags to control how the FFT plan is generated.
 """
 function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing, nw=4,
                      ntapers=2 * nw - 1, taper_weights = fill(1/ntapers, ntapers),
-                    onesided::Bool=T <: Real,
+                     onesided::Bool=T <: Real, ftest::Bool = false,
                      fft_flags=FFTW.MEASURE) where {T}
     if onesided && T <: Complex
         throw(ArgumentError("cannot compute one-sided FFT of a complex signal"))
@@ -131,7 +136,7 @@ function MTConfig{T}(n_samples; fs=1, nfft=nextpow(2, n_samples), window=nothing
     end
 
     return MTConfig{T}(n_samples, nfft, ntapers, freq, fs, plan, fft_input_tmp,
-                       fft_output_tmp, window, onesided, r)
+                       fft_output_tmp, window, onesided, ftest, r)
 end
 
 function allocate_output(config::MTConfig{T}) where {T}
@@ -222,6 +227,27 @@ See also [`mt_pgram`](@ref) and [`MTConfig`](@ref).
 """
 mt_pgram!
 
+function ftest(J::Array{ComplexF64,2}, tapers::Matrix)
+  K = size(tapers,2)
+  Kodd = 1:2:K
+  Keven = 2:2:K
+
+  Jp = J[:,Kodd]
+  H0 = sum(tapers[:,Kodd], dims=1)
+  H0sq = sum(abs2, H0)
+  JpH0 = dropdims(sum(Jp.*H0, dims=2), dims=2)
+  A = JpH0 ./ H0sq
+  Jhat = A * H0
+
+  num = (K-1) * abs2.(A) .* H0sq
+  den = dropdims(sum(abs2.(Jp.-Jhat), dims=2), dims=2) +
+        dropdims(sum(abs2.(J[:,Keven]), dims=2), dims=2)
+  Fval = num ./ den
+
+  map!(x -> 1.0 - cdf(FDist(2, 2*Int64(K)-2), x), Fval, Fval)
+  return Fval
+end
+
 function mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTConfig)
     if length(output) != length(config.freq)
         throw(DimensionMismatch(lazy"""Expected `output` to be of length `length(config.freq)`;
@@ -233,12 +259,20 @@ function mt_pgram!(output::AbstractVector, signal::AbstractVector, config::MTCon
     end
     fft_output = config.fft_output_tmp
 
+    config.ftest && (ftest_scratch = similar(fft_output, (size(fft_output)..., config.ntapers)))
+
     output .= 0
     for taper_index in 1:(config.ntapers)
         mt_fft_tapered!(fft_output, signal, taper_index, config)
+        config.ftest && (ftest_scratch[:,taper_index] .= fft_output)
         fft2pow!(output, fft_output, config.nfft, config.r[taper_index], config.onesided)
     end
-    return Periodogram(output, config.freq)
+    if config.ftest
+        Fval = ftest(ftest_scratch, config.window)
+        return PeriodogramF(output, config.freq, Fval)
+    else
+        return Periodogram(output, config.freq)
+    end
 end
 
 #####
