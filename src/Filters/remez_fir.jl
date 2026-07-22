@@ -420,24 +420,17 @@ function remez(numtaps::Integer, band_defs;
     dev = 0.0     # deviation from the desired function,
                   # that is, the amount of "ripple" on the extremal set
     devl = -1.0   # deviation on last iteration
-    niter = 0
+    jchnge = 0
     ad = zeros(Float64, nz)
 
     jet = ((nfcns-1) ÷ 15) + 1
 
-    while true
-
+    for niter = 1:maxiter
         #
         # Start next iteration
         #
     #   @label L100
         iext[nzz] = ngrid + 1
-        niter += 1
-        if niter > maxiter
-            @warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
-            # the filter is returned in its current, unconverged state.
-            break
-        end
 
         for j = 1:nz
             x[j] = grid[iext[j]]
@@ -606,12 +599,14 @@ function remez(numtaps::Integer, band_defs;
 
         continue    # @goto L100
       @label L370
-
-
         if jchnge <= 0  # we are done if none of the extremal indices changed
             break
         end
-    end  # while
+    end  # for niter
+    if jchnge > 0
+        @warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
+        # the filter is returned in its current, unconverged state.
+    end
 
     #
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
