@@ -458,6 +458,9 @@ function filt!(
         return bufIdx
     end
 
+    pfb                 = kernel.pfb
+    col_len             = size(pfb, 1)
+
     inputIdx = kernel.inputDeficit
     bufLen >= outputlength(self, xLen) || throw(ArgumentError("length(buffer) must be >= interpolation * length(x)"))
 
@@ -465,9 +468,9 @@ function filt!(
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(pfb, kernel.ϕIdx, history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, kernel.ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(pfb, kernel.ϕIdx, x, inputIdx, col_len)
         end
 
         buffer[bufIdx]          = accumulator
@@ -504,6 +507,9 @@ function filt!(
     outLen = outputlength(kernel, xLen)
     bufLen >= outLen || throw(ArgumentError("buffer is too small"))
 
+    pfb                 = kernel.pfb
+    col_len             = size(pfb, 1)
+
     interpolation       = numerator(kernel.ratio)
     decimation          = denominator(kernel.ratio)
     inputIdx            = kernel.inputDeficit
@@ -513,9 +519,9 @@ function filt!(
         bufIdx += 1
 
         if inputIdx < kernel.tapsPerϕ
-            accumulator = unsafe_dot(kernel.pfb, ϕIdx, history, x, inputIdx)
+            accumulator = unsafe_dot(pfb, ϕIdx, history, x, inputIdx)
         else
-            accumulator = unsafe_dot(kernel.pfb, ϕIdx, x, inputIdx)
+            accumulator = unsafe_dot(pfb, ϕIdx, x, inputIdx, col_len)
         end
 
         buffer[bufIdx]  = accumulator
@@ -609,6 +615,7 @@ function filt!(
     kernel              = self.kernel
     pfb                 = kernel.pfb
     dpfb                = kernel.dpfb
+    col_len             = size(pfb, 1)
     xLen                = length(x)
     bufIdx              = 0
 
@@ -633,8 +640,8 @@ function filt!(
             yLower = unsafe_dot(pfb,  ϕIdx, history, x, xIdx)
             yUpper = unsafe_dot(dpfb, ϕIdx, history, x, xIdx)
         else
-            yLower = unsafe_dot(pfb,  ϕIdx, x, xIdx)
-            yUpper = unsafe_dot(dpfb, ϕIdx, x, xIdx)
+            yLower = unsafe_dot(pfb,  ϕIdx, x, xIdx, col_len)
+            yUpper = unsafe_dot(dpfb, ϕIdx, x, xIdx, col_len)
         end
 
         # Used to have @inbounds. Restore @inbounds if buffer length

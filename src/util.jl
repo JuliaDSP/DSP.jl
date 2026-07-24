@@ -222,23 +222,30 @@ end
 # Computes the dot product of a single column of a, specified by aColumnIdx, with the vector b.
 # The number of elements used in the dot product determined by the size(A)[1].
 # Note: bIdx is the last element of b used in the dot product.
-function unsafe_dot(a::AbstractMatrix{T}, aColIdx::Integer, b::AbstractVector{V}, bLastIdx::Integer) where {T,V}
+function unsafe_dot(
+    a::AbstractMatrix{T}, aColIdx::Integer,
+    b::AbstractVector{V}, bLastIdx::Integer,
+    colN::Int=size(a,1)
+) where {T,V}
     @inline     # generally good for performance
-    aLen     = size(a, 1)
-    bBaseIdx = bLastIdx - aLen
+    bBaseIdx = bLastIdx - colN
     dotprod  = zero(promote_type(T, V))
-    @simd for i in 1:aLen
+    @simd for i in 1:colN
         @inbounds dotprod += a[i, aColIdx] * b[bBaseIdx + i]
     end
 
     return dotprod
 end
 
-@inline function unsafe_dot(a::Matrix{T}, aColIdx::Integer, b::Vector{T}, bLastIdx::Integer) where T<:BLAS.BlasReal
+@inline function unsafe_dot(
+    a::Matrix{T}, aColIdx::Integer,
+    b::Vector{T}, bLastIdx::Integer,
+    colN::Int=size(a,1)
+) where T<:BLAS.BlasReal
     GC.@preserve a b begin
-        pa = pointer(a, size(a, 1)*(aColIdx-1) + 1)
-        pb = pointer(b, bLastIdx - size(a, 1)  + 1)
-        BLAS.dot(size(a, 1), pa, 1, pb, 1)
+        pa = pointer(a, colN*(aColIdx-1) + 1)
+        pb = pointer(b, bLastIdx - colN  + 1)
+        BLAS.dot(colN, pa, 1, pb, 1)
     end
 end
 
