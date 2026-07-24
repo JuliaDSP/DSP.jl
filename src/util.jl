@@ -212,10 +212,10 @@ function meanfreq(x::AbstractVector{<:Real}, fs=2*π)
     pxx = abs2.(rfft(x))
 
     len = length(x)
-    npoints = fld(len,2)
-    freqrg = fs/len.*(0:(npoints))
+    npoints = fld(len, 2)
+    freqrg = range(0, npoints * fs / len, npoints+1)
 
-    mf = sum(pxx.*freqrg)./sum(pxx)
+    mf = sum(pxx .* freqrg) / sum(pxx)
     return mf
 end
 
