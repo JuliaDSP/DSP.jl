@@ -452,12 +452,6 @@ function filt!(
     bufLen              = length(buffer)
     bufIdx              = 0
 
-    if xLen < kernel.inputDeficit
-        self.history = shiftin!(history, x)
-        kernel.inputDeficit -= xLen
-        return bufIdx
-    end
-
     pfb                 = kernel.pfb
     col_len             = size(pfb, 1)
 
@@ -477,7 +471,7 @@ function filt!(
         (kernel.ϕIdx, inputIdx) = kernel.ϕIdx == kernel.Nϕ ? (1, inputIdx+1) : (kernel.ϕIdx+1, inputIdx)
     end
 
-    kernel.inputDeficit = 1
+    kernel.inputDeficit = inputIdx - xLen
     self.history        = shiftin!(history, x)
 
     return bufIdx
@@ -497,12 +491,6 @@ function filt!(
     xLen                = length(x)
     bufLen              = length(buffer)
     bufIdx              = 0
-
-    if xLen < kernel.inputDeficit
-        self.history = shiftin!(history, x)
-        kernel.inputDeficit -= xLen
-        return bufIdx
-    end
 
     outLen = outputlength(kernel, xLen)
     bufLen >= outLen || throw(ArgumentError("buffer is too small"))
@@ -550,12 +538,6 @@ function filt!(
     bufLen              = length(buffer)
     xLen                = length(x)
     bufIdx              = 0
-
-    if xLen < kernel.inputDeficit
-        self.history = shiftin!(history, x)
-        kernel.inputDeficit -= xLen
-        return bufIdx
-    end
 
     outLen              = outputlength(self, xLen)
     inputIdx            = kernel.inputDeficit
