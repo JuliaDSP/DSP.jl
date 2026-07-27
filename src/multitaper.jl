@@ -492,7 +492,7 @@ function MTCrossSpectraConfig(n_channels, mt_config::MTConfig{T}; demean=false,
     n_samples = mt_config.n_samples
     if demean
         mean_per_channel = Vector{T}(undef, n_channels)
-        demeaned_signal = Matrix{T}(undef, n_channels, n_samples)
+        demeaned_signal = Matrix{T}(undef, (n_channels, n_samples))
     else
         mean_per_channel = nothing
         demeaned_signal = nothing
@@ -693,7 +693,7 @@ end
 function allocate_output(config::MTCoherenceConfig{T}) where {T}
     n_chan = config.cs_config.n_channels
     n_freqs = length(config.cs_config.freq)
-    return Array{real(T),3}(undef, n_chan, n_chan, n_freqs)
+    return Array{real(T),3}(undef, (n_chan, n_chan, n_freqs))
 end
 
 """
