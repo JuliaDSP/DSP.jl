@@ -116,19 +116,20 @@ const SMALL_FILT_VECT_CUTOFF = 19
 
 # Transposed direct form II
 function _filt_fir!(out, b::NTuple{N,T}, x, siarr, col, ::Val{StoreSI}) where {N,T,StoreSI}
+    ax = axes(x, 1)
+    @static if VERSION >= v"1.12"
+        checkbounds(  x, ax, col)
+        checkbounds(out, ax, col)
+    end
+    VECTORIZE_LARGER = N > SMALL_FILT_VECT_CUTOFF
+    VECTORIZE_LARGER || checkbounds(siarr, N - 1)
+
 if @generated
     silen = N - 1
     si_end = Symbol(:si_, silen)
 
     quote
-        VECTORIZE_LARGER = N > SMALL_FILT_VECT_CUTOFF
-        VECTORIZE_LARGER || checkbounds(siarr, $silen)
         Base.@nextract $silen si siarr
-        ax = axes(x, 1)
-        $(@static if VERSION >= v"1.12"
-          :(checkbounds(x, ax, col);
-            checkbounds(out, ax, col))
-        end)
         for i in ax
             xi = x[i, col]
             val = muladd(xi, b[1], si_1)
@@ -139,8 +140,11 @@ if @generated
                     :(out[i, col] = val)
                 end)
             end
-            Base.@nexprs $(silen - 1) j -> (si_j = muladd(xi, b[j+1], si_{j + 1}))
-            $si_end = xi * b[N]
+            Base.@nexprs $(silen - 1) j -> begin
+                bn, sn = b[j+1], si_{j + 1}
+                si_j = @fastmath xi * bn + sn
+            end
+            $si_end = @fastmath xi * b[N]
             if !VECTORIZE_LARGER
                 out[i, col] = val
             end
