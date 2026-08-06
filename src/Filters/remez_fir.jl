@@ -569,7 +569,7 @@ function remez(numtaps::Integer, band_defs;
         @goto L325
 
       @label L320
-        luck > 9 && @goto L350
+        luck <= 9 || @goto L350
         comp > y1 && (y1 = comp)
         k1 = iext[nzz]
       @label L325
@@ -583,25 +583,24 @@ function remez(numtaps::Integer, band_defs;
         nut*err <= comp && @goto L330
         j = nzz
         comp =  nut * err
-        luck = luck + 10
+        luck += 10
         @goto L235
       @label L340
-        luck == 6 && @goto L370
-        for j = 1 : nfcns
-            iext[nzz-j] = iext[nz-j]
+        if luck != 6
+            for j = 1 : nfcns
+                iext[nzz-j] = iext[nz-j]
+            end
+            iext[1] = k1
+        elseif jchnge <= 0
+            break   # we are done if none of the extremal indices changed
         end
-        iext[1] = k1
         continue    # @goto L100
       @label L350
         for j = 1:nz
             iext[j] = iext[j+1]
         end
 
-        continue    # @goto L100
-      @label L370
-        if jchnge <= 0  # we are done if none of the extremal indices changed
-            break
-        end
+        # continue    # @goto L100
     end  # for niter
     if jchnge > 0
         @warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
