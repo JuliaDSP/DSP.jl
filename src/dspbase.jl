@@ -68,6 +68,8 @@ end
 # Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
     n = min(length(a), length(b), length(si))
+    eq_len = length(a) == length(b)
+    long_a = length(a) > length(b)
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
         val = muladd(xi, b[1], si[1])
@@ -76,10 +78,10 @@ function _filt_iir!(out, b, a, x, si, col)
         for j in 1:n-1
             si[j] = muladd(mval, a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
-        if length(a) == length(b)
+        if eq_len
             si[n] = muladd(xi, b[n+1], mval * a[n+1])
         else
-            _filt_1!(si, (length(a) > length(b) ? (mval, a) : (oftype(mval, xi), b))..., n)
+            _filt_1!(si, (long_a ? (mval, a) : (oftype(mval, xi), b))..., n)
         end
     end
 end
