@@ -67,40 +67,37 @@ end
 
 # Transposed direct form II
 function _filt_iir!(out, b, a, x, si, col)
-    silen = length(si)
+    n = min(length(a), length(b), length(si))
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
         val = muladd(xi, b[1], si[1])
+        mval = -val
         out[i, col] = val
-        for j in 1:min(length(a), length(b), silen) - 1
-            si[j] = muladd(val, -a[j+1], muladd(xi, b[j+1], si[j+1]))
+        for j in 1:n-1
+            si[j] = muladd(mval, a[j+1], muladd(xi, b[j+1], si[j+1]))
         end
         if length(a) == length(b)
-            si[silen] = muladd(xi, b[silen+1], -a[silen+1]*val)
-        elseif length(a) > length(b)
-            for j in length(b):silen-1
-                si[j] = muladd(val, -a[j+1], si[j+1])
-            end
-            si[silen] = -a[silen+1]*val
+            si[n] = muladd(xi, b[n+1], mval * a[n+1])
         else
-            for j in length(a):silen-1
-                si[j] = muladd(xi, b[j+1], si[j+1])
-            end
-            si[silen] = xi*b[silen+1]
+            _filt_1!(si, (length(a) > length(b) ? (mval, a) : (oftype(mval, xi), b))..., n)
         end
     end
 end
 
+Base.@propagate_inbounds function _filt_1!(si, val, x, n)
+    si_end = lastindex(si)
+    for j in n:si_end-1
+        si[j] = muladd(val, x[j+1], si[j+1])
+    end
+    si[si_end] = val * x[si_end+1]
+end
+
 # Transposed direct form II
 function _filt_fir!(out, b, x, si, col)
-    silen = length(si)
     @inbounds for i in axes(x, 1)
         xi = x[i, col]
         out[i, col] = muladd(xi, b[1], si[1])
-        for j=1:(silen-1)
-            si[j] = muladd(xi, b[j+1], si[j+1])
-        end
-        si[silen] = b[silen+1] * xi
+        _filt_1!(si, xi, b, 1)
     end
 end
 
