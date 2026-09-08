@@ -91,10 +91,16 @@ C CODE BANNER
 @enum RemezFilterType filter_type_bandpass filter_type_differentiator filter_type_hilbert
 
 
-# The strided product order limits roundoff in high-order interpolation.
+"""
+    lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
+
+CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
+
+"""
 function lagrange_interp(k::Int, stride::Int, x::Vector)
     product = 1.0
     q = x[k]
+    # The strided product order limits roundoff in high-order interpolation.
     for offset in 1:stride, j in offset:stride:lastindex(x)
         j == k && continue
         product *= 2.0 * (q - x[j])
@@ -118,6 +124,11 @@ function _remez_band_edges(band::Pair, Hz, lo, hi)
     return fl, fu
 end
 
+"""
+    build_grid(numtaps, band_defs, Hz, grid_density, neg)
+
+Returns `grid`, `des`, and `wt` arrays
+"""
 function build_grid(numtaps::Int, band_defs, Hz, density::Int, neg::Bool)
     nodd = isodd(numtaps)
     ncosines = numtaps ÷ 2 + (nodd & !neg)
@@ -175,9 +186,20 @@ function build_band!(
     return index
 end
 
-# Barycentric evaluation away from the interpolation nodes. Callers use the
-# stored values at nodes, so the hot loop needs no equality check or allocation.
-@inline function _remez_eval(frequency, nodes::T, values::T, weights::T) where T<:Vector
+"""
+    function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+
+Barycentric evaluation away from the interpolation nodes.
+
+Modified from:
+-----------------------------------------------------------------------
+ FUNCTION: freq_eval (gee)
+  FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
+  LAGRANGE INTERPOLATION FORMULA IN THE BARYCENTRIC FORM
+
+-----------------------------------------------------------------------
+"""
+@inline function freq_eval(frequency, nodes::T, values::T, weights::T) where T<:Vector
     denominator = 0.0
     numerator = 0.0
     # Independent divisions can run in parallel. Keep both accumulations in
@@ -450,7 +472,7 @@ function _remez_exchange!(iext, grid, desired, wts, nodes, values, bary_wts,
     changed = false
     first_amplitude = last_amplitude = ripple
     sgn = first_sign
-    sdev(i, sign) = sign * (_remez_eval(grid[i], nodes, values, bary_wts) - desired[i]) * wts[i]
+    sdev(i, sign) = sign * (freq_eval(grid[i], nodes, values, bary_wts) - desired[i]) * wts[i]
 
     for j in 1:cnt
         current, upper = iext[j], iext[j + 1]
@@ -590,7 +612,7 @@ function _remez_coefficients(numtaps, neg, full_grid, grid, nodes, values, weigh
         if frequency-nodes[node_index] < node_tolerance
             samples[j] = values[node_index]
         else
-            samples[j] = _remez_eval(frequency, nodes, values, weights)
+            samples[j] = freq_eval(frequency, nodes, values, weights)
         end
     end
 
