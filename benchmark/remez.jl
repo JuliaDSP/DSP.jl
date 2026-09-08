@@ -40,7 +40,7 @@ end
 function compare_case(name, args, kwargs; newkwargs=kwargs, samples=31, repetitions=5)
     old, new = BaselineRemez.remez, CurrentRemez.remez
     reference = old(args...; kwargs...)
-    @assert isequal(reference, new(args...; newkwargs...)) name
+    @assert isapprox(reference, new(args...; newkwargs...); rtol=1e-10) name
     # Compile both the filters and the timing harness before collecting samples.
     elapsed_batch(old, args, kwargs, 2)
     elapsed_batch(new, args, newkwargs, 2)

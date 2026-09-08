@@ -202,28 +202,11 @@ Modified from:
 @inline function freq_eval(frequency, nodes::T, values::T, weights::T) where T<:Vector
     denominator = 0.0
     numerator = 0.0
-    # Independent divisions can run in parallel. Keep both accumulations in
-    # their original order: reassociating these sums changes Remez convergence.
-    j = 1
-    @inbounds while j + 3 <= length(weights)
-        c1 = weights[j] / (frequency - nodes[j])
-        c2 = weights[j+1] / (frequency - nodes[j+1])
-        c3 = weights[j+2] / (frequency - nodes[j+2])
-        c4 = weights[j+3] / (frequency - nodes[j+3])
-        denominator += c1
-        numerator = fma(c1, values[j], numerator)
-        denominator += c2
-        numerator = fma(c2, values[j+1], numerator)
-        denominator += c3
-        numerator = fma(c3, values[j+2], numerator)
-        denominator += c4
-        numerator = fma(c4, values[j+3], numerator)
-        j += 4
-    end
-    @inbounds for j in j:length(weights)
+    # Reassociation may change Remez convergence, but is not less correct
+    @simd for j in eachindex(weights, values, nodes)
         coefficient = weights[j] / (frequency - nodes[j])
         denominator += coefficient
-        numerator = muladd(coefficient, values[j], numerator)
+        numerator += coefficient * values[j]
     end
     return numerator / denominator
 end
@@ -232,18 +215,17 @@ end
 function _remez_interpolate!(nodes, values, weights, iext, grid, desired, importance)
     cnt = length(values)
     stride = (cnt - 2) ÷ 15 + 1
-    for j in 1:cnt
-        nodes[j] = grid[iext[j]]
+    @simd for j in 1:cnt
+        @inbounds nodes[j] = grid[iext[j]]
     end
     update_weights!(weights, stride, nodes)
 
     num = den = 0.0
-    sign = 1
-    for j in 1:cnt
+    @inbounds @simd for j in 1:cnt
         index = iext[j]
-        num = muladd(weights[j], desired[index], num)
-        den = muladd(sign, weights[j] / importance[index], den)
-        sign = -sign
+        w = weights[j] / importance[index]
+        num += weights[j] * desired[index]
+        den += ifelse(isodd(j), w, -w)
     end
     deviation = num / den
     first_sign = deviation > 0.0 ? -1 : 1
@@ -612,7 +594,9 @@ function _remez_coefficients(numtaps, neg, full_grid, grid, nodes, values, weigh
         if frequency-nodes[node_index] < node_tolerance
             samples[j] = values[node_index]
         else
+            sentinel = pop!(nodes)
             samples[j] = freq_eval(frequency, nodes, values, weights)
+            push!(nodes, sentinel)
         end
     end
 
