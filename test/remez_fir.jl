@@ -60,7 +60,7 @@ end
     seen = Float64[]
     response = f -> (push!(seen, f); 1.)
     bands = [(0., .1) => response, (.2, .201) => response, (.3, .3) => response]
-    grid, desired, weight = DSP.Filters._remez_grid(15, bands, 1., 4, false)
+    grid, desired, weight = DSP.Filters.build_grid(15, bands, 1., 4, false)
     expected = [0., 1/64, 2/64, 3/64, 4/64, 5/64, .1, .201, .3]
     @test seen == expected
     @test grid == cospi.(2expected)
