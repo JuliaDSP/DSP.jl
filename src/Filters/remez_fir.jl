@@ -205,11 +205,13 @@ function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
 
-    for j in eachindex(ad)
+    sentinel = pop!(x)
+    @simd for j in eachindex(ad, x, y)
         c = ad[j] / (xf - x[j])
         d += c
-        p = muladd(c, y[j], p)
+        p += c * y[j]
     end
+    push!(x, sentinel)
 
     p/d
 end
@@ -449,12 +451,11 @@ function remez(numtaps::Integer, band_defs;
 
         dnum = 0.0
         dden = 0.0
-        k = 1
-        for j = 1 : nz
+        @simd for j = 1 : nz
             l = iext[j]
-            dnum = muladd(ad[j], des[l], dnum)
-            dden = muladd(k, ad[j] / wt[l], dden)
-            k = -k
+            w = ad[j] / wt[l]
+            dnum += ad[j] * des[l]
+            dden += ifelse(isodd(j), w, -w)
         end
         dev = dnum / dden
 
