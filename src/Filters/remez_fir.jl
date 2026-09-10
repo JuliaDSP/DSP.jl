@@ -216,7 +216,7 @@ end
 
 function initialize_workspace!(iext, grid, des, wt, x, y, ad, jet)
     nz = length(y)
-    for j = 1:nz
+    @inbounds @simd for j = 1:nz
         x[j] = grid[iext[j]]
     end
 
@@ -226,7 +226,7 @@ function initialize_workspace!(iext, grid, des, wt, x, y, ad, jet)
 
     dnum = 0.0
     dden = 0.0
-    @simd for j = 1 : nz
+    @inbounds @simd for j = 1 : nz
         l = iext[j]
         w = ad[j] / wt[l]
         dnum += ad[j] * des[l]
@@ -609,10 +609,20 @@ function remez(numtaps::Integer, band_defs;
     #   @label L370
     end  # while
 
+    recover_coeffs(x, y, ad, grid, nfilt, neg, Hz, band_defs)
+end
+
+function recover_coeffs(x, y, ad, grid, nfilt, neg, Hz, band_defs)
     #
     #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
     #    USING THE INVERSE DISCRETE FOURIER TRANSFORM
     #
+    ngrid = length(grid)
+    nodd = isodd(nfilt)
+    nfcns = nfilt ÷ 2
+    nfcns += nodd & !neg
+    nz = length(y)
+    nzz = nz + 1
 
     a = zeros(Float64, nfcns)   # frequency response on evenly spaced grid
     p = zeros(Float64, nfcns)
@@ -758,7 +768,6 @@ function remez(numtaps::Integer, band_defs;
 
     return h
 end
-
 
 """
     remez(numtaps::Integer,
