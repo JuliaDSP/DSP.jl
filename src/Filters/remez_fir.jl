@@ -205,18 +205,35 @@ function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
     d = 0.0
     p = 0.0
 
-    sentinel = pop!(x)
     @simd for j in eachindex(ad, x, y)
         c = ad[j] / (xf - x[j])
         d += c
         p += c * y[j]
     end
-    push!(x, sentinel)
 
     p/d
 end
 
-function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::AbstractArray, wt::AbstractArray, y::AbstractArray)
+function initialize_workspace!(iext, grid, des, wt, x, y, ad, jet)
+    nz = length(y)
+    for j = 1:nz
+        x[j] = grid[iext[j]]
+    end
+
+    for j = eachindex(ad)
+        ad[j] = lagrange_interp(j, nz, jet, x)
+    end
+
+    dnum = 0.0
+    dden = 0.0
+    @simd for j = 1 : nz
+        l = iext[j]
+        w = ad[j] / wt[l]
+        dnum += ad[j] * des[l]
+        dden += ifelse(isodd(j), w, -w)
+    end
+    dev = dnum / dden
+
     nu = 1
     if dev > 0.0
         nu = -1
@@ -414,6 +431,7 @@ function remez(numtaps::Integer, band_defs;
     iext = zeros(Int64, nzz)   # indices of extremals
     x = zeros(Float64, nzz)
     y = zeros(Float64, nz)
+    pop!(x)
 
     for j = 1:nz
         iext[j] = (j-1)*(ngrid-1) ÷ nfcns + 1
@@ -427,7 +445,9 @@ function remez(numtaps::Integer, band_defs;
 
     jet = ((nfcns-1) ÷ 15) + 1
 
-    while true
+    jchnge = 1  # reset to 0
+    while jchnge > 0
+        jchnge = 0
 
         #
         # Start next iteration
@@ -441,26 +461,7 @@ function remez(numtaps::Integer, band_defs;
             break
         end
 
-        for j = 1:nz
-            x[j] = grid[iext[j]]
-        end
-
-        for j = 1 : nz
-            ad[j] = lagrange_interp(j, nz, jet, x)
-        end
-
-        dnum = 0.0
-        dden = 0.0
-        @simd for j = 1 : nz
-            l = iext[j]
-            w = ad[j] / wt[l]
-            dnum += ad[j] * des[l]
-            dden += ifelse(isodd(j), w, -w)
-        end
-        dev = dnum / dden
-
-        fill!(y, 0.0)
-        nu, dev = initialize_y(dev, nz, iext, des, wt, y)
+        nu, dev = initialize_workspace!(iext, grid, des, wt, x, y, ad, jet)
 
         if dev <= devl
             # finished
@@ -480,8 +481,7 @@ function remez(numtaps::Integer, band_defs;
         #      nz = nfcns + 1 where nfcns = nfilt / 2, and
         #      nfilt is the filter length or number of taps.
         #      For example, for a length 15 filter, nfcns = 7 and nz = 8.
-        # jchgne - the number of extremal indices that changed this iteration
-        jchnge = 0
+        # jchnge - the number of extremal indices that changed this iteration
         k1 = iext[1]
         knz = iext[nz]
         klow = 0
@@ -591,10 +591,10 @@ function remez(numtaps::Integer, band_defs;
         nut*err <= comp && @goto L330
         j = nzz
         comp =  nut * err
-        luck = luck + 10
+        luck += 10
         @goto L235
       @label L340
-        luck == 6 && @goto L370
+        luck == 6 && continue   # @goto L370
         for j = 1 : nfcns
             iext[nzz-j] = iext[nz-j]
         end
@@ -605,13 +605,8 @@ function remez(numtaps::Integer, band_defs;
             iext[j] = iext[j+1]
         end
 
-        continue    # @goto L100
-      @label L370
-
-
-        if jchnge <= 0  # we are done if none of the extremal indices changed
-            break
-        end
+        # @goto L100
+    #   @label L370
     end  # while
 
     #
@@ -625,15 +620,15 @@ function remez(numtaps::Integer, band_defs;
     alpha = zeros(Float64, nzz)   # return vector
 
     fsh = 1.0e-06
-    x[nzz] = -2.0
+    push!(x, -2.0)
     delf = 1 / (2*nfcns - 1)
     l = 1
 
     # Boolean for "kkk" in C code.
     full_grid = (band_defs[1].first[1] == 0.0 && band_defs[end].first[2] == 0.5*Hz) || (nfcns <= 3)
     if !full_grid
-        aa    = 2.0/(grid[1]-grid[ngrid])
-        bb    = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
+        aa = 2.0/(grid[1]-grid[ngrid])
+        bb = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
     end
 
     # Fill in "a" array with the frequency response on an evenly
@@ -655,7 +650,9 @@ function remez(numtaps::Integer, band_defs;
         if xt-x[l] < fsh
             a[j] = y[l]
         else
+            pop!(x)
             a[j] = freq_eval(xt, x, y, ad)
+            push!(x, -2.0)
         end
     end
 
