@@ -488,7 +488,7 @@ function remez(numtaps::Integer, band_defs;
         nut = -nu
         j = 1
 
-        local comp
+        comp = 0.0
 
       @label L200
         j == nzz && (ynz = comp)   # equivalent to "if (j == nzz) ynz = comp; end"
