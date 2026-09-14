@@ -490,69 +490,66 @@ function remez(numtaps::Integer, band_defs;
 
         comp = 0.0
 
-      @label J_LOOP_START
-        j >= nzz && @goto L300
-        kupper = iext[j+1]
-        kandidate = iext[j]+1
-        nut = -nut
-        j == 2 && (y1 = comp)
-        comp = dev
-        kandidate >= kupper && @goto START_SEARCH_LEFT
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err <= comp && @goto START_SEARCH_LEFT
-        comp = nut * err
-      @label SEARCH_RIGHT_FAST
-        kandidate += 1; kandidate >= kupper && @goto EXIT_SEARCH_FAST
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err <= comp && @goto EXIT_SEARCH_FAST
-        comp = nut * err
-        @goto SEARCH_RIGHT_FAST
+        for j in 1:nz
+            kupper = iext[j+1]
+            kandidate = iext[j]+1
+            nut = -nut
+            j == 2 && (y1 = comp)
+            comp = dev
+            kandidate >= kupper && @goto START_SEARCH_LEFT
+            err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
+            nut*err <= comp && @goto START_SEARCH_LEFT
+            comp = nut * err
+          @label SEARCH_RIGHT_FAST
+            kandidate += 1
+            while kandidate < kupper && (err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]; nut*err > comp)
+                comp = nut * err
+                kandidate += 1
+            end
 
-      @label EXIT_SEARCH_FAST
-        iext[j] = kandidate - 1; j += 1
-        klower = kandidate - 1
-        jchnge += 1
-        @goto J_LOOP_START
+          @label EXIT_SEARCH_FAST
+            iext[j] = kandidate - 1
+            klower = kandidate - 1
+            jchnge += 1
+            continue
 
-      @label START_SEARCH_LEFT
-        kandidate -= 1
-      @label SEARCH_LEFT_FAST
-        kandidate -= 1; kandidate <= klower && @goto RESTORE_KANDIDATE
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err > comp && @goto SEARCH_LEFT_LOWER_COMP
-        jchnge <= 0 && @goto SEARCH_LEFT_FAST
-        @goto EXIT_SEARCH_LEFT
+          @label START_SEARCH_LEFT
+            kandidate -= 1
+          @label SEARCH_LEFT_FAST
+            kandidate -= 1; kandidate <= klower && @goto RESTORE_KANDIDATE
+            err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
+            nut*err > comp && @goto SEARCH_LEFT_LOWER_COMP
+            jchnge <= 0 && @goto SEARCH_LEFT_FAST
+            @goto EXIT_SEARCH_LEFT
 
-      @label SEARCH_LEFT_LOWER_COMP
-        comp = nut * err
-        kandidate -= 1; kandidate <= klower && @goto FOUND_LEFT_LOWER_COMP
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err <= comp && @goto FOUND_LEFT_LOWER_COMP
-        @goto SEARCH_LEFT_LOWER_COMP
-      @label FOUND_LEFT_LOWER_COMP
-        klower = iext[j]
-        iext[j] = kandidate+1
-        j += 1
-        jchnge += 1
-        @goto J_LOOP_START
+          @label SEARCH_LEFT_LOWER_COMP
+            comp = nut * err
+            kandidate -= 1; kandidate <= klower && @goto FOUND_LEFT_LOWER_COMP
+            err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
+            nut*err <= comp && @goto FOUND_LEFT_LOWER_COMP
+            @goto SEARCH_LEFT_LOWER_COMP
+          @label FOUND_LEFT_LOWER_COMP
+            klower = iext[j]
+            iext[j] = kandidate+1
+            jchnge += 1
+            continue
 
-      @label RESTORE_KANDIDATE
-        kandidate = iext[j]+1
-        jchnge > 0 && @goto EXIT_SEARCH_FAST
+          @label RESTORE_KANDIDATE
+            kandidate = iext[j]+1
+            jchnge > 0 && @goto EXIT_SEARCH_FAST
 
-      @label SEARCH_RIGHT_AFTER_LEFT
-        kandidate += 1; kandidate >= kupper && @goto EXIT_SEARCH_LEFT
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err <= comp && @goto SEARCH_RIGHT_AFTER_LEFT
-        comp = nut * err
+          @label SEARCH_RIGHT_AFTER_LEFT
+            kandidate += 1; kandidate >= kupper && @goto EXIT_SEARCH_LEFT
+            err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
+            nut*err <= comp && @goto SEARCH_RIGHT_AFTER_LEFT
+            comp = nut * err
 
-        @goto SEARCH_RIGHT_FAST
-      @label EXIT_SEARCH_LEFT
-        klower = iext[j]; j += 1
-        @goto J_LOOP_START
+            @goto SEARCH_RIGHT_FAST
+          @label EXIT_SEARCH_LEFT
+            klower = iext[j]
+        end
 
       @label L300
-        j > nzz && @goto L320
         ynz = comp              # equivalent to "if (j == nzz) ynz = comp; end"
         k1  = min(k1,   iext[1])
         knz = max(knz, iext[nz])
@@ -561,21 +558,20 @@ function remez(numtaps::Integer, band_defs;
         nut1 = nut
         nut = -nu
         comp = ynz*(1.00001)
-        luck = 1
+        lucky = false
       @label L310
-        kandidate += 1; kandidate >= kupper && @goto LUCKY_SKIP_HIGH
+        kandidate += 1; kandidate >= kupper && (lucky = true; @goto L325)
         err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
         nut*err <= comp && @goto L310
         comp = nut * err
-        j = nzz
-        @goto SEARCH_RIGHT_FAST
-
-      @label LUCKY_SKIP_HIGH
-        luck = 6
-        @goto L325
-
-      @label L320
-        luck > 9 && @goto SHIFT_IEXT_DOWN
+        kandidate += 1
+        while kandidate < kupper && (err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]; nut*err > comp)
+            comp = nut * err
+            kandidate += 1
+        end
+        iext[nzz] = kandidate - 1
+        klower = kandidate - 1
+        jchnge += 1
         y1 = max(y1, comp)
         k1 = iext[nzz]
       @label L325
@@ -584,25 +580,34 @@ function remez(numtaps::Integer, band_defs;
         nut = -nut1
         comp = y1*(1.00001)
       @label L330
-        kandidate -= 1; kandidate <= klower && @goto SHIFT_IEXT_UP
-        err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
-        nut*err <= comp && @goto L330
-        j = nzz
-        luck += 10
-        @goto SEARCH_LEFT_LOWER_COMP
-      @label SHIFT_IEXT_UP
-        luck == 6 && continue   # @goto L370
-        for j = 1 : nfcns
-            iext[nzz-j] = iext[nz-j]
-        end
-        iext[1] = k1
-        continue    # @goto L100
-      @label SHIFT_IEXT_DOWN
-        for j = 1:nz
-            iext[j] = iext[j+1]
-        end
+        kandidate -= 1;
+        if kandidate <= klower
+            lucky && continue   # @goto L370
+            # shift iext down
+            for j = 1 : nfcns
+                iext[nzz-j] = iext[nz-j]
+            end
+            iext[1] = k1
+        else
+            err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]
+            nut*err <= comp && @goto L330
+            j = nzz
+            comp = nut * err
+            kandidate -= 1
 
-        # @goto L100
+            while kandidate > klower && (err = (freq_eval(grid[kandidate], x, y, ad) - des[kandidate]) * wt[kandidate]; nut*err > comp)
+                comp = nut * err
+                kandidate -= 1
+            end
+            klower = iext[j]
+            iext[j] = kandidate+1
+            j += 1
+            jchnge += 1
+            # shift iext up
+            for j = 1:nz
+                iext[j] = iext[j+1]
+            end
+        end
     #   @label L370
     end  # while
 
