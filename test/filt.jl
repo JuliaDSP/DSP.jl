@@ -162,7 +162,7 @@ end
     #
     ##############
 
-    zi_python = [0.55996501, -0.72343165,  0.68312446, -0.2220676 ,  0.04030775]
+    zi_python = [0.50905910, -0.65766513, 0.62102224, -0.20187964, 0.03664341]
 
     b = [ 0.00327922,  0.01639608,  0.03279216,  0.03279216,  0.01639608,  0.00327922]
     a = [ 1.1       , -2.47441617,  2.81100631, -1.70377224,  0.54443269, -0.07231567]
@@ -222,6 +222,9 @@ end
     x = read_reference_data("spectrogram_x.txt")
 
     @test x2_matlab ≈ filtfilt(b, a, x)
+
+    # An unnormalized unit-gain IIR filter must preserve a constant signal.
+    @test filtfilt([1.0], [2.0, -1.0], ones(4)) ≈ ones(4)
 end
 
 # Make sure above doesn't crash for real coeffs & complex data.
