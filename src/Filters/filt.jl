@@ -411,7 +411,7 @@ function filt_stepstate(b::AbstractVector{V}, a::AbstractVector{V}) where V<:Num
     B = @views @. muladd(a[2:end], -b[1], b[2:end])
     # Solve si = A*si + B
     # (I - A)*si = B
-    si = (((I - A) \ B) .*= scale_factor)
+    si = (I - A) \ B
     return (si, b, a)
 end
 
