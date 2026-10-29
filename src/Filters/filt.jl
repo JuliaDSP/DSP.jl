@@ -519,7 +519,7 @@ function _fftfilt!(
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
-    for colstart = 0:nx:length(x)-1, off = 1:L:nx
+    for colstart = 0:nx:length(x)-1, off = reverse(1:L:nx)
         npadbefore = max(0, nb - off)
         xstart = off - nb + npadbefore + 1
         n = min(nfft - npadbefore, nx - xstart + 1)
