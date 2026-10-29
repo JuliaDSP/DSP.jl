@@ -341,4 +341,14 @@ end
         @test filtfilt(b, x) ≈ DSP.Filters.iir_filtfilt(b, [1], x)
         @test filtfilt(b, [2.0], x) ≈ DSP.Filters.iir_filtfilt(b, [2], x)
     end
+    # issue #670
+    for nb in (101, 201), nx in (4374, 8192)
+        b = digitalfilter(Lowpass(0.1), FIRWindow(hamming(nb)))
+        x = randn(nx)
+        y = filtfilt(b, x)
+        # test against time domain filt
+        pad = DSP.Filters.extrapolate_signal!(zeros(nx + 2(nb-1)), x, nb-1)
+        ref = filt(conv(b, reverse(b)), 1.0, pad)[2nb-1:end]
+        @test y ≈ ref
+    end
 end
