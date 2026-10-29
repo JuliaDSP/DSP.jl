@@ -424,7 +424,7 @@ function filt_stepstate(f::SecondOrderSections{:z,T}) where T
     y = one(T)
     for i in eachindex(biquads)
         biquad = biquads[i]
-        a1, a2, b0, b1, b2 = biquad.a1, biquad.a2, biquad.b0, biquad.b1, biquad.b2
+        (; a1, a2, b0, b1, b2) = biquad
 
         # At steady state, we have:
         #  y = s1 + b0*x
@@ -453,8 +453,7 @@ end
 """
     tdfilt!(out::AbstractArray, h::AbstractVector, x::AbstractArray)
 
-Like `tdfilt`, but writes the result into array `out`. Output array `out` may
-not be an alias of `x`, i.e. filtering may not be done in place.
+Like `tdfilt`, but writes the result into array `out`.
 """
 function tdfilt!(out::AbstractArray, h::AbstractVector{H}, x::AbstractArray) where H
     filt!(out, h, one(H), x)
@@ -519,7 +518,7 @@ function _fftfilt!(
     mul!(filterft, p1, tmp1)
 
     # FFT of chunks
-    for colstart = 0:nx:length(x)-1, off = 1:L:nx
+    for colstart = 0:nx:length(x)-1, off = reverse(1:L:nx)
         npadbefore = max(0, nb - off)
         xstart = off - nb + npadbefore + 1
         n = min(nfft - npadbefore, nx - xstart + 1)
