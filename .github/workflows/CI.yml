@@ -30,18 +30,13 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macOS-15-intel
+          - macOS-latest
+          - ubuntu-26.04-arm
         arch:
-          - x64
+          - default
         include:
-          - os: macOS-latest
-            arch: default
-            version: '1'
           - os: ubuntu-latest
             arch: x86
-            version: '1'
-          - os: ubuntu-22.04-arm
-            arch: default
             version: '1'
           - os: ubuntu-latest
             arch: default
