@@ -675,22 +675,48 @@ end
 
 
 """
-    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, att=60)
+    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
+    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
 
-Compute FIR coefficients suitable for arbitrary rate resampling
-with `Nϕ` filters / phases, stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+Design the Kaiser-windowed lowpass FIR filter that [`resample`](@ref) and
+[`FIRFilter`](@ref) use to resample by `rate` (output rate / input rate).
+
+For extreme rates the filter is long and designing it can dominate the cost of
+`resample`. To resample many signals at the same rate, design the filter once
+and pass it to `resample(x, rate, h)`.
+
+# Arguments
+- `rate`: resampling ratio. A rational `rate` gives a polyphase filter with
+  `numerator(rate)` phases.
+- `Nϕ`: number of phases for a floating-point `rate`. Output samples between phases
+  are linearly interpolated, so a larger `Nϕ` reduces interpolation error but makes
+  the filter proportionally longer. Pass the same `Nϕ` to `resample` or `FIRFilter`.
+- `rel_bw`: cutoff (−6 dB) frequency, relative to the Nyquist frequency of the lower
+  of the input and output rates. The stopband starts at `1.1 * rel_bw`, so with the
+  default `1.0`, content up to 10% above Nyquist aliases into the top 10% of the
+  output band; `rel_bw = 0.9` avoids this. Smaller values give longer filters.
+- `attenuation`: minimum stopband attenuation in dB. Larger values give longer filters.
+
+# Examples
+```jldoctest
+julia> x = randn(1000);
+
+julia> h = resample_filter(1//2);
+
+julia> resample(x, 1//2, h) == resample(x, 1//2)
+true
+
+julia> h = resample_filter(0.37, 64, 0.9);
+
+julia> resample(x, 0.37, h, 64) == resample(x, 0.37, 64, 0.9)
+true
+```
 """
 function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
     f_nyq = rate >= 1.0 ? 1.0 / Nϕ : rate / Nϕ
     return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
 end
 
-"""
-    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
-
-Compute FIR coefficients suitable for rational rate resampling,
-with stop-band attenuation `att`, and relative bandwidth `rel_bw`.
-"""
 function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
     Nϕ         = numerator(rate)
     decimation = denominator(rate)
