@@ -8,6 +8,10 @@ updates:
       - "dependencies"
       - "no changelog"
   - package-ecosystem: "julia"
-    directory: "/"
+    directories:
+      - "/"
+      - "/docs"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
