@@ -775,8 +775,14 @@ end
 """
     resample(x::AbstractVector, rate::Real, args::Real...)
 
-Constructs a filter with `resample_filter` using the optional arguments `args`,
-and resamples the signal `x` with it.
+Resample the signal `x` by `rate` (output rate / input rate), using a filter
+designed by [`resample_filter`](@ref) with the optional arguments `args`
+(`Nϕ, rel_bw, attenuation` for a floating-point `rate`; `rel_bw, attenuation`
+for an integer or rational `rate`).
+
+The filter is designed anew on every call. When resampling many signals at the
+same rate, compute it once with `resample_filter` and pass it to
+`resample(x, rate, h)` instead.
 """
 function resample(x::AbstractVector, rate::Real, args::Real...)
     sf = FIRFilter(rate, args...)
@@ -787,10 +793,11 @@ end
     resample(x::AbstractArray, rate::Real, h::Vector = resample_filter(rate); dims)
     resample(x::AbstractArray, rate::AbstractFloat, h::Vector, Nϕ=32; dims)
 
-Resample an array `x` along dimension `dims`.
+Resample an array `x` along dimension `dims`, using the filter taps `h`.
 If `rate` is an `AbstractFloat`, the number of phases `Nϕ`
 to be used in constructing `FIRArbitrary` can be supplied
-as an optional argument, which defaults to 32.
+as an optional argument, which defaults to 32. It must match the `Nϕ`
+that `h` was designed for with [`resample_filter`](@ref).
 """
 function resample(x::AbstractArray, rate::Union{Integer,Rational}, h::Vector; dims)
     sf = FIRFilter(h, rate)
