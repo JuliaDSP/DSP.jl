@@ -675,22 +675,58 @@ end
 
 
 """
-    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, att=60)
+    resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
+    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
 
-Compute FIR coefficients suitable for arbitrary rate resampling
-with `Nϕ` filters / phases, stop-band attenuation `att`, and relative bandwidth `rel_bw`.
+Design the Kaiser-windowed lowpass FIR filter used by [`resample`](@ref) and
+[`FIRFilter`](@ref) to resample a signal by `rate` (output rate / input rate).
+The returned taps can be passed to `resample(x, rate, h)` or `FIRFilter(h, rate)`.
+
+The filter is designed for a polyphase implementation, i.e. at an intermediate
+sample rate that is `Nϕ` times the input rate. For a rational `rate`, `Nϕ` is
+`numerator(rate)`; for a floating-point `rate`, `Nϕ` is the number of phases
+of the arbitrary-rate resampler (default `32`), and must match the `Nϕ` later
+passed to `resample` or `FIRFilter`. The taps are scaled by `Nϕ` to compensate
+for the gain lost in upsampling.
+
+# Arguments
+- `rel_bw`: cutoff frequency (−6 dB point) relative to the Nyquist frequency of the
+  lower of the input and output sample rates. The transition band is `0.2 * rel_bw`
+  of that Nyquist frequency wide and centered on the cutoff, so with the default
+  `rel_bw = 1.0` the stopband only begins at 1.1 times the Nyquist frequency, and
+  content just above Nyquist aliases into the top of the passband. Choose
+  `rel_bw ≤ 1/1.1 ≈ 0.9` to keep aliases out of the passband entirely, at the cost
+  of bandwidth. Since the transition band shrinks with `rel_bw`, smaller values
+  give longer filters.
+- `attenuation`: minimum stopband attenuation in dB. Larger values give longer filters.
+- `Nϕ` (floating-point `rate` only): number of phases. Output samples falling between
+  phases are linearly interpolated, so increasing `Nϕ` reduces interpolation error
+  and the associated aliasing, at the cost of a proportionally longer filter.
+
+The filter length is chosen with the Kaiser formula for the given transition width and
+attenuation, then rounded up to a multiple of `Nϕ` and made odd.
+
+Designing the filter can take a significant part of the run time of `resample`,
+especially for extreme rates, where the filter becomes long. When resampling many
+signals at the same `rate`, design the filter once and reuse it:
+
+```julia
+h = resample_filter(rate)
+ys = [resample(x, rate, h) for x in signals]
+```
+
+When the rate is a floating-point number, pass the same `Nϕ` to both functions:
+
+```julia
+h = resample_filter(rate, 64, 0.9)
+y = resample(x, rate, h, 64)
+```
 """
 function resample_filter(rate::AbstractFloat, Nϕ::Integer=32, rel_bw::Real=1.0, attenuation=60)
     f_nyq = rate >= 1.0 ? 1.0 / Nϕ : rate / Nϕ
     return _resample_filter(f_nyq, Nϕ, rel_bw, attenuation)
 end
 
-"""
-    resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
-
-Compute FIR coefficients suitable for rational rate resampling,
-with stop-band attenuation `att`, and relative bandwidth `rel_bw`.
-"""
 function resample_filter(rate::Union{Integer,Rational}, rel_bw::Real=1.0, attenuation=60)
     Nϕ         = numerator(rate)
     decimation = denominator(rate)
