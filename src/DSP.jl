@@ -1,8 +1,22 @@
 module DSP
 
-using FFTW
 using LinearAlgebra: Transpose, mul!, rmul!
 using IterTools: subsets
+
+# FFT Backend system - must be included first
+include("fft/FFTBackend.jl")
+include("fft/FFTAImpl.jl")
+using .FFTBackend
+using .FFTAImpl
+
+# Re-export FFT backend API
+# Note: FFT functions (fft, rfft, etc.) are NOT exported to avoid conflicts with FFTW.jl
+# Users should either:
+# 1. Use FFTW.jl's exports: `using FFTW; fft(x)`
+# 2. Qualify with DSP: `DSP.fft(x)` (uses the current backend)
+# The backend selection (FFTABackend vs FFTWBackend) is automatic based on loaded packages.
+export FFTABackend, set_fft_backend!, get_fft_backend
+export fftfreq, rfftfreq, fftshift, ifftshift
 
 export conv, conv!, deconv, filt, filt!, xcorr
 

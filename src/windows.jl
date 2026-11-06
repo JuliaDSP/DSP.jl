@@ -2,7 +2,7 @@ module Windows
 using ..Util
 using Bessels: besseli0
 using LinearAlgebra: Diagonal, SymTridiagonal, eigen!, mul!, rmul!
-using FFTW
+using ..FFTBackend
 
 export  rect,
         hann,
