@@ -1,7 +1,7 @@
 module LPC
 
 
-using ..DSP: xcorr
+using ..Convolutions: xcorr
 
 using LinearAlgebra: dot, BlasComplex, BLAS
 
