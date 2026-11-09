@@ -236,6 +236,22 @@ end
     out = similar(expected)
     @test power(welch_pgram!(out, convert(UnitRange{Float64}, data), config)) == expected
 
+    @testset "Welch configuration task ownership" begin
+        signals = [sinpi.((0:63) ./ 8), cospi.((0:63) ./ 8)]
+        fresh = [power(welch_pgram(signal; n=16, noverlap=8, window=hanning)) for signal in signals]
+        reused = WelchConfig(signals[1]; n=16, noverlap=8, window=hanning)
+        for _ in 1:2, i in eachindex(signals)
+            @test power(welch_pgram(signals[i], reused)) ≈ fresh[i]
+        end
+        configs = [WelchConfig(signal; n=16, noverlap=8, window=hanning) for signal in signals]
+        tasks = map(signals, configs) do signal, config
+            Threads.@spawn welch_pgram(signal, config)
+        end
+        for (spectrum, reference) in zip(fetch.(tasks), fresh)
+            @test power(spectrum) ≈ reference
+        end
+    end
+
     # Test fftshift
     p = periodogram(data); p_shifted = fftshift(p)
     @test power(p) == power(p_shifted)

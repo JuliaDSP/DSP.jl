@@ -548,6 +548,13 @@ returns a Periodogram object. For a Bartlett periodogram, set `noverlap=0`. See
     Thus, repeated calls to `welch_pgram` that use the same `WelchConfig` object
     will be more efficient than otherwise possible.
 
+!!! warning "Concurrent use"
+
+    `WelchConfig` owns mutable FFT input and output buffers. Reuse a configuration
+    sequentially, but do not share it between concurrent `welch_pgram` or
+    `welch_pgram!` calls. Give each concurrent task its own configuration (and its
+    own output array when using `welch_pgram!`).
+
 # Examples
 ```jldoctest
 julia> x = 1:8;
@@ -555,6 +562,23 @@ julia> x = 1:8;
 julia> wconfig1 = WelchConfig(x; n=length(x), noverlap=0, window=hanning, nfft=16);
 
 julia> wconfig2 = WelchConfig(8, Float64; n=length(x), noverlap=0, window=hanning, nfft=16);
+```
+
+Create separate configurations before starting concurrent tasks:
+
+```jldoctest
+julia> signals = [sinpi.((0:63) ./ 8), cospi.((0:63) ./ 8)];
+
+julia> configs = [WelchConfig(signal; window=hanning) for signal in signals];
+
+julia> tasks = map(signals, configs) do signal, config
+           Threads.@spawn welch_pgram(signal, config)
+       end;
+
+julia> spectra = fetch.(tasks);
+
+julia> all(power(spectra[i]) ≈ power(welch_pgram(signals[i]; window=hanning)) for i in eachindex(signals))
+true
 ```
 """
 function WelchConfig(nsamples::Integer, ::Type{T};
@@ -691,6 +715,8 @@ end
     welch_pgram(s::AbstractVector, config::WelchConfig)
 
 Computes the Welch periodogram of the given signal `s` using a predefined [`WelchConfig`](@ref) object.
+The configuration can be reused sequentially; use a separate configuration for each concurrent task.
+See the ownership warning in [`WelchConfig`](@ref).
 
 # Examples
 ```jldoctest
