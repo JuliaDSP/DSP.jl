@@ -1,7 +1,7 @@
 !(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 using DSP, Test, FilterTestHelpers
 using LinearAlgebra: norm
-using FFTW: fft
+using FFTL: fft
 
 #
 # Butterworth filter prototype

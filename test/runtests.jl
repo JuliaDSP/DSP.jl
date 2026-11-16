@@ -1,4 +1,4 @@
-using DSP, FFTW, Test
+using DSP, FFTL, Test
 
 using DSP: allocate_output
 using Random: seed!
