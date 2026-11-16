@@ -2,7 +2,7 @@ module Util
 using ..DSP: xcorr
 import Base: *
 using LinearAlgebra: mul!, BLAS
-using FFTW
+using FFTL
 using Statistics: mean
 
 export  hilbert,
@@ -28,7 +28,13 @@ export  hilbert,
         alignsignals!
 
 
-function hilbert(x::StridedVector{T}) where T<:FFTW.fftwReal
+# Element types the transforms run on without conversion; other `Real` and `Complex` inputs
+# are converted to `Float64` and `ComplexF64`.
+const FFTReal = Union{Float32,Float64}
+const FFTComplex = Union{ComplexF32,ComplexF64}
+const FFTNumber = Union{FFTReal,FFTComplex}
+
+function hilbert(x::StridedVector{T}) where T<:FFTReal
 # Return the Hilbert transform of x (a real signal).
 # Code inspired by Scipy's implementation, which is under BSD license.
     N = length(x)
@@ -89,18 +95,18 @@ end
 ## FFT TYPES
 
 # Get the input element type of FFT for a given type
-fftintype(::Type{T}) where {T<:FFTW.fftwNumber} = T
+fftintype(::Type{T}) where {T<:FFTNumber} = T
 fftintype(::Type{T}) where {T<:Real} = Float64
 fftintype(::Type{T}) where {T<:Complex} = ComplexF64
 
 # Get the return element type of FFT for a given type
-fftouttype(::Type{T}) where {T<:FFTW.fftwComplex} = T
-fftouttype(::Type{T}) where {T<:FFTW.fftwReal} = Complex{T}
+fftouttype(::Type{T}) where {T<:FFTComplex} = T
+fftouttype(::Type{T}) where {T<:FFTReal} = Complex{T}
 fftouttype(::Type{T}) where {T<:Union{Real,Complex}} = ComplexF64
 
 # Get the real part of the return element type of FFT for a given type
-fftabs2type(::Type{Complex{T}}) where {T<:FFTW.fftwReal} = T
-fftabs2type(::Type{T}) where {T<:FFTW.fftwReal} = T
+fftabs2type(::Type{Complex{T}}) where {T<:FFTReal} = T
+fftabs2type(::Type{T}) where {T<:FFTReal} = T
 fftabs2type(::Type{T}) where {T<:Union{Real,Complex}} = Float64
 
 # Get next fast FFT size for a given signal length
@@ -118,7 +124,7 @@ of the padded array.
 
 For `Integer` inputs, this returns the closest product of 2, 3, 5, and 7
 greater than or equal to `n`.
-FFTW contains optimized kernels for these sizes and computes
+FFTL contains optimized kernels for these sizes and computes
 Fourier transforms of inputs that are a product of these
 sizes faster than for inputs of other sizes.
 

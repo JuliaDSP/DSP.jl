@@ -16,7 +16,7 @@
 
 using DSP, Test
 using Statistics: mean
-using FFTW: fft, fftfreq, fftshift, rfft, ifft
+using FFTL: fft, fftfreq, fftshift, rfft, ifft
 using DSP: allocate_output
 
 !(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)

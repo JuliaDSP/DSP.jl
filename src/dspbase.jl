@@ -317,7 +317,7 @@ function optimalfftfiltlength(nb, nx)
 end
 
 """
-Prepare buffers and FFTW plans for convolution. The two buffers, tdbuff and
+Prepare buffers and FFT plans for convolution. The two buffers, tdbuff and
 fdbuff may be an alias of each other, because complex convolution only requires
 one buffer. The plans are mutating where possible, and the inverse plan is
 unnormalized.
@@ -338,7 +338,7 @@ end
     buff = similar(u, nffts)
 
     p = plan_fft!(buff)
-    ip = inv(p).p
+    ip = plan_bfft!(buff)
 
     buff, buff, p, ip # Only one buffer for complex
 end
@@ -405,7 +405,7 @@ function unsafe_conv_kern_os_edge!(
     # Data to be convolved
     u,
     filter_fd,
-    # FFTW plans
+    # FFT plans
     p,
     ip,
     # Sizes, ranges, and other pre-calculated constants
@@ -581,7 +581,7 @@ function unsafe_conv_kern_os!(out,
             # Data to be convolved
             u,
             filter_fd,
-            # FFTW plans
+            # FFT plans
             p,
             ip,
             # Sizes, ranges, and other pre-calculated constants

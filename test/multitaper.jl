@@ -1,4 +1,4 @@
-using DSP, FFTW, Test
+using DSP, FFTL, Test
 using Statistics: mean
 using DSP: allocate_output
 
@@ -27,7 +27,7 @@ const epsilon = 10^-3
         for T in (Float32, Float64, Complex{Float32}, Complex{Float64})
             fft_input_tmp = Vector{T}(undef, nfft)
             onesided = T <: Real
-            fft_flags = FFTW.ESTIMATE
+            fft_flags = FFTL.ESTIMATE
             freqs = onesided ? rfftfreq(nfft, fs) : fftfreq(nfft, fs)
             fft_output_tmp = Vector{fftouttype(T)}(undef, length(freqs))
             r = fs*ntapers*ones(ntapers)
