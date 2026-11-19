@@ -577,7 +577,7 @@ julia> tasks = map(signals, configs) do signal, config
 
 julia> spectra = fetch.(tasks);
 
-julia> all(power(spectra[i]) ≈ power(welch_pgram(signals[i]; window=hanning)) for i in eachindex(signals))
+julia> all(power(spectra[i]) == power(welch_pgram(signals[i]; window=hanning)) for i in eachindex(signals))
 true
 ```
 """
