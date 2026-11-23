@@ -583,10 +583,12 @@ end
 # Updates FIRArbitrary state. See Section 7.5.1 in [1].
 #   [1] uses a phase accumulator that increments by Δ (Nϕ/rate)
 
-@fastmath function update!(kernel::FIRArbitrary)
+function update!(kernel::FIRArbitrary)
     ϕAcc = kernel.ϕAccumulator + kernel.Δ
     xIdx = kernel.xIdx
-    α, ϕosF64 = modf(ϕAcc)
+    # unsafe modf; elide checks / copysign as invariants preserved
+    ϕosF64 = trunc(ϕAcc)
+    α = ϕAcc - ϕosF64
     ϕ_os = unsafe_trunc(Int, ϕosF64)
 
     if ϕ_os >= kernel.Nϕ
