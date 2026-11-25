@@ -91,109 +91,107 @@ C CODE BANNER
 @enum RemezFilterType filter_type_bandpass filter_type_differentiator filter_type_hilbert
 
 
-
 """
     lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
 
 CALCULATE THE LAGRANGE INTERPOLATION COEFFICIENTS
+
 """
-function lagrange_interp(k::Integer, n::Integer, m::Integer, x::AbstractVector)
-    retval = 1.0
+function lagrange_interp(k::Int, stride::Int, x::Vector)
+    product = 1.0
     q = x[k]
-    for l = 1:m, j = l:m:n
-        if j != k
-            retval *= 2.0 * (q - x[j])
-        end
+    # The strided product order limits roundoff in high-order interpolation.
+    for offset in 1:stride, j in offset:stride:lastindex(x)
+        j == k && continue
+        product *= 2.0 * (q - x[j])
     end
-    1.0 / retval
+    return inv(product)
 end
 
+@inline function update_weights!(wts::T, stride::Int, nodes::T) where T<:Vector
+    for j in eachindex(nodes, wts)
+        wts[j] = lagrange_interp(j, stride, nodes)
+    end
+    nothing
+end
+
+_remez_callable(value::Real) = Returns(value)
+_remez_callable(value) = value
+
+function _remez_band_edges(band::Pair, Hz, lo, hi)
+    fl = Float64(clamp(band.first[1] / Hz, lo, hi))
+    fu = Float64(clamp(band.first[2] / Hz, lo, hi))
+    return fl, fu
+end
 
 """
     build_grid(numtaps, band_defs, Hz, grid_density, neg)
 
 Returns `grid`, `des`, and `wt` arrays
 """
-function build_grid(nfilt, band_defs, Hz, grid_density, neg::Bool)
-    nodd = isodd(nfilt)
-    nfcns = nfilt ÷ 2
-    nfcns += nodd & !neg
+function build_grid(numtaps::Int, band_defs, Hz, density::Int, neg::Bool)
+    nodd = isodd(numtaps)
+    ncosines = numtaps ÷ 2 + (nodd & !neg)
 
     #
     # SET UP THE DENSE GRID. THE NUMBER OF POINTS IN THE GRID
     # IS (FILTER LENGTH + 1)*GRID DENSITY/2
     #
-    delf = 0.5 / (grid_density * nfcns)
+    delf = 0.5 / (density * ncosines)
 
-    flimlow = neg ? delf : 0.0
-    flimhigh = (neg == nodd) ? 0.5 - delf : 0.5
-    function normalize_banddef_entry(b)
-        # normalize and clamp band-edges
-        fl = convert(Float64, clamp(b.first[1] / Hz, flimlow, flimhigh))
-        fu = convert(Float64, clamp(b.first[2] / Hz, flimlow, flimhigh))
-        # make sure desired and weight are functions
-        if isa(b.second, Tuple{Any, Any})
-            desired = b.second[1]
-            weight = b.second[2]
-        else
-            desired = b.second
-            weight = 1.0
-        end
-        if isa(desired, Real)
-            desired = Returns(desired)
-        end
-        if isa(weight, Real)
-            weight = Returns(weight)
-        end
-        return Pair{Tuple{Float64,Float64},Tuple{Any,Any}}((fl, fu), (desired, weight))
+    lower_lim = neg ? delf : 0.0
+    upper_lim = (neg == nodd) ? 0.5 - delf : 0.5
+
+    # Count first, then fill directly; no normalized band or frequency arrays.
+    ngrid = 0
+    for band in band_defs
+        low, high = _remez_band_edges(band, Hz, lower_lim, upper_lim)
+        ngrid += max(length(low:delf:high), 1)
     end
-    normalized_band_defs = normalize_banddef_entry.(band_defs)
+    grid = Vector{Float64}(undef, ngrid)
+    desired = similar(grid)
+    weight = similar(grid)
 
-    # work around JuliaLang/julia#15276
-    ngrid = let delf=delf
-        sum(max(length(band_def.first[1]:delf:band_def.first[2]), 1) for band_def in normalized_band_defs)#::Int
+    index = 1
+    for band in band_defs
+        low, high = _remez_band_edges(band, Hz, lower_lim, upper_lim)
+        response, importance = band.second isa Tuple{Any,Any} ?
+                               band.second : (band.second, 1.0)
+        index = build_band!(grid, desired, weight, index, low:delf:high,
+                                  high, neg, nodd, Hz,
+                                  _remez_callable(response), _remez_callable(importance))
     end
-
-    grid = zeros(Float64, ngrid)  # the array of frequencies, between 0 and 0.5
-    des = zeros(Float64, ngrid)   # the desired function on the grid
-    wt = zeros(Float64, ngrid)    # array of weights
-
-    j = 1
-
-    #
-    # CALCULATE THE DESIRED MAGNITUDE RESPONSE AND THE WEIGHT
-    # FUNCTION ON THE GRID
-    #
-    # and
-    #
-    # SET UP A NEW APPROXIMATION PROBLEM WHICH IS EQUIVALENT
-    # TO THE ORIGINAL PROBLEM
-    #
-    for band_def in normalized_band_defs
-        flow, fup = band_def.first
-        # outline inner loop to have it type-stable (band_def.second is Tuple{Any,Any})
-        j = _buildgrid!(grid, des, wt, j, [(flow:delf:fup)[1:end-1]; fup], neg, nodd, Hz,
-                        band_def.second)
-    end
-    @assert ngrid == j - 1
-
-    return grid, des, wt
+    @assert index - 1 == ngrid
+    return grid, desired, weight
 end
 
-function _buildgrid!(grid, des, wt, j, fs, neg, nodd, Hz, des_wt)
-    desired, weight = des_wt
-    for f in fs
-        change = neg ? sinpi(nodd ? 2f : f) : (nodd ? 1.0 : cospi(f))
-        grid[j] = cospi(2f)
-        des[j] = desired(f * Hz) / change
-        wt[j] = weight(f * Hz) * change
-        j += 1
+# Specialize on each band's callables, including heterogeneous band definitions.
+function build_band!(
+    grid::Vector, desired::Vector, weight::Vector,
+    index::Int, frequencies, high::Float64,
+    neg::Bool, odd::Bool, Hz,
+    response::D, importance::W
+) where {D,W}
+    cnt = max(length(frequencies), 1)
+    for i in 1:cnt
+        # The final point is exactly the upper edge, including zero-width bands.
+        frequency = i == cnt ? high : frequencies[i]
+        change = neg ? sinpi(odd ? 2frequency : frequency) :
+                       (odd ? 1.0 : cospi(frequency))
+        grid[index] = cospi(2frequency)
+        desired[index] = response(frequency * Hz) / change
+        weight[index] = importance(frequency * Hz) * change
+        index += 1
     end
-    return j
+    return index
 end
 
 """
     function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
+
+Barycentric evaluation away from the interpolation nodes.
+
+Modified from:
 -----------------------------------------------------------------------
  FUNCTION: freq_eval (gee)
   FUNCTION TO EVALUATE THE FREQUENCY RESPONSE USING THE
@@ -201,51 +199,46 @@ end
 
 -----------------------------------------------------------------------
 """
-function freq_eval(xf, x::AbstractVector, y::AbstractVector, ad::AbstractVector)
-    d = 0.0
-    p = 0.0
-
-    for j in eachindex(ad)
-        c = ad[j] / (xf - x[j])
-        d += c
-        p = muladd(c, y[j], p)
+@inline function freq_eval(frequency, nodes::T, values::T, weights::T) where T<:Vector
+    denominator = 0.0
+    numerator = 0.0
+    # Reassociation may change Remez convergence, but is not less correct
+    @simd for j in eachindex(weights, values, nodes)
+        coefficient = weights[j] / (frequency - nodes[j])
+        denominator += coefficient
+        numerator += coefficient * values[j]
     end
-
-    p/d
+    return numerator / denominator
 end
 
-function initialize_y(dev::Float64, nz::Integer, iext::AbstractArray, des::AbstractArray, wt::AbstractArray, y::AbstractArray)
-    nu = 1
-    if dev > 0.0
-        nu = -1
+# Fit the alternating weighted error on the current extremal set.
+function _remez_interpolate!(nodes, values, weights, iext, grid, desired, importance)
+    cnt = length(values)
+    stride = (cnt - 2) ÷ 15 + 1
+    @simd for j in 1:cnt
+        @inbounds nodes[j] = grid[iext[j]]
     end
-    dev = -nu * dev
-    k = nu
-    for j = 1 : nz
-        l = iext[j]
-        y[j] = des[l] + k * dev / wt[l]
-        k = -k
+    update_weights!(weights, stride, nodes)
+
+    num = den = 0.0
+    @inbounds @simd for j in 1:cnt
+        index = iext[j]
+        w = weights[j] / importance[index]
+        num += weights[j] * desired[index]
+        den += ifelse(isodd(j), w, -w)
     end
-    nu, dev
+    deviation = num / den
+    first_sign = deviation > 0.0 ? -1 : 1
+    deviation = -first_sign * deviation
+    sgn = first_sign
+    for j in 1:cnt
+        index = iext[j]
+        values[j] = desired[index] + sgn * deviation / importance[index]
+        sgn = -sgn
+    end
+    return first_sign, deviation
 end
 
-#=========
-Banner from C code
-
------------------------------------------------------------------------
- SUBROUTINE: remez
-  THIS SUBROUTINE IMPLEMENTS THE REMEZ EXCHANGE ALGORITHM
-  FOR THE WEIGHTED CHEBYSHEV APPROXIMATION OF A CONTINUOUS
-  FUNCTION WITH A SUM OF COSINES.  INPUTS TO THE SUBROUTINE
-  ARE A DENSE GRID WHICH REPLACES THE FREQUENCY AXIS, THE
-  DESIRED FUNCTION ON THIS GRID, THE WEIGHT FUNCTION ON THE
-  GRID, THE NUMBER OF COSINES, AND AN INITIAL GUESS OF THE
-  EXTREMAL FREQUENCIES.  THE PROGRAM MINIMIZES THE CHEBYSHEV
-  ERROR BY DETERMINING THE BSMINEST LOCATION OF THE EXTREMAL
-  FREQUENCIES (POINTS OF MAXIMUM ERROR) AND THEN CALCULATES
-  THE COEFFICIENTS OF THE BEST APPROXIMATION.
------------------------------------------------------------------------
-=========#
 """
     remez(numtaps::Integer, band_defs;
           Hz::Real=1.0,
@@ -396,366 +389,316 @@ function remez(numtaps::Integer, band_defs;
     (0 <= band_defs[1].first[1]) && (band_defs[end].first[2] <= 0.5*Hz) ||
         throw(ArgumentError("band edges must be between 0 and `Hz`/2"))
 
-    grid, des, wt = build_grid(numtaps, band_defs, Hz, grid_density, neg)
+    grid, desired, weight = build_grid(Int(numtaps), band_defs, Hz, Int(grid_density), neg)
+    full_grid = band_defs[1].first[1] == 0.0 && band_defs[end].first[2] == 0.5Hz
+    return _remez_solve(numtaps, neg, maxiter, full_grid, grid, desired, weight)
+end
 
-    nfilt = numtaps
-    ngrid = length(grid)
-
-    nodd = isodd(nfilt)   # boolean: "nodd" means filter length is odd
-    nfcns = numtaps ÷ 2   # integer divide
-    if nodd && !neg
-        nfcns = nfcns + 1
+function _remez_solve(numtaps, neg, maxiter, full_grid, grid, desired, weight)
+    ncosines = numtaps ÷ 2 + (isodd(numtaps) & !neg)
+    cnt = ncosines + 1
+    iext = Vector{Int}(undef, cnt + 1)  # indices of extremals
+    nodes = zeros(cnt + 1); pop!(nodes) # reserve for sentinel (for coefficient recovery)
+    values = zeros(cnt)
+    bary_wts = zeros(cnt)
+    for j in 1:cnt
+        iext[j] = (j - 1) * (length(grid) - 1) ÷ ncosines + 1
     end
+    iext[end] = length(grid) + 1
 
-    nz  = nfcns+1
-    nzz = nfcns+2
-    iext = zeros(Int64, nzz)   # indices of extremals
-    x = zeros(Float64, nzz)
-    y = zeros(Float64, nz)
-
-    for j = 1:nz
-        iext[j] = (j-1)*(ngrid-1) ÷ nfcns + 1
-    end
-
-    dev = 0.0     # deviation from the desired function,
-                  # that is, the amount of "ripple" on the extremal set
-    devl = -1.0   # deviation on last iteration
+    dev = 0.0       # deviation from the desired function,
+                    # that is, the amount of "ripple" on the extremal set
+    devl = -1.0     # deviation on last iteration
     niter = 0
-    ad = zeros(Float64, nz)
-
-    jet = ((nfcns-1) ÷ 15) + 1
-
     while true
-
-        #
-        # Start next iteration
-        #
-    #   @label L100
-        iext[nzz] = ngrid + 1
         niter += 1
         if niter > maxiter
             @warn("remez() iteration count exceeds maxiter = $maxiter, filter is not converged; try increasing maxiter")
-            # the filter is returned in its current, unconverged state.
             break
         end
 
-        for j = 1:nz
-            x[j] = grid[iext[j]]
-        end
-
-        for j = 1 : nz
-            ad[j] = lagrange_interp(j, nz, jet, x)
-        end
-
-        dnum = 0.0
-        dden = 0.0
-        k = 1
-        for j = 1 : nz
-            l = iext[j]
-            dnum = muladd(ad[j], des[l], dnum)
-            dden = muladd(k, ad[j] / wt[l], dden)
-            k = -k
-        end
-        dev = dnum / dden
-
-        fill!(y, 0.0)
-        nu, dev = initialize_y(dev, nz, iext, des, wt, y)
-
+        first_sign, dev = _remez_interpolate!(nodes, values, bary_wts, iext,
+                                              grid, desired, weight)
         if dev <= devl
-            # finished
             throw(ErrorException("remez() - failure to converge at iteration $niter, try reducing transition band width"))
         end
         devl = dev
-
-        #
-        # SEARCH FOR THE EXTREMAL FREQUENCIES OF THE BEST APPROXIMATION
-        #
-
-        # Between here and L370, the extremal index set is updated in a loop
-        # roughly over the index "j" - although the logic is complicated as
-        # the extremal set may grow or shrink in an iteration.
-        # j - the index of the current extremal being updated
-        # nz - the number of cosines in the approximation (including the constant term).
-        #      nz = nfcns + 1 where nfcns = nfilt / 2, and
-        #      nfilt is the filter length or number of taps.
-        #      For example, for a length 15 filter, nfcns = 7 and nz = 8.
-        # jchgne - the number of extremal indices that changed this iteration
-        jchnge = 0
-        k1 = iext[1]
-        knz = iext[nz]
-        klow = 0
-        nut = -nu
-        j = 1
-
-        local comp
-
-      @label L200
-        j == nzz && (ynz = comp)   # equivalent to "if (j == nzz) ynz = comp; end"
-        j >= nzz && @goto L300
-        kup = iext[j+1]
-        l = iext[j]+1
-        nut = -nut
-        j == 2 && (y1 = comp)
-        comp = dev
-        l >= kup && @goto L220
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L220
-        comp = nut * err
-      @label L210
-        l += 1; l >= kup && @goto L215
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L215
-        comp = nut * err
-        @goto L210
-
-      @label L215
-        iext[j] = l - 1; j += 1
-        klow = l - 1
-        jchnge += 1
-        @goto L200
-
-      @label L220
-        l -= 1
-      @label L225
-        l -= 1; l <= klow && @goto L250
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err > comp && @goto L230
-        jchnge <= 0 && @goto L225
-        @goto L260
-
-      @label L230
-        comp = nut * err
-      @label L235
-        l -= 1; l <= klow && @goto L240
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L240
-        comp = nut * err
-        @goto L235
-      @label L240
-        klow = iext[j]
-        iext[j] = l+1
-        j += 1
-        jchnge += 1
-        @goto L200
-
-      @label L250
-        l = iext[j]+1
-        jchnge > 0 && @goto L215
-
-      @label L255
-        l += 1; l >= kup && @goto L260
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L255
-        comp = nut * err
-
-        @goto L210
-      @label L260
-        klow = iext[j]; j += 1
-        @goto L200
-
-      @label L300
-        j > nzz && @goto L320
-        k1 > iext[1] && (k1 = iext[1])
-        knz < iext[nz] && (knz = iext[nz])
-        nut1 = nut
-        nut = -nu
-        l = 0
-        kup = k1
-        comp = ynz*(1.00001)
-        luck = 1
-      @label L310
-        l += 1; l >= kup && @goto L315
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L310
-        comp =  nut * err
-        j = nzz
-        @goto L210
-
-      @label L315
-        luck = 6
-        @goto L325
-
-      @label L320
-        luck > 9 && @goto L350
-        comp > y1 && (y1 = comp)
-        k1 = iext[nzz]
-      @label L325
-        l = ngrid+1
-        klow = knz
-        nut = -nut1
-        comp = y1*(1.00001)
-      @label L330
-        l -= 1; l <= klow && @goto L340
-        err = (freq_eval(grid[l], x, y, ad) - des[l]) * wt[l]
-        nut*err <= comp && @goto L330
-        j = nzz
-        comp =  nut * err
-        luck = luck + 10
-        @goto L235
-      @label L340
-        luck == 6 && @goto L370
-        for j = 1 : nfcns
-            iext[nzz-j] = iext[nz-j]
-        end
-        iext[1] = k1
-        continue    # @goto L100
-      @label L350
-        for j = 1:nz
-            iext[j] = iext[j+1]
-        end
-
-        continue    # @goto L100
-      @label L370
-
-
-        if jchnge <= 0  # we are done if none of the extremal indices changed
-            break
-        end
-    end  # while
-
-    #
-    #    CALCULATION OF THE COEFFICIENTS OF THE BEST APPROXIMATION
-    #    USING THE INVERSE DISCRETE FOURIER TRANSFORM
-    #
-
-    a = zeros(Float64, nfcns)   # frequency response on evenly spaced grid
-    p = zeros(Float64, nfcns)
-    q = zeros(Float64, nfcns-2)
-    alpha = zeros(Float64, nzz)   # return vector
-
-    fsh = 1.0e-06
-    x[nzz] = -2.0
-    delf = 1 / (2*nfcns - 1)
-    l = 1
-
-    # Boolean for "kkk" in C code.
-    full_grid = (band_defs[1].first[1] == 0.0 && band_defs[end].first[2] == 0.5*Hz) || (nfcns <= 3)
-    if !full_grid
-        aa    = 2.0/(grid[1]-grid[ngrid])
-        bb    = -(grid[1]+grid[ngrid])/(grid[1]-grid[ngrid])
+        _remez_exchange!(iext, grid, desired, weight, nodes, values, bary_wts,
+                         first_sign, dev) || break
     end
 
-    # Fill in "a" array with the frequency response on an evenly
-    # spaced set of frequencies. Care is taken to use "y[l]" -
-    # an already computed response on one of the extremals "l" -
-    # if the extremal is equal to the frequency ft. If no y[l]
-    # matches, a[j] is computed using freq_eval.
-    for j = 1 : nfcns
-        xt = cospi(2 * (j - 1) * delf)
-        if !full_grid
-            xt = (xt-bb)/aa
-        end
-        if (l > 1)
-            l = l-1
-        end
-        while x[l]-xt >= fsh
-            l += 1
-        end
-        if xt-x[l] < fsh
-            a[j] = y[l]
+    push!(nodes, -2.0)
+    return _remez_coefficients(numtaps, neg, full_grid, grid, nodes, values, bary_wts)
+end
+
+# Search a monotone run of signed error, stopping before the exclusive bound.
+# The direction is a value parameter so the two hot loops specialize separately.
+@inline function _remez_peak(sdev, index, bound, amplitude, sgn, ::Val{step}) where {step}
+    while index + step != bound
+        candidate = sdev(index + step, sgn)
+        candidate <= amplitude && break
+        index += step
+        amplitude = candidate
+    end
+    return index, amplitude
+end
+
+# Exchange extremals in place. Searching each interval in the same order preserves
+# the original algorithm's tie breaking and its behavior at the iteration limit.
+function _remez_exchange!(iext, grid, desired, wts, nodes, values, bary_wts,
+                          first_sign, ripple)
+    cnt = length(values)
+    gridlength = length(grid)
+    oldfirst, oldlast = iext[1], iext[cnt]
+    lower = 0
+    changed = false
+    first_amplitude = last_amplitude = ripple
+    sgn = first_sign
+    sdev(i, sign) = sign * (freq_eval(grid[i], nodes, values, bary_wts) - desired[i]) * wts[i]
+
+    for j in 1:cnt
+        current, upper = iext[j], iext[j + 1]
+        amplitude = ripple
+        candidate = current + 1
+
+        value = candidate < upper ? sdev(candidate, sgn) : amplitude
+        if value > amplitude
+            candidate, amplitude = _remez_peak(sdev, candidate, upper,
+                                               value, sgn, Val(1))
+            lower = candidate
+            changed = true
         else
-            a[j] = freq_eval(xt, x, y, ad)
+            candidate = current - 1
+            while candidate > lower
+                value = sdev(candidate, sgn)
+                if value > amplitude
+                    candidate, amplitude = _remez_peak(sdev, candidate, lower,
+                                                       value, sgn, Val(-1))
+                    break
+                end
+                changed && break
+                candidate -= 1
+            end
+
+            if candidate > lower && amplitude > ripple
+                # Keep the old extremum as the lower bound when moving left.
+                lower = current
+                changed = true
+            elseif candidate <= lower && changed
+                candidate = current
+                lower = current
+            elseif !changed
+                candidate = current + 2
+                while candidate < upper
+                    value = sdev(candidate, sgn)
+                    value > amplitude && break
+                    candidate += 1
+                end
+                if candidate < upper
+                    candidate, amplitude = _remez_peak(sdev, candidate, upper,
+                                                       value, sgn, Val(1))
+                    changed = true
+                else
+                    candidate = current
+                end
+                lower = candidate
+            else
+                candidate = current
+                lower = current
+            end
+        end
+
+        iext[j] = candidate
+        j == 1 && (first_amplitude = amplitude)
+        last_amplitude = amplitude
+        sgn = -sgn
+    end
+
+    # An extra extremum at either end may displace the opposite endpoint.
+    # The small margin avoids cycling on nearly equal endpoint errors.
+    left_bound  = min(oldfirst, iext[1])
+    right_bound = max(oldlast, iext[cnt])
+    left = 1
+    threshold = last_amplitude * 1.00001
+    amplitude = threshold
+    while left < left_bound
+        amplitude = sdev(left, -first_sign)
+        amplitude > threshold && break
+        left += 1
+    end
+    have_left = left < left_bound
+    if have_left
+        left, amplitude = _remez_peak(sdev, left, left_bound,
+                                      amplitude, -first_sign, Val(1))
+        first_amplitude = max(first_amplitude, amplitude)
+    end
+
+    right = gridlength
+    threshold = first_amplitude * 1.00001
+    while right > right_bound
+        amplitude = sdev(right, sgn)
+        amplitude > threshold && break
+        right -= 1
+    end
+    if right > right_bound
+        right, _ = _remez_peak(sdev, right, right_bound,
+                               amplitude, sgn, Val(-1))
+        for j in 1:cnt-1
+            iext[j] = iext[j + 1]
+        end
+        iext[cnt] = right
+        return true
+    elseif have_left
+        for j in cnt:-1:2
+            iext[j] = iext[j - 1]
+        end
+        iext[1] = left
+        return true
+    end
+    return changed
+end
+
+function _remez_coefficients(numtaps, neg, full_grid, grid, nodes, values, weights)
+    ncosines = length(values) - 1
+    workspace_length = ncosines + 2
+    gridlength = length(grid)
+    # Sample the interpolant, then recover its cosine coefficients by an IDFT.
+
+    samples = Vector{Float64}(undef, ncosines)      # frequency response on evenly spaced grid
+    coefficients = zeros(Float64, workspace_length) # return vector
+
+    node_tolerance = 1.0e-06
+    nodes[workspace_length] = -2.0
+    step = 1 / (2*ncosines - 1)
+    node_index = 1
+
+    # Partial grids use an affine change of the Chebyshev variable.
+    full_grid |= ncosines <= 3
+    if !full_grid
+        scale = 2.0/(grid[1]-grid[gridlength])
+        shift = -(grid[1]+grid[gridlength])/(grid[1]-grid[gridlength])
+    end
+
+    # Reuse values near interpolation nodes to avoid division by zero.
+    for j = 1:ncosines
+        frequency = cospi(2 * (j - 1) * step)
+        if !full_grid
+            frequency = (frequency-shift)/scale
+        end
+        if (node_index > 1)
+            node_index -= 1
+        end
+        while nodes[node_index]-frequency >= node_tolerance
+            node_index += 1
+        end
+        if frequency-nodes[node_index] < node_tolerance
+            samples[j] = values[node_index]
+        else
+            sentinel = pop!(nodes)
+            samples[j] = freq_eval(frequency, nodes, values, weights)
+            push!(nodes, sentinel)
         end
     end
 
-    nm1 = nfcns - 1   # nm1 => "nfcns minus 1"
+    degree = ncosines - 1
 
-    for j = 1 : nfcns
-        dtemp = 0.0
-        for k = 1 : nm1
-            dtemp = muladd(a[k+1], cospi(2 * (j-1) * delf * k), dtemp)
+    for j in 1:ncosines
+        total = 0.0
+        for k in 1:degree
+            total = muladd(samples[k+1], cospi(2 * (j-1) * step * k), total)
         end
-        alpha[j] = 2dtemp + a[1]
+        coefficients[j] = 2total + samples[1]
     end
 
-    for j = 2 : nfcns
-        alpha[j] *= 2.0 * delf
+    for j in 2:ncosines
+        coefficients[j] *= 2.0 * step
     end
-    alpha[1] *= delf
+    coefficients[1] *= step
 
     if !full_grid
-        p[1] = muladd(2alpha[nfcns], bb, alpha[nm1])
-        p[2] = 2.0*aa*alpha[nfcns]
-        q[1] = alpha[nfcns-2]-alpha[nfcns]
-        for j = 2 : nm1
-            if j >= nm1
-                aa *= 0.5
-                bb *= 0.5
+        # Interpolation is finished; reuse its workspace for basis conversion.
+        p = weights
+        q = values
+        p[1] = muladd(2coefficients[ncosines], shift, coefficients[degree])
+        p[2] = 2.0*scale*coefficients[ncosines]
+        q[1] = coefficients[ncosines-2]-coefficients[ncosines]
+        for j in 2:degree
+            if j >= degree
+                scale *= 0.5
+                shift *= 0.5
             end
             p[j+1] = 0.0
-            for k = 1 : j
-                a[k] = p[k]
-                p[k] = 2.0 * bb * a[k]
+            for k in 1:j
+                samples[k] = p[k]
+                p[k] = 2.0 * shift * samples[k]
             end
-            p[2] = muladd(a[1], 2aa, p[2])
-            for k = 1 : j-1
-                p[k] += muladd(aa, a[k+1], q[k])
+            p[2] = muladd(samples[1], 2scale, p[2])
+            for k in 1:j-1
+                p[k] += muladd(scale, samples[k+1], q[k])
             end
-            for k = 3 : j+1
-                p[k] = muladd(aa, a[k-1], p[k])
+            for k in 3:j+1
+                p[k] = muladd(scale, samples[k-1], p[k])
             end
 
-            if j != nm1
-                for k = 1 : j
-                    q[k] = -a[k]
+            if j != degree
+                for k in 1:j
+                    q[k] = -samples[k]
                 end
-                q[1] += alpha[nfcns - 1 - j]
+                q[1] += coefficients[ncosines - 1 - j]
             end
         end
-        for j = 1 : nfcns
-            alpha[j] = p[j]
+        for j in 1:ncosines
+            coefficients[j] = p[j]
         end
     end
 
-    if nfcns <= 3
-        alpha[nfcns+1] = alpha[nfcns+2] = 0.0
-    end
+    return _remez_impulse_response(numtaps, neg, coefficients, ncosines)
+end
 
-    #
-    # CALCULATE THE IMPULSE RESPONSE.
-    #
-    h = zeros(Float64, nfilt)
+# Undo the linear-phase transformation for FIR types I, II, III and IV.
+function _remez_impulse_response(numtaps::Int, neg::Bool, coefficients, ncosines)
+    odd = isodd(numtaps)
+    cnt = ncosines + 1
+    degree = ncosines - 1
+    h = Vector{Float64}(undef, numtaps)
     if !neg
-        if nodd
-            for j = 1 : nm1
-                h[j] = 0.5 * alpha[nz-j]
+        if odd
+            for j in 1:degree
+                h[j] = 0.5 * coefficients[cnt-j]
             end
-            h[nfcns] = alpha[1]
+            h[ncosines] = coefficients[1]
         else
-            h[1] = 0.25 * alpha[nfcns]
-            for j = 2 : nm1
-                h[j] = 0.25 * (alpha[nz-j] + alpha[nfcns+2-j])
+            h[1] = 0.25 * coefficients[ncosines]
+            for j in 2:degree
+                h[j] = 0.25 * (coefficients[cnt-j] + coefficients[ncosines+2-j])
             end
-            h[nfcns] = muladd(0.5, alpha[1], 0.25 * alpha[2])
+            h[ncosines] = muladd(0.5, coefficients[1], 0.25 * coefficients[2])
         end
     else
-        if nodd
-            h[1] = 0.25 * alpha[nfcns]
-            h[2] = 0.25 * alpha[nm1]
-            for j = 1 : nm1
-                h[j] = 0.25 * (alpha[nz-j] - alpha[nfcns+3-j])
+        if odd
+            for j in 1:degree
+                h[j] = 0.25 * (coefficients[cnt-j] - coefficients[ncosines+3-j])
             end
-            h[nfcns] = muladd(0.5, alpha[1], -0.25 * alpha[3])
-            h[nz] = 0.0
+            h[ncosines] = muladd(0.5, coefficients[1], -0.25 * coefficients[3])
         else
-            h[1] = 0.25 * alpha[nfcns]
-            for j = 2 : nm1
-                h[j] = 0.25 * (alpha[nz-j] - alpha[nfcns+2-j])
+            h[1] = 0.25 * coefficients[ncosines]
+            for j in 2:degree
+                h[j] = 0.25 * (coefficients[cnt-j] - coefficients[ncosines+2-j])
             end
-            h[nfcns] = muladd(0.5, alpha[1], -0.25 * alpha[2])
+            h[ncosines] = muladd(0.5, coefficients[1], -0.25 * coefficients[2])
         end
     end
 
-    for j = 1 : nfcns
-        k = nfilt + 1 - j
+    for j in 1:ncosines
+        k = numtaps + 1 - j
         if !neg
            h[k] = h[j]
         else
            h[k] = -h[j]
         end
     end
-    if neg && nodd
-        h[nz] = 0.0
+    if neg && odd
+        h[cnt] = 0.0
     end
 
     return h
@@ -832,16 +775,15 @@ julia> h = remez(200, [0.01, 0.99], [1]; filter_type=filter_type_differentiator,
 ```
 """
 function remez(numtaps::Integer, bands::Vector, desired::Vector;
-               weight::Vector=fill(1.0, length(desired)),
+               weight::Vector=ones(length(desired)),
                Hz::Real=1.0,
                filter_type::RemezFilterType=filter_type_bandpass,
                kwargs...)
+    lb, ld, lw = length(bands), length(desired), length(weight)
+    lb == 2ld || throw(ArgumentError("`desired` must be half the length of `bands`."))
+    lb == 2lw || throw(ArgumentError("`weight` must be half the length of `bands`."))
     issorted(bands) || throw(ArgumentError("`bands` is not monotonically increasing"))
-    length(bands) == 2length(desired) ||
-        throw(ArgumentError("`desired` must be half the length of `bands`."))
-    length(bands) == 2length(weight) ||
-        throw(ArgumentError("`weight` must be half the length of `bands`."))
-    band_ranges = [(bands[i], bands[i+1]) for i in 1:2:length(bands)]
+    band_ranges = [(bands[i], bands[i+1]) for i in 1:2:lb]
     if filter_type == filter_type_differentiator
         eff = [f -> d*f/Hz for d in desired]
         wate = [d > 0.0001 ? f -> w/(f/Hz) : f -> w for (w, d) in zip(weight, desired)]
@@ -853,4 +795,3 @@ function remez(numtaps::Integer, bands::Vector, desired::Vector;
     neg = filter_type in (filter_type_hilbert, filter_type_differentiator)
     return remez(numtaps, band_defs; Hz, neg, kwargs...)
 end
-
