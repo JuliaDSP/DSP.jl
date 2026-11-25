@@ -6,7 +6,7 @@ using ..Util, ..Windows
 using Statistics: mean!
 export arraysplit, nextfastfft, periodogram,
        WelchConfig, welch_pgram, welch_pgram!,
-       spectrogram, power, freq, stft,
+       spectrogram, power, freq, Fpval, stft,
        MTConfig, mt_pgram, mt_pgram!,
        MTSpectrogramConfig, mt_spectrogram, mt_spectrogram!,
        MTCrossSpectraConfig, mt_cross_power_spectra, mt_cross_power_spectra!,
@@ -286,6 +286,23 @@ struct Periodogram2{T,F1<:Union{Frequencies,AbstractRange},F2<:Union{Frequencies
     freq1::F1
     freq2::F2
 end
+
+"""
+    PeriodogramF{T, F<:Union{Frequencies,AbstractRange}, F2<:Union{Frequencies,AbstractRange}, M<:AbstractMatrix{T}} <: TFR{T}
+
+A PeriodogramF object with fields:
+- `power::M`
+- `freq1::F`
+- `Ftest::P`
+See [`power`](@ref), [`freq`](@ref), and [`Fpval`](@ref) for further details.
+"""
+struct PeriodogramF{T,F<:Union{Frequencies,AbstractRange},P<:Vector{Float64},V<:AbstractVector{T}} <: TFR{T}
+    power::V
+    freq::F
+    Fpval::P
+end
+
+Fpval(p::PeriodogramF) = p.Fpval
 
 """
     power(p)
