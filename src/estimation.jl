@@ -1,7 +1,7 @@
 module Estimation
 
 using LinearAlgebra: eigen, svd
-using FFTW
+using ..FFTBackend
 using Statistics: mean
 
 export esprit, jacobsen, quinn

@@ -1,4 +1,7 @@
-using DSP, FFTW, Test
+using DSP, Test
+
+# Load FFTW extension for backward compatibility and better performance in tests
+using FFTW
 
 using DSP: allocate_output
 using Random: seed!
