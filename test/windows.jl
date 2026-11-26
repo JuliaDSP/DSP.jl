@@ -1,4 +1,4 @@
-using FFTW, DSP, Test
+using FFTL, DSP, Test
 
 !(@__DIR__() in LOAD_PATH) && push!(LOAD_PATH, @__DIR__)
 using FilterTestHelpers

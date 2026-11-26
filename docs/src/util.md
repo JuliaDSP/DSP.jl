@@ -4,7 +4,7 @@
     As of version 0.6.1 of DSP.jl, `fftfreq` and `rfftfreq` have been moved from
     DSP.jl to [AbstractFFTs.jl](https://github.com/JuliaMath/AbstractFFTs.jl)
     version 0.5 and above. You can also access these functions through
-    [FFTW.jl](https://github.com/JuliaMath/FFTW.jl) version 1.1 and above.
+    [FFTL.jl](https://github.com/JuliaMath/FFTL.jl), which DSP.jl uses for its transforms.
 
 ```@docs
 unwrap
